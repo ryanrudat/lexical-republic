@@ -1,0 +1,178 @@
+import { Router } from 'express';
+import { authenticate } from '../middleware/auth';
+import prisma from '../utils/prisma';
+
+const router = Router();
+
+// All harmony routes require authentication
+router.use(authenticate);
+
+// GET /api/harmony/posts — list approved posts (+ own pending)
+router.get('/posts', async (req, res) => {
+  try {
+    const userId = req.user!.userId;
+    const posts = await prisma.harmonyPost.findMany({
+      where: {
+        parentId: null,
+        OR: [
+          { status: 'approved' },
+          { userId, status: 'pending_review' },
+        ],
+      },
+      include: {
+        user: { select: { designation: true, displayName: true } },
+        _count: { select: { replies: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    res.json({
+      posts: posts.map((p) => ({
+        id: p.id,
+        designation: p.user.designation || p.user.displayName,
+        content: p.content,
+        status: p.status,
+        pearlNote: p.pearlNote,
+        replyCount: p._count.replies,
+        createdAt: p.createdAt.toISOString(),
+        isOwn: p.userId === userId,
+      })),
+    });
+  } catch (err) {
+    console.error('Failed to fetch harmony posts:', err);
+    res.status(500).json({ error: 'Failed to fetch posts' });
+  }
+});
+
+// POST /api/harmony/posts — create a new post
+router.post('/posts', async (req, res) => {
+  try {
+    const userId = req.user!.userId;
+    const { content } = req.body;
+
+    if (!content || typeof content !== 'string' || content.trim().length === 0) {
+      res.status(400).json({ error: 'Content is required' });
+      return;
+    }
+
+    if (content.length > 280) {
+      res.status(400).json({ error: 'Content must be 280 characters or less' });
+      return;
+    }
+
+    const post = await prisma.harmonyPost.create({
+      data: {
+        userId,
+        content: content.trim(),
+        status: 'pending_review',
+      },
+    });
+
+    // Auto-approve after a fake delay (simulating Ministry review)
+    setTimeout(async () => {
+      try {
+        await prisma.harmonyPost.update({
+          where: { id: post.id },
+          data: {
+            status: 'approved',
+            pearlNote: 'Content reviewed and approved by the Ministry.',
+          },
+        });
+      } catch {
+        // Post may have been deleted
+      }
+    }, 2000 + Math.random() * 3000);
+
+    res.status(201).json({
+      id: post.id,
+      status: post.status,
+      createdAt: post.createdAt.toISOString(),
+    });
+  } catch (err) {
+    console.error('Failed to create harmony post:', err);
+    res.status(500).json({ error: 'Failed to create post' });
+  }
+});
+
+// GET /api/harmony/posts/:id/replies — get replies to a post
+router.get('/posts/:id/replies', async (req, res) => {
+  try {
+    const postId = req.params.id as string;
+    const replies = await prisma.harmonyPost.findMany({
+      where: {
+        parentId: postId,
+        status: 'approved',
+      },
+      include: {
+        user: { select: { designation: true, displayName: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    res.json({
+      replies: replies.map((r) => ({
+        id: r.id,
+        designation: r.user.designation || r.user.displayName,
+        content: r.content,
+        createdAt: r.createdAt.toISOString(),
+      })),
+    });
+  } catch (err) {
+    console.error('Failed to fetch replies:', err);
+    res.status(500).json({ error: 'Failed to fetch replies' });
+  }
+});
+
+// POST /api/harmony/posts/:id/replies — reply to a post
+router.post('/posts/:id/replies', async (req, res) => {
+  try {
+    const userId = req.user!.userId;
+    const parentId = req.params.id as string;
+    const { content } = req.body;
+
+    if (!content || typeof content !== 'string' || content.trim().length === 0) {
+      res.status(400).json({ error: 'Content is required' });
+      return;
+    }
+
+    // Verify parent exists
+    const parent = await prisma.harmonyPost.findUnique({ where: { id: parentId } });
+    if (!parent) {
+      res.status(404).json({ error: 'Post not found' });
+      return;
+    }
+
+    const reply = await prisma.harmonyPost.create({
+      data: {
+        userId,
+        content: content.trim(),
+        parentId,
+        status: 'pending_review',
+      },
+    });
+
+    // Auto-approve
+    setTimeout(async () => {
+      try {
+        await prisma.harmonyPost.update({
+          where: { id: reply.id },
+          data: { status: 'approved' },
+        });
+      } catch {
+        // Reply may have been deleted
+      }
+    }, 1500 + Math.random() * 2000);
+
+    res.status(201).json({
+      id: reply.id,
+      status: reply.status,
+      createdAt: reply.createdAt.toISOString(),
+    });
+  } catch (err) {
+    console.error('Failed to create reply:', err);
+    res.status(500).json({ error: 'Failed to create reply' });
+  }
+});
+
+export default router;

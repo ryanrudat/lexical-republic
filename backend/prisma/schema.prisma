@@ -1,0 +1,256 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────
+
+enum Role {
+  teacher
+  student
+}
+
+enum VocabTier {
+  approved
+  grey
+  black
+}
+
+enum VocabSource {
+  curriculum
+  teacher
+}
+
+enum EnvironmentMode {
+  ministry
+  resistance
+  director
+}
+
+// ─── Models ──────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(uuid())
+  username      String?   @unique
+  designation   String?   @unique
+  pin           String?
+  passwordHash  String?
+  displayName   String
+  role          Role
+  lane          Int       @default(2)
+  xp            Int       @default(0)
+  streak        Int       @default(0)
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  studentVocab    StudentVocabulary[]
+  recordings      Recording[]
+  missionScores   MissionScore[]
+  pearlConversations PearlConversation[]
+  narrativeChoices   NarrativeChoice[]
+  teacherConfig      TeacherConfig?
+  harmonyPosts       HarmonyPost[]
+
+  @@map("users")
+}
+
+model Vocabulary {
+  id        String     @id @default(uuid())
+  word      String
+  tier      VocabTier  @default(approved)
+  source    VocabSource @default(curriculum)
+  weekId    String?
+  week      Week?      @relation(fields: [weekId], references: [id])
+  createdAt DateTime   @default(now())
+
+  studentVocab StudentVocabulary[]
+
+  @@map("vocabulary")
+}
+
+model StudentVocabulary {
+  id           String     @id @default(uuid())
+  userId       String
+  vocabId      String
+  mastery      Float      @default(0)
+  encounters   Int        @default(0)
+  lastSeenAt   DateTime?
+  user         User       @relation(fields: [userId], references: [id])
+  vocabulary   Vocabulary @relation(fields: [vocabId], references: [id])
+  createdAt    DateTime   @default(now())
+
+  @@unique([userId, vocabId])
+  @@map("student_vocabulary")
+}
+
+model Arc {
+  id          String   @id @default(uuid())
+  name        String
+  orderIndex  Int
+  description String?
+  createdAt   DateTime @default(now())
+
+  weeks Week[]
+
+  @@map("arcs")
+}
+
+model Week {
+  id          String   @id @default(uuid())
+  arcId       String
+  arc         Arc      @relation(fields: [arcId], references: [id])
+  weekNumber  Int
+  title       String
+  description String?
+  createdAt   DateTime @default(now())
+
+  missions   Mission[]
+  vocabulary Vocabulary[]
+
+  @@map("weeks")
+}
+
+model Mission {
+  id          String   @id @default(uuid())
+  weekId      String
+  week        Week     @relation(fields: [weekId], references: [id])
+  orderIndex  Int
+  title       String
+  description String?
+  missionType String
+  config      Json     @default("{}")
+  createdAt   DateTime @default(now())
+
+  recordings    Recording[]
+  missionScores MissionScore[]
+
+  @@map("missions")
+}
+
+model Recording {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  missionId  String?
+  mission    Mission? @relation(fields: [missionId], references: [id])
+  filename   String
+  duration   Float?
+  status     String   @default("processing")
+  transcript String?
+  feedback   Json?
+  createdAt  DateTime @default(now())
+
+  @@map("recordings")
+}
+
+model MissionScore {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  missionId String
+  mission   Mission  @relation(fields: [missionId], references: [id])
+  score     Float
+  details   Json?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, missionId])
+  @@map("mission_scores")
+}
+
+model Character {
+  id            String   @id @default(uuid())
+  name          String
+  title         String?
+  description   String?
+  portraitUrl   String?
+  expressions   Json     @default("{}")
+  createdAt     DateTime @default(now())
+
+  dialogueNodes DialogueNode[]
+
+  @@map("characters")
+}
+
+model DialogueNode {
+  id          String    @id @default(uuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id])
+  text        String
+  expression  String    @default("neutral")
+  nextNodeId  String?
+  choices     Json?
+  conditions  Json?
+  createdAt   DateTime  @default(now())
+
+  @@map("dialogue_nodes")
+}
+
+model PearlMessage {
+  id        String   @id @default(uuid())
+  text      String
+  category  String   @default("propaganda")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@map("pearl_messages")
+}
+
+model PearlConversation {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  messages  Json     @default("[]")
+  createdAt DateTime @default(now())
+
+  @@map("pearl_conversations")
+}
+
+model NarrativeChoice {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  choiceKey String
+  value     String
+  context   Json?
+  createdAt DateTime @default(now())
+
+  @@map("narrative_choices")
+}
+
+model TeacherConfig {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id])
+  settings      Json     @default("{}")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("teacher_configs")
+}
+
+model HarmonyPost {
+  id        String        @id @default(uuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id])
+  content   String
+  status    HarmonyStatus @default(pending_review)
+  pearlNote String?
+  parentId  String?
+  parent    HarmonyPost?  @relation("Replies", fields: [parentId], references: [id])
+  replies   HarmonyPost[] @relation("Replies")
+  createdAt DateTime      @default(now())
+
+  @@map("harmony_posts")
+}
+
+enum HarmonyStatus {
+  pending_review
+  approved
+  flagged
+  redacted
+}
