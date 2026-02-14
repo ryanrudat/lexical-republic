@@ -102,6 +102,9 @@ export default {
         'float': 'float 6s ease-in-out infinite',
         'glow-pulse': 'glowPulse 3s ease-in-out infinite',
         'float-particle': 'floatParticle 10s ease-in-out infinite',
+        'glitch-tear': 'glitchTear 0.3s ease-out',
+        'resist-shake': 'resistShake 0.4s ease-in-out',
+        'queue-tick': 'queueTick 0.3s ease-out',
       },
       keyframes: {
         flicker: {
@@ -167,6 +170,23 @@ export default {
         scanSweep: {
           '0%': { top: '-2px' },
           '100%': { top: '100%' },
+        },
+        glitchTear: {
+          '0%': { transform: 'translateY(4px) skewX(-1deg)', opacity: '0' },
+          '40%': { transform: 'translateY(-2px) skewX(0.5deg)', opacity: '1' },
+          '100%': { transform: 'translateY(0) skewX(0)', opacity: '1' },
+        },
+        resistShake: {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '20%': { transform: 'translateX(-6px)' },
+          '40%': { transform: 'translateX(5px)' },
+          '60%': { transform: 'translateX(-4px)' },
+          '80%': { transform: 'translateX(3px)' },
+        },
+        queueTick: {
+          '0%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(1.15)' },
+          '100%': { transform: 'scale(1)' },
         },
       },
     },

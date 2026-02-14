@@ -1,5 +1,14 @@
 import { useStudentStore } from '../../../stores/studentStore';
 
+function getClearanceLabel(lane?: number): string {
+  switch (lane) {
+    case 1: return 'Standard Track';
+    case 2: return 'Associate Track';
+    case 3: return 'Director Track';
+    default: return 'Unassigned';
+  }
+}
+
 export default function MyFileApp() {
   const user = useStudentStore((s) => s.user);
 
@@ -34,10 +43,13 @@ export default function MyFileApp() {
           </div>
           <div>
             <span className="font-ibm-mono text-[10px] text-white/50 tracking-wider block mb-1">
-              COMPLIANCE LANE
+              CLEARANCE LEVEL
             </span>
             <span className="font-ibm-mono text-lg text-neon-cyan ios-text-glow">
-              Lane {user?.lane || '?'}
+              Level {user?.lane || '?'}
+            </span>
+            <span className="font-ibm-mono text-[10px] text-white/40 tracking-wider block mt-0.5">
+              {getClearanceLabel(user?.lane)}
             </span>
           </div>
           <div>

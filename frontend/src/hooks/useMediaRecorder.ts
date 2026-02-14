@@ -7,6 +7,8 @@ export function useMediaRecorder() {
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const startTimeRef = useRef<number>(0);
+  const pausedAtRef = useRef<number>(0);
+  const totalPausedRef = useRef<number>(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { setState, setDuration, setBlob, setError } = useAudioStore();
@@ -58,11 +60,13 @@ export function useMediaRecorder() {
 
       mediaRecorder.start(100); // collect data every 100ms
       startTimeRef.current = Date.now();
+      totalPausedRef.current = 0;
+      pausedAtRef.current = 0;
       setState('recording');
 
       // Start timer
       timerRef.current = setInterval(() => {
-        setDuration((Date.now() - startTimeRef.current) / 1000);
+        setDuration((Date.now() - startTimeRef.current - totalPausedRef.current) / 1000);
       }, 100);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Microphone access denied';
@@ -71,10 +75,37 @@ export function useMediaRecorder() {
   }, [setState, setDuration, setBlob, setError, stopTimer]);
 
   const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+    if (mediaRecorderRef.current && (mediaRecorderRef.current.state === 'recording' || mediaRecorderRef.current.state === 'paused')) {
       mediaRecorderRef.current.stop();
     }
   }, []);
+
+  const pauseRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.pause();
+      pausedAtRef.current = Date.now();
+      stopTimer();
+      setState('paused_violation');
+    }
+  }, [setState, stopTimer]);
+
+  const resumeRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'paused') {
+      // Accumulate pause duration
+      if (pausedAtRef.current > 0) {
+        totalPausedRef.current += Date.now() - pausedAtRef.current;
+        pausedAtRef.current = 0;
+      }
+      mediaRecorderRef.current.resume();
+      setState('recording');
+      // Resume timer (subtracts total paused time)
+      timerRef.current = setInterval(() => {
+        setDuration((Date.now() - startTimeRef.current - totalPausedRef.current) / 1000);
+      }, 100);
+    }
+  }, [setState, setDuration]);
+
+  const getAnalyser = useCallback(() => analyserRef.current, []);
 
   const getAnalyserData = useCallback(() => {
     if (!analyserRef.current) return null;
@@ -93,5 +124,5 @@ export function useMediaRecorder() {
     };
   }, [stopTimer]);
 
-  return { startRecording, stopRecording, getAnalyserData };
+  return { startRecording, stopRecording, pauseRecording, resumeRecording, getAnalyser, getAnalyserData };
 }

@@ -4,6 +4,7 @@ import { useViewStore } from '../../stores/viewStore';
 import { useViewTheme } from '../../hooks/useViewTheme';
 import { useShiftStore } from '../../stores/shiftStore';
 import { usePearlStore } from '../../stores/pearlStore';
+import { useSessionStore } from '../../stores/sessionStore';
 import TerminalDesktop from './TerminalDesktop';
 import TerminalTaskbar from './TerminalTaskbar';
 import TerminalAppFrame from './TerminalAppFrame';
@@ -13,6 +14,7 @@ import HarmonyApp from './apps/HarmonyApp';
 import MyFileApp from './apps/MyFileApp';
 import PearlEye from '../pearl/PearlEye';
 import PearlPanel from '../pearl/PearlPanel';
+import SystemAuditOverlay from '../shift/SystemAuditOverlay';
 
 const APP_CONFIG = {
   'clarity-queue': { title: 'Clarity Queue', component: ClarityQueueApp },
@@ -29,6 +31,7 @@ export default function TerminalView() {
   const returnToDesktop = useViewStore((s) => s.returnToDesktop);
   const currentWeek = useShiftStore((s) => s.currentWeek);
   const eyeState = usePearlStore((s) => s.eyeState);
+  const concernScore = useSessionStore((s) => s.concernScore);
   const [pearlOpen, setPearlOpen] = useState(false);
 
   const handleHome = useCallback(() => {
@@ -95,6 +98,27 @@ export default function TerminalView() {
               </div>
             </div>
 
+            {/* Concern counter — only visible when > 0 */}
+            {concernScore > 0 && (
+              <div className="ios-glass-pill px-2 py-1 flex items-center gap-1.5">
+                <div className={`w-1.5 h-1.5 rounded-full ${
+                  concernScore >= 75 ? 'bg-neon-pink animate-pulse' :
+                  concernScore >= 50 ? 'bg-terminal-amber animate-pulse' :
+                  'bg-terminal-amber'
+                }`} />
+                <span className="font-ibm-mono text-[8px] text-white/40 tracking-wider uppercase">
+                  CONCERN
+                </span>
+                <span className={`font-dseg7 text-sm tracking-wider tabular-nums ${
+                  concernScore >= 75 ? 'text-neon-pink' :
+                  concernScore >= 50 ? 'text-terminal-amber' :
+                  'text-terminal-amber/70'
+                }`}>
+                  {String(Math.min(concernScore, 999)).padStart(3, '0')}
+                </span>
+              </div>
+            )}
+
             <div className="flex items-center gap-2 ios-glass-pill px-2.5 py-1">
               <PearlEye
                 onClick={() => setPearlOpen((v) => !v)}
@@ -138,6 +162,9 @@ export default function TerminalView() {
         onClose={() => setPearlOpen(false)}
         variant="crt"
       />
+
+      {/* System Audit Overlay — triggers at concern score 100 */}
+      <SystemAuditOverlay />
     </div>
   );
 }

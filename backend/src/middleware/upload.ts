@@ -50,6 +50,21 @@ const videoStorage = multer.diskStorage({
   },
 });
 
+// In-memory audio upload for streaming to Whisper (no disk writes)
+const memoryStorage = multer.memoryStorage();
+
+export const uploadAudioMemory = multer({
+  storage: memoryStorage,
+  limits: { fileSize: MAX_FILE_SIZE },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('audio/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only audio files are allowed'));
+    }
+  },
+});
+
 export const uploadVideo = multer({
   storage: videoStorage,
   limits: { fileSize: MAX_VIDEO_FILE_SIZE },

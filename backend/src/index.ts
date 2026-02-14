@@ -14,6 +14,7 @@ import shiftRoutes from './routes/shifts';
 import vocabularyRoutes from './routes/vocabulary';
 import teacherRoutes from './routes/teacher';
 import harmonyRoutes from './routes/harmony';
+import aiRoutes from './routes/ai';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -60,6 +61,7 @@ app.use('/api/shifts', shiftRoutes);
 app.use('/api/vocabulary', vocabularyRoutes);
 app.use('/api/teacher', teacherRoutes);
 app.use('/api/harmony', harmonyRoutes);
+app.use('/api/ai', aiRoutes);
 
 httpServer.listen(PORT, () => {
   console.log(`[Lexical Republic] Server running on port ${PORT}`);
