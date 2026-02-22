@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 interface MicCalibrationProps {
   /** Trigger calibration */
-  onCalibrate: () => Promise<number>;
+  onCalibrate: () => Promise<number | void>;
   /** Whether calibration is in progress */
   isCalibrating: boolean;
   /** Calibrated baseline value */
