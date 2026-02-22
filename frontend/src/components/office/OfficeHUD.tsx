@@ -1,8 +1,6 @@
-import { useState } from 'react';
 import { useStudentStore } from '../../stores/studentStore';
 import { useNavigate } from 'react-router-dom';
 import PearlEye from '../pearl/PearlEye';
-import PearlPanel from '../pearl/PearlPanel';
 
 // ─── Speaker Icon (inline SVG) ───────────────────────────────
 function SpeakerIcon({ muted }: { muted: boolean }) {
@@ -40,12 +38,13 @@ function SpeakerIcon({ muted }: { muted: boolean }) {
 interface OfficeHUDProps {
   isMuted: boolean;
   setIsMuted: (muted: boolean) => void;
+  pearlOpen: boolean;
+  setPearlOpen: (open: boolean) => void;
 }
 
-export default function OfficeHUD({ isMuted, setIsMuted }: OfficeHUDProps) {
+export default function OfficeHUD({ isMuted, setIsMuted, pearlOpen, setPearlOpen }: OfficeHUDProps) {
   const { user } = useStudentStore();
   const navigate = useNavigate();
-  const [pearlOpen, setPearlOpen] = useState(false);
 
   return (
     <>
@@ -109,12 +108,6 @@ export default function OfficeHUD({ isMuted, setIsMuted }: OfficeHUDProps) {
         </div>
       </div>
 
-      {/* PEARL Panel */}
-      <PearlPanel
-        open={pearlOpen}
-        onClose={() => setPearlOpen(false)}
-        variant="chrome"
-      />
     </>
   );
 }

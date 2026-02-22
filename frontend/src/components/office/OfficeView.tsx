@@ -4,6 +4,7 @@ import { useViewTheme } from '../../hooks/useViewTheme';
 import { useStudentStore } from '../../stores/studentStore';
 import OfficeHUD from './OfficeHUD';
 import PearlSphere3D from './PearlSphere3D';
+import PearlPanel from '../pearl/PearlPanel';
 
 // Source image: 2528×1696. Screen area measured in image-space percentages.
 const IMG_W = 2528;
@@ -51,6 +52,7 @@ export default function OfficeView() {
   const enterTerminal = useViewStore((s) => s.enterTerminal);
   const { logout } = useStudentStore();
   const [pearlVisible, setPearlVisible] = useState(true);
+  const [pearlOpen, setPearlOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [time, setTime] = useState(new Date());
   const [screenFlicker, setScreenFlicker] = useState(false);
@@ -577,8 +579,15 @@ export default function OfficeView() {
           height: rects.imageBounds.height,
         }}
       >
-        <OfficeHUD isMuted={isMuted} setIsMuted={setIsMuted} />
+        <OfficeHUD isMuted={isMuted} setIsMuted={setIsMuted} pearlOpen={pearlOpen} setPearlOpen={setPearlOpen} />
       </div>
+
+      {/* PEARL Panel — rendered outside imageBounds so it gets proper stacking context + pointer events */}
+      <PearlPanel
+        open={pearlOpen}
+        onClose={() => setPearlOpen(false)}
+        variant="chrome"
+      />
 
       {/* Inline keyframe animations */}
       <style>{`

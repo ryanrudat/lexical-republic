@@ -134,11 +134,11 @@ export default function PearlBark({ panelOpen }: PearlBarkProps) {
 
     const scheduleNext = () => {
       if (cancelled) return;
-      const delay = 20000 + Math.random() * 25000;
+      const delay = 90000 + Math.random() * 90000;
       barkTimer = setTimeout(showBark, delay);
     };
 
-    const firstDelay = 4000 + Math.random() * 4000;
+    const firstDelay = 60000 + Math.random() * 30000;
     barkTimer = setTimeout(showBark, firstDelay);
 
     return () => {
