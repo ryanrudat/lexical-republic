@@ -24,7 +24,7 @@ interface StudentState {
   error: string | null;
   login: (designation: string, pin: string) => Promise<void>;
   loginTeacher: (username: string, password: string) => Promise<void>;
-  register: (studentNumber: string, pin: string, displayName?: string) => Promise<void>;
+  register: (studentNumber: string, pin: string, displayName?: string, classCode?: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -61,10 +61,10 @@ export const useStudentStore = create<StudentState>((set) => ({
     }
   },
 
-  register: async (studentNumber, pin, displayName) => {
+  register: async (studentNumber, pin, displayName, classCode) => {
     set({ loading: true, error: null });
     try {
-      const user = await apiRegister(studentNumber, pin, displayName);
+      const user = await apiRegister(studentNumber, pin, displayName, classCode);
       set({ user, loading: false });
     } catch (err: unknown) {
       const message = getApiErrorMessage(err, 'Registration failed');

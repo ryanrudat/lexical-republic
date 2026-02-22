@@ -20,15 +20,24 @@ const VIDEO_SLOT_FIELDS: Record<VideoSlot, { urlKey: string; filenameKey: string
 };
 
 // GET /api/teacher/students — All students with progress summary
-router.get('/students', async (_req: Request, res: Response) => {
+router.get('/students', async (req: Request, res: Response) => {
   try {
+    const classId = typeof req.query.classId === 'string' ? req.query.classId : undefined;
+
     const students = await prisma.user.findMany({
-      where: { role: 'student' },
+      where: {
+        role: 'student',
+        ...(classId ? { enrollments: { some: { classId } } } : {}),
+      },
       include: {
         missionScores: {
           include: {
             mission: { select: { weekId: true, missionType: true } },
           },
+        },
+        enrollments: {
+          include: { class: { select: { id: true, name: true } } },
+          take: 1,
         },
       },
       orderBy: { designation: 'asc' },
@@ -45,6 +54,7 @@ router.get('/students', async (_req: Request, res: Response) => {
           )
           .map((ms) => ms.mission.weekId)
       );
+      const enrollment = s.enrollments[0];
       return {
         id: s.id,
         designation: s.designation,
@@ -54,6 +64,8 @@ router.get('/students', async (_req: Request, res: Response) => {
         streak: s.streak,
         weeksCompleted: clockedOutWeeks.size,
         lastLoginAt: s.lastLoginAt,
+        classId: enrollment?.class.id ?? null,
+        className: enrollment?.class.name ?? null,
       };
     });
 
@@ -378,15 +390,22 @@ router.get('/students/:id', async (req: Request, res: Response) => {
 });
 
 // GET /api/teacher/online-students — REST fallback for live student tracking
-router.get('/online-students', (_req: Request, res: Response) => {
-  res.json({ students: getOnlineStudents() });
+router.get('/online-students', (req: Request, res: Response) => {
+  const classId = typeof req.query.classId === 'string' ? req.query.classId : undefined;
+  const students = getOnlineStudents(classId);
+  res.json({ students });
 });
 
 // GET /api/teacher/gradebook — All students + all mission scores for the gradebook
-router.get('/gradebook', async (_req: Request, res: Response) => {
+router.get('/gradebook', async (req: Request, res: Response) => {
   try {
+    const classId = typeof req.query.classId === 'string' ? req.query.classId : undefined;
+
     const students = await prisma.user.findMany({
-      where: { role: 'student' },
+      where: {
+        role: 'student',
+        ...(classId ? { enrollments: { some: { classId } } } : {}),
+      },
       select: {
         id: true,
         designation: true,

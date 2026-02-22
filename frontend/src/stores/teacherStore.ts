@@ -7,6 +7,8 @@ export interface OnlineStudent {
   socketId: string;
   designation: string | null;
   displayName: string;
+  classId?: string | null;
+  className?: string | null;
   weekNumber: number | null;
   stepId: string | null;
   connectedAt: string;
@@ -16,6 +18,9 @@ export interface OnlineStudent {
 interface TeacherState {
   activeTab: TeacherTab;
   setActiveTab: (tab: TeacherTab) => void;
+
+  selectedClassId: string | null;
+  setSelectedClassId: (classId: string | null) => void;
 
   onlineStudents: Map<string, OnlineStudent>;
   setClassSnapshot: (students: OnlineStudent[]) => void;
@@ -29,6 +34,9 @@ interface TeacherState {
 export const useTeacherStore = create<TeacherState>((set) => ({
   activeTab: 'class',
   setActiveTab: (tab) => set({ activeTab: tab }),
+
+  selectedClassId: null,
+  setSelectedClassId: (classId) => set({ selectedClassId: classId }),
 
   onlineStudents: new Map(),
   setClassSnapshot: (students) =>

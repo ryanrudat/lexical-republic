@@ -56,8 +56,9 @@ export interface WeekBriefingSetting {
   checksCount: number;
 }
 
-export async function fetchStudents(): Promise<StudentSummary[]> {
-  const { data } = await client.get('/teacher/students');
+export async function fetchStudents(classId?: string): Promise<StudentSummary[]> {
+  const params = classId ? { classId } : {};
+  const { data } = await client.get('/teacher/students', { params });
   return data.students;
 }
 
@@ -161,9 +162,49 @@ export interface GradebookData {
   weeks: GradebookWeek[];
 }
 
-export async function fetchGradebook(): Promise<GradebookData> {
-  const { data } = await client.get('/teacher/gradebook');
+export async function fetchGradebook(classId?: string): Promise<GradebookData> {
+  const params = classId ? { classId } : {};
+  const { data } = await client.get('/teacher/gradebook', { params });
   return data as GradebookData;
+}
+
+// ── Class Management ───────────────────────────────────────────
+
+export interface ClassInfo {
+  id: string;
+  name: string;
+  joinCode: string;
+  isActive: boolean;
+  studentCount: number;
+  unlockedWeekIds: string[];
+  createdAt: string;
+}
+
+export async function fetchClasses(): Promise<ClassInfo[]> {
+  const { data } = await client.get('/classes');
+  return data.classes as ClassInfo[];
+}
+
+export async function createClass(name: string): Promise<ClassInfo> {
+  const { data } = await client.post('/classes', { name });
+  return data as ClassInfo;
+}
+
+export async function updateClass(classId: string, updates: { name?: string; isActive?: boolean }): Promise<void> {
+  await client.patch(`/classes/${classId}`, updates);
+}
+
+export async function regenerateClassCode(classId: string): Promise<string> {
+  const { data } = await client.post(`/classes/${classId}/regenerate-code`);
+  return data.joinCode as string;
+}
+
+export async function unlockWeek(classId: string, weekId: string): Promise<void> {
+  await client.post(`/classes/${classId}/unlock-week`, { weekId });
+}
+
+export async function lockWeek(classId: string, weekId: string): Promise<void> {
+  await client.delete(`/classes/${classId}/unlock-week/${weekId}`);
 }
 
 // ── Storyboard API ──────────────────────────────────────────────

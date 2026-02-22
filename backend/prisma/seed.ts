@@ -792,6 +792,18 @@ async function main() {
     },
   });
 
+  // ─── Default Class ───
+  const defaultClass = await prisma.class.upsert({
+    where: { joinCode: 'ALPHA1' },
+    update: { name: '110-A', teacherId: teacher.id },
+    create: {
+      name: '110-A',
+      joinCode: 'ALPHA1',
+      teacherId: teacher.id,
+    },
+  });
+  console.log(`  Class: ${defaultClass.name} (code: ${defaultClass.joinCode})`);
+
   // ─── Students ───
   const pinHash = await bcrypt.hash('1234', 10);
   const lanes = [1, 2, 3, 2, 1];
@@ -817,6 +829,13 @@ async function main() {
       },
     });
     console.log(`  Student: ${student.designation} (lane ${student.lane})`);
+
+    // Enroll in default class
+    await prisma.classEnrollment.upsert({
+      where: { userId_classId: { userId: student.id, classId: defaultClass.id } },
+      update: {},
+      create: { userId: student.id, classId: defaultClass.id },
+    });
   }
 
   // ─── Arcs (3 Acts) ───
@@ -991,6 +1010,14 @@ async function main() {
     });
   }
   console.log(`  Weeks: ${weekData.length} shifts seeded`);
+
+  // ─── Unlock Week 1 for default class ───
+  await prisma.classWeekUnlock.upsert({
+    where: { classId_weekId: { classId: defaultClass.id, weekId: 'week-1' } },
+    update: {},
+    create: { classId: defaultClass.id, weekId: 'week-1' },
+  });
+  console.log(`  Week 1 unlocked for class ${defaultClass.name}`);
 
   // ─── Week 1 Missions (7 steps) ───
   const week1Story = WEEK_STORY_PLANS[1];

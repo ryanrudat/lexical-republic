@@ -10,6 +10,9 @@ export interface User {
   xp: number;
   streak: number;
   lastLoginAt: string | null;
+  classId?: string | null;
+  className?: string | null;
+  classes?: Array<{ id: string; name: string; joinCode: string }>;
 }
 
 export async function loginStudent(designation: string, pin: string) {
@@ -22,8 +25,8 @@ export async function loginTeacher(username: string, password: string) {
   return data.user as User;
 }
 
-export async function registerStudent(studentNumber: string, pin: string, displayName?: string) {
-  const { data } = await client.post('/auth/register', { studentNumber, pin, displayName });
+export async function registerStudent(studentNumber: string, pin: string, displayName?: string, classCode?: string) {
+  const { data } = await client.post('/auth/register', { studentNumber, pin, displayName, classCode });
   return data.user as User;
 }
 

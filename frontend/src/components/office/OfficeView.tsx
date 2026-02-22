@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useViewStore } from '../../stores/viewStore';
 import { useViewTheme } from '../../hooks/useViewTheme';
 import { useStudentStore } from '../../stores/studentStore';
@@ -11,12 +11,26 @@ const IMG_H = 1696;
 // All overlay positions defined in image-space percentages (cx, cy = center; w, h = size)
 const SCREEN     = { cx: 0.500, cy: 0.663, w: 0.236, h: 0.238 };
 const SPHERE     = { cx: 0.500, cy: 0.162, w: 0.164, h: 0.222 };
-const NEON_STRIP = { cx: 0.500, cy: 0.292, w: 0.900, h: 0.002 };
+const NEON_STRIP = { cx: 0.500, cy: 0.292, w: 0.640, h: 0.002 };
 const LEFT_WALL  = { cx: 0.015, cy: 0.280, w: 0.002, h: 0.150 };
 const RIGHT_WALL = { cx: 0.985, cy: 0.280, w: 0.002, h: 0.150 };
 const FLOOR_GLOW = { cx: 0.500, cy: 0.880, w: 0.600, h: 0.080 };
 const HINT_SIGN  = { cx: 0.500, cy: 0.835, w: 0.200, h: 0.022 };
 const IMAGE_FULL = { cx: 0.500, cy: 0.500, w: 1.000, h: 1.000 };
+const POSTER     = { cx: 0.790, cy: 0.260, w: 0.110, h: 0.140 };
+
+const PROPAGANDA = [
+  'EVERY WORD MATTERS \u2022 EVERY WORD HELPS',
+  'TOGETHER WE SPEAK CLEARLY',
+  'YOUR CLARITY MAKES US STRONGER',
+  'HEALTHY COMMUNICATION \u2022 HEALTHY COMMUNITY',
+  'SPEAK WELL \u2022 LIVE WELL',
+  'THE REPUBLIC THANKS YOU FOR YOUR SERVICE',
+  'PRECISION IN LANGUAGE \u2022 HARMONY IN LIFE',
+  'YOUR WORDS BUILD A BETTER TOMORROW',
+  'CLARITY IS KINDNESS',
+  'A CLEAR VOICE IS A HAPPY VOICE',
+];
 
 /** Map a point from image-space % to viewport px, accounting for object-contain */
 function imageToViewport(vw: number, vh: number) {
@@ -39,10 +53,17 @@ export default function OfficeView() {
   const [pearlVisible, setPearlVisible] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
   const [time, setTime] = useState(new Date());
+  const [screenFlicker, setScreenFlicker] = useState(false);
+  const [propagandaVisible, setPropagandaVisible] = useState(false);
+  const [propagandaText, setPropagandaText] = useState(PROPAGANDA[0]);
+  const screenFlickerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const propagandaTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pearlVisibleRef = useRef(true);
   const zero = { left: 0, top: 0, width: 0, height: 0 };
   const [rects, setRects] = useState({
     monitor: zero, sphere: zero, neonStrip: zero,
     leftWall: zero, rightWall: zero, floorGlow: zero, hintSign: zero, imageBounds: zero,
+    poster: zero,
   });
 
   const recalc = useCallback(() => {
@@ -56,6 +77,7 @@ export default function OfficeView() {
       floorGlow: map(FLOOR_GLOW),
       hintSign: map(HINT_SIGN),
       imageBounds: map(IMAGE_FULL),
+      poster: map(POSTER),
     });
   }, []);
 
@@ -68,6 +90,53 @@ export default function OfficeView() {
   useEffect(() => {
     const interval = setInterval(() => setTime(new Date()), 30000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Sync pearlVisibleRef for propaganda scheduling
+  useEffect(() => {
+    pearlVisibleRef.current = pearlVisible;
+  }, [pearlVisible]);
+
+  // Monitor ambient cyan flicker — rare organic power fluctuation
+  useEffect(() => {
+    const schedule = () => {
+      const delay = 20000 + Math.random() * 25000;
+      screenFlickerRef.current = setTimeout(() => {
+        setScreenFlicker(true);
+        screenFlickerRef.current = setTimeout(() => {
+          setScreenFlicker(false);
+          schedule();
+        }, 120);
+      }, delay);
+    };
+    schedule();
+    return () => {
+      if (screenFlickerRef.current) clearTimeout(screenFlickerRef.current);
+    };
+  }, []);
+
+  // PEARL propaganda chyron — shows every 60-90s for 8s when face not showing
+  useEffect(() => {
+    const schedule = () => {
+      const delay = 60000 + Math.random() * 30000;
+      propagandaTimeoutRef.current = setTimeout(() => {
+        if (pearlVisibleRef.current) {
+          // Face showing — skip, try again in 5s
+          propagandaTimeoutRef.current = setTimeout(schedule, 5000);
+          return;
+        }
+        setPropagandaText(PROPAGANDA[Math.floor(Math.random() * PROPAGANDA.length)]);
+        setPropagandaVisible(true);
+        propagandaTimeoutRef.current = setTimeout(() => {
+          setPropagandaVisible(false);
+          schedule();
+        }, 8000);
+      }, delay);
+    };
+    schedule();
+    return () => {
+      if (propagandaTimeoutRef.current) clearTimeout(propagandaTimeoutRef.current);
+    };
   }, []);
 
   const hours = time.getHours().toString().padStart(2, '0');
@@ -426,6 +495,78 @@ export default function OfficeView() {
         }}
       />
 
+      {/* Propaganda poster warm spotlight — right wall "SIMPLE WORDS" */}
+      <div
+        className="absolute z-[1] pointer-events-none"
+        style={{
+          left: rects.poster.left,
+          top: rects.poster.top,
+          width: rects.poster.width,
+          height: rects.poster.height,
+          background: 'radial-gradient(ellipse, rgba(255, 220, 160, 0.22) 0%, rgba(255, 200, 120, 0.06) 50%, transparent 75%)',
+          animation: 'posterGlow 5s ease-in-out infinite',
+        }}
+      />
+
+      {/* Monitor ambient cyan flicker — rare organic power fluctuation */}
+      <div
+        className="absolute z-[2] pointer-events-none rounded-sm"
+        style={{
+          left: rects.monitor.left,
+          top: rects.monitor.top,
+          width: rects.monitor.width,
+          height: rects.monitor.height,
+          background: 'radial-gradient(ellipse at center, rgba(0, 229, 255, 0.10) 0%, rgba(0, 229, 255, 0.04) 50%, transparent 80%)',
+          opacity: screenFlicker ? 1 : 0,
+          transition: 'opacity 40ms ease',
+        }}
+      />
+
+      {/* PEARL sphere propaganda chyron — scrolling ticker floating through the glass */}
+      <div
+        className="absolute z-[2] pointer-events-none rounded-full"
+        style={{
+          left: rects.sphere.left,
+          top: rects.sphere.top,
+          width: rects.sphere.width,
+          height: rects.sphere.height,
+          overflow: 'hidden',
+          opacity: (propagandaVisible && !pearlVisible) ? 1 : 0,
+          transition: 'opacity 0.8s ease',
+          WebkitMaskImage: 'radial-gradient(ellipse 80% 80% at center, white 40%, transparent 70%)',
+          maskImage: 'radial-gradient(ellipse 80% 80% at center, white 40%, transparent 70%)',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: 0,
+            display: 'flex',
+            whiteSpace: 'nowrap',
+            animation: 'chyronScroll 14s linear infinite',
+          }}
+        >
+          {[0, 1].map((i) => (
+            <span
+              key={i}
+              className="font-ibm-mono"
+              style={{
+                fontSize: Math.max(8, rects.sphere.width * 0.055),
+                color: 'rgba(255, 255, 255, 0.92)',
+                letterSpacing: '3px',
+                textShadow: '0 0 8px rgba(0, 229, 255, 0.6), 0 0 20px rgba(0, 229, 255, 0.25)',
+                lineHeight: 1,
+                transform: 'translateY(-50%)',
+                paddingRight: `${rects.sphere.width * 0.4}px`,
+              }}
+            >
+              {propagandaText}
+            </span>
+          ))}
+        </div>
+      </div>
+
       {/* React HUD overlay — constrained to visible image area, pointer-events-none so monitor clicks pass through */}
       <div
         className="absolute z-10 pointer-events-none"
@@ -470,6 +611,14 @@ export default function OfficeView() {
         @keyframes crtFlicker {
           0% { opacity: 0.03; }
           50% { opacity: 0.06; }
+        }
+        @keyframes posterGlow {
+          0%, 100% { opacity: 0.5; }
+          50% { opacity: 1; }
+        }
+        @keyframes chyronScroll {
+          from { transform: translateX(0); }
+          to { transform: translateX(-50%); }
         }
 
       `}</style>

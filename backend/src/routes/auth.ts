@@ -65,6 +65,20 @@ router.post('/login', async (req: Request, res: Response) => {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
+    // Fetch class enrollment for students
+    let classId: string | null = null;
+    let className: string | null = null;
+    if (user.role === 'student') {
+      const enrollment = await prisma.classEnrollment.findFirst({
+        where: { userId: user.id },
+        include: { class: { select: { id: true, name: true } } },
+      });
+      if (enrollment) {
+        classId = enrollment.class.id;
+        className = enrollment.class.name;
+      }
+    }
+
     res.json({
       user: {
         id: user.id,
@@ -74,6 +88,8 @@ router.post('/login', async (req: Request, res: Response) => {
         lane: user.lane,
         xp: user.xp,
         streak: user.streak,
+        classId,
+        className,
       },
     });
   } catch (err) {
@@ -84,11 +100,17 @@ router.post('/login', async (req: Request, res: Response) => {
 
 // POST /api/auth/register — student self-registration
 router.post('/register', async (req: Request, res: Response) => {
-  const { studentNumber, pin, displayName } = req.body as {
+  const { studentNumber, pin, displayName, classCode } = req.body as {
     studentNumber?: string;
     pin?: string;
     displayName?: string;
+    classCode?: string;
   };
+
+  if (!classCode || typeof classCode !== 'string' || !classCode.trim()) {
+    res.status(400).json({ error: 'Class code is required' });
+    return;
+  }
 
   if (!studentNumber || typeof studentNumber !== 'string' || !studentNumber.trim()) {
     res.status(400).json({ error: 'Student number is required' });
@@ -101,8 +123,16 @@ router.post('/register', async (req: Request, res: Response) => {
   }
 
   const designation = studentNumber.trim().toUpperCase();
+  const code = classCode.trim().toUpperCase();
 
   try {
+    // Validate class code
+    const cls = await prisma.class.findUnique({ where: { joinCode: code } });
+    if (!cls || !cls.isActive) {
+      res.status(400).json({ error: 'Invalid class code' });
+      return;
+    }
+
     const existing = await prisma.user.findUnique({ where: { designation } });
     if (existing) {
       res.status(409).json({ error: 'Student number already registered' });
@@ -118,6 +148,11 @@ router.post('/register', async (req: Request, res: Response) => {
         role: 'student',
         lane: 1,
       },
+    });
+
+    // Enroll in class
+    await prisma.classEnrollment.create({
+      data: { userId: user.id, classId: cls.id },
     });
 
     await prisma.user.update({
@@ -143,6 +178,8 @@ router.post('/register', async (req: Request, res: Response) => {
         lane: user.lane,
         xp: user.xp,
         streak: user.streak,
+        classId: cls.id,
+        className: cls.name,
       },
     });
   } catch (err) {
@@ -184,7 +221,34 @@ router.get('/me', authenticate, async (req: Request, res: Response) => {
       return;
     }
 
-    res.json({ user });
+    // Add class info based on role
+    if (user.role === 'student') {
+      const enrollment = await prisma.classEnrollment.findFirst({
+        where: { userId: user.id },
+        include: { class: { select: { id: true, name: true } } },
+      });
+      res.json({
+        user: {
+          ...user,
+          classId: enrollment?.class.id ?? null,
+          className: enrollment?.class.name ?? null,
+        },
+      });
+    } else if (user.role === 'teacher') {
+      const classes = await prisma.class.findMany({
+        where: { teacherId: user.id },
+        select: { id: true, name: true, joinCode: true },
+        orderBy: { createdAt: 'asc' },
+      });
+      res.json({
+        user: {
+          ...user,
+          classes,
+        },
+      });
+    } else {
+      res.json({ user });
+    }
   } catch (err) {
     console.error('Me error:', err);
     res.status(500).json({ error: 'Internal server error' });

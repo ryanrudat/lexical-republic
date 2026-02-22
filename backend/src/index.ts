@@ -15,11 +15,14 @@ import vocabularyRoutes from './routes/vocabulary';
 import teacherRoutes from './routes/teacher';
 import harmonyRoutes from './routes/harmony';
 import aiRoutes from './routes/ai';
+import classRoutes from './routes/classes';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 const UPLOAD_DIR = process.env.UPLOAD_DIR || 'uploads';
-const uploadPath = path.resolve(__dirname, '../', UPLOAD_DIR);
+const uploadPath = path.isAbsolute(UPLOAD_DIR)
+  ? UPLOAD_DIR
+  : path.resolve(__dirname, '../', UPLOAD_DIR);
 const allowedOrigins = (process.env.FRONTEND_ORIGIN || 'http://localhost:3000')
   .split(',')
   .map((origin) => origin.trim())
@@ -62,6 +65,7 @@ app.use('/api/vocabulary', vocabularyRoutes);
 app.use('/api/teacher', teacherRoutes);
 app.use('/api/harmony', harmonyRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/classes', classRoutes);
 
 httpServer.listen(PORT, () => {
   console.log(`[Lexical Republic] Server running on port ${PORT}`);

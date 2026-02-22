@@ -19,11 +19,16 @@ export default function DutyRosterApp() {
   ];
 
   const getWeekStatus = (week: (typeof weeks)[0]) => {
+    // If class-based unlock info is present, use it as the primary gate
+    if (week.isUnlocked === false) return 'locked';
     if (week.clockedOut) return 'clocked-out';
+    // Within unlocked weeks, gate by sequential completion
     const allWeeksSorted = [...weeks].sort((a, b) => a.weekNumber - b.weekNumber);
     const weekIdx = allWeeksSorted.findIndex((w) => w.id === week.id);
     if (weekIdx === 0) return 'unlocked';
     if (allWeeksSorted[weekIdx - 1]?.clockedOut) return 'unlocked';
+    // Unlocked by teacher but previous week not completed — still accessible
+    if (week.isUnlocked === true) return 'unlocked';
     return 'locked';
   };
 

@@ -3,6 +3,7 @@ import { createServer } from 'http';
 import type { Express } from 'express';
 import { verifyToken } from './utils/jwt';
 import cookie from 'cookie';
+import prisma from './utils/prisma';
 
 export let io: Server;
 
@@ -13,6 +14,8 @@ export interface StudentStatus {
   socketId: string;
   designation: string | null;
   displayName: string;
+  classId: string | null;
+  className: string | null;
   weekNumber: number | null;
   stepId: string | null;
   connectedAt: string;
@@ -21,8 +24,10 @@ export interface StudentStatus {
 
 const onlineStudents = new Map<string, StudentStatus>();
 
-export function getOnlineStudents(): StudentStatus[] {
-  return Array.from(onlineStudents.values());
+export function getOnlineStudents(classId?: string): StudentStatus[] {
+  const all = Array.from(onlineStudents.values());
+  if (classId) return all.filter((s) => s.classId === classId);
+  return all;
 }
 
 // ── Init ───────────────────────────────────────────────────────────
@@ -60,7 +65,7 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
     }
   });
 
-  io.on('connection', (socket) => {
+  io.on('connection', async (socket) => {
     const userId = (socket as any).userId as string;
     const role = (socket as any).role as string;
 
@@ -73,17 +78,41 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
 
     // ── Student tracking ──
     if (role === 'student') {
+      // Look up class enrollment
+      let classId: string | null = null;
+      let className: string | null = null;
+      try {
+        const enrollment = await prisma.classEnrollment.findFirst({
+          where: { userId },
+          include: { class: { select: { id: true, name: true } } },
+        });
+        if (enrollment) {
+          classId = enrollment.class.id;
+          className = enrollment.class.name;
+        }
+      } catch {
+        // Non-fatal: proceed without class info
+      }
+
       const status: StudentStatus = {
         userId,
         socketId: socket.id,
         designation: (socket as any).designation,
         displayName: (socket as any).displayName,
+        classId,
+        className,
         weekNumber: null,
         stepId: null,
         connectedAt: new Date().toISOString(),
         lastActivityAt: new Date().toISOString(),
       };
       onlineStudents.set(userId, status);
+
+      // Join class-specific room
+      if (classId) {
+        socket.join(`class:${classId}`);
+      }
+
       io.to('teacher').emit('student:connected', status);
     }
 

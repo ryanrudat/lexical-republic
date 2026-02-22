@@ -46,6 +46,7 @@ export interface WeekSummary {
   totalSteps: number;
   stepsCompleted: number;
   clockedOut: boolean;
+  isUnlocked?: boolean;
 }
 
 export interface SeasonResponse {
@@ -101,6 +102,8 @@ export interface StudentSummary {
   streak: number;
   weeksCompleted: number;
   lastLoginAt: string | null;
+  classId?: string | null;
+  className?: string | null;
 }
 
 export type MasteryState = 'new' | 'learning' | 'practicing' | 'mastered' | 'struggling';

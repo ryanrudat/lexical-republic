@@ -55,6 +55,8 @@ model User {
   narrativeChoices   NarrativeChoice[]
   teacherConfig      TeacherConfig?
   harmonyPosts       HarmonyPost[]
+  enrollments        ClassEnrollment[]
+  teacherClasses     Class[]          @relation("TeacherClasses")
 
   @@map("users")
 }
@@ -109,8 +111,9 @@ model Week {
   description String?
   createdAt   DateTime @default(now())
 
-  missions   Mission[]
-  vocabulary Vocabulary[]
+  missions     Mission[]
+  vocabulary   Vocabulary[]
+  classUnlocks ClassWeekUnlock[]
 
   @@map("weeks")
 }
@@ -243,9 +246,52 @@ model HarmonyPost {
   parentId  String?
   parent    HarmonyPost?  @relation("Replies", fields: [parentId], references: [id])
   replies   HarmonyPost[] @relation("Replies")
+  classId   String?
+  class     Class?        @relation(fields: [classId], references: [id])
   createdAt DateTime      @default(now())
 
   @@map("harmony_posts")
+}
+
+model Class {
+  id         String   @id @default(uuid())
+  name       String
+  joinCode   String   @unique
+  teacherId  String
+  teacher    User     @relation("TeacherClasses", fields: [teacherId], references: [id])
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  enrollments  ClassEnrollment[]
+  weekUnlocks  ClassWeekUnlock[]
+  harmonyPosts HarmonyPost[]
+
+  @@map("classes")
+}
+
+model ClassEnrollment {
+  id         String   @id @default(uuid())
+  userId     String
+  classId    String
+  user       User     @relation(fields: [userId], references: [id])
+  class      Class    @relation(fields: [classId], references: [id])
+  enrolledAt DateTime @default(now())
+
+  @@unique([userId, classId])
+  @@map("class_enrollments")
+}
+
+model ClassWeekUnlock {
+  id         String   @id @default(uuid())
+  classId    String
+  weekId     String
+  class      Class    @relation(fields: [classId], references: [id])
+  week       Week     @relation(fields: [weekId], references: [id])
+  unlockedAt DateTime @default(now())
+
+  @@unique([classId, weekId])
+  @@map("class_week_unlocks")
 }
 
 enum HarmonyStatus {

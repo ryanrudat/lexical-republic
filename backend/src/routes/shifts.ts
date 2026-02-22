@@ -9,6 +9,20 @@ router.use(authenticate);
 router.get('/season', async (req: Request, res: Response) => {
   try {
     const userId = req.user!.userId;
+
+    // Determine student's class and unlocked weeks
+    let unlockedWeekIds: Set<string> | null = null;
+    const enrollment = await prisma.classEnrollment.findFirst({
+      where: { userId },
+    });
+    if (enrollment) {
+      const unlocks = await prisma.classWeekUnlock.findMany({
+        where: { classId: enrollment.classId },
+        select: { weekId: true },
+      });
+      unlockedWeekIds = new Set(unlocks.map((u) => u.weekId));
+    }
+
     const arcs = await prisma.arc.findMany({
       orderBy: { orderIndex: 'asc' },
       include: {
@@ -49,6 +63,8 @@ router.get('/season', async (req: Request, res: Response) => {
                 (s) => (s.details as any)?.status === 'complete'
               )
           ),
+          // null = no class (backward compat, all unlocked); true/false = class-gated
+          isUnlocked: unlockedWeekIds === null ? true : unlockedWeekIds.has(week.id),
         };
       })
     );
@@ -69,6 +85,21 @@ router.get('/weeks/:weekId', async (req: Request, res: Response) => {
   try {
     const userId = req.user!.userId;
     const weekId = req.params.weekId as string;
+
+    // Check if student's class has this week unlocked
+    const enrollment = await prisma.classEnrollment.findFirst({
+      where: { userId },
+    });
+    if (enrollment) {
+      const unlock = await prisma.classWeekUnlock.findFirst({
+        where: { classId: enrollment.classId, weekId },
+      });
+      if (!unlock) {
+        res.status(403).json({ error: 'This shift has not been unlocked for your class' });
+        return;
+      }
+    }
+
     const week = await prisma.week.findUnique({
       where: { id: weekId },
       include: {

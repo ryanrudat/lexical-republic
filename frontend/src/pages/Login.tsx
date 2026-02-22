@@ -11,6 +11,7 @@ export default function Login() {
   const [regPin, setRegPin] = useState('');
   const [regPinConfirm, setRegPinConfirm] = useState('');
   const [regDisplayName, setRegDisplayName] = useState('');
+  const [regClassCode, setRegClassCode] = useState('');
   const { login, loginTeacher, register, loading, error } = useStudentStore();
 
   const handleSubmit = async (e: FormEvent) => {
@@ -21,7 +22,7 @@ export default function Login() {
       } else if (mode === 'teacher') {
         await loginTeacher(username.trim(), password);
       } else {
-        await register(regStudentNumber.trim(), regPin, regDisplayName.trim() || undefined);
+        await register(regStudentNumber.trim(), regPin, regDisplayName.trim() || undefined, regClassCode.trim().toUpperCase());
       }
     } catch {
       // Error handled in store
@@ -32,7 +33,7 @@ export default function Login() {
     ? Boolean(designation && pin)
     : mode === 'teacher'
     ? Boolean(username && password)
-    : Boolean(regStudentNumber.trim() && regPin.length >= 4 && regPin === regPinConfirm);
+    : Boolean(regStudentNumber.trim() && regPin.length >= 4 && regPin === regPinConfirm && regClassCode.trim().length >= 4);
 
   const pinMismatch = mode === 'register' && regPinConfirm.length > 0 && regPin !== regPinConfirm;
 
@@ -145,6 +146,25 @@ export default function Login() {
             </>
           ) : mode === 'register' ? (
             <>
+              <div className="mb-4">
+                <label className="block font-ibm-mono text-xs text-retro-warm-wood/70 uppercase tracking-wider mb-2">
+                  Class Code
+                </label>
+                <input
+                  type="text"
+                  value={regClassCode}
+                  onChange={(e) => setRegClassCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
+                  placeholder="ALPHA1"
+                  maxLength={6}
+                  className="w-full px-4 py-3 text-lg tracking-[0.3em] bg-white/80 border border-chrome-mid rounded-lg font-ibm-mono text-retro-warm-wood focus:outline-none focus:border-pearl-iris focus:ring-1 focus:ring-pearl-iris/20"
+                  autoComplete="off"
+                  autoFocus
+                />
+                <p className="font-ibm-mono text-chrome-dark/40 text-[10px] mt-1">
+                  PROVIDED BY YOUR INSTRUCTOR
+                </p>
+              </div>
+
               <div className="mb-4">
                 <label className="block font-ibm-mono text-xs text-retro-warm-wood/70 uppercase tracking-wider mb-2">
                   Student Number

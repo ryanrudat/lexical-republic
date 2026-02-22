@@ -7,13 +7,26 @@ const router = Router();
 // All harmony routes require authentication
 router.use(authenticate);
 
-// GET /api/harmony/posts — list approved posts (+ own pending)
+// GET /api/harmony/posts — list approved posts (+ own pending), scoped by class
 router.get('/posts', async (req, res) => {
   try {
     const userId = req.user!.userId;
+
+    // Determine student's classId for scoping
+    let studentClassId: string | null = null;
+    const enrollment = await prisma.classEnrollment.findFirst({
+      where: { userId },
+      select: { classId: true },
+    });
+    if (enrollment) {
+      studentClassId = enrollment.classId;
+    }
+
     const posts = await prisma.harmonyPost.findMany({
       where: {
         parentId: null,
+        // Scope to same class if student has one
+        ...(studentClassId ? { classId: studentClassId } : {}),
         OR: [
           { status: 'approved' },
           { userId, status: 'pending_review' },
@@ -61,11 +74,22 @@ router.post('/posts', async (req, res) => {
       return;
     }
 
+    // Get student's classId
+    let classId: string | null = null;
+    const enrollment = await prisma.classEnrollment.findFirst({
+      where: { userId },
+      select: { classId: true },
+    });
+    if (enrollment) {
+      classId = enrollment.classId;
+    }
+
     const post = await prisma.harmonyPost.create({
       data: {
         userId,
         content: content.trim(),
         status: 'pending_review',
+        classId,
       },
     });
 
@@ -149,6 +173,7 @@ router.post('/posts/:id/replies', async (req, res) => {
         content: content.trim(),
         parentId,
         status: 'pending_review',
+        classId: parent.classId, // Inherit parent's class
       },
     });
 

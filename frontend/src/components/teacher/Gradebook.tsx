@@ -58,7 +58,7 @@ const CELL_COLORS: Record<CellStatus['state'], string> = {
   amber: 'bg-amber-50 text-amber-700 border-amber-200',
 };
 
-export default function Gradebook() {
+export default function Gradebook({ classId }: { classId?: string | null }) {
   const [data, setData] = useState<GradebookData | null>(null);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<{
@@ -68,10 +68,12 @@ export default function Gradebook() {
   } | null>(null);
 
   useEffect(() => {
-    void fetchGradebook()
+    setLoading(true);
+    setSelected(null);
+    void fetchGradebook(classId || undefined)
       .then(setData)
       .finally(() => setLoading(false));
-  }, []);
+  }, [classId]);
 
   if (loading) {
     return (

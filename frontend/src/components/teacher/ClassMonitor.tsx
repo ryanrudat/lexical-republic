@@ -7,16 +7,17 @@ import type { StudentSummary } from '../../types/shifts';
 const stepLabel = (stepId: string) =>
   STEP_ORDER.find((s) => s.id === stepId)?.label ?? stepId;
 
-export default function ClassMonitor() {
+export default function ClassMonitor({ classId }: { classId?: string | null }) {
   const [students, setStudents] = useState<StudentSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const onlineStudents = useTeacherStore((s) => s.onlineStudents);
 
   useEffect(() => {
-    void fetchStudents()
+    setLoading(true);
+    void fetchStudents(classId || undefined)
       .then(setStudents)
       .finally(() => setLoading(false));
-  }, []);
+  }, [classId]);
 
   if (loading) {
     return (
