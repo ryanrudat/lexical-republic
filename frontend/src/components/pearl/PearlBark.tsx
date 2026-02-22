@@ -36,12 +36,24 @@ export default function PearlBark({ panelOpen }: PearlBarkProps) {
   const indexRef = useRef(0);
   const typeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const currentBarkIdRef = useRef<string | null>(null);
 
   useEffect(() => { loadMessages(); }, [loadMessages]);
 
   // Handle activeBark from store (contextual barks from step components)
   useEffect(() => {
     if (!activeBark || panelOpen) return;
+
+    const isTextSwap = activeBark.id === currentBarkIdRef.current;
+
+    if (isTextSwap) {
+      // AI swap: same bark id, new text — restart typewriter but keep dismiss timer
+      setBark({ text: activeBark.text, type: activeBark.type });
+      return;
+    }
+
+    // New bark — full reset
+    currentBarkIdRef.current = activeBark.id;
 
     // Clear any existing dismiss timer
     if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
@@ -54,6 +66,7 @@ export default function PearlBark({ panelOpen }: PearlBarkProps) {
       setVisible(false);
       setTimeout(() => {
         setBark(null);
+        currentBarkIdRef.current = null;
         dismissBark();
       }, 400);
     }, duration);
@@ -67,6 +80,7 @@ export default function PearlBark({ panelOpen }: PearlBarkProps) {
   useEffect(() => {
     if (panelOpen) {
       setVisible(false);
+      currentBarkIdRef.current = null;
       const t = setTimeout(() => setBark(null), 400);
       return () => clearTimeout(t);
     }

@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { authenticate } from '../middleware/auth';
-import OpenAI from 'openai';
+import { getOpenAI, OPENAI_MODEL } from '../utils/openai';
 
 const router = Router();
 
@@ -30,29 +30,6 @@ interface GrammarCheckResponse {
   errorCount: number;
   isClean: boolean;
   isDegraded: boolean;
-}
-
-// ---------------------------------------------------------------------------
-// OpenAI client — lazy init so the app boots even without keys
-// ---------------------------------------------------------------------------
-
-let openai: OpenAI | null = null;
-
-function getOpenAI(): OpenAI | null {
-  if (openai) return openai;
-  const apiKey = process.env.AZURE_OPENAI_API_KEY;
-  const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-  const deployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-mini';
-
-  if (!apiKey || !endpoint) return null;
-
-  openai = new OpenAI({
-    apiKey,
-    baseURL: `${endpoint}/openai/deployments/${deployment}`,
-    defaultQuery: { 'api-version': '2024-08-01-preview' },
-    defaultHeaders: { 'api-key': apiKey },
-  });
-  return openai;
 }
 
 // ---------------------------------------------------------------------------
@@ -220,7 +197,7 @@ router.post('/grammar-check', authenticate, async (req: Request, res: Response) 
 
   // Fail-open: if no API keys configured, auto-approve
   if (!client) {
-    console.warn('[AI] No Azure OpenAI credentials configured — auto-approving');
+    console.warn('[AI] No OpenAI API key configured — auto-approving');
     const degraded: GrammarCheckResponse = {
       errors: [],
       errorCount: 0,
@@ -236,7 +213,7 @@ router.post('/grammar-check', authenticate, async (req: Request, res: Response) 
 
     const completion = await Promise.race([
       client.chat.completions.create({
-        model: process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o-mini',
+        model: OPENAI_MODEL,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: text },

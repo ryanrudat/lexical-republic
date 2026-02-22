@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import type { PearlMessage } from '../api/pearl';
-import { fetchPearlMessages } from '../api/pearl';
+import { fetchPearlMessages, generateBark } from '../api/pearl';
 import type { BarkType, BarkEntry } from '../types/shifts';
+import type { BarkContext } from '../hooks/useBarkContext';
 
 // Per-type message pools for contextual barks
 // Canonical lines from Dplan ambient-text-bank.md
@@ -94,6 +95,7 @@ interface PearlState {
   setEyeState: (state: EyeStateArc) => void;
   setEyeStateFromWeek: (weekNumber: number) => void;
   triggerBark: (type: BarkType, text?: string) => void;
+  triggerAIBark: (type: BarkType, context?: BarkContext, fallbackText?: string) => void;
   dismissBark: () => void;
   triggerAnnouncement: (type: AnnouncementType, title: string, body: string, dismissLabel?: string) => void;
   dismissAnnouncement: () => void;
@@ -140,6 +142,34 @@ export const usePearlStore = create<PearlState>((set, get) => ({
     const { barkHistory } = get();
     const newHistory = [...barkHistory, entry].slice(-60);
     set({ barkHistory: newHistory, activeBark: entry });
+  },
+
+  triggerAIBark: (type, context, fallbackText) => {
+    // 1. Show pool/fallback message immediately (zero latency)
+    const pool = BARK_POOLS[type];
+    const barkText = fallbackText || pool[Math.floor(Math.random() * pool.length)];
+    const barkId = `bark-${++barkIdCounter}`;
+    const entry: BarkEntry = {
+      id: barkId,
+      type,
+      text: barkText,
+      timestamp: Date.now(),
+    };
+    const { barkHistory } = get();
+    set({ barkHistory: [...barkHistory, entry].slice(-60), activeBark: entry });
+
+    // 2. Fire async AI request — swap text if bark is still active
+    generateBark(type, context)
+      .then(({ text }) => {
+        const current = get().activeBark;
+        if (current && current.id === barkId) {
+          // Same bark still showing — swap text in-place (keep same id)
+          set({ activeBark: { ...current, text } });
+        }
+      })
+      .catch(() => {
+        // Fail silently — pool message already displayed
+      });
   },
 
   dismissBark: () => set({ activeBark: null }),

@@ -4,6 +4,7 @@ import { usePearlStore } from '../../stores/pearlStore';
 import type { GrammarDocument, MasteryState } from '../../types/shifts';
 import StoryBeatCard from './shared/StoryBeatCard';
 import type { StoryBeatConfig } from './shared/StoryBeatCard';
+import { useBarkContext } from '../../hooks/useBarkContext';
 
 const MASTERY_LABELS: Record<MasteryState, { label: string; color: string }> = {
   new: { label: 'NEW', color: 'text-white/40' },
@@ -16,6 +17,8 @@ const MASTERY_LABELS: Record<MasteryState, { label: string; color: string }> = {
 export default function GrammarStep() {
   const { missions, updateStepStatus, submitMissionScore, updateGrammarMastery, nextStep, grammarMastery } = useShiftStore();
   const triggerBark = usePearlStore(s => s.triggerBark);
+  const triggerAIBark = usePearlStore(s => s.triggerAIBark);
+  const baseContext = useBarkContext();
 
   const mission = missions.find(m => m.missionType === 'grammar');
   const config = (mission?.config || {}) as { requiredCount?: number; documents?: GrammarDocument[]; storyBeat?: StoryBeatConfig };
@@ -39,17 +42,25 @@ export default function GrammarStep() {
     setIsCorrect(correct);
     setShowFeedback(true);
 
+    // Build grammar-specific context for AI barks
+    const grammarTarget = doc.targets.join(', ').replace(/-/g, ' ');
+
     doc.targets.forEach(target => {
       const updated = updateGrammarMastery(target, correct);
       if (updated.state === 'struggling') {
-        triggerBark('concern', `P.E.A.R.L. has noted difficulty with ${target.replace(/-/g, ' ')}. Additional support may be assigned.`);
+        triggerAIBark('concern', {
+          ...baseContext,
+          grammarTarget: target.replace(/-/g, ' '),
+          masteryState: updated.state,
+        }, `P.E.A.R.L. has noted difficulty with ${target.replace(/-/g, ' ')}. Additional support may be assigned.`);
       }
     });
 
     if (correct) {
-      triggerBark('success');
+      const masteryState = grammarMastery[doc.targets[0]]?.state;
+      triggerAIBark('success', { ...baseContext, grammarTarget, masteryState });
     } else {
-      triggerBark('incorrect');
+      triggerAIBark('incorrect', { ...baseContext, grammarTarget });
     }
   };
 
