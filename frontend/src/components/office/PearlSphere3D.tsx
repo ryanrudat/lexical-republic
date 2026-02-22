@@ -152,10 +152,13 @@ function SwirlSphere() {
 
 // ─── Video Face (white-only shader) ───────────────────────────
 // Shows only bright/white pixels from the video, rest transparent
+// UV crop is applied directly in the vertex shader because ShaderMaterial
+// does not use texture.repeat / texture.offset (those only work with built-in materials).
 const FACE_VERT = /* glsl */ `
 varying vec2 vUv;
 void main() {
-  vUv = uv;
+  // Crop to face region: show Y 36%–91% of the video (rows ~115–819 of 1280)
+  vUv = vec2(uv.x, uv.y * 0.55 + 0.36);
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }
 `;
@@ -177,14 +180,6 @@ function VideoFace({ videoTexture, visible }: VideoFaceProps) {
   const matRef = useRef<ShaderMaterial>(null);
   const opacityRef = useRef(visible ? 1 : 0);
 
-  useEffect(() => {
-    if (!videoTexture) return;
-    // Face is ~440px diameter in a 704×1280 portrait video, centered at ~(350,380) from top-left.
-    // repeat = face diameter / video dimension; offset centers the face at UV (0.5, 0.5).
-    videoTexture.repeat.set(1.0, 0.55);
-    videoTexture.offset.set(0.0, 0.36);
-  }, [videoTexture]);
-
   const uniforms = useMemo(() => ({
     uMap: { value: null as VideoTexture | null },
     uOpacity: { value: 1.0 },
@@ -199,6 +194,16 @@ function VideoFace({ videoTexture, visible }: VideoFaceProps) {
     const target = visible ? 1 : 0;
     opacityRef.current += (target - opacityRef.current) * Math.min(delta * 5, 1);
     matRef.current.uniforms.uOpacity.value = opacityRef.current;
+
+    // Force texture update every frame while video has data.
+    // video.load() can break the requestVideoFrameCallback chain that
+    // VideoTexture relies on, leaving needsUpdate permanently false.
+    if (videoTexture?.image) {
+      const video = videoTexture.image as HTMLVideoElement;
+      if (video.readyState >= video.HAVE_CURRENT_DATA) {
+        videoTexture.needsUpdate = true;
+      }
+    }
   });
 
   if (!videoTexture) return null;
@@ -307,24 +312,23 @@ export default function PearlSphere3D({ visible, onVisibilityChange, isMuted }: 
       video.currentTime = 0;
       video.load();
 
-      const tryPlay = () => {
-        if (video.readyState >= 2) {
-          video.play().then(() => {
-            cbRef.current(true);
-            playAudioSync();
-          }).catch(() => {});
-        } else {
-          // Not ready yet — listen for enough data
-          video.addEventListener('canplay', function onCanPlay() {
-            video.removeEventListener('canplay', onCanPlay);
-            video.play().then(() => {
-              cbRef.current(true);
-              playAudioSync();
-            }).catch(() => {});
-          });
-        }
+      const doPlay = () => {
+        video.play().then(() => {
+          cbRef.current(true);
+          playAudioSync();
+        }).catch((e) => {
+          console.warn('[PEARL] video play failed:', e.message);
+        });
       };
-      tryPlay();
+
+      if (video.readyState >= 2) {
+        doPlay();
+      } else {
+        video.addEventListener('canplay', function onCanPlay() {
+          video.removeEventListener('canplay', onCanPlay);
+          doPlay();
+        });
+      }
     };
 
     // When video ends, fade out the face and pause audio

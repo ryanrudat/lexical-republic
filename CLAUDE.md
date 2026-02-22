@@ -1,6 +1,6 @@
 # The Lexical Republic — Project Memory
 
-Last updated: 2026-02-13
+Last updated: 2026-02-22
 
 ## Vision
 The Lexical Republic is a dystopian ESL learning game where Taiwanese Grade 10 students (A2-B1) learn English through 18 weekly "Shifts" inside an authoritarian language-control world.
@@ -49,6 +49,14 @@ Student-facing location labels map directly to learning purpose:
 - PEARL panel remains available via eye click.
 - Eye state arc is wired to narrative progression:
   - welcoming → attentive → evaluative → confused → alarmed → frantic → cold → breaking → final
+
+### PEARL AI Contextual Barks (implemented)
+- PEARL barks are now contextually aware of grammar target, mastery state, vocabulary, and story beat.
+- **Pattern**: Pool message shown immediately (zero latency), async AI request fires in parallel. If AI responds while bark is still visible, text swaps in-place. If AI fails or is slow, student sees the pool message.
+- Backend: `POST /api/pearl/bark` — PEARL character system prompt, 3s timeout, fail-open with `isDegraded: true`.
+- Frontend: `triggerAIBark(type, context, fallbackText)` in pearlStore, `useBarkContext()` hook assembles context from shift state.
+- `triggerBark(type, text)` still works unchanged for custom narrative barks.
+- GrammarStep wired to pass grammar target + mastery state to AI barks on correct/incorrect/concern.
 
 ### Voice Log Quality Gate (implemented)
 Voice log completion requires:
@@ -124,7 +132,10 @@ In a 50-minute class, required activities must stay lean:
 - Express 5 + TypeScript
 - Prisma + PostgreSQL
 - Auth via JWT in HTTP-only cookies
-- Major route groups: `/api/auth`, `/api/shifts`, `/api/recordings`, `/api/pearl`, `/api/harmony`, `/api/teacher`, `/api/vocabulary`
+- Major route groups: `/api/auth`, `/api/shifts`, `/api/recordings`, `/api/pearl`, `/api/harmony`, `/api/teacher`, `/api/vocabulary`, `/api/ai`, `/api/classes`
+- Socket.IO for real-time teacher dashboard (student activity tracking, briefing stage broadcasts)
+- AI services (fail-open): OpenAI direct API (GPT-4.1-mini default) for grammar checking and PEARL contextual barks, Azure Whisper for transcription
+- Shared OpenAI client: `backend/src/utils/openai.ts` — lazy-init singleton, exports `getOpenAI()` and `OPENAI_MODEL`
 
 ### Frontend
 - Vite + React + TypeScript + Tailwind + Zustand
@@ -138,12 +149,29 @@ In a 50-minute class, required activities must stay lean:
 - **Reload behavior**: All routes except `/` and `/teacher` redirect to `/` on fresh page load. The office is always the entry point.
 
 ### Data model (Prisma)
-Primary models: `User`, `Arc`, `Week`, `Mission`, `MissionScore`, `Recording`, `Vocabulary`, `StudentVocabulary`, `HarmonyPost`, `PearlMessage`
+Primary models: `User`, `Arc`, `Week`, `Mission`, `MissionScore`, `Recording`, `Vocabulary`, `StudentVocabulary`, `HarmonyPost`, `PearlMessage`, `Class`, `ClassEnrollment`, `ClassWeekUnlock`, `Character`, `DialogueNode`, `PearlConversation`, `NarrativeChoice`, `TeacherConfig`
 
-### Deployment config
-- Backend CORS origin allowlist via `FRONTEND_ORIGIN`
-- Cookie policy via `COOKIE_SAMESITE`
-- Frontend API endpoint via `VITE_API_BASE_URL`
+### Deployment (Railway — LIVE)
+- **Platform**: Railway (project: `delightful-forgiveness`)
+- **Backend service**: `lexical-republic` → `https://lexical-republic-production.up.railway.app`
+  - Root directory: `backend`
+  - Build: `npx prisma generate && npm run build`
+  - Start: `npx prisma migrate deploy && npm run seed && npm run start`
+- **Frontend service**: `accurate-transformation` → `https://accurate-transformation-production.up.railway.app`
+  - Root directory: `frontend`
+  - Build: `npm run build`
+  - Start: `npx serve dist -s -l 3000`
+  - Only env var: `VITE_API_BASE_URL=https://lexical-republic-production.up.railway.app/api`
+- **PostgreSQL**: Railway-managed, connected via `${{Postgres.DATABASE_URL}}`
+- **Key env vars** (backend):
+  - `OPENAI_API_KEY` = OpenAI direct API key (enables AI grammar checking + PEARL contextual barks)
+  - `OPENAI_MODEL` = model override (optional, defaults to `gpt-4.1-mini`)
+  - `FRONTEND_ORIGIN` = frontend Railway URL
+  - `COOKIE_SAMESITE` = `none` (cross-domain)
+  - `NODE_ENV` = `production`
+  - `JWT_SECRET` = production secret (not dev-secret)
+- **Auto-deploy**: pushes to `master` trigger both services
+- **Local dev** still uses `VITE_API_BASE_URL=/api` (proxied by Vite or direct localhost:4000)
 
 ## Commands
 
@@ -269,14 +297,16 @@ External canon source: `/Users/ryanrudat/Desktop/Dplan/`
 2. Write Weeks 4-6 full script packs using fixed media timeline.
 3. Define per-week vocabulary ladders (known vs new words) for all 18 shifts.
 4. Add teacher-facing per-week video checklist (Clip A/B upload status and sequence readiness).
-5. Deploy to Render with persistent media storage so uploaded videos survive restarts.
+5. Persistent media storage on Railway so uploaded videos survive container restarts (volume or S3/R2).
 6. Full scripted dialogue pass for all character beats (especially Weeks 2-18).
 7. Harmony moderation gameplay depth (basic feed exists; richer decision loops can expand).
-8. Teacher week unlock controls not fully exposed as dedicated control panel.
-9. Large OfficeView bundle warning in production build (non-blocking optimization).
-10. Rank progression (Associate→Guardian), Dplan color palette alignment, end-to-end testing.
+8. Large OfficeView bundle warning in production build (non-blocking optimization).
+9. Rank progression (Associate→Guardian), Dplan color palette alignment, end-to-end testing.
+10. Custom domain setup for student-friendly URLs (optional).
 
 ## Change Log
+- 2026-02-22: PEARL AI contextual barks — async AI-generated barks with pool fallback. Switched from Azure OpenAI to OpenAI direct API (single `OPENAI_API_KEY` env var). Shared `getOpenAI()` client extracted to `backend/src/utils/openai.ts`. Default model: `gpt-4.1-mini`.
+- 2026-02-22: Railway deployment live — backend + frontend + PostgreSQL. Multi-class support committed and pushed. MicCalibration type fix for production build. `serve` added as frontend dependency.
 - 2026-02-13: Merged `CLAUDE.md` + `memory.md` into single canonical project memory.
 - 2026-02-12: OfficeView overlay system overhauled — `object-contain`, `imageToViewport()`, new 2528×1696 background, monitor pills as frosted glass iOS style.
 - 2026-02-12: OfficeHUD redesign + split audio/video + volume control.
