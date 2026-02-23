@@ -44,8 +44,10 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
 
   io.use((socket, next) => {
     try {
+      // Try cookie first, then auth.token (Bearer fallback for Safari)
       const cookies = cookie.parse(socket.handshake.headers.cookie || '');
-      const token = cookies.token;
+      const token = cookies.token
+        || (socket.handshake.auth as { token?: string })?.token;
       if (!token) {
         next(new Error('Authentication required'));
         return;

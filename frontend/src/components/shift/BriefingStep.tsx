@@ -7,6 +7,7 @@ import type { ComprehensionCheck } from '../../types/shifts';
 import StoryBeatCard from './shared/StoryBeatCard';
 import type { StoryBeatConfig } from './shared/StoryBeatCard';
 import FrostedGlassPlayer from './media/FrostedGlassPlayer';
+import { resolveUploadUrl } from '../../api/client';
 
 type VideoSourceMode = 'auto' | 'upload' | 'embed';
 type NowShowingStage = 'clip_a' | 'activity' | 'clip_b' | 'free';
@@ -26,7 +27,7 @@ function chooseVideoSource(
   uploadedUrl?: string,
   embedUrl?: string
 ): VideoChoice {
-  const uploaded = (uploadedUrl || '').trim();
+  const uploaded = resolveUploadUrl((uploadedUrl || '').trim());
   const embed = (embedUrl || '').trim();
 
   if (mode === 'upload') {

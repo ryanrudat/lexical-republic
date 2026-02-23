@@ -16,6 +16,20 @@ export function clearStoredToken() {
   localStorage.removeItem(TOKEN_KEY);
 }
 
+// Backend origin for resolving relative upload paths (e.g. /uploads/briefings/uuid.mp4)
+// In dev: empty (relative paths work via Vite proxy)
+// In prod: full backend URL (different domain from frontend)
+const backendOrigin = apiBaseUrl.replace(/\/api\/?$/, '');
+
+export function resolveUploadUrl(path: string): string {
+  if (!path) return path;
+  // Already absolute URL — return as-is
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  // Relative /uploads path — prepend backend origin
+  if (path.startsWith('/uploads')) return `${backendOrigin}${path}`;
+  return path;
+}
+
 const client = axios.create({
   baseURL: apiBaseUrl,
   withCredentials: true,

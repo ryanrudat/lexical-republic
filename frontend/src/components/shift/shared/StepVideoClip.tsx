@@ -1,4 +1,5 @@
 import FrostedGlassPlayer from '../media/FrostedGlassPlayer';
+import { resolveUploadUrl } from '../../../api/client';
 
 interface StepVideoClipProps {
   config: Record<string, unknown>;
@@ -12,7 +13,8 @@ interface StepVideoClipProps {
  */
 export default function StepVideoClip({ config, stepLabel }: StepVideoClipProps) {
   const override = config?.teacherOverride as Record<string, unknown> | undefined;
-  const videoClipUrl = typeof override?.videoClipUrl === 'string' ? override.videoClipUrl : '';
+  const raw = typeof override?.videoClipUrl === 'string' ? override.videoClipUrl : '';
+  const videoClipUrl = resolveUploadUrl(raw);
 
   if (!videoClipUrl) return null;
 
