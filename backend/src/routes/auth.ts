@@ -22,8 +22,9 @@ router.post('/login', async (req: Request, res: Response) => {
     let user;
 
     if (designation && pin) {
-      // Student login via designation + pin
-      user = await prisma.user.findUnique({ where: { designation } });
+      // Student login via designation + pin (normalise to uppercase like register does)
+      const normalised = typeof designation === 'string' ? designation.trim().toUpperCase() : designation;
+      user = await prisma.user.findUnique({ where: { designation: normalised } });
       if (!user || !user.pin) {
         res.status(401).json({ error: 'Invalid designation or PIN' });
         return;
