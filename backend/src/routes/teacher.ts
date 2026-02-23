@@ -11,6 +11,8 @@ const router = Router();
 router.use(authenticate, requireRole('teacher'));
 const UPLOAD_DIR = process.env.UPLOAD_DIR || 'uploads';
 const BRIEFING_UPLOAD_DIR = process.env.BRIEFING_UPLOAD_DIR || path.join(UPLOAD_DIR, 'briefings');
+// URL prefix for stored video paths — always relative, served by express.static('/uploads')
+const BRIEFING_URL_PREFIX = '/uploads/briefings';
 type VideoSlot = 'primary' | 'clipA' | 'clipB';
 
 const VIDEO_SLOT_FIELDS: Record<VideoSlot, { urlKey: string; filenameKey: string }> = {
@@ -164,7 +166,7 @@ async function handleBriefingVideoUpload(req: Request, res: Response, slot: Vide
         ? (briefingMission.config as Record<string, unknown>)
         : {};
 
-    const uploadedVideoUrl = `/${BRIEFING_UPLOAD_DIR.replace(/\\/g, '/')}/${req.file.filename}`;
+    const uploadedVideoUrl = `${BRIEFING_URL_PREFIX}/${req.file.filename}`;
 
     const updatedMission = await prisma.mission.update({
       where: { id: briefingMission.id },
@@ -664,7 +666,7 @@ router.post('/weeks/:weekId/steps/:missionType/video', uploadVideo.single('video
 
     const existingConfig = safeConfig(mission.config);
     const existingOverride = (existingConfig.teacherOverride || {}) as Record<string, unknown>;
-    const videoClipUrl = `/${BRIEFING_UPLOAD_DIR.replace(/\\/g, '/')}/${req.file.filename}`;
+    const videoClipUrl = `${BRIEFING_URL_PREFIX}/${req.file.filename}`;
 
     const newOverride = {
       ...existingOverride,

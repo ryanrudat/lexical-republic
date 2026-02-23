@@ -8,6 +8,10 @@ const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || '10485760', 10);
 const MAX_VIDEO_FILE_SIZE = parseInt(process.env.MAX_VIDEO_FILE_SIZE || '157286400', 10); // 150MB
 const BRIEFING_UPLOAD_DIR = process.env.BRIEFING_UPLOAD_DIR || path.join(UPLOAD_DIR, 'briefings');
 
+function resolveDir(dir: string): string {
+  return path.isAbsolute(dir) ? dir : path.resolve(__dirname, '../../', dir);
+}
+
 function ensureDirExists(dirPath: string) {
   if (!fs.existsSync(dirPath)) {
     fs.mkdirSync(dirPath, { recursive: true });
@@ -16,7 +20,7 @@ function ensureDirExists(dirPath: string) {
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
-    const resolved = path.resolve(__dirname, '../../', UPLOAD_DIR);
+    const resolved = resolveDir(UPLOAD_DIR);
     ensureDirExists(resolved);
     cb(null, resolved);
   },
@@ -40,7 +44,7 @@ export const uploadAudio = multer({
 
 const videoStorage = multer.diskStorage({
   destination: (_req, _file, cb) => {
-    const resolved = path.resolve(__dirname, '../../', BRIEFING_UPLOAD_DIR);
+    const resolved = resolveDir(BRIEFING_UPLOAD_DIR);
     ensureDirExists(resolved);
     cb(null, resolved);
   },
