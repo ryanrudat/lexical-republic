@@ -5,15 +5,15 @@ const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api';
 const TOKEN_KEY = 'lr_token';
 
 export function getStoredToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+  return sessionStorage.getItem(TOKEN_KEY);
 }
 
 export function setStoredToken(token: string) {
-  localStorage.setItem(TOKEN_KEY, token);
+  sessionStorage.setItem(TOKEN_KEY, token);
 }
 
 export function clearStoredToken() {
-  localStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
 }
 
 // Backend origin for resolving relative upload paths (e.g. /uploads/briefings/uuid.mp4)
