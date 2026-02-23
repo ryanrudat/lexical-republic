@@ -4,6 +4,7 @@ import { usePearlStore } from '../../stores/pearlStore';
 import type { GrammarDocument, MasteryState } from '../../types/shifts';
 import StoryBeatCard from './shared/StoryBeatCard';
 import type { StoryBeatConfig } from './shared/StoryBeatCard';
+import StepVideoClip from './shared/StepVideoClip';
 import { useBarkContext } from '../../hooks/useBarkContext';
 
 const MASTERY_LABELS: Record<MasteryState, { label: string; color: string }> = {
@@ -96,6 +97,8 @@ export default function GrammarStep() {
   return (
     <div className="space-y-6">
       <StoryBeatCard storyBeat={storyBeat} />
+
+      <StepVideoClip config={(mission?.config || {}) as Record<string, unknown>} stepLabel="Language Lab" />
 
       {/* Progress bar */}
       <div className="bg-white/10 h-2 rounded-full overflow-hidden">

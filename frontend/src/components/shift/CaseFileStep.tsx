@@ -5,6 +5,7 @@ import { useSessionStore } from '../../stores/sessionStore';
 import { useStudentStore } from '../../stores/studentStore';
 import { useGrammarCheck } from '../../hooks/useGrammarCheck';
 import StoryBeatCard from './shared/StoryBeatCard';
+import StepVideoClip from './shared/StepVideoClip';
 import MinistryAuditView from './MinistryAuditView';
 import LoreReveal from './LoreReveal';
 import type { StoryBeatConfig } from './shared/StoryBeatCard';
@@ -119,6 +120,8 @@ export default function CaseFileStep() {
   return (
     <div className="space-y-6">
       <StoryBeatCard storyBeat={storyBeat} />
+
+      <StepVideoClip config={(mission?.config || {}) as Record<string, unknown>} stepLabel="Filing Desk" />
 
       {/* Prompt */}
       <div className="ios-glass-card border-neon-cyan/20 p-4">

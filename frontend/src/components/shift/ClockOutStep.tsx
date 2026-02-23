@@ -4,6 +4,7 @@ import { usePearlStore } from '../../stores/pearlStore';
 import { STEP_ORDER } from '../../types/shifts';
 import StoryBeatCard from './shared/StoryBeatCard';
 import type { StoryBeatConfig } from './shared/StoryBeatCard';
+import StepVideoClip from './shared/StepVideoClip';
 
 export default function ClockOutStep() {
   const { missions, weekProgress, currentWeek, updateStepStatus, submitMissionScore } = useShiftStore();
@@ -43,6 +44,8 @@ export default function ClockOutStep() {
   return (
     <div className="space-y-6">
       <StoryBeatCard storyBeat={storyBeat} />
+
+      <StepVideoClip config={(mission?.config || {}) as Record<string, unknown>} stepLabel="Clock-Out" />
 
       <div className="ios-glass-card p-4">
         <div className="space-y-2">

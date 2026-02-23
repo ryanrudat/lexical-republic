@@ -5,6 +5,7 @@ import MultipleChoiceCheck from './shared/MultipleChoiceCheck';
 import type { ComprehensionCheck } from '../../types/shifts';
 import StoryBeatCard from './shared/StoryBeatCard';
 import type { StoryBeatConfig } from './shared/StoryBeatCard';
+import StepVideoClip from './shared/StepVideoClip';
 
 export default function ListeningStep() {
   const { missions, updateStepStatus, submitMissionScore, nextStep } = useShiftStore();
@@ -81,6 +82,8 @@ export default function ListeningStep() {
   return (
     <div className="space-y-6">
       <StoryBeatCard storyBeat={storyBeat} />
+
+      <StepVideoClip config={(mission?.config || {}) as Record<string, unknown>} stepLabel="Evidence Desk" />
 
       {mediaUrl && (
         <div className="ios-glass-card p-4">

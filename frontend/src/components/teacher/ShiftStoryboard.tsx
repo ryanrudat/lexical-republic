@@ -116,6 +116,17 @@ export default function ShiftStoryboard({ weekId }: ShiftStoryboardProps) {
     }
   };
 
+  const handleEmbedUrlChange = async (step: StoryboardStep, embedUrl: string) => {
+    if (!data) return;
+    try {
+      await updateStepActivity(data.weekId, step.missionType, { videoClipEmbedUrl: embedUrl });
+      flashSaved(step.missionType);
+      await load();
+    } catch {
+      setError('Failed to update embed URL');
+    }
+  };
+
   if (loading) {
     return (
       <div className="text-sm text-slate-400 animate-pulse py-4">
@@ -159,6 +170,7 @@ export default function ShiftStoryboard({ weekId }: ShiftStoryboardProps) {
           onSwapActivity={(activityId) => handleSwapActivity(step, activityId)}
           onRemoveVideo={() => handleRemoveVideo(step)}
           onUploadVideo={(file) => handleUploadStepVideo(step, file)}
+          onEmbedUrlChange={(url) => handleEmbedUrlChange(step, url)}
           onBriefingNowShowing={handleBriefingNowShowing}
           onBriefingVideoUpload={handleBriefingVideoUpload}
         />
@@ -173,6 +185,7 @@ interface StoryboardCardProps {
   onSwapActivity: (activityId: string) => void;
   onRemoveVideo: () => void;
   onUploadVideo: (file: File) => void;
+  onEmbedUrlChange: (embedUrl: string) => void;
   onBriefingNowShowing: (stage: string) => void;
   onBriefingVideoUpload: (file: File, slot: 'primary' | 'clipA' | 'clipB') => void;
 }
@@ -183,6 +196,7 @@ function StoryboardCard({
   onSwapActivity,
   onRemoveVideo,
   onUploadVideo,
+  onEmbedUrlChange,
   onBriefingNowShowing,
   onBriefingVideoUpload,
 }: StoryboardCardProps) {
@@ -271,9 +285,10 @@ function StoryboardCard({
         {/* Step video clip */}
         {!isBriefing && !isClockOut && (
           <StepVideoSection
-            videoClipFilename={step.videoClipFilename}
+            step={step}
             onUpload={onUploadVideo}
             onRemove={onRemoveVideo}
+            onEmbedUrlChange={onEmbedUrlChange}
           />
         )}
       </div>
@@ -371,20 +386,29 @@ function BriefingSection({
 }
 
 function StepVideoSection({
-  videoClipFilename,
+  step,
   onUpload,
   onRemove,
+  onEmbedUrlChange,
 }: {
-  videoClipFilename: string;
+  step: StoryboardStep;
   onUpload: (file: File) => void;
   onRemove: () => void;
+  onEmbedUrlChange: (url: string) => void;
 }) {
+  const [embedDraft, setEmbedDraft] = useState(step.videoClipEmbedUrl || '');
+  const [showEmbedInput, setShowEmbedInput] = useState(false);
+  const hasUpload = !!step.videoClipFilename;
+  const hasEmbed = !!step.videoClipEmbedUrl;
+  const hasMedia = hasUpload || hasEmbed;
+
   return (
-    <div className="flex items-center gap-3 pt-1">
-      {videoClipFilename ? (
-        <>
+    <div className="space-y-2 pt-1">
+      {/* Uploaded video */}
+      {hasUpload && (
+        <div className="flex items-center gap-3">
           <span className="text-sm text-slate-600 truncate flex-1">
-            Video: {videoClipFilename}
+            Video: {step.videoClipFilename}
           </span>
           <button
             onClick={onRemove}
@@ -392,21 +416,78 @@ function StepVideoSection({
           >
             Remove
           </button>
-        </>
-      ) : (
-        <label className="text-xs font-medium px-3 py-1.5 border border-slate-300 text-slate-600 hover:text-indigo-600 hover:border-indigo-300 transition-colors cursor-pointer rounded-lg">
-          + Add Video Clip
+        </div>
+      )}
+
+      {/* Embed URL display */}
+      {hasEmbed && !hasUpload && (
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-slate-600 truncate flex-1">
+            Embed: {step.videoClipEmbedUrl}
+          </span>
+          <button
+            onClick={() => onEmbedUrlChange('')}
+            className="text-xs font-medium text-red-500 hover:text-red-600 transition-colors px-2 py-1"
+          >
+            Remove
+          </button>
+        </div>
+      )}
+
+      {/* Add media buttons */}
+      {!hasMedia && (
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium px-3 py-1.5 border border-slate-300 text-slate-600 hover:text-indigo-600 hover:border-indigo-300 transition-colors cursor-pointer rounded-lg">
+            + Upload Video
+            <input
+              type="file"
+              accept="video/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) onUpload(file);
+                e.target.value = '';
+              }}
+            />
+          </label>
+          <button
+            onClick={() => setShowEmbedInput(true)}
+            className="text-xs font-medium px-3 py-1.5 border border-slate-300 text-slate-600 hover:text-indigo-600 hover:border-indigo-300 transition-colors rounded-lg"
+          >
+            + Embed URL
+          </button>
+        </div>
+      )}
+
+      {/* Embed URL input */}
+      {showEmbedInput && !hasMedia && (
+        <div className="flex items-center gap-2">
           <input
-            type="file"
-            accept="video/*"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) onUpload(file);
-              e.target.value = '';
-            }}
+            type="url"
+            value={embedDraft}
+            onChange={(e) => setEmbedDraft(e.target.value)}
+            placeholder="https://..."
+            className="flex-1 bg-white border border-slate-300 px-3 py-1.5 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           />
-        </label>
+          <button
+            onClick={() => {
+              if (embedDraft.trim()) {
+                onEmbedUrlChange(embedDraft.trim());
+                setShowEmbedInput(false);
+              }
+            }}
+            disabled={!embedDraft.trim()}
+            className="text-xs font-medium px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-colors disabled:opacity-40"
+          >
+            Save
+          </button>
+          <button
+            onClick={() => { setShowEmbedInput(false); setEmbedDraft(''); }}
+            className="text-xs font-medium px-2 py-1.5 text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
       )}
     </div>
   );

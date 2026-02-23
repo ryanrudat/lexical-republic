@@ -550,6 +550,8 @@ router.get('/weeks/:weekId/storyboard', async (req: Request, res: Response) => {
           ? teacherOverride.videoClipUrl : '',
         videoClipFilename: teacherOverride && typeof teacherOverride.videoClipFilename === 'string'
           ? teacherOverride.videoClipFilename : '',
+        videoClipEmbedUrl: teacherOverride && typeof teacherOverride.videoClipEmbedUrl === 'string'
+          ? teacherOverride.videoClipEmbedUrl : '',
         ...briefingFields,
       };
     });
@@ -572,10 +574,11 @@ router.patch('/weeks/:weekId/steps/:missionType', async (req: Request, res: Resp
   try {
     const weekId = req.params.weekId as string;
     const missionType = req.params.missionType as string;
-    const { activityId, reset, removeVideo } = req.body as {
+    const { activityId, reset, removeVideo, videoClipEmbedUrl } = req.body as {
       activityId?: string;
       reset?: boolean;
       removeVideo?: boolean;
+      videoClipEmbedUrl?: string;
     };
 
     const mission = await prisma.mission.findFirst({
@@ -602,8 +605,8 @@ router.patch('/weeks/:weekId/steps/:missionType', async (req: Request, res: Resp
     }
 
     if (removeVideo) {
-      // Remove just the video clip from override
-      const { videoClipUrl: _v, videoClipFilename: _f, ...restOverride } = existingOverride;
+      // Remove video clip and embed URL from override
+      const { videoClipUrl: _v, videoClipFilename: _f, videoClipEmbedUrl: _e, ...restOverride } = existingOverride;
       const updatedConfig = Object.keys(restOverride).length > 0
         ? { ...existingConfig, teacherOverride: restOverride }
         : (() => { const { teacherOverride: _, ...clean } = existingConfig; return clean; })();
@@ -612,6 +615,23 @@ router.patch('/weeks/:weekId/steps/:missionType', async (req: Request, res: Resp
         data: { config: updatedConfig as Prisma.InputJsonValue },
       });
       res.json({ status: 'video_removed', missionId: mission.id });
+      return;
+    }
+
+    if (typeof videoClipEmbedUrl === 'string') {
+      const newOverride = { ...existingOverride, videoClipEmbedUrl: videoClipEmbedUrl.trim() };
+      // If embed URL is being cleared, remove the field
+      if (!videoClipEmbedUrl.trim()) {
+        delete (newOverride as Record<string, unknown>).videoClipEmbedUrl;
+      }
+      const updatedConfig = Object.keys(newOverride).length > 0
+        ? { ...existingConfig, teacherOverride: newOverride }
+        : (() => { const { teacherOverride: _, ...clean } = existingConfig; return clean; })();
+      await prisma.mission.update({
+        where: { id: mission.id },
+        data: { config: updatedConfig as Prisma.InputJsonValue },
+      });
+      res.json({ status: 'embed_url_updated', missionId: mission.id });
       return;
     }
 
@@ -637,7 +657,7 @@ router.patch('/weeks/:weekId/steps/:missionType', async (req: Request, res: Resp
       return;
     }
 
-    res.status(400).json({ error: 'Provide activityId, reset: true, or removeVideo: true' });
+    res.status(400).json({ error: 'Provide activityId, videoClipEmbedUrl, reset: true, or removeVideo: true' });
   } catch (err) {
     console.error('Teacher step update error:', err);
     res.status(500).json({ error: 'Failed to update step' });

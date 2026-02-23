@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useShiftStore } from '../../stores/shiftStore';
 import { usePearlStore } from '../../stores/pearlStore';
+import StepVideoClip from './shared/StepVideoClip';
 
 export default function RecapStep() {
   const { missions, updateStepStatus, submitMissionScore, nextStep } = useShiftStore();
@@ -45,6 +46,8 @@ export default function RecapStep() {
           </p>
         </div>
       )}
+
+      <StepVideoClip config={(mission?.config || {}) as Record<string, unknown>} stepLabel="Shift Intake" />
 
       {prompts.map((prompt, idx) => (
         <div key={idx} className="ios-glass-card p-4">

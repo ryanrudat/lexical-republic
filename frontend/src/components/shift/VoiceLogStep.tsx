@@ -4,6 +4,7 @@ import { usePearlStore } from '../../stores/pearlStore';
 import RecordingWidget from '../recording/RecordingWidget';
 import StoryBeatCard from './shared/StoryBeatCard';
 import type { StoryBeatConfig } from './shared/StoryBeatCard';
+import StepVideoClip from './shared/StepVideoClip';
 
 const RUBRIC_ITEMS = [
   { id: 'clarity', label: 'I spoke clearly and at an appropriate volume' },
@@ -44,6 +45,8 @@ export default function VoiceLogStep() {
   return (
     <div className="space-y-6">
       <StoryBeatCard storyBeat={storyBeat} />
+
+      <StepVideoClip config={(mission?.config || {}) as Record<string, unknown>} stepLabel="Voice Booth" />
 
       <div className="ios-glass-card border-neon-cyan/20 p-4">
         <p className="font-ibm-sans text-sm text-white/90 leading-relaxed">
