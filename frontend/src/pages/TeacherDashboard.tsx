@@ -32,20 +32,23 @@ export default function TeacherDashboard() {
   useEffect(() => {
     void fetchClasses().then((cls) => {
       setClasses(cls);
-      // Auto-select first class if none selected
-      if (!selectedClassId && cls.length > 0) {
+      if (!useTeacherStore.getState().selectedClassId && cls.length > 0) {
         setSelectedClassId(cls[0].id);
       }
     });
-  }, [selectedClassId, setSelectedClassId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const refreshClasses = async () => {
     const cls = await fetchClasses();
     setClasses(cls);
+    if (!useTeacherStore.getState().selectedClassId && cls.length > 0) {
+      setSelectedClassId(cls[0].id);
+    }
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-50 flex flex-col">
+    <div className="fixed inset-0 bg-slate-50 text-slate-900 flex flex-col teacher-view">
       {/* Header */}
       <div className="bg-indigo-700 text-white shrink-0">
         <div className="flex items-center justify-between px-6 py-3 max-w-7xl mx-auto w-full">

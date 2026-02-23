@@ -16,6 +16,7 @@ interface Props {
 export default function ClassManager({ classes, onRefresh }: Props) {
   const [newClassName, setNewClassName] = useState('');
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState('');
   const [expandedClassId, setExpandedClassId] = useState<string | null>(null);
   const [weeks, setWeeks] = useState<WeekBriefingSetting[]>([]);
   const [weeksLoaded, setWeeksLoaded] = useState(false);
@@ -32,11 +33,14 @@ export default function ClassManager({ classes, onRefresh }: Props) {
   const handleCreate = async () => {
     if (!newClassName.trim()) return;
     setCreating(true);
+    setError('');
     try {
       await createClass(newClassName.trim());
       setNewClassName('');
       await onRefresh();
-    } catch (err) {
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.message || 'Failed to create class';
+      setError(msg);
       console.error('Failed to create class:', err);
     } finally {
       setCreating(false);
@@ -87,6 +91,12 @@ export default function ClassManager({ classes, onRefresh }: Props) {
           {creating ? 'Creating...' : 'Create Class'}
         </button>
       </div>
+
+      {error && (
+        <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+          {error}
+        </div>
+      )}
 
       {/* Class list */}
       <div className="space-y-3">

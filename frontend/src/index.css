@@ -226,6 +226,16 @@ body.view-terminal {
   background: #33FF33;
 }
 
+/* Teacher view scrollbar override */
+.teacher-view ::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 3px;
+}
+
+.teacher-view ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
 /* ═══════════════════════════════════════════
    GLASS-MORPHIC UTILITIES
    ═══════════════════════════════════════════ */

@@ -7,6 +7,9 @@ export default {
   ],
   theme: {
     extend: {
+      gridTemplateColumns: {
+        '18': 'repeat(18, minmax(0, 1fr))',
+      },
       colors: {
         // Terminal palette — authoritarian CRT
         terminal: {

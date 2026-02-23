@@ -163,7 +163,12 @@ Primary models: `User`, `Arc`, `Week`, `Mission`, `MissionScore`, `Recording`, `
   - Start: `npx serve dist -s -l 3000`
   - Only env var: `VITE_API_BASE_URL=https://lexical-republic-production.up.railway.app/api`
 - **PostgreSQL**: Railway-managed, connected via `${{Postgres.DATABASE_URL}}`
+- **Volume**: 5 GB persistent disk mounted at `/data/uploads` on backend service — survives deploys/restarts
+  - Stores briefing videos (`/data/uploads/briefings/`) and student audio recordings (`/data/uploads/`)
+  - `upload.ts` `resolveDir()` handles absolute paths; `index.ts` `uploadPath` uses `path.isAbsolute()` check
+  - `BRIEFING_URL_PREFIX = '/uploads/briefings'` — DB stores relative URLs, `express.static('/uploads', uploadPath)` serves files
 - **Key env vars** (backend):
+  - `UPLOAD_DIR` = `/data/uploads` (absolute path to Railway volume mount)
   - `OPENAI_API_KEY` = OpenAI direct API key (enables AI grammar checking + PEARL contextual barks)
   - `OPENAI_MODEL` = model override (optional, defaults to `gpt-4.1-mini`)
   - `FRONTEND_ORIGIN` = frontend Railway URL
@@ -297,7 +302,7 @@ External canon source: `/Users/ryanrudat/Desktop/Dplan/`
 2. Write Weeks 4-6 full script packs using fixed media timeline.
 3. Define per-week vocabulary ladders (known vs new words) for all 18 shifts.
 4. Add teacher-facing per-week video checklist (Clip A/B upload status and sequence readiness).
-5. Persistent media storage on Railway so uploaded videos survive container restarts (volume or S3/R2).
+5. ~~Persistent media storage~~ — DONE: Railway volume mounted at `/data/uploads`.
 6. Full scripted dialogue pass for all character beats (especially Weeks 2-18).
 7. Harmony moderation gameplay depth (basic feed exists; richer decision loops can expand).
 8. Large OfficeView bundle warning in production build (non-blocking optimization).
@@ -305,6 +310,7 @@ External canon source: `/Users/ryanrudat/Desktop/Dplan/`
 10. Custom domain setup for student-friendly URLs (optional).
 
 ## Change Log
+- 2026-02-23: Railway volume for persistent uploads — 5 GB disk at `/data/uploads`, `UPLOAD_DIR` env var, `resolveDir()` helper for absolute paths, `BRIEFING_URL_PREFIX` constant for stable DB URLs.
 - 2026-02-22: PEARL AI contextual barks — async AI-generated barks with pool fallback. Switched from Azure OpenAI to OpenAI direct API (single `OPENAI_API_KEY` env var). Shared `getOpenAI()` client extracted to `backend/src/utils/openai.ts`. Default model: `gpt-4.1-mini`.
 - 2026-02-22: Railway deployment live — backend + frontend + PostgreSQL. Multi-class support committed and pushed. MicCalibration type fix for production build. `serve` added as frontend dependency.
 - 2026-02-13: Merged `CLAUDE.md` + `memory.md` into single canonical project memory.
