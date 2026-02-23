@@ -276,14 +276,14 @@ export default function PearlSphere3D({ visible, onVisibilityChange, isMuted }: 
     video.src = '/video/office-backdrop-noaudio.mp4';
     video.muted = true;
     video.playsInline = true;
-    video.preload = 'auto';
+    video.preload = 'metadata';
     video.setAttribute('playsinline', '');
     video.setAttribute('webkit-playsinline', '');
     videoElRef.current = video;
 
     // --- Separate audio track (requires user gesture to unlock) ---
     const audio = new Audio('/video/office-backdrop-audio.m4a');
-    audio.preload = 'auto';
+    audio.preload = 'none';
     audio.muted = true; // starts muted; volume button unlocks
     audioElRef.current = audio;
 

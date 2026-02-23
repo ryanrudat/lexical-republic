@@ -149,7 +149,7 @@ export default function OfficeView() {
       {/* Blurred background fill — bleeds image edge colors into padding areas */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         <img
-          src="/images/office-bg.png"
+          src="/images/office-bg.jpg"
           alt=""
           className="w-full h-full object-cover"
           style={{ filter: 'blur(40px)', transform: 'scale(1.15)' }}
@@ -161,7 +161,7 @@ export default function OfficeView() {
       {/* Concept art background — sharp, fully visible */}
       <div className="absolute inset-0 z-0">
         <img
-          src="/images/office-bg.png"
+          src="/images/office-bg.jpg"
           alt="Ministry Hall"
           className="w-full h-full object-contain"
           draggable={false}
