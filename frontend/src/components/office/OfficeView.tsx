@@ -220,10 +220,10 @@ export default function OfficeView() {
     };
   }, []);
 
-  // PEARL propaganda chyron — shows every 60-90s for 8s when face not showing
+  // PEARL propaganda chyron — shows every 15-25s for 8s when face not showing
   useEffect(() => {
     const schedule = () => {
-      const delay = 60000 + Math.random() * 30000;
+      const delay = 15000 + Math.random() * 10000;
       propagandaTimeoutRef.current = setTimeout(() => {
         if (pearlVisibleRef.current) {
           // Face showing — skip, try again in 5s

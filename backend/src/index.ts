@@ -69,6 +69,16 @@ app.use('/api/classes', classRoutes);
 
 httpServer.listen(PORT, () => {
   console.log(`[Lexical Republic] Server running on port ${PORT}`);
+  console.log(`[Lexical Republic] Upload dir: ${uploadPath} (UPLOAD_DIR=${UPLOAD_DIR})`);
+  console.log(`[Lexical Republic] Upload dir exists: ${require('fs').existsSync(uploadPath)}`);
+  const briefingDir = require('path').join(uploadPath, 'briefings');
+  console.log(`[Lexical Republic] Briefing dir exists: ${require('fs').existsSync(briefingDir)}`);
+  if (require('fs').existsSync(briefingDir)) {
+    try {
+      const files = require('fs').readdirSync(briefingDir);
+      console.log(`[Lexical Republic] Briefing files: ${files.length} files`);
+    } catch { /* ignore */ }
+  }
 });
 
 export default app;

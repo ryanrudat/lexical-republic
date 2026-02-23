@@ -7,6 +7,10 @@ import {
   ShaderMaterial,
 } from 'three';
 
+// Module-level flag: face autoplays once on first page load (login),
+// but not when returning to office from terminal/shift within the same session.
+let pearlFacePlayedThisSession = false;
+
 // ─── Types ────────────────────────────────────────────────────
 interface PearlSphere3DProps {
   visible: boolean;
@@ -309,7 +313,8 @@ export default function PearlSphere3D({ visible, onVisibilityChange, isMuted }: 
      * Only shows the face (cbRef) once playback actually starts.
      */
     const startVideo = () => {
-      video.currentTime = 0;
+      // Force-reset src to prevent stale off-DOM buffer issues on repeated loads
+      video.src = '/video/office-backdrop-noaudio.mp4';
       video.load();
 
       const doPlay = () => {
@@ -324,10 +329,22 @@ export default function PearlSphere3D({ visible, onVisibilityChange, isMuted }: 
       if (video.readyState >= 2) {
         doPlay();
       } else {
-        video.addEventListener('canplay', function onCanPlay() {
+        let resolved = false;
+        const onCanPlay = () => {
+          if (resolved) return;
+          resolved = true;
           video.removeEventListener('canplay', onCanPlay);
           doPlay();
-        });
+        };
+        video.addEventListener('canplay', onCanPlay);
+        // Safety: if canplay never fires (browser evicted buffer), skip this cycle
+        setTimeout(() => {
+          if (!resolved) {
+            resolved = true;
+            video.removeEventListener('canplay', onCanPlay);
+            console.warn('[PEARL] canplay timeout — will retry next cycle');
+          }
+        }, 8000);
       }
     };
 
@@ -344,8 +361,11 @@ export default function PearlSphere3D({ visible, onVisibilityChange, isMuted }: 
     };
     audio.addEventListener('ended', handleAudioEnded);
 
-    // Initial play — load and poll until ready
-    startVideo();
+    // Initial play — only on first login, not when returning from terminal/shift
+    if (!pearlFacePlayedThisSession) {
+      startVideo();
+      pearlFacePlayedThisSession = true;
+    }
 
     // Every 3 minutes, replay the face animation + audio
     // Uses startVideo() which re-loads media data to avoid stale buffer
