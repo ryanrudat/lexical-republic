@@ -88,17 +88,19 @@ export default function ClarityQueueApp() {
       if (currentWeekIdRef.current && currentWeekIdRef.current !== weekSummary.id) {
         leaveWeekRoom(currentWeekIdRef.current);
       }
-      connectSocket({
+      const sock = connectSocket({
         designation: user?.designation ?? undefined,
         displayName: user?.displayName,
       });
       joinWeekRoom(weekSummary.id);
       currentWeekIdRef.current = weekSummary.id;
 
-      // Notify teacher dashboard of shift entry
-      const sock = getSocket();
-      if (sock?.connected) {
-        sock.emit('student:enter-shift', { weekNumber: weekNum });
+      // Notify teacher dashboard of shift entry (wait for connection if needed)
+      const emitEnter = () => sock.emit('student:enter-shift', { weekNumber: weekNum });
+      if (sock.connected) {
+        emitEnter();
+      } else {
+        sock.once('connect', emitEnter);
       }
     }
   }, [weekNumber, weeks, currentWeek, loadWeek, setEyeStateFromWeek, navigate, user]);
@@ -127,8 +129,13 @@ export default function ClarityQueueApp() {
 
       // Notify teacher dashboard of step change
       const sock = getSocket();
-      if (sock?.connected) {
-        sock.emit('student:change-step', { stepId: currentStepId });
+      if (sock) {
+        const emitStep = () => sock.emit('student:change-step', { stepId: currentStepId });
+        if (sock.connected) {
+          emitStep();
+        } else {
+          sock.once('connect', emitStep);
+        }
       }
     }
   }, [weekNumber, currentStepId, navigate]);

@@ -33,7 +33,7 @@ export default function App() {
 
   if (location.pathname === '/login') {
     if (user) {
-      return <Navigate to="/" replace />;
+      return <Navigate to={user.role === 'teacher' ? '/teacher' : '/'} replace />;
     }
     return (
       <Routes>
@@ -52,20 +52,9 @@ export default function App() {
     );
   }
 
-  // Teachers go straight to their dashboard — no boot sequence, no OfficeView
-  if (user.role === 'teacher') {
-    return (
-      <Routes>
-        <Route path="/" element={<TeacherDashboard />} />
-        <Route path="/teacher" element={<Navigate to="/" replace />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    );
-  }
+  // Skip boot sequence for teachers; students see it once per session
+  const bootSeen = user.role === 'teacher' || sessionStorage.getItem('boot-seen') === '1';
 
-  const bootSeen = sessionStorage.getItem('boot-seen') === '1';
-
-  // Show boot sequence once after login
   if (!bootSeen) {
     return <BootSequence onComplete={() => forceBootRefresh((v) => v + 1)} />;
   }
@@ -76,6 +65,11 @@ export default function App() {
 
   return (
     <Routes>
+      {/* Teacher dashboard — only at /teacher, only for teachers */}
+      <Route
+        path="/teacher"
+        element={user.role === 'teacher' ? <TeacherDashboard /> : <Navigate to="/" replace />}
+      />
       <Route path="/" element={studentHome} />
       <Route path="/terminal" element={<Navigate to="/" replace />} />
       <Route

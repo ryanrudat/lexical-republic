@@ -24,10 +24,15 @@ export function useTeacherSocket() {
       removeStudent(data.userId);
     };
 
+    const onError = (err: Error) => {
+      console.error('[TeacherSocket] connection error:', err.message);
+    };
+
     sock.on('teacher:class-snapshot', onSnapshot);
     sock.on('student:connected', onConnected);
     sock.on('student:status-updated', onUpdated);
     sock.on('student:disconnected', onDisconnected);
+    sock.on('connect_error', onError);
 
     return () => {
       const s = getSocket();
@@ -36,6 +41,7 @@ export function useTeacherSocket() {
         s.off('student:connected', onConnected);
         s.off('student:status-updated', onUpdated);
         s.off('student:disconnected', onDisconnected);
+        s.off('connect_error', onError);
       }
       disconnectSocket();
     };
