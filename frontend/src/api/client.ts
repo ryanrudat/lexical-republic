@@ -4,6 +4,11 @@ const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api';
 
 const TOKEN_KEY = 'lr_token';
 
+// Migration: clear stale localStorage token from before sessionStorage switch.
+// Without this, the old token could leak into cookie-based auth and cause role
+// confusion (e.g. student tab inheriting a teacher session).
+try { localStorage.removeItem(TOKEN_KEY); } catch { /* ignore */ }
+
 export function getStoredToken(): string | null {
   return sessionStorage.getItem(TOKEN_KEY);
 }
