@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { usePearlStore } from '../../stores/pearlStore';
 import { useShiftStore } from '../../stores/shiftStore';
 
-type AttentionMoment = 'none' | 'wide_gaze' | 'slow_focus' | 'double_blink' | 'iris_pulse';
+type AttentionMoment = 'none' | 'wide_gaze' | 'slow_focus' | 'iris_pulse';
 
 function getAvailableMoments(weekNumber: number): AttentionMoment[] {
-  const moments: AttentionMoment[] = ['wide_gaze', 'double_blink'];
+  const moments: AttentionMoment[] = ['wide_gaze'];
   if (weekNumber >= 7) moments.push('slow_focus');
   if (weekNumber >= 10) moments.push('iris_pulse');
   return moments;
@@ -160,23 +160,10 @@ export default function PearlEye({ onClick, panelOpen, variant = 'chrome', size 
 
   const [pupilOffset, setPupilOffset] = useState({ x: 0, y: 0 });
   const [targetIndex, setTargetIndex] = useState(0);
-  const [isBlinking, setIsBlinking] = useState(false);
   const [attentionMoment, setAttentionMoment] = useState<AttentionMoment>('none');
   const animFrameRef = useRef<number>(0);
   const currentPos = useRef({ x: 0, y: 0 });
   const slowFocusOverride = useRef(false);
-
-  // Trigger a double-blink sequence
-  const triggerDoubleBlink = useCallback(() => {
-    setIsBlinking(true);
-    setTimeout(() => {
-      setIsBlinking(false);
-      setTimeout(() => {
-        setIsBlinking(true);
-        setTimeout(() => setIsBlinking(false), 150);
-      }, 200);
-    }, 150);
-  }, []);
 
   // Pupil animation — respects slow_focus override
   useEffect(() => {
@@ -207,17 +194,6 @@ export default function PearlEye({ onClick, panelOpen, variant = 'chrome', size 
     return () => clearTimeout(timerRef.current);
   }, []);
 
-  // Regular blink
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (Math.random() < 0.3) {
-        setIsBlinking(true);
-        setTimeout(() => setIsBlinking(false), 150);
-      }
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
-
   // Panel open resets look position
   useEffect(() => {
     if (panelOpen) {
@@ -245,14 +221,10 @@ export default function PearlEye({ onClick, panelOpen, variant = 'chrome', size 
         // Execute moment-specific behaviors
         if (moment === 'slow_focus') {
           slowFocusOverride.current = true;
-        } else if (moment === 'double_blink') {
-          triggerDoubleBlink();
         }
 
         // Duration varies by moment type
-        const duration = moment === 'double_blink' ? 700
-          : moment === 'iris_pulse' ? 1500
-          : 2000;
+        const duration = moment === 'iris_pulse' ? 1500 : 2000;
 
         durationTimer = setTimeout(() => {
           if (cancelled) return;
@@ -271,12 +243,12 @@ export default function PearlEye({ onClick, panelOpen, variant = 'chrome', size 
       clearTimeout(timer);
       clearTimeout(durationTimer);
     };
-  }, [weekNumber, triggerDoubleBlink]);
+  }, [weekNumber]);
 
   // Compute lid positions — wide_gaze pulls lids open further
   const isWideGaze = attentionMoment === 'wide_gaze';
-  const upperCpY = isBlinking ? 52 : isWideGaze ? 3 : 10;
-  const lowerCpY = isBlinking ? 48 : isWideGaze ? 95 : 90;
+  const upperCpY = isWideGaze ? 3 : 10;
+  const lowerCpY = isWideGaze ? 95 : 90;
 
   const palette = EYE_STYLES[eyeState];
   const isCrt = variant === 'crt';
