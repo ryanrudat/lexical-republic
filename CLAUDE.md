@@ -1,6 +1,6 @@
 # The Lexical Republic — Project Memory
 
-Last updated: 2026-02-22
+Last updated: 2026-02-23
 
 ## Vision
 The Lexical Republic is a dystopian ESL learning game where Taiwanese Grade 10 students (A2-B1) learn English through 18 weekly "Shifts" inside an authoritarian language-control world.
@@ -131,9 +131,9 @@ In a 50-minute class, required activities must stay lean:
 ### Backend
 - Express 5 + TypeScript
 - Prisma + PostgreSQL
-- Auth via JWT in HTTP-only cookies
+- Auth via JWT in HTTP-only cookies + Bearer token fallback (Safari ITP)
 - Major route groups: `/api/auth`, `/api/shifts`, `/api/recordings`, `/api/pearl`, `/api/harmony`, `/api/teacher`, `/api/vocabulary`, `/api/ai`, `/api/classes`
-- Socket.IO for real-time teacher dashboard (student activity tracking, briefing stage broadcasts)
+- Socket.IO for real-time teacher dashboard (student activity tracking, briefing stage broadcasts). Student socket connects on login (App.tsx), not just on shift entry. Socket auth supports both cookie and `auth.token` Bearer fallback.
 - AI services (fail-open): OpenAI direct API (GPT-4.1-mini default) for grammar checking and PEARL contextual barks, Azure Whisper for transcription
 - Shared OpenAI client: `backend/src/utils/openai.ts` — lazy-init singleton, exports `getOpenAI()` and `OPENAI_MODEL`
 
@@ -143,10 +143,12 @@ In a 50-minute class, required activities must stay lean:
   - `/` — office home (default landing page on all reloads)
   - `/terminal` — redirects to `/` on reload
   - `/season` — redirects to `/` in guided mode
-  - `/shift/:weekNumber` — redirects to `/` on reload
-  - `/shift/:weekNumber/:stepId` — redirects to `/` on reload
-  - `/teacher`
-- **Reload behavior**: All routes except `/` and `/teacher` redirect to `/` on fresh page load. The office is always the entry point.
+  - `/shift/:weekNumber` — student home
+  - `/shift/:weekNumber/:stepId` — student home
+  - `/teacher` — teacher dashboard (role-gated, non-teachers redirected to `/`)
+- **Routing**: `/teacher` is a dedicated route only for teacher-role users. All other routes show the student experience regardless of role. Teachers redirected to `/teacher` after login; students to `/`.
+- **Auth tokens**: `sessionStorage` (per-tab isolation) — teacher and student tabs don't interfere. Token cleared on logout via `disconnectSocket()` + `clearStoredToken()`.
+- **Stale chunk handling**: `vite:preloadError` listener in `main.tsx` auto-reloads once after deploys when lazy-loaded chunks have new hashes.
 
 ### Data model (Prisma)
 Primary models: `User`, `Arc`, `Week`, `Mission`, `MissionScore`, `Recording`, `Vocabulary`, `StudentVocabulary`, `HarmonyPost`, `PearlMessage`, `Class`, `ClassEnrollment`, `ClassWeekUnlock`, `Character`, `DialogueNode`, `PearlConversation`, `NarrativeChoice`, `TeacherConfig`
@@ -215,7 +217,7 @@ Primary models: `User`, `Arc`, `Week`, `Mission`, `MissionScore`, `Recording`, `
 
 ## OfficeView Overlay Positioning System (implemented)
 - **ALL overlays** use image-space percentages (`{ cx, cy, w, h }`) mapped to viewport pixels via `imageToViewport()`
-- Background image: `public/images/office-bg.png` (**2528×1696**) with **`object-contain`** — entire image always visible, no cropping
+- Background image: `public/images/office-bg.jpg` (**2528×1696**, 892 KB JPEG) with **`object-contain`** — entire image always visible, no cropping
 - **Blurred background fill**: second `<img>` behind main with `object-cover` + `blur(40px)` + `scale(1.15)` — bleeds edge colors into padding areas
 - `imageToViewport()` uses `object-contain` math: `scale = Math.min(vw/IMG_W, vh/IMG_H)` with `padX`/`padY` centering offsets
 - All rects recompute on window resize
@@ -305,11 +307,17 @@ External canon source: `/Users/ryanrudat/Desktop/Dplan/`
 5. ~~Persistent media storage~~ — DONE: Railway volume mounted at `/data/uploads`.
 6. Full scripted dialogue pass for all character beats (especially Weeks 2-18).
 7. Harmony moderation gameplay depth (basic feed exists; richer decision loops can expand).
-8. Large OfficeView bundle warning in production build (non-blocking optimization).
+8. ~~Large OfficeView bundle warning~~ — DONE: office-bg.png → JPEG (6.6 MB → 892 KB), video preload deferred.
 9. Rank progression (Associate→Guardian), Dplan color palette alignment, end-to-end testing.
 10. Custom domain setup for student-friendly URLs (optional).
 
 ## Change Log
+- 2026-02-23: Cross-domain auth fixes — Bearer token fallback for Safari (sessionStorage per-tab isolation), login designation case normalization, stale localStorage cleanup migration.
+- 2026-02-23: Teacher dashboard fixes — green text → black, grid-cols-18 config, useEffect dep loop fix, class creation error feedback, teacher-scoped scrollbar styling.
+- 2026-02-23: Student online tracking — socket connects on login (App.tsx) not just shift entry, race condition fix (wait for connect before emitting), teacher socket error logging.
+- 2026-02-23: Office page performance — office-bg.png (6.6 MB) → office-bg.jpg (892 KB), video preload `metadata` instead of `auto`, audio preload `none`, deleted unused backup videos (9.2 MB).
+- 2026-02-23: Upload URL resolution — `resolveUploadUrl()` in `client.ts` prefixes backend origin for `/uploads` paths in production cross-domain setup.
+- 2026-02-23: Routing fix — `/teacher` is dedicated route (role-gated), student pages no longer redirect to teacher view on reload. Auto-reload on stale chunk errors after deploy.
 - 2026-02-23: Railway volume for persistent uploads — 5 GB disk at `/data/uploads`, `UPLOAD_DIR` env var, `resolveDir()` helper for absolute paths, `BRIEFING_URL_PREFIX` constant for stable DB URLs.
 - 2026-02-22: PEARL AI contextual barks — async AI-generated barks with pool fallback. Switched from Azure OpenAI to OpenAI direct API (single `OPENAI_API_KEY` env var). Shared `getOpenAI()` client extracted to `backend/src/utils/openai.ts`. Default model: `gpt-4.1-mini`.
 - 2026-02-22: Railway deployment live — backend + frontend + PostgreSQL. Multi-class support committed and pushed. MicCalibration type fix for production build. `serve` added as frontend dependency.
