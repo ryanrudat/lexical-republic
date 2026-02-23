@@ -8,7 +8,7 @@ import LocationTabs from '../../shift/LocationTabs';
 import type { StepId } from '../../../types/shifts';
 import { STEP_ORDER } from '../../../types/shifts';
 import { GUIDED_STUDENT_MODE } from '../../../config/runtimeFlags';
-import { connectSocket, joinWeekRoom, leaveWeekRoom, disconnectSocket, getSocket } from '../../../utils/socket';
+import { connectSocket, joinWeekRoom, leaveWeekRoom, getSocket } from '../../../utils/socket';
 import { useStudentStore } from '../../../stores/studentStore';
 
 const RecapStep = lazy(() => import('../../shift/RecapStep'));
@@ -110,7 +110,7 @@ export default function ClarityQueueApp() {
       if (currentWeekIdRef.current) {
         leaveWeekRoom(currentWeekIdRef.current);
       }
-      disconnectSocket();
+      // Socket stays connected at app level — disconnect happens on logout
     };
   }, []);
 

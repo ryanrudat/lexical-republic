@@ -6,6 +6,7 @@ import TeacherDashboard from './pages/TeacherDashboard';
 import BootSequence from './components/layout/BootSequence';
 import GameShell from './components/layout/GameShell';
 import { GUIDED_STUDENT_MODE } from './config/runtimeFlags';
+import { connectSocket } from './utils/socket';
 
 export default function App() {
   const { user, loading, refresh } = useStudentStore();
@@ -15,6 +16,18 @@ export default function App() {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // Connect student socket as soon as authenticated — makes them visible
+  // in the teacher's Live Class Monitor immediately, not just when entering a shift.
+  // Socket disconnects on logout (handled in studentStore).
+  useEffect(() => {
+    if (user && user.role === 'student') {
+      connectSocket({
+        designation: user.designation ?? undefined,
+        displayName: user.displayName,
+      });
+    }
+  }, [user?.id, user?.role, user?.designation, user?.displayName]);
 
   if (loading) {
     return (

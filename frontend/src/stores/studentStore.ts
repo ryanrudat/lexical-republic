@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { User } from '../api/auth';
 import { loginStudent, loginTeacher as apiLoginTeacher, registerStudent as apiRegister, logout as apiLogout, getMe } from '../api/auth';
+import { disconnectSocket } from '../utils/socket';
 
 interface ApiErrorShape {
   response?: {
@@ -75,6 +76,7 @@ export const useStudentStore = create<StudentState>((set) => ({
 
   logout: async () => {
     try {
+      disconnectSocket();
       await apiLogout();
     } finally {
       set({ user: null, loading: false, error: null });
