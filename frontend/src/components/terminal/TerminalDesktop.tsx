@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useViewStore } from '../../stores/viewStore';
 import { useStudentStore } from '../../stores/studentStore';
 import { useSeasonStore } from '../../stores/seasonStore';
@@ -60,6 +61,8 @@ function getHighestUnlockedWeek(weeks: Array<{ weekNumber: number; clockedOut: b
 
 export default function TerminalDesktop() {
   const openApp = useViewStore((s) => s.openApp);
+  const exitTerminal = useViewStore((s) => s.exitTerminal);
+  const navigate = useNavigate();
   const user = useStudentStore((s) => s.user);
   const weeks = useSeasonStore((s) => s.weeks);
   const loadSeason = useSeasonStore((s) => s.loadSeason);
@@ -94,6 +97,22 @@ export default function TerminalDesktop() {
 
       {/* App grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 max-w-4xl mx-auto w-full">
+        {/* Office tile — return to office view */}
+        <button
+          onClick={() => { exitTerminal(); navigate('/', { replace: true }); }}
+          className="text-left p-4 ios-glass-card transition-all group hover:scale-[1.03] hover:border-neon-cyan/30 hover:shadow-[0_0_20px_rgba(0,229,255,0.1)]"
+        >
+          <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">
+            {'\uD83C\uDFE2'}
+          </div>
+          <h3 className="font-ibm-mono text-sm tracking-wider mb-1 text-white/90">
+            Office
+          </h3>
+          <p className="font-ibm-mono text-[10px] text-white/40 tracking-wider">
+            Return to your desk
+          </p>
+        </button>
+
         {visibleApps.map((app) => {
           const isLocked = app.lockWeek !== undefined && highestUnlockedWeek < app.lockWeek;
           return (
