@@ -33,6 +33,109 @@ const PROPAGANDA = [
   'A CLEAR VOICE IS A HAPPY VOICE',
 ];
 
+// ─── Propaganda Chyron (3D sphere-wrapping illusion) ──────────
+function PropagandaChyron({
+  text,
+  sphereWidth,
+  visible,
+}: {
+  text: string;
+  sphereWidth: number;
+  visible: boolean;
+}) {
+  const rafRef = useRef(0);
+  const scrollRef = useRef(0);
+  const spansRef = useRef<(HTMLSpanElement | null)[]>([]);
+  const prevTextRef = useRef('');
+
+  const fontSize = Math.max(8, sphereWidth * 0.055);
+  const charW = fontSize * 0.6 + 3; // monospace char width + letter-spacing
+  const gap = '      ';
+  const segment = text + gap;
+  const segmentPx = segment.length * charW;
+  const fullText = segment + segment + segment;
+
+  useEffect(() => {
+    if (!visible || sphereWidth <= 0) return;
+
+    // Reset scroll position when text changes (enter from right)
+    if (prevTextRef.current !== text) {
+      scrollRef.current = sphereWidth * 0.6;
+      prevTextRef.current = text;
+    }
+
+    const center = sphereWidth / 2;
+    const visibleHalf = sphereWidth * 0.55;
+    const speed = sphereWidth * 0.2;
+    let lastTime = performance.now();
+
+    const animate = (now: number) => {
+      const dt = Math.min((now - lastTime) / 1000, 0.1);
+      lastTime = now;
+      scrollRef.current -= speed * dt;
+
+      if (scrollRef.current < -segmentPx) {
+        scrollRef.current += segmentPx;
+      }
+
+      const spans = spansRef.current;
+      for (let i = 0; i < spans.length; i++) {
+        const el = spans[i];
+        if (!el) continue;
+
+        const x = scrollRef.current + i * charW;
+        const mid = x + charW / 2;
+        const norm = (mid - center) / visibleHalf;
+        const clamped = Math.max(-1, Math.min(1, norm));
+        const cos = Math.cos(clamped * Math.PI * 0.5);
+
+        // Scale: 0.5 at edges → 1.2 at center (sphere curvature)
+        const s = 0.5 + 0.7 * cos;
+        // Opacity: smooth power-curve fade at edges
+        const a = Math.pow(Math.max(0, cos), 1.8);
+        // Y offset: subtle downward arc at edges (sphere surface)
+        const y = (1 - cos) * sphereWidth * 0.035;
+
+        el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translateY(-50%) scale(${s.toFixed(3)})`;
+        el.style.opacity = a.toFixed(3);
+      }
+
+      rafRef.current = requestAnimationFrame(animate);
+    };
+
+    rafRef.current = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [visible, text, sphereWidth, segmentPx, charW]);
+
+  if (sphereWidth <= 0) return null;
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      {fullText.split('').map((char, i) => (
+        <span
+          key={i}
+          ref={(el) => { spansRef.current[i] = el; }}
+          className="font-ibm-mono"
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: 0,
+            fontSize,
+            color: 'rgba(255, 255, 255, 0.92)',
+            textShadow: '0 0 8px rgba(0, 229, 255, 0.6), 0 0 20px rgba(0, 229, 255, 0.25)',
+            lineHeight: 1,
+            whiteSpace: 'pre',
+            willChange: 'transform, opacity',
+            transformOrigin: 'center center',
+          }}
+        >
+          {char}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 /** Map a point from image-space % to viewport px, accounting for object-contain */
 function imageToViewport(vw: number, vh: number) {
   // object-contain: scale to fit entire image, then center
@@ -223,8 +326,8 @@ export default function OfficeView() {
           top: rects.sphere.top,
           width: rects.sphere.width,
           height: rects.sphere.height,
-          WebkitMaskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)',
-          maskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, black 88%, transparent 100%)',
+          maskImage: 'linear-gradient(to bottom, black 88%, transparent 100%)',
         }}
       >
         <PearlSphere3D visible={pearlVisible} onVisibilityChange={setPearlVisible} isMuted={isMuted} />
@@ -524,9 +627,9 @@ export default function OfficeView() {
         }}
       />
 
-      {/* PEARL sphere propaganda chyron — scrolling ticker floating through the glass */}
+      {/* PEARL sphere propaganda chyron — text wrapping around the sphere */}
       <div
-        className="absolute z-[2] pointer-events-none rounded-full"
+        className="absolute z-[2] pointer-events-none"
         style={{
           left: rects.sphere.left,
           top: rects.sphere.top,
@@ -535,38 +638,13 @@ export default function OfficeView() {
           overflow: 'hidden',
           opacity: (propagandaVisible && !pearlVisible) ? 1 : 0,
           transition: 'opacity 0.8s ease',
-          WebkitMaskImage: 'radial-gradient(ellipse 80% 80% at center, white 40%, transparent 70%)',
-          maskImage: 'radial-gradient(ellipse 80% 80% at center, white 40%, transparent 70%)',
         }}
       >
-        <div
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: 0,
-            display: 'flex',
-            whiteSpace: 'nowrap',
-            animation: 'chyronScroll 14s linear infinite',
-          }}
-        >
-          {[0, 1].map((i) => (
-            <span
-              key={i}
-              className="font-ibm-mono"
-              style={{
-                fontSize: Math.max(8, rects.sphere.width * 0.055),
-                color: 'rgba(255, 255, 255, 0.92)',
-                letterSpacing: '3px',
-                textShadow: '0 0 8px rgba(0, 229, 255, 0.6), 0 0 20px rgba(0, 229, 255, 0.25)',
-                lineHeight: 1,
-                transform: 'translateY(-50%)',
-                paddingRight: `${rects.sphere.width * 0.4}px`,
-              }}
-            >
-              {propagandaText}
-            </span>
-          ))}
-        </div>
+        <PropagandaChyron
+          text={propagandaText}
+          sphereWidth={rects.sphere.width}
+          visible={propagandaVisible && !pearlVisible}
+        />
       </div>
 
       {/* React HUD overlay — constrained to visible image area, pointer-events-none so monitor clicks pass through */}
@@ -624,10 +702,6 @@ export default function OfficeView() {
         @keyframes posterGlow {
           0%, 100% { opacity: 0.5; }
           50% { opacity: 1; }
-        }
-        @keyframes chyronScroll {
-          from { transform: translateX(0); }
-          to { transform: translateX(-50%); }
         }
 
       `}</style>
