@@ -1,4 +1,5 @@
 import client from './client';
+import { setStoredToken, clearStoredToken } from './client';
 
 export interface User {
   id: string;
@@ -17,24 +18,29 @@ export interface User {
 
 export async function loginStudent(designation: string, pin: string) {
   const { data } = await client.post('/auth/login', { designation, pin });
+  if (data.token) setStoredToken(data.token);
   return data.user as User;
 }
 
 export async function loginTeacher(username: string, password: string) {
   const { data } = await client.post('/auth/login', { username, password });
+  if (data.token) setStoredToken(data.token);
   return data.user as User;
 }
 
 export async function registerStudent(studentNumber: string, pin: string, displayName?: string, classCode?: string) {
   const { data } = await client.post('/auth/register', { studentNumber, pin, displayName, classCode });
+  if (data.token) setStoredToken(data.token);
   return data.user as User;
 }
 
 export async function logout() {
   await client.post('/auth/logout');
+  clearStoredToken();
 }
 
 export async function getMe() {
   const { data } = await client.get('/auth/me');
+  if (data.token) setStoredToken(data.token);
   return data.user as User;
 }

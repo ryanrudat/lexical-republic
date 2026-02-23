@@ -80,6 +80,7 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     res.json({
+      token,
       user: {
         id: user.id,
         displayName: user.displayName,
@@ -170,6 +171,7 @@ router.post('/register', async (req: Request, res: Response) => {
     });
 
     res.status(201).json({
+      token,
       user: {
         id: user.id,
         displayName: user.displayName,
@@ -201,6 +203,11 @@ router.post('/logout', (_req: Request, res: Response) => {
 // GET /api/auth/me
 router.get('/me', authenticate, async (req: Request, res: Response) => {
   try {
+    // Echo the token back so the frontend can persist it
+    const existingToken =
+      req.cookies?.token ||
+      req.headers.authorization?.replace('Bearer ', '');
+
     const user = await prisma.user.findUnique({
       where: { id: req.user!.userId },
       select: {
@@ -228,6 +235,7 @@ router.get('/me', authenticate, async (req: Request, res: Response) => {
         include: { class: { select: { id: true, name: true } } },
       });
       res.json({
+        token: existingToken,
         user: {
           ...user,
           classId: enrollment?.class.id ?? null,
@@ -241,13 +249,14 @@ router.get('/me', authenticate, async (req: Request, res: Response) => {
         orderBy: { createdAt: 'asc' },
       });
       res.json({
+        token: existingToken,
         user: {
           ...user,
           classes,
         },
       });
     } else {
-      res.json({ user });
+      res.json({ token: existingToken, user });
     }
   } catch (err) {
     console.error('Me error:', err);
