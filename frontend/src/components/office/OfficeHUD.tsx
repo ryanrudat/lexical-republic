@@ -57,15 +57,8 @@ export default function OfficeHUD({ isMuted, setIsMuted, pearlOpen, setPearlOpen
           </h1>
         </div>
 
-        {/* Citizen badge + actions */}
+        {/* Teacher-only Director Panel */}
         <div className="flex items-center gap-3">
-          <div className="retro-card px-3 py-1.5 rounded-lg flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-neon-mint animate-pulse" />
-            <span className="font-ibm-mono text-xs text-retro-warm-wood tracking-wider">
-              {user?.designation || 'CITIZEN'}
-            </span>
-          </div>
-
           {user?.role === 'teacher' && (
             <button
               onClick={() => navigate('/teacher')}

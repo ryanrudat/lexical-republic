@@ -153,7 +153,7 @@ function imageToViewport(vw: number, vh: number) {
 export default function OfficeView() {
   useViewTheme();
   const enterTerminal = useViewStore((s) => s.enterTerminal);
-  const { logout } = useStudentStore();
+  const { logout, user } = useStudentStore();
   const [pearlVisible, setPearlVisible] = useState(true);
   const [pearlOpen, setPearlOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
@@ -473,7 +473,7 @@ export default function OfficeView() {
         const inset = rects.monitor.width * 0.04;
         return (
           <div
-            className="absolute z-[5] flex items-end justify-between pointer-events-none"
+            className="absolute z-[5] pointer-events-none"
             style={{
               left: rects.monitor.left,
               top: rects.monitor.top,
@@ -481,9 +481,52 @@ export default function OfficeView() {
               height: rects.monitor.height,
               paddingLeft: inset,
               paddingRight: inset,
+              paddingTop: Math.max(4, rects.monitor.height * 0.04),
               paddingBottom: Math.max(4, rects.monitor.height * 0.04),
             }}
           >
+            {/* Top row — citizen badge top-right */}
+            <div className="flex justify-end">
+              <div
+                className="rounded-full flex items-center justify-center gap-1.5"
+                style={{
+                  width: pillW,
+                  height: pillH,
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.14) 0%, rgba(0,229,255,0.08) 100%)',
+                  border: '1px solid rgba(255,255,255,0.18)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.12)',
+                }}
+              >
+                <div
+                  className="rounded-full animate-pulse"
+                  style={{
+                    width: Math.max(4, pillH * 0.22),
+                    height: Math.max(4, pillH * 0.22),
+                    background: '#69F0AE',
+                    boxShadow: '0 0 4px rgba(105,240,174,0.6)',
+                  }}
+                />
+                <span
+                  className="font-ibm-mono tracking-[2px]"
+                  style={{
+                    fontSize: pillFont,
+                    color: 'rgba(255,255,255,0.92)',
+                    textShadow: '0 0 8px rgba(0,229,255,0.5)',
+                    lineHeight: 1,
+                  }}
+                >
+                  {user?.designation || 'CITIZEN'}
+                </span>
+              </div>
+            </div>
+
+            {/* Spacer to push bottom row down */}
+            <div className="flex-1" />
+
+            {/* Bottom row — clock left, log off right */}
+            <div className="absolute bottom-0 left-0 right-0 flex items-end justify-between" style={{ paddingLeft: inset, paddingRight: inset, paddingBottom: Math.max(4, rects.monitor.height * 0.04) }}>
             {/* Clock pill — bottom left (status display, not clickable) */}
             <div
               className="rounded-full flex items-center justify-center gap-1.5"
@@ -553,6 +596,7 @@ export default function OfficeView() {
                 LOG OFF
               </span>
             </button>
+            </div>
           </div>
         );
       })()}
