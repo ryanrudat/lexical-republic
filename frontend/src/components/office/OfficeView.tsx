@@ -60,13 +60,13 @@ function PropagandaChyron({
 
     // Reset scroll position when text changes (enter from right)
     if (prevTextRef.current !== text) {
-      scrollRef.current = sphereWidth * 0.6;
+      scrollRef.current = sphereWidth * 0.8;
       prevTextRef.current = text;
     }
 
     const center = sphereWidth / 2;
-    const visibleHalf = sphereWidth * 0.55;
-    const speed = sphereWidth * 0.2;
+    const visibleHalf = sphereWidth * 0.8;
+    const speed = sphereWidth * 0.13;
     let lastTime = performance.now();
 
     const animate = (now: number) => {
@@ -89,12 +89,12 @@ function PropagandaChyron({
         const clamped = Math.max(-1, Math.min(1, norm));
         const cos = Math.cos(clamped * Math.PI * 0.5);
 
-        // Scale: 0.5 at edges → 1.2 at center (sphere curvature)
-        const s = 0.5 + 0.7 * cos;
-        // Opacity: smooth power-curve fade at edges
-        const a = Math.pow(Math.max(0, cos), 1.8);
+        // Scale: 0.6 at edges → 1.1 at center (sphere curvature)
+        const s = 0.6 + 0.5 * cos;
+        // Opacity: gentle cosine fade at edges (no power curve)
+        const a = Math.max(0, cos);
         // Y offset: subtle downward arc at edges (sphere surface)
-        const y = (1 - cos) * sphereWidth * 0.035;
+        const y = (1 - cos) * sphereWidth * 0.04;
 
         el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translateY(-50%) scale(${s.toFixed(3)})`;
         el.style.opacity = a.toFixed(3);
@@ -220,7 +220,7 @@ export default function OfficeView() {
     };
   }, []);
 
-  // PEARL propaganda chyron — shows every 15-25s for 8s when face not showing
+  // PEARL propaganda chyron — shows every 15-25s for 14s when face not showing
   useEffect(() => {
     const schedule = () => {
       const delay = 15000 + Math.random() * 10000;
@@ -235,7 +235,7 @@ export default function OfficeView() {
         propagandaTimeoutRef.current = setTimeout(() => {
           setPropagandaVisible(false);
           schedule();
-        }, 8000);
+        }, 14000);
       }, delay);
     };
     schedule();

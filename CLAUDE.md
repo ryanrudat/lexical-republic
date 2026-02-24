@@ -1,6 +1,6 @@
 # The Lexical Republic — Project Memory
 
-Last updated: 2026-02-23
+Last updated: 2026-02-24
 
 ## Vision
 The Lexical Republic is a dystopian ESL learning game where Taiwanese Grade 10 students (A2-B1) learn English through 18 weekly "Shifts" inside an authoritarian language-control world.
@@ -19,6 +19,7 @@ Story and learning are coupled: grammar, listening, speaking, and writing tasks 
   - `my-file` (student profile)
 - Harmony is locked until Shift 3.
 - **Terminal header Home button**: `⌂ HOME` button in terminal header returns to terminal desktop and navigates URL to `/`. Always visible in shift views.
+- **Terminal desktop Office tile**: prominent `Office` tile (first in grid) returns to office view. Replaces hard-to-find text link.
 - Students are guided (not free-roam) in the current phase.
 - Students see a simple home desktop before entering the guided shift.
 
@@ -34,6 +35,8 @@ Each shift uses a fixed 7-step sequence:
 
 Step navigation is gated by completion status; students cannot skip ahead to locked future steps.
 
+**Step video clips**: All 7 steps support optional video via `StepVideoClip` component. Renders `FrostedGlassPlayer` (frosted glass dark theme with cyan tint, loading spinner, retry button). Supports both embed URLs (iframe) and uploaded video files (via `resolveUploadUrl`).
+
 ### Story-first Location Naming (implemented)
 Student-facing location labels map directly to learning purpose:
 - `Shift Intake`
@@ -47,6 +50,7 @@ Student-facing location labels map directly to learning purpose:
 - PEARL is visually anchored in the terminal header with a persistent eye + state label.
 - Bottom message strip is one-way ambient system messaging (no student chat input).
 - PEARL panel remains available via eye click.
+- **PEARL eye never blinks** — all blink behavior removed. Eye has look-around and attention moments only (wide_gaze, slow_focus, iris_pulse).
 - Eye state arc is wired to narrative progression:
   - welcoming → attentive → evaluative → confused → alarmed → frantic → cold → breaking → final
 
@@ -149,6 +153,7 @@ In a 50-minute class, required activities must stay lean:
 - **Routing**: `/teacher` is a dedicated route only for teacher-role users. All other routes show the student experience regardless of role. Teachers redirected to `/teacher` after login; students to `/`.
 - **Auth tokens**: `sessionStorage` (per-tab isolation) — teacher and student tabs don't interfere. Token cleared on logout via `disconnectSocket()` + `clearStoredToken()`.
 - **Stale chunk handling**: `vite:preloadError` listener in `main.tsx` auto-reloads once after deploys when lazy-loaded chunks have new hashes.
+- **FrostedGlassPlayer**: `frontend/src/components/shift/media/FrostedGlassPlayer.tsx` — dark glass video player with cyan tint, frosted title/controls bars, seek bar, loading spinner, error state with retry button.
 
 ### Data model (Prisma)
 Primary models: `User`, `Arc`, `Week`, `Mission`, `MissionScore`, `Recording`, `Vocabulary`, `StudentVocabulary`, `HarmonyPost`, `PearlMessage`, `Class`, `ClassEnrollment`, `ClassWeekUnlock`, `Character`, `DialogueNode`, `PearlConversation`, `NarrativeChoice`, `TeacherConfig`
@@ -213,7 +218,16 @@ Primary models: `User`, `Arc`, `Week`, `Mission`, `MissionScore`, `Recording`, `
   - Synced: audio starts/stops/seeks alongside video; `isMuted` prop from parent controls `audio.muted`
   - Volume button in OfficeHUD provides the user gesture that unlocks audio playback
   - On replay (every 3 min), `video.load()` is called first to re-fetch media data (browsers evict idle off-DOM buffers), then waits for `canplay` before playing
-- Behavior: autoplay muted → click unmutes → ended fades out (swirl remains) → 3-min replay cycle
+- **First-login autoplay**: Face video autoplays once on first page load (login), but NOT when returning to office from terminal/shift. Module-level `pearlFacePlayedThisSession` flag resets only on full page reload.
+- **Video resilience**: `startVideo()` force-resets `video.src` before `load()` to prevent stale off-DOM buffer issues. 8-second canplay timeout prevents infinite hangs.
+- Behavior: autoplay muted on first login → click unmutes → ended fades out (swirl remains) → 3-min replay cycle
+
+### Propaganda Chyron (implemented)
+- `PropagandaChyron` component in `OfficeView.tsx` — per-character `requestAnimationFrame` animation
+- **3D sphere-wrapping illusion**: cosine-curve scale (0.6 at edges → 1.1 at center), gentle opacity fade, subtle Y arc
+- Positioned over the PEARL sphere, only visible when face video is not playing
+- Frequency: shows every 15-25s for 14s, skips if face is active
+- Container uses sphere bounds with `overflow: hidden`
 
 ## OfficeView Overlay Positioning System (implemented)
 - **ALL overlays** use image-space percentages (`{ cx, cy, w, h }`) mapped to viewport pixels via `imageToViewport()`
@@ -312,6 +326,13 @@ External canon source: `/Users/ryanrudat/Desktop/Dplan/`
 10. Custom domain setup for student-friendly URLs (optional).
 
 ## Change Log
+- 2026-02-24: Propaganda chyron 3D sphere-wrapping effect — per-character RAF animation with cosine-curve scale/opacity/arc. Display widened (visibleHalf 0.8, gentle fade) and duration extended to 14s to show full slogans. Frequency 15-25s.
+- 2026-02-24: PEARL face first-login-only autoplay — module-level `pearlFacePlayedThisSession` flag. Video resilience: force-reset `video.src` + 8s canplay timeout.
+- 2026-02-24: PEARL eye blink removed — all blink state, intervals, and double_blink attention moment deleted. Eye never blinks.
+- 2026-02-24: Terminal desktop Office tile — prominent grid tile (first position) replaces hard-to-find bottom text link.
+- 2026-02-24: StepVideoClip wired into all 7 shift steps with embed URL + uploaded file support. FrostedGlassPlayer redesigned with frosted glass dark theme, loading spinner, error retry.
+- 2026-02-24: Backend upload directory startup diagnostics — logs UPLOAD_DIR, briefing dir existence, file count.
+- 2026-02-24: PEARL sphere face mask gradient widened from 70% to 88% (less cutoff).
 - 2026-02-23: Cross-domain auth fixes — Bearer token fallback for Safari (sessionStorage per-tab isolation), login designation case normalization, stale localStorage cleanup migration.
 - 2026-02-23: Teacher dashboard fixes — green text → black, grid-cols-18 config, useEffect dep loop fix, class creation error feedback, teacher-scoped scrollbar styling.
 - 2026-02-23: Student online tracking — socket connects on login (App.tsx) not just shift entry, race condition fix (wait for connect before emitting), teacher socket error logging.
