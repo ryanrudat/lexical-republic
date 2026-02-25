@@ -64,8 +64,13 @@ export default function Login() {
       />
 
       <div className="relative w-full max-w-md mx-4">
-        {/* Ministry header — retrofuturist */}
+        {/* Party logo + Ministry header */}
         <div className="text-center mb-8">
+          <img
+            src="/images/party-logo.png"
+            alt="The Party"
+            className="w-28 h-28 mx-auto mb-4 drop-shadow-lg"
+          />
           <div className="inline-block retro-card px-6 py-3 rounded-xl mb-4">
             <h1 className="font-special-elite text-retro-warm-wood text-lg tracking-wider">
               Ministry for Healthy
