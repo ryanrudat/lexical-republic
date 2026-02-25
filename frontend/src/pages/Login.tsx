@@ -52,79 +52,75 @@ export default function Login() {
   const pinMismatch = mode === 'register' && regPinConfirm.length > 0 && regPin !== regPinConfirm;
 
   return (
-    <div className="fixed inset-0 bg-[#f5f0e8] flex flex-col z-20 overflow-y-auto">
-      {/* Subtle linen texture */}
-      <div
-        className="absolute inset-0 opacity-[0.04] pointer-events-none"
-        style={{
-          backgroundImage:
-            'linear-gradient(rgba(100,80,60,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(100,80,60,0.4) 1px, transparent 1px)',
-          backgroundSize: '32px 32px',
-        }}
-      />
+    <div className="fixed inset-0 bg-gradient-to-b from-[#E8F5E9] via-[#F0F7FA] to-[#FFF9C4]/30 flex flex-col z-20 overflow-y-auto">
+      {/* Large faint watermark logo */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <img
+          src="/images/party-logo.png"
+          alt=""
+          className="w-[420px] h-[420px] opacity-[0.07]"
+        />
+      </div>
 
-      {/* Top gold accent bar */}
-      <div className="w-full h-1.5 bg-gradient-to-r from-[#8B6914] via-[#C9A84C] to-[#8B6914] shrink-0" />
+      {/* Soft pastel accent bar */}
+      <div className="w-full h-1 bg-gradient-to-r from-[#B3E5FC] via-[#E1BEE7] to-[#FCE4EC] shrink-0" />
 
-      {/* Official header banner */}
-      <div className="relative w-full bg-[#1a1a1a] py-8 shrink-0">
+      {/* Header area */}
+      <div className="relative w-full pt-10 pb-6 shrink-0">
         <div className="max-w-lg mx-auto text-center px-4">
-          {/* Party seal */}
+          {/* Small visible logo */}
           <img
             src="/images/party-logo.png"
             alt="The Party — Unity, Happiness, Obedience"
-            className="w-44 h-44 mx-auto mb-5 drop-shadow-[0_4px_20px_rgba(201,168,76,0.3)]"
+            className="w-24 h-24 mx-auto mb-4 drop-shadow-[0_2px_12px_rgba(0,0,0,0.08)]"
           />
 
           {/* Ministry name */}
-          <h1 className="font-special-elite text-[#C9A84C] text-2xl tracking-[0.15em] leading-tight">
+          <h1 className="font-special-elite text-[#2D8A6E] text-2xl tracking-[0.12em] leading-tight">
             Ministry for Healthy
           </h1>
-          <h1 className="font-special-elite text-[#C9A84C] text-2xl tracking-[0.15em] leading-tight">
+          <h1 className="font-special-elite text-[#2D8A6E] text-2xl tracking-[0.12em] leading-tight">
             & Safe Communication
           </h1>
 
           {/* Divider */}
           <div className="mt-4 mb-3 flex items-center justify-center gap-3">
-            <div className="h-px w-16 bg-gradient-to-r from-transparent to-[#C9A84C]/40" />
-            <div className="w-1.5 h-1.5 rotate-45 bg-[#C9A84C]/50" />
-            <div className="h-px w-16 bg-gradient-to-l from-transparent to-[#C9A84C]/40" />
+            <div className="h-px w-16 bg-gradient-to-r from-transparent to-[#B3E5FC]" />
+            <div className="w-1.5 h-1.5 rotate-45 bg-[#E1BEE7]/70" />
+            <div className="h-px w-16 bg-gradient-to-l from-transparent to-[#FCE4EC]" />
           </div>
 
-          <p className="font-ibm-mono text-[#C9A84C]/50 text-[10px] tracking-[0.4em] uppercase">
+          <p className="font-ibm-mono text-[#2D8A6E]/40 text-[10px] tracking-[0.4em] uppercase">
             Department of Clarity — Secure Access Portal
           </p>
         </div>
       </div>
 
-      {/* Bottom gold accent bar */}
-      <div className="w-full h-0.5 bg-gradient-to-r from-[#8B6914] via-[#C9A84C] to-[#8B6914] shrink-0" />
-
       {/* Content area */}
-      <div className="flex-1 flex items-start justify-center pt-8 pb-12 px-4">
+      <div className="flex-1 flex items-start justify-center pt-4 pb-12 px-4">
         <div className="w-full max-w-md">
           {/* Login card */}
           <form
             onSubmit={handleSubmit}
-            className="bg-white/70 backdrop-blur-sm border border-[#d4cbbe] rounded-lg shadow-[0_2px_12px_rgba(0,0,0,0.06)] p-8"
+            className="bg-white/60 backdrop-blur-md border border-white/80 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.04)] p-8"
           >
             <div className="text-center mb-6">
-              <p className="font-ibm-mono text-[#5a4a38] text-sm tracking-[0.2em] font-medium">
+              <p className="font-ibm-mono text-[#2D8A6E] text-sm tracking-[0.2em] font-medium">
                 {mode === 'student' ? 'CITIZEN IDENTIFICATION' : mode === 'teacher' ? 'DIRECTOR ACCESS' : 'NEW PAIR REGISTRATION'}
               </p>
-              <p className="font-ibm-mono text-[#5a4a38]/40 text-[10px] mt-1 tracking-wider">
+              <p className="font-ibm-mono text-[#5a6a78]/40 text-[10px] mt-1 tracking-wider">
                 v4.7.1 // AUTHORIZED ACCESS ONLY
               </p>
             </div>
 
-            <div className="mb-5 flex rounded-md border border-[#d4cbbe] overflow-hidden">
+            <div className="mb-5 flex rounded-full border border-[#B3E5FC]/60 overflow-hidden bg-white/40">
               <button
                 type="button"
                 onClick={() => setMode('student')}
-                className={`flex-1 py-2.5 font-ibm-mono text-xs tracking-wider transition-colors ${
+                className={`flex-1 py-2.5 font-ibm-mono text-xs tracking-wider transition-all ${
                   mode === 'student'
-                    ? 'bg-[#1a1a1a] text-[#C9A84C]'
-                    : 'bg-[#f5f0e8] text-[#5a4a38]/50 hover:bg-[#ede7db]'
+                    ? 'bg-[#2D8A6E] text-white rounded-full shadow-sm'
+                    : 'text-[#5a6a78]/50 hover:text-[#2D8A6E]/70'
                 }`}
               >
                 STUDENT
@@ -132,10 +128,10 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => setMode('register')}
-                className={`flex-1 py-2.5 font-ibm-mono text-xs tracking-wider border-x border-[#d4cbbe] transition-colors ${
+                className={`flex-1 py-2.5 font-ibm-mono text-xs tracking-wider transition-all ${
                   mode === 'register'
-                    ? 'bg-[#1a1a1a] text-[#C9A84C]'
-                    : 'bg-[#f5f0e8] text-[#5a4a38]/50 hover:bg-[#ede7db]'
+                    ? 'bg-[#2D8A6E] text-white rounded-full shadow-sm'
+                    : 'text-[#5a6a78]/50 hover:text-[#2D8A6E]/70'
                 }`}
               >
                 REGISTER
@@ -143,10 +139,10 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => setMode('teacher')}
-                className={`flex-1 py-2.5 font-ibm-mono text-xs tracking-wider transition-colors ${
+                className={`flex-1 py-2.5 font-ibm-mono text-xs tracking-wider transition-all ${
                   mode === 'teacher'
-                    ? 'bg-[#1a1a1a] text-[#C9A84C]'
-                    : 'bg-[#f5f0e8] text-[#5a4a38]/50 hover:bg-[#ede7db]'
+                    ? 'bg-[#2D8A6E] text-white rounded-full shadow-sm'
+                    : 'text-[#5a6a78]/50 hover:text-[#2D8A6E]/70'
                 }`}
               >
                 TEACHER
@@ -156,7 +152,7 @@ export default function Login() {
             {mode === 'student' ? (
               <>
                 <div className="mb-4">
-                  <label className="block font-ibm-mono text-[11px] text-[#5a4a38]/70 uppercase tracking-[0.15em] mb-2">
+                  <label className="block font-ibm-mono text-[11px] text-[#5a6a78]/60 uppercase tracking-[0.15em] mb-2">
                     Designation
                   </label>
                   <input
@@ -164,14 +160,14 @@ export default function Login() {
                     value={designation}
                     onChange={(e) => setDesignation(e.target.value.toUpperCase())}
                     placeholder="CA-1"
-                    className="w-full px-4 py-3 text-lg tracking-wider bg-white border border-[#d4cbbe] rounded-md font-ibm-mono text-[#3a3025] focus:outline-none focus:border-[#8B6914] focus:ring-1 focus:ring-[#C9A84C]/30"
+                    className="w-full px-4 py-3 text-lg tracking-wider bg-white border border-[#B3E5FC]/40 rounded-xl font-ibm-mono text-[#3a4a58] focus:outline-none focus:border-[#2D8A6E]/40 focus:ring-2 focus:ring-[#2D8A6E]/10"
                     autoComplete="off"
                     autoFocus
                   />
                 </div>
 
                 <div className="mb-6">
-                  <label className="block font-ibm-mono text-[11px] text-[#5a4a38]/70 uppercase tracking-[0.15em] mb-2">
+                  <label className="block font-ibm-mono text-[11px] text-[#5a6a78]/60 uppercase tracking-[0.15em] mb-2">
                     Security Pin
                   </label>
                   <input
@@ -180,14 +176,14 @@ export default function Login() {
                     onChange={(e) => setPin(e.target.value)}
                     placeholder="****"
                     maxLength={8}
-                    className="w-full px-4 py-3 text-lg tracking-[0.5em] bg-white border border-[#d4cbbe] rounded-md font-ibm-mono text-[#3a3025] focus:outline-none focus:border-[#8B6914] focus:ring-1 focus:ring-[#C9A84C]/30"
+                    className="w-full px-4 py-3 text-lg tracking-[0.5em] bg-white border border-[#B3E5FC]/40 rounded-xl font-ibm-mono text-[#3a4a58] focus:outline-none focus:border-[#2D8A6E]/40 focus:ring-2 focus:ring-[#2D8A6E]/10"
                   />
                 </div>
               </>
             ) : mode === 'register' ? (
               <>
                 <div className="mb-4">
-                  <label className="block font-ibm-mono text-[11px] text-[#5a4a38]/70 uppercase tracking-[0.15em] mb-2">
+                  <label className="block font-ibm-mono text-[11px] text-[#5a6a78]/60 uppercase tracking-[0.15em] mb-2">
                     Class Code
                   </label>
                   <input
@@ -196,17 +192,17 @@ export default function Login() {
                     onChange={(e) => setRegClassCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
                     placeholder="ALPHA1"
                     maxLength={6}
-                    className="w-full px-4 py-3 text-lg tracking-[0.3em] bg-white border border-[#d4cbbe] rounded-md font-ibm-mono text-[#3a3025] focus:outline-none focus:border-[#8B6914] focus:ring-1 focus:ring-[#C9A84C]/30"
+                    className="w-full px-4 py-3 text-lg tracking-[0.3em] bg-white border border-[#B3E5FC]/40 rounded-xl font-ibm-mono text-[#3a4a58] focus:outline-none focus:border-[#2D8A6E]/40 focus:ring-2 focus:ring-[#2D8A6E]/10"
                     autoComplete="off"
                     autoFocus
                   />
-                  <p className="font-ibm-mono text-[#5a4a38]/35 text-[10px] mt-1 tracking-wider">
+                  <p className="font-ibm-mono text-[#5a6a78]/35 text-[10px] mt-1 tracking-wider">
                     PROVIDED BY YOUR INSTRUCTOR
                   </p>
                 </div>
 
                 <div className="mb-4">
-                  <label className="block font-ibm-mono text-[11px] text-[#5a4a38]/70 uppercase tracking-[0.15em] mb-2">
+                  <label className="block font-ibm-mono text-[11px] text-[#5a6a78]/60 uppercase tracking-[0.15em] mb-2">
                     Pair Designation
                   </label>
                   <input
@@ -214,14 +210,14 @@ export default function Login() {
                     value={regDesignation}
                     onChange={(e) => setRegDesignation(e.target.value.toUpperCase())}
                     placeholder="CA-33"
-                    className="w-full px-4 py-3 text-lg tracking-wider bg-white border border-[#d4cbbe] rounded-md font-ibm-mono text-[#3a3025] focus:outline-none focus:border-[#8B6914] focus:ring-1 focus:ring-[#C9A84C]/30"
+                    className="w-full px-4 py-3 text-lg tracking-wider bg-white border border-[#B3E5FC]/40 rounded-xl font-ibm-mono text-[#3a4a58] focus:outline-none focus:border-[#2D8A6E]/40 focus:ring-2 focus:ring-[#2D8A6E]/10"
                     autoComplete="off"
                   />
                 </div>
 
                 <div className="mb-4 grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-ibm-mono text-[11px] text-[#5a4a38]/70 uppercase tracking-[0.15em] mb-2">
+                    <label className="block font-ibm-mono text-[11px] text-[#5a6a78]/60 uppercase tracking-[0.15em] mb-2">
                       Student A Name
                     </label>
                     <input
@@ -229,11 +225,11 @@ export default function Login() {
                       value={regStudentAName}
                       onChange={(e) => setRegStudentAName(e.target.value)}
                       placeholder="Your name"
-                      className="w-full px-4 py-3 text-base tracking-wider bg-white border border-[#d4cbbe] rounded-md font-ibm-mono text-[#3a3025] focus:outline-none focus:border-[#8B6914] focus:ring-1 focus:ring-[#C9A84C]/30"
+                      className="w-full px-4 py-3 text-base tracking-wider bg-white border border-[#B3E5FC]/40 rounded-xl font-ibm-mono text-[#3a4a58] focus:outline-none focus:border-[#2D8A6E]/40 focus:ring-2 focus:ring-[#2D8A6E]/10"
                     />
                   </div>
                   <div>
-                    <label className="block font-ibm-mono text-[11px] text-[#5a4a38]/70 uppercase tracking-[0.15em] mb-2">
+                    <label className="block font-ibm-mono text-[11px] text-[#5a6a78]/60 uppercase tracking-[0.15em] mb-2">
                       Student B <span className="opacity-50">(optional)</span>
                     </label>
                     <input
@@ -241,13 +237,13 @@ export default function Login() {
                       value={regStudentBName}
                       onChange={(e) => setRegStudentBName(e.target.value)}
                       placeholder="Partner name"
-                      className="w-full px-4 py-3 text-base tracking-wider bg-white border border-[#d4cbbe] rounded-md font-ibm-mono text-[#3a3025] focus:outline-none focus:border-[#8B6914] focus:ring-1 focus:ring-[#C9A84C]/30"
+                      className="w-full px-4 py-3 text-base tracking-wider bg-white border border-[#B3E5FC]/40 rounded-xl font-ibm-mono text-[#3a4a58] focus:outline-none focus:border-[#2D8A6E]/40 focus:ring-2 focus:ring-[#2D8A6E]/10"
                     />
                   </div>
                 </div>
 
                 <div className="mb-4">
-                  <label className="block font-ibm-mono text-[11px] text-[#5a4a38]/70 uppercase tracking-[0.15em] mb-2">
+                  <label className="block font-ibm-mono text-[11px] text-[#5a6a78]/60 uppercase tracking-[0.15em] mb-2">
                     Choose PIN (4-8 digits)
                   </label>
                   <input
@@ -256,12 +252,12 @@ export default function Login() {
                     onChange={(e) => setRegPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
                     placeholder="****"
                     maxLength={8}
-                    className="w-full px-4 py-3 text-lg tracking-[0.5em] bg-white border border-[#d4cbbe] rounded-md font-ibm-mono text-[#3a3025] focus:outline-none focus:border-[#8B6914] focus:ring-1 focus:ring-[#C9A84C]/30"
+                    className="w-full px-4 py-3 text-lg tracking-[0.5em] bg-white border border-[#B3E5FC]/40 rounded-xl font-ibm-mono text-[#3a4a58] focus:outline-none focus:border-[#2D8A6E]/40 focus:ring-2 focus:ring-[#2D8A6E]/10"
                   />
                 </div>
 
                 <div className="mb-6">
-                  <label className="block font-ibm-mono text-[11px] text-[#5a4a38]/70 uppercase tracking-[0.15em] mb-2">
+                  <label className="block font-ibm-mono text-[11px] text-[#5a6a78]/60 uppercase tracking-[0.15em] mb-2">
                     Confirm PIN
                   </label>
                   <input
@@ -270,10 +266,10 @@ export default function Login() {
                     onChange={(e) => setRegPinConfirm(e.target.value.replace(/\D/g, '').slice(0, 8))}
                     placeholder="****"
                     maxLength={8}
-                    className={`w-full px-4 py-3 text-lg tracking-[0.5em] bg-white border rounded-md font-ibm-mono text-[#3a3025] focus:outline-none focus:ring-1 ${
+                    className={`w-full px-4 py-3 text-lg tracking-[0.5em] bg-white border rounded-xl font-ibm-mono text-[#3a4a58] focus:outline-none focus:ring-2 ${
                       pinMismatch
                         ? 'border-neon-pink focus:border-neon-pink focus:ring-neon-pink/20'
-                        : 'border-[#d4cbbe] focus:border-[#8B6914] focus:ring-[#C9A84C]/30'
+                        : 'border-[#B3E5FC]/40 focus:border-[#2D8A6E]/40 focus:ring-[#2D8A6E]/10'
                     }`}
                   />
                   {pinMismatch && (
@@ -284,7 +280,7 @@ export default function Login() {
             ) : (
               <>
                 <div className="mb-4">
-                  <label className="block font-ibm-mono text-[11px] text-[#5a4a38]/70 uppercase tracking-[0.15em] mb-2">
+                  <label className="block font-ibm-mono text-[11px] text-[#5a6a78]/60 uppercase tracking-[0.15em] mb-2">
                     Username
                   </label>
                   <input
@@ -292,14 +288,14 @@ export default function Login() {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="teacher"
-                    className="w-full px-4 py-3 text-lg tracking-wider bg-white border border-[#d4cbbe] rounded-md font-ibm-mono text-[#3a3025] focus:outline-none focus:border-[#8B6914] focus:ring-1 focus:ring-[#C9A84C]/30"
+                    className="w-full px-4 py-3 text-lg tracking-wider bg-white border border-[#B3E5FC]/40 rounded-xl font-ibm-mono text-[#3a4a58] focus:outline-none focus:border-[#2D8A6E]/40 focus:ring-2 focus:ring-[#2D8A6E]/10"
                     autoComplete="username"
                     autoFocus
                   />
                 </div>
 
                 <div className="mb-6">
-                  <label className="block font-ibm-mono text-[11px] text-[#5a4a38]/70 uppercase tracking-[0.15em] mb-2">
+                  <label className="block font-ibm-mono text-[11px] text-[#5a6a78]/60 uppercase tracking-[0.15em] mb-2">
                     Password
                   </label>
                   <input
@@ -307,7 +303,7 @@ export default function Login() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full px-4 py-3 text-lg bg-white border border-[#d4cbbe] rounded-md font-ibm-mono text-[#3a3025] focus:outline-none focus:border-[#8B6914] focus:ring-1 focus:ring-[#C9A84C]/30"
+                    className="w-full px-4 py-3 text-lg bg-white border border-[#B3E5FC]/40 rounded-xl font-ibm-mono text-[#3a4a58] focus:outline-none focus:border-[#2D8A6E]/40 focus:ring-2 focus:ring-[#2D8A6E]/10"
                     autoComplete="current-password"
                   />
                 </div>
@@ -316,8 +312,8 @@ export default function Login() {
 
             {/* Error */}
             {error && (
-              <div className="mb-4 p-3 border border-[#8B2020]/30 bg-[#8B2020]/5 rounded-md">
-                <p className="font-ibm-mono text-[#8B2020] text-xs text-center tracking-wider">
+              <div className="mb-4 p-3 border border-[#FCE4EC] bg-[#FCE4EC]/40 rounded-xl">
+                <p className="font-ibm-mono text-[#c0392b] text-xs text-center tracking-wider">
                   ACCESS DENIED: {error.toUpperCase()}
                 </p>
               </div>
@@ -327,7 +323,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading || !canSubmit}
-              className="w-full py-3.5 bg-[#1a1a1a] text-[#C9A84C] font-ibm-mono text-sm uppercase tracking-[0.3em] rounded-md hover:bg-[#2a2a2a] transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed border border-[#C9A84C]/30"
+              className="w-full py-3.5 bg-[#2D8A6E] text-white font-ibm-mono text-sm uppercase tracking-[0.3em] rounded-full hover:bg-[#258060] transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_2px_12px_rgba(45,138,110,0.2)]"
             >
               {loading ? (
                 <span className="animate-pulse">
@@ -341,8 +337,8 @@ export default function Login() {
             </button>
 
             {/* Footer warning */}
-            <div className="mt-6 pt-4 border-t border-[#d4cbbe]/60">
-              <p className="text-center font-ibm-mono text-[#5a4a38]/30 text-[10px] leading-relaxed tracking-wider">
+            <div className="mt-6 pt-4 border-t border-[#E1BEE7]/30">
+              <p className="text-center font-ibm-mono text-[#5a6a78]/30 text-[10px] leading-relaxed tracking-wider">
                 UNAUTHORIZED ACCESS IS A CLASS-3 VIOLATION
                 <br />
                 ALL SESSIONS ARE MONITORED BY P.E.A.R.L.
