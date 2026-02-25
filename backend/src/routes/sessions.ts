@@ -45,10 +45,11 @@ router.get('/week/:weekId', async (req: Request, res: Response) => {
 });
 
 // GET /api/sessions/week/:weekId/progress — pair's phase completion status
-router.get('/week/:weekId/progress', requirePair, async (req: Request, res: Response) => {
+// Accessible by both pairs and teachers (teachers see no progress)
+router.get('/week/:weekId/progress', async (req: Request, res: Response) => {
   try {
     const weekId = req.params.weekId as string;
-    const pairId = getPairId(req)!;
+    const pairId = getPairId(req);
 
     const config = await prisma.sessionConfig.findUnique({
       where: { weekId },
@@ -63,19 +64,21 @@ router.get('/week/:weekId/progress', requirePair, async (req: Request, res: Resp
     const phases = config.phases as Array<{ id: string; missionId?: string }>;
     const missionIds = phases.map((p) => p.missionId).filter(Boolean) as string[];
 
-    // Query existing scores for these missions
-    const scores = await prisma.missionScore.findMany({
-      where: {
-        pairId,
-        missionId: { in: missionIds },
-      },
-      select: {
-        missionId: true,
-        score: true,
-        details: true,
-        createdAt: true,
-      },
-    });
+    // Query existing scores for these missions (empty for teachers)
+    const scores = pairId
+      ? await prisma.missionScore.findMany({
+          where: {
+            pairId,
+            missionId: { in: missionIds },
+          },
+          select: {
+            missionId: true,
+            score: true,
+            details: true,
+            createdAt: true,
+          },
+        })
+      : [];
 
     const scoreMap = new Map(scores.map((s) => [s.missionId, s]));
 

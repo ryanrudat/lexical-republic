@@ -7,35 +7,36 @@ const router = Router();
 router.use(authenticate);
 
 // GET /api/dictionary — Words filtered by pair's current week, with progress
+// Accessible by both pairs and teachers (teachers see all words, no progress)
 router.get('/', async (req: Request, res: Response) => {
   try {
     const pairId = getPairId(req);
-    if (!pairId) {
-      res.status(403).json({ error: 'Pair authentication required' });
-      return;
-    }
 
-    // Determine pair's current week (highest unlocked week in their class)
-    const enrollment = await prisma.classEnrollment.findFirst({
-      where: { pairId },
-      select: { classId: true },
-    });
-
-    let currentWeek = 1;
-    if (enrollment) {
-      const unlocks = await prisma.classWeekUnlock.findMany({
-        where: { classId: enrollment.classId },
-        include: { week: { select: { weekNumber: true } } },
+    // Determine current week: pair uses their class unlocks, teacher sees all
+    let currentWeek = 18; // Teachers see everything
+    if (pairId) {
+      const enrollment = await prisma.classEnrollment.findFirst({
+        where: { pairId },
+        select: { classId: true },
       });
-      const maxWeek = Math.max(...unlocks.map((u) => u.week.weekNumber), 1);
-      currentWeek = maxWeek;
+      currentWeek = 1;
+      if (enrollment) {
+        const unlocks = await prisma.classWeekUnlock.findMany({
+          where: { classId: enrollment.classId },
+          include: { week: { select: { weekNumber: true } } },
+        });
+        const maxWeek = Math.max(...unlocks.map((u) => u.week.weekNumber), 1);
+        currentWeek = maxWeek;
+      }
     }
 
     // Fetch all words introduced up to current week
     const words = await prisma.dictionaryWord.findMany({
       where: { weekIntroduced: { lte: currentWeek } },
       include: {
-        progress: { where: { pairId }, take: 1 },
+        ...(pairId
+          ? { progress: { where: { pairId }, take: 1 } }
+          : {}),
         statusEvents: {
           where: { weekNumber: { lte: currentWeek } },
           orderBy: { weekNumber: 'asc' },
@@ -51,7 +52,7 @@ router.get('/', async (req: Request, res: Response) => {
         currentStatus = evt.toStatus;
       }
 
-      const prog = w.progress[0];
+      const prog = 'progress' in w && Array.isArray(w.progress) ? w.progress[0] : null;
       return {
         id: w.id,
         word: w.word,
@@ -81,18 +82,17 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // GET /api/dictionary/stats — Aggregate counts by status, mastery totals
+// Accessible by both pairs and teachers (teachers see empty stats)
 router.get('/stats', async (req: Request, res: Response) => {
   try {
     const pairId = getPairId(req);
-    if (!pairId) {
-      res.status(403).json({ error: 'Pair authentication required' });
-      return;
-    }
 
-    const progress = await prisma.pairDictionaryProgress.findMany({
-      where: { pairId },
-      include: { word: { select: { isWorldBuilding: true } } },
-    });
+    const progress = pairId
+      ? await prisma.pairDictionaryProgress.findMany({
+          where: { pairId },
+          include: { word: { select: { isWorldBuilding: true } } },
+        })
+      : [];
 
     const stats = {
       total: progress.length,
