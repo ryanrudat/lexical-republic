@@ -69,7 +69,7 @@ export default function Login() {
         <img
           src="/images/party-logo.png"
           alt=""
-          className="w-[110vh] h-[110vh] max-w-[1000px] max-h-[1000px] opacity-[0.06]"
+          className="w-full h-full object-contain opacity-[0.06] p-4"
         />
       </div>
 
