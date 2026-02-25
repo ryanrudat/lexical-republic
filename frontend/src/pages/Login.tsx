@@ -15,8 +15,6 @@ export default function Login() {
   const [regClassCode, setRegClassCode] = useState('');
   const { login, loginTeacher, register, loading, error } = useStudentStore();
 
-  const [focusedField, setFocusedField] = useState<string | null>(null);
-
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     try {
@@ -53,14 +51,8 @@ export default function Login() {
 
   const pinMismatch = mode === 'register' && regPinConfirm.length > 0 && regPin !== regPinConfirm;
 
-  // Input style: translucent by default, solid white on focus
-  const inputBase = 'w-full px-4 py-3 rounded-xl font-ibm-mono transition-all duration-200 focus:outline-none focus:ring-2';
-  const inputStyle = (field: string) =>
-    `${inputBase} ${
-      focusedField === field
-        ? 'bg-white border border-[#2D8A6E]/40 focus:ring-[#2D8A6E]/15 text-[#3a4a58] shadow-sm'
-        : 'bg-white/30 border border-white/40 text-[#3a4a58]/80 focus:ring-[#2D8A6E]/15'
-    }`;
+  // Translucent by default, solid on focus — pure CSS, no state needed
+  const inputCls = 'w-full px-4 py-3 rounded-xl font-ibm-mono bg-white/30 border border-white/40 text-[#3a4a58]/80 placeholder:text-[#3a4a58]/30 focus:outline-none focus:bg-white focus:border-[#2D8A6E]/40 focus:ring-2 focus:ring-[#2D8A6E]/15 focus:text-[#3a4a58] focus:shadow-sm';
 
   return (
     <div className="fixed inset-0 bg-gradient-to-b from-[#E8F5E9] via-[#F0F7FA] to-[#FFF9C4]/30 z-20 overflow-hidden">
@@ -167,10 +159,8 @@ export default function Login() {
                       type="text"
                       value={designation}
                       onChange={(e) => setDesignation(e.target.value.toUpperCase())}
-                      onFocus={() => setFocusedField('designation')}
-                      onBlur={() => setFocusedField(null)}
                       placeholder="CA-1"
-                      className={`${inputStyle('designation')} text-lg tracking-wider`}
+                      className={`${inputCls} text-lg tracking-wider`}
                       autoComplete="off"
                       autoFocus
                     />
@@ -184,11 +174,9 @@ export default function Login() {
                       type="password"
                       value={pin}
                       onChange={(e) => setPin(e.target.value)}
-                      onFocus={() => setFocusedField('pin')}
-                      onBlur={() => setFocusedField(null)}
                       placeholder="****"
                       maxLength={8}
-                      className={`${inputStyle('pin')} text-lg tracking-[0.5em]`}
+                      className={`${inputCls} text-lg tracking-[0.5em]`}
                     />
                   </div>
                 </>
@@ -202,11 +190,9 @@ export default function Login() {
                       type="text"
                       value={regClassCode}
                       onChange={(e) => setRegClassCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
-                      onFocus={() => setFocusedField('classCode')}
-                      onBlur={() => setFocusedField(null)}
                       placeholder="ALPHA1"
                       maxLength={6}
-                      className={`${inputStyle('classCode')} text-lg tracking-[0.3em]`}
+                      className={`${inputCls} text-lg tracking-[0.3em]`}
                       autoComplete="off"
                       autoFocus
                     />
@@ -223,10 +209,8 @@ export default function Login() {
                       type="text"
                       value={regDesignation}
                       onChange={(e) => setRegDesignation(e.target.value.toUpperCase())}
-                      onFocus={() => setFocusedField('regDesignation')}
-                      onBlur={() => setFocusedField(null)}
                       placeholder="CA-33"
-                      className={`${inputStyle('regDesignation')} text-lg tracking-wider`}
+                      className={`${inputCls} text-lg tracking-wider`}
                       autoComplete="off"
                     />
                   </div>
@@ -240,10 +224,8 @@ export default function Login() {
                         type="text"
                         value={regStudentAName}
                         onChange={(e) => setRegStudentAName(e.target.value)}
-                        onFocus={() => setFocusedField('studentA')}
-                        onBlur={() => setFocusedField(null)}
                         placeholder="Your name"
-                        className={`${inputStyle('studentA')} text-base tracking-wider`}
+                        className={`${inputCls} text-base tracking-wider`}
                       />
                     </div>
                     <div>
@@ -254,10 +236,8 @@ export default function Login() {
                         type="text"
                         value={regStudentBName}
                         onChange={(e) => setRegStudentBName(e.target.value)}
-                        onFocus={() => setFocusedField('studentB')}
-                        onBlur={() => setFocusedField(null)}
                         placeholder="Partner name"
-                        className={`${inputStyle('studentB')} text-base tracking-wider`}
+                        className={`${inputCls} text-base tracking-wider`}
                       />
                     </div>
                   </div>
@@ -270,11 +250,9 @@ export default function Login() {
                       type="password"
                       value={regPin}
                       onChange={(e) => setRegPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                      onFocus={() => setFocusedField('regPin')}
-                      onBlur={() => setFocusedField(null)}
                       placeholder="****"
                       maxLength={8}
-                      className={`${inputStyle('regPin')} text-lg tracking-[0.5em]`}
+                      className={`${inputCls} text-lg tracking-[0.5em]`}
                     />
                   </div>
 
@@ -286,18 +264,10 @@ export default function Login() {
                       type="password"
                       value={regPinConfirm}
                       onChange={(e) => setRegPinConfirm(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                      onFocus={() => setFocusedField('regPinConfirm')}
-                      onBlur={() => setFocusedField(null)}
                       placeholder="****"
                       maxLength={8}
-                      className={`${inputBase} text-lg tracking-[0.5em] transition-all duration-200 ${
-                        focusedField === 'regPinConfirm'
-                          ? pinMismatch
-                            ? 'bg-white border border-neon-pink focus:ring-neon-pink/20 text-[#3a4a58] shadow-sm'
-                            : 'bg-white border border-[#2D8A6E]/40 focus:ring-[#2D8A6E]/15 text-[#3a4a58] shadow-sm'
-                          : pinMismatch
-                            ? 'bg-white/30 border border-neon-pink/40 text-[#3a4a58]/80 focus:ring-neon-pink/20'
-                            : 'bg-white/30 border border-white/40 text-[#3a4a58]/80 focus:ring-[#2D8A6E]/15'
+                      className={`${inputCls} text-lg tracking-[0.5em] ${
+                        pinMismatch ? '!border-neon-pink/40 focus:!border-neon-pink focus:!ring-neon-pink/20' : ''
                       }`}
                     />
                     {pinMismatch && (
@@ -315,10 +285,8 @@ export default function Login() {
                       type="text"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      onFocus={() => setFocusedField('username')}
-                      onBlur={() => setFocusedField(null)}
                       placeholder="teacher"
-                      className={`${inputStyle('username')} text-lg tracking-wider`}
+                      className={`${inputCls} text-lg tracking-wider`}
                       autoComplete="username"
                       autoFocus
                     />
@@ -332,10 +300,8 @@ export default function Login() {
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      onFocus={() => setFocusedField('password')}
-                      onBlur={() => setFocusedField(null)}
                       placeholder="••••••••"
-                      className={`${inputStyle('password')} text-lg`}
+                      className={`${inputCls} text-lg`}
                       autoComplete="current-password"
                     />
                   </div>
