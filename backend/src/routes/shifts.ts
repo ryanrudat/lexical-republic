@@ -1,19 +1,47 @@
 import { Router, Request, Response } from 'express';
-import { authenticate } from '../middleware/auth';
+import { authenticate, getPairId } from '../middleware/auth';
+import { isPairPayload } from '../utils/jwt';
 import prisma from '../utils/prisma';
 
 const router = Router();
 router.use(authenticate);
 
+// Helper: get the entity ID and enrollment query for the current auth context
+function getAuthContext(req: Request) {
+  const pairId = getPairId(req);
+  if (pairId) {
+    return {
+      entityId: pairId,
+      enrollmentWhere: { pairId } as const,
+      scoreWhere: (missionId: string) => ({ pairId_missionId: { pairId, missionId } }),
+      scoreFilter: { pairId } as Record<string, string>,
+      scoreCreate: (missionId: string, score: number, details: any) => ({
+        pairId, missionId, score, details,
+      }),
+    };
+  }
+  // Legacy user token
+  const userId = req.user!.userId;
+  return {
+    entityId: userId,
+    enrollmentWhere: { userId } as const,
+    scoreWhere: (missionId: string) => ({ userId_missionId: { userId, missionId } }),
+    scoreFilter: { userId } as Record<string, string>,
+    scoreCreate: (missionId: string, score: number, details: any) => ({
+      userId, missionId, score, details,
+    }),
+  };
+}
+
 // GET /api/shifts/season — All weeks with arc info + student's completion per week
 router.get('/season', async (req: Request, res: Response) => {
   try {
-    const userId = req.user!.userId;
+    const ctx = getAuthContext(req);
 
     // Determine student's class and unlocked weeks
     let unlockedWeekIds: Set<string> | null = null;
     const enrollment = await prisma.classEnrollment.findFirst({
-      where: { userId },
+      where: ctx.enrollmentWhere,
     });
     if (enrollment) {
       const unlocks = await prisma.classWeekUnlock.findMany({
@@ -31,7 +59,7 @@ router.get('/season', async (req: Request, res: Response) => {
           include: {
             missions: {
               include: {
-                missionScores: { where: { userId } },
+                missionScores: { where: ctx.scoreFilter },
               },
             },
           },
@@ -63,7 +91,6 @@ router.get('/season', async (req: Request, res: Response) => {
                 (s) => (s.details as any)?.status === 'complete'
               )
           ),
-          // null = no class (backward compat, all unlocked); true/false = class-gated
           isUnlocked: unlockedWeekIds === null ? true : unlockedWeekIds.has(week.id),
         };
       })
@@ -83,12 +110,12 @@ router.get('/season', async (req: Request, res: Response) => {
 // GET /api/shifts/weeks/:weekId — Week detail with missions
 router.get('/weeks/:weekId', async (req: Request, res: Response) => {
   try {
-    const userId = req.user!.userId;
+    const ctx = getAuthContext(req);
     const weekId = req.params.weekId as string;
 
     // Check if student's class has this week unlocked
     const enrollment = await prisma.classEnrollment.findFirst({
-      where: { userId },
+      where: ctx.enrollmentWhere,
     });
     if (enrollment) {
       const unlock = await prisma.classWeekUnlock.findFirst({
@@ -107,7 +134,7 @@ router.get('/weeks/:weekId', async (req: Request, res: Response) => {
         missions: {
           orderBy: { orderIndex: 'asc' },
           include: {
-            missionScores: { where: { userId } },
+            missionScores: { where: ctx.scoreFilter },
           },
         },
       },
@@ -148,13 +175,13 @@ router.get(
   '/weeks/:weekId/missions/:missionId',
   async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.userId;
+      const ctx = getAuthContext(req);
       const weekId = req.params.weekId as string;
       const missionId = req.params.missionId as string;
       const mission = await prisma.mission.findUnique({
         where: { id: missionId },
         include: {
-          missionScores: { where: { userId } },
+          missionScores: { where: ctx.scoreFilter },
         },
       });
 
@@ -184,7 +211,7 @@ router.post(
   '/weeks/:weekId/missions/:missionId/score',
   async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.userId;
+      const ctx = getAuthContext(req);
       const weekId = req.params.weekId as string;
       const missionId = req.params.missionId as string;
       const { score, details } = req.body;
@@ -198,11 +225,9 @@ router.post(
       }
 
       const result = await prisma.missionScore.upsert({
-        where: {
-          userId_missionId: { userId, missionId: mission.id },
-        },
+        where: ctx.scoreWhere(mission.id),
         update: { score, details },
-        create: { userId, missionId: mission.id, score, details },
+        create: ctx.scoreCreate(mission.id, score, details),
       });
 
       res.json(result);
@@ -216,9 +241,9 @@ router.post(
 // GET /api/shifts/progress — Student's full progress
 router.get('/progress', async (req: Request, res: Response) => {
   try {
-    const userId = req.user!.userId;
+    const ctx = getAuthContext(req);
     const scores = await prisma.missionScore.findMany({
-      where: { userId },
+      where: ctx.scoreFilter,
       include: {
         mission: { select: { weekId: true, missionType: true } },
       },
@@ -249,12 +274,11 @@ router.post(
   '/progress/:weekId/:stepId',
   async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.userId;
+      const ctx = getAuthContext(req);
       const weekId = req.params.weekId as string;
       const stepId = req.params.stepId as string;
       const { status, data } = req.body;
 
-      // Find the mission by weekId + missionType (stepId maps to missionType)
       const mission = await prisma.mission.findFirst({
         where: { weekId, missionType: stepId },
       });
@@ -265,19 +289,12 @@ router.post(
       }
 
       const result = await prisma.missionScore.upsert({
-        where: {
-          userId_missionId: { userId, missionId: mission.id },
-        },
+        where: ctx.scoreWhere(mission.id),
         update: {
           score: status === 'complete' ? 1 : 0,
           details: { status, ...data },
         },
-        create: {
-          userId,
-          missionId: mission.id,
-          score: status === 'complete' ? 1 : 0,
-          details: { status, ...data },
-        },
+        create: ctx.scoreCreate(mission.id, status === 'complete' ? 1 : 0, { status, ...data }),
       });
 
       res.json(result);

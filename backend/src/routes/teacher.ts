@@ -21,12 +21,58 @@ const VIDEO_SLOT_FIELDS: Record<VideoSlot, { urlKey: string; filenameKey: string
   clipB: { urlKey: 'clipBUploadedVideoUrl', filenameKey: 'clipBUploadedVideoFilename' },
 };
 
-// GET /api/teacher/students — All students with progress summary
+// GET /api/teacher/students — All students (pairs + legacy users) with progress summary
 router.get('/students', async (req: Request, res: Response) => {
   try {
     const classId = typeof req.query.classId === 'string' ? req.query.classId : undefined;
 
-    const students = await prisma.user.findMany({
+    // Fetch pairs (new system)
+    const pairs = await prisma.pair.findMany({
+      where: classId ? { enrollments: { some: { classId } } } : {},
+      include: {
+        missionScores: {
+          include: {
+            mission: { select: { weekId: true, missionType: true } },
+          },
+        },
+        enrollments: {
+          include: { class: { select: { id: true, name: true } } },
+          take: 1,
+        },
+      },
+      orderBy: { designation: 'asc' },
+    });
+
+    const pairResults = pairs.map((p) => {
+      const clockedOutWeeks = new Set(
+        p.missionScores
+          .filter(
+            (ms) =>
+              ms.mission.missionType === 'clock_out' &&
+              (ms.details as any)?.status === 'complete'
+          )
+          .map((ms) => ms.mission.weekId)
+      );
+      const enrollment = p.enrollments[0];
+      return {
+        id: p.id,
+        designation: p.designation,
+        displayName: `${p.studentAName}${p.studentBName ? ` & ${p.studentBName}` : ''}`,
+        studentAName: p.studentAName,
+        studentBName: p.studentBName,
+        lane: p.lane,
+        xp: p.xp,
+        concernScore: p.concernScore,
+        weeksCompleted: clockedOutWeeks.size,
+        lastLoginAt: p.lastLoginAt,
+        classId: enrollment?.class.id ?? null,
+        className: enrollment?.class.name ?? null,
+        isPair: true,
+      };
+    });
+
+    // Also fetch legacy User-based students
+    const legacyStudents = await prisma.user.findMany({
       where: {
         role: 'student',
         ...(classId ? { enrollments: { some: { classId } } } : {}),
@@ -45,8 +91,7 @@ router.get('/students', async (req: Request, res: Response) => {
       orderBy: { designation: 'asc' },
     });
 
-    const result = students.map((s) => {
-      // Count weeks where clock_out is complete
+    const legacyResults = legacyStudents.map((s) => {
       const clockedOutWeeks = new Set(
         s.missionScores
           .filter(
@@ -63,15 +108,16 @@ router.get('/students', async (req: Request, res: Response) => {
         displayName: s.displayName,
         lane: s.lane,
         xp: s.xp,
-        streak: s.streak,
+        concernScore: 0,
         weeksCompleted: clockedOutWeeks.size,
         lastLoginAt: s.lastLoginAt,
         classId: enrollment?.class.id ?? null,
         className: enrollment?.class.name ?? null,
+        isPair: false,
       };
     });
 
-    res.json({ students: result });
+    res.json({ students: [...pairResults, ...legacyResults] });
   } catch (err) {
     console.error('Teacher students fetch error:', err);
     res.status(500).json({ error: 'Failed to fetch students' });
@@ -330,10 +376,55 @@ router.patch('/weeks/:weekId/briefing', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/teacher/students/:id — Single student detail
+// GET /api/teacher/students/:id — Single student detail (pair or legacy user)
 router.get('/students/:id', async (req: Request, res: Response) => {
   try {
     const studentId = req.params.id as string;
+
+    // Try Pair first
+    const pair = await prisma.pair.findUnique({
+      where: { id: studentId },
+      include: {
+        missionScores: {
+          include: {
+            mission: {
+              select: {
+                weekId: true,
+                missionType: true,
+                title: true,
+                week: { select: { weekNumber: true } },
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+        recordings: {
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+        },
+      },
+    });
+
+    if (pair) {
+      res.json({
+        id: pair.id,
+        designation: pair.designation,
+        displayName: `${pair.studentAName}${pair.studentBName ? ` & ${pair.studentBName}` : ''}`,
+        studentAName: pair.studentAName,
+        studentBName: pair.studentBName,
+        lane: pair.lane,
+        xp: pair.xp,
+        concernScore: pair.concernScore,
+        lastLoginAt: pair.lastLoginAt,
+        scores: pair.missionScores,
+        recordings: pair.recordings,
+        vocabulary: [],
+        isPair: true,
+      });
+      return;
+    }
+
+    // Fallback: legacy User
     const student = await prisma.user.findUnique({
       where: { id: studentId },
       include: {
@@ -384,6 +475,7 @@ router.get('/students/:id', async (req: Request, res: Response) => {
         mastery: sv.mastery,
         encounters: sv.encounters,
       })),
+      isPair: false,
     });
   } catch (err) {
     console.error('Teacher student detail error:', err);
@@ -398,12 +490,48 @@ router.get('/online-students', (req: Request, res: Response) => {
   res.json({ students });
 });
 
-// GET /api/teacher/gradebook — All students + all mission scores for the gradebook
+// GET /api/teacher/gradebook — All students (pairs + legacy) + all mission scores
 router.get('/gradebook', async (req: Request, res: Response) => {
   try {
     const classId = typeof req.query.classId === 'string' ? req.query.classId : undefined;
 
-    const students = await prisma.user.findMany({
+    // Pairs
+    const pairs = await prisma.pair.findMany({
+      where: classId ? { enrollments: { some: { classId } } } : {},
+      select: {
+        id: true,
+        designation: true,
+        studentAName: true,
+        studentBName: true,
+        missionScores: {
+          select: {
+            id: true,
+            score: true,
+            details: true,
+            mission: {
+              select: {
+                id: true,
+                missionType: true,
+                weekId: true,
+                week: { select: { weekNumber: true } },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { designation: 'asc' },
+    });
+
+    const pairStudents = pairs.map((p) => ({
+      id: p.id,
+      designation: p.designation,
+      displayName: `${p.studentAName}${p.studentBName ? ` & ${p.studentBName}` : ''}`,
+      missionScores: p.missionScores,
+      isPair: true,
+    }));
+
+    // Legacy users
+    const legacyStudents = await prisma.user.findMany({
       where: {
         role: 'student',
         ...(classId ? { enrollments: { some: { classId } } } : {}),
@@ -431,6 +559,11 @@ router.get('/gradebook', async (req: Request, res: Response) => {
       orderBy: { designation: 'asc' },
     });
 
+    const legacyResults = legacyStudents.map((s) => ({
+      ...s,
+      isPair: false,
+    }));
+
     const weeks = await prisma.week.findMany({
       orderBy: { weekNumber: 'asc' },
       select: {
@@ -440,7 +573,7 @@ router.get('/gradebook', async (req: Request, res: Response) => {
       },
     });
 
-    res.json({ students, weeks });
+    res.json({ students: [...pairStudents, ...legacyResults], weeks });
   } catch (err) {
     console.error('Teacher gradebook fetch error:', err);
     res.status(500).json({ error: 'Failed to fetch gradebook data' });

@@ -15,14 +15,20 @@ const MASTERY_LABELS: Record<MasteryState, { label: string; color: string }> = {
   struggling: { label: 'NEEDS REVIEW', color: 'text-neon-pink' },
 };
 
-export default function GrammarStep() {
+interface GrammarStepProps {
+  phaseConfig?: Record<string, unknown>;
+  onPhaseComplete?: (data?: Record<string, unknown>) => void;
+}
+
+export default function GrammarStep({ phaseConfig, onPhaseComplete }: GrammarStepProps = {}) {
   const { missions, updateStepStatus, submitMissionScore, updateGrammarMastery, nextStep, grammarMastery } = useShiftStore();
   const triggerBark = usePearlStore(s => s.triggerBark);
   const triggerAIBark = usePearlStore(s => s.triggerAIBark);
   const baseContext = useBarkContext();
 
   const mission = missions.find(m => m.missionType === 'grammar');
-  const config = (mission?.config || {}) as { requiredCount?: number; documents?: GrammarDocument[]; storyBeat?: StoryBeatConfig };
+  // Use phaseConfig if provided (from PhaseRunner), otherwise use mission config
+  const config = (phaseConfig || mission?.config || {}) as { requiredCount?: number; documents?: GrammarDocument[]; storyBeat?: StoryBeatConfig };
   const documents = config.documents || [];
   const requiredCount = config.requiredCount || documents.length;
   const storyBeat = config.storyBeat;
@@ -74,13 +80,20 @@ export default function GrammarStep() {
 
     if (newCompleted >= requiredCount || currentDoc >= documents.length - 1) {
       setStepDone(true);
-      if (mission) {
-        const score = newCompleted / requiredCount;
-        updateStepStatus('grammar', 'complete', { completedCount: newCompleted, grammarMastery });
-        await submitMissionScore(mission.id, score, { status: 'complete', completedCount: newCompleted, grammarMastery });
+      const score = newCompleted / requiredCount;
+      if (onPhaseComplete) {
+        // Phase-based runner: signal completion to PhaseRunner
+        triggerBark('success', 'Grammar drills complete. Your compliance metrics have been updated.');
+        setTimeout(() => onPhaseComplete({ score, completedCount: newCompleted, grammarMastery }), 2000);
+      } else {
+        // Legacy 7-step runner: use shiftStore
+        if (mission) {
+          updateStepStatus('grammar', 'complete', { completedCount: newCompleted, grammarMastery });
+          await submitMissionScore(mission.id, score, { status: 'complete', completedCount: newCompleted, grammarMastery });
+        }
+        triggerBark('success', 'Grammar drills complete. Your compliance metrics have been updated.');
+        setTimeout(() => nextStep(), 2000);
       }
-      triggerBark('success', 'Grammar drills complete. Your compliance metrics have been updated.');
-      setTimeout(() => nextStep(), 2000);
     } else {
       setCurrentDoc(currentDoc + 1);
     }

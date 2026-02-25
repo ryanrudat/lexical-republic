@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../utils/prisma';
-import { authenticate } from '../middleware/auth';
+import { authenticate, getPairId } from '../middleware/auth';
 import { uploadAudio, uploadAudioMemory } from '../middleware/upload';
 import OpenAI, { toFile } from 'openai';
 
@@ -37,9 +37,12 @@ router.post('/', authenticate, uploadAudio.single('audio'), async (req: Request,
       return;
     }
 
+    const pairId = getPairId(req);
+
     const recording = await prisma.recording.create({
       data: {
-        userId: req.user!.userId,
+        userId: pairId ? undefined : req.user!.userId,
+        pairId: pairId ?? undefined,
         missionId: req.body.missionId || null,
         filename: req.file.filename,
         duration: req.body.duration ? parseFloat(req.body.duration) : null,
@@ -59,9 +62,16 @@ router.post('/:id/transcribe', authenticate, uploadAudioMemory.single('audio'), 
   const recordingId = req.params.id as string;
 
   try {
-    // Verify ownership
+    // Verify ownership (check both userId and pairId)
+    const pairId = getPairId(req);
     const recording = await prisma.recording.findFirst({
-      where: { id: recordingId, userId: req.user!.userId },
+      where: {
+        id: recordingId,
+        OR: [
+          { userId: req.user!.userId },
+          ...(pairId ? [{ pairId }] : []),
+        ],
+      },
     });
 
     if (!recording) {
@@ -114,8 +124,9 @@ router.post('/:id/transcribe', authenticate, uploadAudioMemory.single('audio'), 
 // GET /api/recordings — list user's recordings
 router.get('/', authenticate, async (req: Request, res: Response) => {
   try {
+    const pairId = getPairId(req);
     const recordings = await prisma.recording.findMany({
-      where: { userId: req.user!.userId },
+      where: pairId ? { pairId } : { userId: req.user!.userId },
       orderBy: { createdAt: 'desc' },
       take: 20,
     });

@@ -3,8 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useShiftStore } from '../../../stores/shiftStore';
 import { useSeasonStore } from '../../../stores/seasonStore';
 import { usePearlStore } from '../../../stores/pearlStore';
+import { useSessionConfigStore } from '../../../stores/sessionConfigStore';
 import StepNav from '../../shift/StepNav';
 import LocationTabs from '../../shift/LocationTabs';
+import PhaseRunner from '../../shift/PhaseRunner';
 import type { StepId } from '../../../types/shifts';
 import { STEP_ORDER } from '../../../types/shifts';
 import { GUIDED_STUDENT_MODE } from '../../../config/runtimeFlags';
@@ -53,6 +55,10 @@ export default function ClarityQueueApp() {
   const loadSeason = useSeasonStore((s) => s.loadSeason);
   const setEyeStateFromWeek = usePearlStore((s) => s.setEyeStateFromWeek);
   const user = useStudentStore((s) => s.user);
+  const sessionConfig = useSessionConfigStore((s) => s.session);
+  const loadSession = useSessionConfigStore((s) => s.loadSession);
+  const sessionLoading = useSessionConfigStore((s) => s.loading);
+  const sessionLoadedForWeekRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (weeks.length === 0) loadSeason();
@@ -80,6 +86,11 @@ export default function ClarityQueueApp() {
     const weekSummary = weeks.find((w) => w.weekNumber === weekNum);
     if (weekSummary && (!currentWeek || currentWeek.weekNumber !== weekNum)) {
       loadWeek(weekSummary.id);
+    }
+    // Try to load SessionConfig (if exists, use PhaseRunner; otherwise 7-step flow)
+    if (weekSummary && sessionLoadedForWeekRef.current !== weekSummary.id) {
+      sessionLoadedForWeekRef.current = weekSummary.id;
+      loadSession(weekSummary.id);
     }
     setEyeStateFromWeek(weekNum);
 
@@ -161,7 +172,7 @@ export default function ClarityQueueApp() {
 
   return (
     <div className="flex flex-col min-h-full">
-      {loading ? (
+      {loading || sessionLoading ? (
         <div className="flex-1 flex items-center justify-center py-20">
           <div className="font-ibm-mono text-neon-cyan text-sm animate-pulse tracking-[0.3em]">
             LOADING SHIFT DATA...
@@ -173,7 +184,25 @@ export default function ClarityQueueApp() {
             <div className="font-ibm-mono text-neon-pink text-sm tracking-wider">{error}</div>
           </div>
         </div>
+      ) : currentWeek && sessionConfig ? (
+        // ── Phase-based runner (SessionConfig exists) ──
+        <>
+          {/* Week header */}
+          <div className="text-center py-4 px-6 border-b border-white/10">
+            <div className="flex items-center justify-center gap-3 mb-1">
+              <span className="font-ibm-mono text-xs text-white/50 tracking-wider">
+                SHIFT {currentWeek.weekNumber}
+              </span>
+            </div>
+            <h1 className="font-special-elite text-xl text-white/90 tracking-wider ios-text-glow">
+              {currentWeek.title}
+            </h1>
+          </div>
+
+          <PhaseRunner />
+        </>
       ) : currentWeek ? (
+        // ── Legacy 7-step runner (no SessionConfig) ──
         <>
           {/* Week header */}
           <div className="text-center py-4 px-6 border-b border-white/10">

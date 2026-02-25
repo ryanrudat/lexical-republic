@@ -31,6 +31,14 @@ enum EnvironmentMode {
   director
 }
 
+enum WordStatus {
+  approved
+  monitored
+  grey
+  proscribed
+  recovered
+}
+
 // ─── Models ──────────────────────────────────────────────────────
 
 model User {
@@ -60,6 +68,98 @@ model User {
 
   @@map("users")
 }
+
+model Pair {
+  id            String    @id @default(uuid())
+  designation   String    @unique
+  pin           String
+  studentAName  String
+  studentBName  String    @default("")
+  lane          Int       @default(2)
+  xp            Int       @default(0)
+  concernScore  Float     @default(0)
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  missionScores      MissionScore[]
+  recordings         Recording[]
+  enrollments        ClassEnrollment[]
+  harmonyPosts       HarmonyPost[]
+  pearlConversations PearlConversation[]
+  narrativeChoices   NarrativeChoice[]
+  dictionaryProgress PairDictionaryProgress[]
+
+  @@map("pairs")
+}
+
+// ─── Dictionary System ────────────────────────────────────────────
+
+model DictionaryWord {
+  id               String     @id @default(uuid())
+  word             String
+  partOfSpeech     String     @default("noun")
+  phonetic         String     @default("")
+  partyDefinition  String
+  trueDefinition   String     @default("")
+  exampleSentence  String     @default("")
+  toeicCategory    String     @default("")
+  wordFamilyGroup  String?
+  weekIntroduced   Int
+  initialStatus    WordStatus @default(approved)
+  isWorldBuilding  Boolean    @default(false)
+  createdAt        DateTime   @default(now())
+
+  progress     PairDictionaryProgress[]
+  statusEvents WordStatusEvent[]
+
+  @@unique([word, weekIntroduced])
+  @@map("dictionary_words")
+}
+
+model PairDictionaryProgress {
+  id           String     @id @default(uuid())
+  pairId       String
+  pair         Pair       @relation(fields: [pairId], references: [id])
+  wordId       String
+  word         DictionaryWord @relation(fields: [wordId], references: [id])
+  status       WordStatus @default(approved)
+  mastery      Float      @default(0)
+  encounters   Int        @default(0)
+  isRecovered  Boolean    @default(false)
+  studentNotes String     @default("")
+  lastSeenAt   DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([pairId, wordId])
+  @@map("pair_dictionary_progress")
+}
+
+model WordStatusEvent {
+  id         String     @id @default(uuid())
+  wordId     String
+  word       DictionaryWord @relation(fields: [wordId], references: [id])
+  fromStatus WordStatus
+  toStatus   WordStatus
+  weekNumber Int
+  reason     String     @default("")
+  createdAt  DateTime   @default(now())
+
+  @@map("word_status_events")
+}
+
+model WordFamily {
+  id        String   @id @default(uuid())
+  groupId   String   @unique
+  rootWord  String
+  members   Json     @default("[]")
+  createdAt DateTime @default(now())
+
+  @@map("word_families")
+}
+
+// ─── Legacy Vocabulary (deprecated) ───────────────────────────────
 
 model Vocabulary {
   id        String     @id @default(uuid())
@@ -111,11 +211,25 @@ model Week {
   description String?
   createdAt   DateTime @default(now())
 
-  missions     Mission[]
-  vocabulary   Vocabulary[]
-  classUnlocks ClassWeekUnlock[]
+  missions      Mission[]
+  vocabulary    Vocabulary[]
+  classUnlocks  ClassWeekUnlock[]
+  sessionConfig SessionConfig?
 
   @@map("weeks")
+}
+
+model SessionConfig {
+  id           String   @id @default(uuid())
+  weekId       String   @unique
+  week         Week     @relation(fields: [weekId], references: [id])
+  phases       Json     @default("[]")
+  totalMinutes Int      @default(50)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("session_configs")
 }
 
 model Mission {
@@ -137,8 +251,10 @@ model Mission {
 
 model Recording {
   id         String   @id @default(uuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id])
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  pairId     String?
+  pair       Pair?    @relation(fields: [pairId], references: [id])
   missionId  String?
   mission    Mission? @relation(fields: [missionId], references: [id])
   filename   String
@@ -153,8 +269,10 @@ model Recording {
 
 model MissionScore {
   id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  pairId    String?
+  pair      Pair?    @relation(fields: [pairId], references: [id])
   missionId String
   mission   Mission  @relation(fields: [missionId], references: [id])
   score     Float
@@ -162,6 +280,7 @@ model MissionScore {
   createdAt DateTime @default(now())
 
   @@unique([userId, missionId])
+  @@unique([pairId, missionId])
   @@map("mission_scores")
 }
 
@@ -205,8 +324,10 @@ model PearlMessage {
 
 model PearlConversation {
   id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  pairId    String?
+  pair      Pair?    @relation(fields: [pairId], references: [id])
   messages  Json     @default("[]")
   createdAt DateTime @default(now())
 
@@ -215,8 +336,10 @@ model PearlConversation {
 
 model NarrativeChoice {
   id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  pairId    String?
+  pair      Pair?    @relation(fields: [pairId], references: [id])
   choiceKey String
   value     String
   context   Json?
@@ -238,8 +361,10 @@ model TeacherConfig {
 
 model HarmonyPost {
   id        String        @id @default(uuid())
-  userId    String
-  user      User          @relation(fields: [userId], references: [id])
+  userId    String?
+  user      User?         @relation(fields: [userId], references: [id])
+  pairId    String?
+  pair      Pair?         @relation(fields: [pairId], references: [id])
   content   String
   status    HarmonyStatus @default(pending_review)
   pearlNote String?
@@ -272,13 +397,16 @@ model Class {
 
 model ClassEnrollment {
   id         String   @id @default(uuid())
-  userId     String
+  userId     String?
   classId    String
-  user       User     @relation(fields: [userId], references: [id])
+  user       User?    @relation(fields: [userId], references: [id])
   class      Class    @relation(fields: [classId], references: [id])
+  pairId     String?
+  pair       Pair?    @relation(fields: [pairId], references: [id])
   enrolledAt DateTime @default(now())
 
   @@unique([userId, classId])
+  @@unique([pairId, classId])
   @@map("class_enrollments")
 }
 

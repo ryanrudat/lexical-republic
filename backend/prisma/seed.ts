@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -804,37 +804,37 @@ async function main() {
   });
   console.log(`  Class: ${defaultClass.name} (code: ${defaultClass.joinCode})`);
 
-  // ─── Students ───
+  // ─── Pairs (student pairs — new system) ───
   const pinHash = await bcrypt.hash('1234', 10);
   const lanes = [1, 2, 3, 2, 1];
-  const studentNames = [
-    'Citizen Alpha-1',
-    'Citizen Alpha-2',
-    'Citizen Alpha-3',
-    'Citizen Alpha-4',
-    'Citizen Alpha-5',
+  const pairNames: [string, string][] = [
+    ['Alice', 'Bob'],
+    ['Charlie', 'Diana'],
+    ['Ethan', 'Fiona'],
+    ['Grace', 'Henry'],
+    ['Iris', ''],
   ];
 
   for (let i = 0; i < 5; i++) {
     const designation = `CA-${i + 1}`;
-    const student = await prisma.user.upsert({
+    const pair = await prisma.pair.upsert({
       where: { designation },
       update: {},
       create: {
         designation,
         pin: pinHash,
-        displayName: studentNames[i],
-        role: 'student',
+        studentAName: pairNames[i][0],
+        studentBName: pairNames[i][1],
         lane: lanes[i],
       },
     });
-    console.log(`  Student: ${student.designation} (lane ${student.lane})`);
+    console.log(`  Pair: ${pair.designation} (lane ${pair.lane}) — ${pair.studentAName}${pair.studentBName ? ` & ${pair.studentBName}` : ''}`);
 
-    // Enroll in default class
+    // Enroll pair in default class
     await prisma.classEnrollment.upsert({
-      where: { userId_classId: { userId: student.id, classId: defaultClass.id } },
+      where: { pairId_classId: { pairId: pair.id, classId: defaultClass.id } },
       update: {},
-      create: { userId: student.id, classId: defaultClass.id },
+      create: { pairId: pair.id, classId: defaultClass.id },
     });
   }
 
@@ -1011,13 +1011,15 @@ async function main() {
   }
   console.log(`  Weeks: ${weekData.length} shifts seeded`);
 
-  // ─── Unlock Week 1 for default class ───
-  await prisma.classWeekUnlock.upsert({
-    where: { classId_weekId: { classId: defaultClass.id, weekId: 'week-1' } },
-    update: {},
-    create: { classId: defaultClass.id, weekId: 'week-1' },
-  });
-  console.log(`  Week 1 unlocked for class ${defaultClass.name}`);
+  // ─── Unlock Weeks 1-3 for default class ───
+  for (const wkId of ['week-1', 'week-2', 'week-3']) {
+    await prisma.classWeekUnlock.upsert({
+      where: { classId_weekId: { classId: defaultClass.id, weekId: wkId } },
+      update: {},
+      create: { classId: defaultClass.id, weekId: wkId },
+    });
+  }
+  console.log(`  Weeks 1-3 unlocked for class ${defaultClass.name}`);
 
   // ─── Week 1 Missions (7 steps) ───
   const week1Story = WEEK_STORY_PLANS[1];
@@ -1425,6 +1427,1309 @@ async function main() {
     }
   }
   console.log(`  Vocabulary: ${words.length} week-1 words + ${seededStoryWords} story words`);
+
+  // ─── Party Lexical Dictionary (Weeks 1-3) ───
+  console.log('  Seeding dictionary...');
+
+  type DictWordSeed = {
+    word: string;
+    partOfSpeech: string;
+    phonetic: string;
+    partyDefinition: string;
+    trueDefinition: string;
+    exampleSentence: string;
+    toeicCategory: string;
+    wordFamilyGroup: string | null;
+    isWorldBuilding: boolean;
+    weekIntroduced: number;
+  };
+
+  const dictionaryWords: DictWordSeed[] = [
+    // ── Week 1: First Shift Orientation ── Target Words
+    {
+      word: 'compliance',
+      partOfSpeech: 'noun',
+      phonetic: '/kəmˈplaɪ.əns/',
+      partyDefinition: 'The natural state of a healthy citizen who follows Ministry guidelines without hesitation.',
+      trueDefinition: 'The act of obeying rules, laws, or requests made by people in authority.',
+      exampleSentence: 'Strong compliance protects citizens from confusion.',
+      toeicCategory: 'procedures',
+      wordFamilyGroup: 'comply',
+      isWorldBuilding: false,
+      weekIntroduced: 1,
+    },
+    {
+      word: 'directive',
+      partOfSpeech: 'noun',
+      phonetic: '/dɪˈrek.tɪv/',
+      partyDefinition: 'An official order issued by the Ministry for the well-being of all citizens.',
+      trueDefinition: 'An official instruction or order given by someone in authority.',
+      exampleSentence: 'A directive is an official order. Follow each protocol step exactly.',
+      toeicCategory: 'communication',
+      wordFamilyGroup: 'direct',
+      isWorldBuilding: false,
+      weekIntroduced: 1,
+    },
+    {
+      word: 'protocol',
+      partOfSpeech: 'noun',
+      phonetic: '/ˈproʊ.tə.kɑːl/',
+      partyDefinition: 'The approved sequence of actions that ensures safety and order in all Ministry operations.',
+      trueDefinition: 'A set of rules or procedures for how something should be done, especially in official situations.',
+      exampleSentence: 'Follow each protocol step exactly to maintain clarity.',
+      toeicCategory: 'procedures',
+      wordFamilyGroup: null,
+      isWorldBuilding: false,
+      weekIntroduced: 1,
+    },
+    {
+      word: 'clearance',
+      partOfSpeech: 'noun',
+      phonetic: '/ˈklɪr.əns/',
+      partyDefinition: 'Permission granted by the Ministry to access files, areas, or information at your approved level.',
+      trueDefinition: 'Official permission or approval to do something, especially to access restricted areas or information.',
+      exampleSentence: 'You have temporary clearance for your first set of files.',
+      toeicCategory: 'personnel',
+      wordFamilyGroup: 'clear',
+      isWorldBuilding: false,
+      weekIntroduced: 1,
+    },
+    {
+      word: 'work',
+      partOfSpeech: 'noun',
+      phonetic: '/wɜːrk/',
+      partyDefinition: 'Productive labor performed in service of the Republic. All work is meaningful.',
+      trueDefinition: 'Activity involving mental or physical effort done to achieve a purpose or result.',
+      exampleSentence: 'Your work begins now, Clarity Associate.',
+      toeicCategory: 'business',
+      wordFamilyGroup: 'work',
+      isWorldBuilding: false,
+      weekIntroduced: 1,
+    },
+    {
+      word: 'rule',
+      partOfSpeech: 'noun',
+      phonetic: '/ruːl/',
+      partyDefinition: 'A guideline established by the Party to protect citizens from language confusion.',
+      trueDefinition: 'An official instruction that says how things must be done or what is allowed.',
+      exampleSentence: 'Every rule exists to keep language safe and clear.',
+      toeicCategory: 'procedures',
+      wordFamilyGroup: null,
+      isWorldBuilding: false,
+      weekIntroduced: 1,
+    },
+    {
+      word: 'team',
+      partOfSpeech: 'noun',
+      phonetic: '/tiːm/',
+      partyDefinition: 'A designated group of associates working together under Ministry coordination.',
+      trueDefinition: 'A group of people who work together to achieve a shared goal.',
+      exampleSentence: 'Your team in Clarity Bay processes language together.',
+      toeicCategory: 'personnel',
+      wordFamilyGroup: null,
+      isWorldBuilding: false,
+      weekIntroduced: 1,
+    },
+    {
+      word: 'assignment',
+      partOfSpeech: 'noun',
+      phonetic: '/əˈsaɪn.mənt/',
+      partyDefinition: 'A task allocated by the Ministry based on your competence level and clearance.',
+      trueDefinition: 'A task or piece of work given to someone as part of their job or studies.',
+      exampleSentence: 'Your first assignment begins in Clarity Bay.',
+      toeicCategory: 'business',
+      wordFamilyGroup: 'assign',
+      isWorldBuilding: false,
+      weekIntroduced: 1,
+    },
+    {
+      word: 'submit',
+      partOfSpeech: 'verb',
+      phonetic: '/səbˈmɪt/',
+      partyDefinition: 'To deliver completed work to the Ministry review system for approval.',
+      trueDefinition: 'To give a document, plan, or piece of work to someone in authority for them to consider.',
+      exampleSentence: 'Read twice before you submit. It helps.',
+      toeicCategory: 'office',
+      wordFamilyGroup: 'submit',
+      isWorldBuilding: false,
+      weekIntroduced: 1,
+    },
+    {
+      word: 'accurate',
+      partOfSpeech: 'adjective',
+      phonetic: '/ˈæk.jʊ.rət/',
+      partyDefinition: 'Precisely aligned with Ministry-approved information. Accuracy is the highest virtue.',
+      trueDefinition: 'Correct and exact, without any mistakes.',
+      exampleSentence: 'Accurate associates are valued associates.',
+      toeicCategory: 'business',
+      wordFamilyGroup: 'accurate',
+      isWorldBuilding: false,
+      weekIntroduced: 1,
+    },
+    // ── Week 1: World-Building Words
+    {
+      word: 'associate',
+      partOfSpeech: 'noun',
+      phonetic: '/əˈsoʊ.si.ət/',
+      partyDefinition: 'A Ministry employee at entry level, assigned to a Bay for language processing duties.',
+      trueDefinition: 'A person connected with an organization, or a colleague at work.',
+      exampleSentence: 'Welcome, Clarity Associate-7. Your shift begins now.',
+      toeicCategory: 'personnel',
+      wordFamilyGroup: null,
+      isWorldBuilding: true,
+      weekIntroduced: 1,
+    },
+    {
+      word: 'designation',
+      partOfSpeech: 'noun',
+      phonetic: '/ˌdez.ɪɡˈneɪ.ʃən/',
+      partyDefinition: 'Your official Ministry identity code. Personal names are not used in professional settings.',
+      trueDefinition: 'An official name, title, or label given to someone or something.',
+      exampleSentence: 'Please use your designation, not your personal name.',
+      toeicCategory: 'personnel',
+      wordFamilyGroup: 'designate',
+      isWorldBuilding: true,
+      weekIntroduced: 1,
+    },
+    {
+      word: 'ministry',
+      partOfSpeech: 'noun',
+      phonetic: '/ˈmɪn.ɪ.stri/',
+      partyDefinition: 'The governing body responsible for maintaining healthy and safe information across the Republic.',
+      trueDefinition: 'A government department responsible for a particular area of activity.',
+      exampleSentence: 'The Ministry of Healthy and Safe Information protects all citizens.',
+      toeicCategory: 'business',
+      wordFamilyGroup: null,
+      isWorldBuilding: true,
+      weekIntroduced: 1,
+    },
+    {
+      word: 'citizen',
+      partOfSpeech: 'noun',
+      phonetic: '/ˈsɪt.ɪ.zən/',
+      partyDefinition: 'A registered member of the Lexicon Republic entitled to safety through language clarity.',
+      trueDefinition: 'A person who legally belongs to a country and has rights and duties there.',
+      exampleSentence: 'Clear words create safe minds. Every citizen deserves clarity.',
+      toeicCategory: 'personnel',
+      wordFamilyGroup: null,
+      isWorldBuilding: true,
+      weekIntroduced: 1,
+    },
+    {
+      word: 'shift',
+      partOfSpeech: 'noun',
+      phonetic: '/ʃɪft/',
+      partyDefinition: 'A scheduled period of productive service at your assigned Ministry station.',
+      trueDefinition: 'A set period of time during which a group of workers do their jobs before being replaced by others.',
+      exampleSentence: 'Your shift begins now. Report to your station.',
+      toeicCategory: 'office',
+      wordFamilyGroup: null,
+      isWorldBuilding: true,
+      weekIntroduced: 1,
+    },
+    {
+      word: 'supervisor',
+      partOfSpeech: 'noun',
+      phonetic: '/ˈsuː.pɚ.vaɪ.zɚ/',
+      partyDefinition: 'A senior associate who guides your development and reviews flagged items for the Ministry.',
+      trueDefinition: 'A person whose job is to watch and direct other workers.',
+      exampleSentence: 'Flag unclear documents for supervisor review and remain calm.',
+      toeicCategory: 'personnel',
+      wordFamilyGroup: 'supervise',
+      isWorldBuilding: true,
+      weekIntroduced: 1,
+    },
+
+    // ── Week 2: The Memo That Wasn't There ── Target Words
+    {
+      word: 'contradiction',
+      partOfSpeech: 'noun',
+      phonetic: '/ˌkɑːn.trəˈdɪk.ʃən/',
+      partyDefinition: 'A temporary misalignment between records, always resolved through proper revision channels.',
+      trueDefinition: 'A situation in which two facts, ideas, or statements cannot both be true at the same time.',
+      exampleSentence: 'Identify any contradiction. Report only verified differences.',
+      toeicCategory: 'communication',
+      wordFamilyGroup: 'contradict',
+      isWorldBuilding: false,
+      weekIntroduced: 2,
+    },
+    {
+      word: 'missing',
+      partOfSpeech: 'adjective',
+      phonetic: '/ˈmɪs.ɪŋ/',
+      partyDefinition: 'Absent from the current record. Missing items were likely removed for citizen protection.',
+      trueDefinition: 'Not in the expected place; lost or absent.',
+      exampleSentence: 'If a line is missing, check the latest revision before raising a concern.',
+      toeicCategory: 'office',
+      wordFamilyGroup: 'miss',
+      isWorldBuilding: false,
+      weekIntroduced: 2,
+    },
+    {
+      word: 'notice',
+      partOfSpeech: 'noun',
+      phonetic: '/ˈnoʊ.tɪs/',
+      partyDefinition: 'An official announcement distributed through approved Ministry channels.',
+      trueDefinition: 'A written or printed announcement that gives information or a warning.',
+      exampleSentence: 'A revised notice replaces earlier wording automatically.',
+      toeicCategory: 'communication',
+      wordFamilyGroup: 'notice',
+      isWorldBuilding: false,
+      weekIntroduced: 2,
+    },
+    {
+      word: 'revision',
+      partOfSpeech: 'noun',
+      phonetic: '/rɪˈvɪʒ.ən/',
+      partyDefinition: 'An approved update to an existing document. All revisions improve clarity and safety.',
+      trueDefinition: 'A change or set of changes made to something in order to improve or correct it.',
+      exampleSentence: "Today the revision says something different from yesterday's memo.",
+      toeicCategory: 'office',
+      wordFamilyGroup: 'revise',
+      isWorldBuilding: false,
+      weekIntroduced: 2,
+    },
+    {
+      word: 'record',
+      partOfSpeech: 'noun',
+      phonetic: '/ˈrek.ɚd/',
+      partyDefinition: 'An official Ministry document stored in the Archive for reference and verification.',
+      trueDefinition: 'A written account of something that is kept so that it can be looked at and used in the future.',
+      exampleSentence: "The record from yesterday does not match today's version.",
+      toeicCategory: 'office',
+      wordFamilyGroup: 'record',
+      isWorldBuilding: false,
+      weekIntroduced: 2,
+    },
+    {
+      word: 'verify',
+      partOfSpeech: 'verb',
+      phonetic: '/ˈver.ɪ.faɪ/',
+      partyDefinition: 'To confirm that information matches the latest Ministry-approved version.',
+      trueDefinition: 'To check that something is true or correct.',
+      exampleSentence: 'Associates must verify all differences before submitting a report.',
+      toeicCategory: 'procedures',
+      wordFamilyGroup: 'verify',
+      isWorldBuilding: false,
+      weekIntroduced: 2,
+    },
+    {
+      word: 'compare',
+      partOfSpeech: 'verb',
+      phonetic: '/kəmˈper/',
+      partyDefinition: 'To examine two Ministry documents side by side and note approved differences.',
+      trueDefinition: 'To examine two or more things to see how they are similar or different.',
+      exampleSentence: 'Compare Memo 14 and Memo 14-R to find what changed.',
+      toeicCategory: 'procedures',
+      wordFamilyGroup: 'compare',
+      isWorldBuilding: false,
+      weekIntroduced: 2,
+    },
+    {
+      word: 'report',
+      partOfSpeech: 'verb',
+      phonetic: '/rɪˈpɔːrt/',
+      partyDefinition: 'To deliver verified observations to the Ministry through proper documentation channels.',
+      trueDefinition: 'To give a description of something or information about it to someone in authority.',
+      exampleSentence: 'Associates report differences with calm precision.',
+      toeicCategory: 'communication',
+      wordFamilyGroup: 'report',
+      isWorldBuilding: false,
+      weekIntroduced: 2,
+    },
+    {
+      word: 'update',
+      partOfSpeech: 'noun',
+      phonetic: '/ˈʌp.deɪt/',
+      partyDefinition: 'New information issued by the Ministry to replace outdated records. Always trust the latest update.',
+      trueDefinition: 'The most recent information or news about something.',
+      exampleSentence: 'Updates happen because leadership cares about clarity.',
+      toeicCategory: 'communication',
+      wordFamilyGroup: 'update',
+      isWorldBuilding: false,
+      weekIntroduced: 2,
+    },
+    {
+      word: 'evidence',
+      partOfSpeech: 'noun',
+      phonetic: '/ˈev.ɪ.dəns/',
+      partyDefinition: 'Verified information that supports a Ministry-approved conclusion.',
+      trueDefinition: 'Facts, signs, or objects that make you believe something is true.',
+      exampleSentence: 'Write one evidence sentence describing what changed between versions.',
+      toeicCategory: 'procedures',
+      wordFamilyGroup: null,
+      isWorldBuilding: false,
+      weekIntroduced: 2,
+    },
+    // ── Week 2: World-Building Words
+    {
+      word: 'memo',
+      partOfSpeech: 'noun',
+      phonetic: '/ˈmem.oʊ/',
+      partyDefinition: 'An internal Ministry communication containing directives or procedural updates.',
+      trueDefinition: 'A short written message or report used in a business or organization.',
+      exampleSentence: 'Morning dispatch includes Memo 14 and Memo 14-R.',
+      toeicCategory: 'communication',
+      wordFamilyGroup: null,
+      isWorldBuilding: true,
+      weekIntroduced: 2,
+    },
+    {
+      word: 'dispatch',
+      partOfSpeech: 'noun',
+      phonetic: '/dɪˈspætʃ/',
+      partyDefinition: 'The official morning distribution of memos, notices, and case files to all associate stations.',
+      trueDefinition: 'The sending of something or someone to a destination for a particular purpose.',
+      exampleSentence: 'Contradictory records appeared in the morning dispatch.',
+      toeicCategory: 'office',
+      wordFamilyGroup: 'dispatch',
+      isWorldBuilding: true,
+      weekIntroduced: 2,
+    },
+    {
+      word: 'archive',
+      partOfSpeech: 'noun',
+      phonetic: '/ˈɑːr.kaɪv/',
+      partyDefinition: "The Ministry's permanent record storage. All finalized documents are preserved in the Archive.",
+      trueDefinition: 'A collection of historical records or documents, or the place where they are kept.',
+      exampleSentence: 'Check the Archive for the original version of the memo.',
+      toeicCategory: 'office',
+      wordFamilyGroup: null,
+      isWorldBuilding: true,
+      weekIntroduced: 2,
+    },
+    {
+      word: 'concern',
+      partOfSpeech: 'noun',
+      phonetic: '/kənˈsɜːrn/',
+      partyDefinition: 'A formally registered observation that something may deviate from Ministry standards.',
+      trueDefinition: 'A feeling of worry about something important, or something that worries you.',
+      exampleSentence: 'Check the latest revision before raising a concern.',
+      toeicCategory: 'procedures',
+      wordFamilyGroup: null,
+      isWorldBuilding: true,
+      weekIntroduced: 2,
+    },
+    {
+      word: 'version',
+      partOfSpeech: 'noun',
+      phonetic: '/ˈvɜːr.ʒən/',
+      partyDefinition: 'A numbered iteration of a Ministry document. Only the latest version is considered valid.',
+      trueDefinition: 'A particular form of something that is slightly different from other forms of the same thing.',
+      exampleSentence: 'Which version is the latest? Only the current version matters.',
+      toeicCategory: 'office',
+      wordFamilyGroup: null,
+      isWorldBuilding: true,
+      weekIntroduced: 2,
+    },
+    {
+      word: 'procedure',
+      partOfSpeech: 'noun',
+      phonetic: '/prəˈsiː.dʒɚ/',
+      partyDefinition: 'The official method for completing a task, as defined by Ministry operational standards.',
+      trueDefinition: 'The official or accepted way of doing something, especially in a particular job.',
+      exampleSentence: 'Follow standard procedure when handling contradictory records.',
+      toeicCategory: 'procedures',
+      wordFamilyGroup: 'proceed',
+      isWorldBuilding: true,
+      weekIntroduced: 2,
+    },
+
+    // ── Week 3: Clarity Bay Intake ── Target Words
+    {
+      word: 'clarify',
+      partOfSpeech: 'verb',
+      phonetic: '/ˈkler.ɪ.faɪ/',
+      partyDefinition: 'To make language clear and aligned with Ministry standards before processing.',
+      trueDefinition: 'To make something easier to understand by giving more details or a simpler explanation.',
+      exampleSentence: 'If a message is unclear, clarify before you approve.',
+      toeicCategory: 'communication',
+      wordFamilyGroup: 'clear',
+      isWorldBuilding: false,
+      weekIntroduced: 3,
+    },
+    {
+      word: 'queue',
+      partOfSpeech: 'noun',
+      phonetic: '/kjuː/',
+      partyDefinition: 'The ordered list of cases awaiting processing at your station. A moving queue is a healthy queue.',
+      trueDefinition: 'A line of people or things waiting for something, or a list of items waiting to be dealt with.',
+      exampleSentence: 'A calm associate keeps the queue moving.',
+      toeicCategory: 'office',
+      wordFamilyGroup: null,
+      isWorldBuilding: false,
+      weekIntroduced: 3,
+    },
+    {
+      word: 'priority',
+      partOfSpeech: 'noun',
+      phonetic: '/praɪˈɔːr.ə.ti/',
+      partyDefinition: 'The Ministry-assigned importance level of a case. High priority cases serve the collective first.',
+      trueDefinition: 'The thing that is regarded as more important than others and should be dealt with first.',
+      exampleSentence: 'High priority cases should be processed first.',
+      toeicCategory: 'business',
+      wordFamilyGroup: 'prior',
+      isWorldBuilding: false,
+      weekIntroduced: 3,
+    },
+    {
+      word: 'approve',
+      partOfSpeech: 'verb',
+      phonetic: '/əˈpruːv/',
+      partyDefinition: 'To officially confirm that language meets Ministry standards and may be released to citizens.',
+      trueDefinition: 'To officially agree to or accept something as satisfactory.',
+      exampleSentence: 'Do not approve unclear content without verification.',
+      toeicCategory: 'procedures',
+      wordFamilyGroup: 'approve',
+      isWorldBuilding: false,
+      weekIntroduced: 3,
+    },
+    {
+      word: 'process',
+      partOfSpeech: 'verb',
+      phonetic: '/ˈprɑː.ses/',
+      partyDefinition: 'To review, correct, and finalize language materials according to Ministry protocol.',
+      trueDefinition: 'To deal with something by following an established procedure or set of steps.',
+      exampleSentence: 'Process each case carefully before moving to the next.',
+      toeicCategory: 'procedures',
+      wordFamilyGroup: 'process',
+      isWorldBuilding: false,
+      weekIntroduced: 3,
+    },
+    {
+      word: 'message',
+      partOfSpeech: 'noun',
+      phonetic: '/ˈmes.ɪdʒ/',
+      partyDefinition: 'Any text-based communication passing through Ministry review channels.',
+      trueDefinition: 'A piece of written or spoken information sent from one person to another.',
+      exampleSentence: 'When a message is unclear, we can ask for clarification.',
+      toeicCategory: 'communication',
+      wordFamilyGroup: null,
+      isWorldBuilding: false,
+      weekIntroduced: 3,
+    },
+    {
+      word: 'maintain',
+      partOfSpeech: 'verb',
+      phonetic: '/meɪnˈteɪn/',
+      partyDefinition: 'To keep systems, standards, and language quality at Ministry-approved levels at all times.',
+      trueDefinition: 'To keep something in good condition by checking or repairing it regularly.',
+      exampleSentence: 'Maintain quality and speed at your processing station.',
+      toeicCategory: 'business',
+      wordFamilyGroup: 'maintain',
+      isWorldBuilding: false,
+      weekIntroduced: 3,
+    },
+    {
+      word: 'request',
+      partOfSpeech: 'noun',
+      phonetic: '/rɪˈkwest/',
+      partyDefinition: 'A formal appeal submitted through Ministry channels. All requests are logged and reviewed.',
+      trueDefinition: 'The act of politely asking for something, or the thing that is asked for.',
+      exampleSentence: 'Submit a polite clarification request before dispatch.',
+      toeicCategory: 'communication',
+      wordFamilyGroup: null,
+      isWorldBuilding: false,
+      weekIntroduced: 3,
+    },
+    {
+      word: 'decision',
+      partOfSpeech: 'noun',
+      phonetic: '/dɪˈsɪʒ.ən/',
+      partyDefinition: 'A processing choice made by an associate, subject to Ministry review and quality audit.',
+      trueDefinition: 'A choice that you make about something after thinking about several possibilities.',
+      exampleSentence: 'A safe priority decision protects both speed and accuracy.',
+      toeicCategory: 'business',
+      wordFamilyGroup: 'decide',
+      isWorldBuilding: false,
+      weekIntroduced: 3,
+    },
+    {
+      word: 'confirm',
+      partOfSpeech: 'verb',
+      phonetic: '/kənˈfɜːrm/',
+      partyDefinition: 'To verify and officially approve that information matches Ministry records.',
+      trueDefinition: 'To state or show that something is definitely true or correct.',
+      exampleSentence: 'Confirm the priority level before dispatching any case.',
+      toeicCategory: 'procedures',
+      wordFamilyGroup: 'confirm',
+      isWorldBuilding: false,
+      weekIntroduced: 3,
+    },
+    // ── Week 3: World-Building Words
+    {
+      word: 'dispatch',
+      partOfSpeech: 'verb',
+      phonetic: '/dɪˈspætʃ/',
+      partyDefinition: 'To send a processed case file to its next destination in the Ministry workflow.',
+      trueDefinition: 'To send someone or something to a particular place for a particular purpose.',
+      exampleSentence: 'Fast, accurate dispatch protects the collective.',
+      toeicCategory: 'office',
+      wordFamilyGroup: 'dispatch',
+      isWorldBuilding: true,
+      weekIntroduced: 3,
+    },
+    {
+      word: 'quota',
+      partOfSpeech: 'noun',
+      phonetic: '/ˈkwoʊ.tə/',
+      partyDefinition: 'The minimum number of cases an associate must process per shift. Meeting quota demonstrates dedication.',
+      trueDefinition: 'A limited amount of something that is officially allowed or expected.',
+      exampleSentence: 'The daily quota has increased. Maintain speed and accuracy.',
+      toeicCategory: 'business',
+      wordFamilyGroup: null,
+      isWorldBuilding: true,
+      weekIntroduced: 3,
+    },
+    {
+      word: 'station',
+      partOfSpeech: 'noun',
+      phonetic: '/ˈsteɪ.ʃən/',
+      partyDefinition: 'Your assigned Ministry workstation where all processing duties are performed.',
+      trueDefinition: 'A place or building where a particular service or activity is based.',
+      exampleSentence: 'Return to your station and continue processing the queue.',
+      toeicCategory: 'office',
+      wordFamilyGroup: null,
+      isWorldBuilding: true,
+      weekIntroduced: 3,
+    },
+    {
+      word: 'collective',
+      partOfSpeech: 'noun',
+      phonetic: '/kəˈlek.tɪv/',
+      partyDefinition: 'All citizens of the Republic, unified under Party guidance. The collective comes before the individual.',
+      trueDefinition: 'A group of people who share the same interests or who work together.',
+      exampleSentence: 'Fast, accurate dispatch protects the collective.',
+      toeicCategory: 'personnel',
+      wordFamilyGroup: 'collect',
+      isWorldBuilding: true,
+      weekIntroduced: 3,
+    },
+    {
+      word: 'hesitation',
+      partOfSpeech: 'noun',
+      phonetic: '/ˌhez.ɪˈteɪ.ʃən/',
+      partyDefinition: 'A delay in processing caused by doubt. Hesitation spreads uncertainty and should be resolved quickly.',
+      trueDefinition: 'The act of pausing before doing something, especially because you are nervous or unsure.',
+      exampleSentence: 'Confidence matters. Hesitation spreads doubt.',
+      toeicCategory: 'communication',
+      wordFamilyGroup: 'hesitate',
+      isWorldBuilding: true,
+      weekIntroduced: 3,
+    },
+    {
+      word: 'volume',
+      partOfSpeech: 'noun',
+      phonetic: '/ˈvɑːl.juːm/',
+      partyDefinition: 'The quantity of cases in the processing queue. High volume is a sign of Republic productivity.',
+      trueDefinition: 'The amount or quantity of something, especially when it is large.',
+      exampleSentence: 'Queue volume has doubled. Maintain quality and speed.',
+      toeicCategory: 'business',
+      wordFamilyGroup: null,
+      isWorldBuilding: true,
+      weekIntroduced: 3,
+    },
+    {
+      word: 'verification',
+      partOfSpeech: 'noun',
+      phonetic: '/ˌver.ɪ.fɪˈkeɪ.ʃən/',
+      partyDefinition: 'The process of confirming that content meets Ministry approval standards before release.',
+      trueDefinition: 'The process of checking that something is true, accurate, or valid.',
+      exampleSentence: 'Speed must never replace verification in case processing.',
+      toeicCategory: 'procedures',
+      wordFamilyGroup: 'verify',
+      isWorldBuilding: true,
+      weekIntroduced: 3,
+    },
+  ];
+
+  for (const dw of dictionaryWords) {
+    const id = `dict-w${dw.weekIntroduced}-${dw.word.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+    await prisma.dictionaryWord.upsert({
+      where: { word_weekIntroduced: { word: dw.word, weekIntroduced: dw.weekIntroduced } },
+      update: {
+        partOfSpeech: dw.partOfSpeech,
+        phonetic: dw.phonetic,
+        partyDefinition: dw.partyDefinition,
+        trueDefinition: dw.trueDefinition,
+        exampleSentence: dw.exampleSentence,
+        toeicCategory: dw.toeicCategory,
+        wordFamilyGroup: dw.wordFamilyGroup,
+        isWorldBuilding: dw.isWorldBuilding,
+      },
+      create: {
+        id,
+        word: dw.word,
+        partOfSpeech: dw.partOfSpeech,
+        phonetic: dw.phonetic,
+        partyDefinition: dw.partyDefinition,
+        trueDefinition: dw.trueDefinition,
+        exampleSentence: dw.exampleSentence,
+        toeicCategory: dw.toeicCategory,
+        wordFamilyGroup: dw.wordFamilyGroup,
+        weekIntroduced: dw.weekIntroduced,
+        initialStatus: 'approved',
+        isWorldBuilding: dw.isWorldBuilding,
+      },
+    });
+  }
+  console.log(`  Dictionary: ${dictionaryWords.length} words seeded (weeks 1-3)`);
+
+  // ─── Word Families ───
+  const wordFamilies = [
+    { groupId: 'comply', rootWord: 'comply', members: ['compliance'] },
+    { groupId: 'direct', rootWord: 'direct', members: ['directive'] },
+    { groupId: 'clear', rootWord: 'clear', members: ['clearance', 'clarify'] },
+    { groupId: 'assign', rootWord: 'assign', members: ['assignment'] },
+    { groupId: 'submit', rootWord: 'submit', members: ['submit', 'submission'] },
+    { groupId: 'accurate', rootWord: 'accurate', members: ['accurate', 'accuracy'] },
+    { groupId: 'designate', rootWord: 'designate', members: ['designation'] },
+    { groupId: 'supervise', rootWord: 'supervise', members: ['supervisor'] },
+    { groupId: 'contradict', rootWord: 'contradict', members: ['contradiction'] },
+    { groupId: 'revise', rootWord: 'revise', members: ['revision'] },
+    { groupId: 'verify', rootWord: 'verify', members: ['verify', 'verification'] },
+    { groupId: 'compare', rootWord: 'compare', members: ['compare', 'comparison'] },
+    { groupId: 'report', rootWord: 'report', members: ['report'] },
+    { groupId: 'dispatch', rootWord: 'dispatch', members: ['dispatch'] },
+    { groupId: 'approve', rootWord: 'approve', members: ['approve', 'approval'] },
+    { groupId: 'process', rootWord: 'process', members: ['process', 'processing'] },
+    { groupId: 'maintain', rootWord: 'maintain', members: ['maintain', 'maintenance'] },
+    { groupId: 'decide', rootWord: 'decide', members: ['decision'] },
+    { groupId: 'confirm', rootWord: 'confirm', members: ['confirm', 'confirmation'] },
+    { groupId: 'hesitate', rootWord: 'hesitate', members: ['hesitation'] },
+    { groupId: 'collect', rootWord: 'collect', members: ['collective', 'collection'] },
+  ];
+
+  for (const wf of wordFamilies) {
+    await prisma.wordFamily.upsert({
+      where: { groupId: wf.groupId },
+      update: { rootWord: wf.rootWord, members: wf.members },
+      create: {
+        id: `family-${wf.groupId}`,
+        groupId: wf.groupId,
+        rootWord: wf.rootWord,
+        members: wf.members,
+      },
+    });
+  }
+  console.log(`  Word families: ${wordFamilies.length} groups seeded`);
+
+  // ─── Word Status Events (narrative beats for future weeks) ───
+  // These define when word statuses change as the story progresses.
+  // Week 6: Some words become "grey" (uncertain status) at end of Act I
+  // Week 7: Act II begins — "grey" words become "monitored"
+  // Week 10: Some monitored words become "proscribed" (banned)
+  // Week 12: End of Act II — recovery mechanic unlocked
+  // For now, seed events for representative words from each week
+
+  type StatusEventSeed = {
+    wordKey: { word: string; weekIntroduced: number };
+    fromStatus: 'approved' | 'monitored' | 'grey' | 'proscribed' | 'recovered';
+    toStatus: 'approved' | 'monitored' | 'grey' | 'proscribed' | 'recovered';
+    weekNumber: number;
+    reason: string;
+  };
+
+  const statusEvents: StatusEventSeed[] = [
+    // Week 6: End of Act I — some words become grey (uncertain)
+    { wordKey: { word: 'contradiction', weekIntroduced: 2 }, fromStatus: 'approved', toStatus: 'grey', weekNumber: 6, reason: 'Ministry Review Notice: Usage frequency under review.' },
+    { wordKey: { word: 'evidence', weekIntroduced: 2 }, fromStatus: 'approved', toStatus: 'grey', weekNumber: 6, reason: 'Ministry Review Notice: Context restrictions pending.' },
+    { wordKey: { word: 'clarify', weekIntroduced: 3 }, fromStatus: 'approved', toStatus: 'grey', weekNumber: 6, reason: 'Ministry Review Notice: Clarification requests now require supervisor approval.' },
+
+    // Week 7: Act II begins — grey words escalate to monitored
+    { wordKey: { word: 'contradiction', weekIntroduced: 2 }, fromStatus: 'grey', toStatus: 'monitored', weekNumber: 7, reason: 'Active monitoring initiated. Usage will be logged.' },
+    { wordKey: { word: 'evidence', weekIntroduced: 2 }, fromStatus: 'grey', toStatus: 'monitored', weekNumber: 7, reason: 'Active monitoring initiated. Usage will be logged.' },
+    { wordKey: { word: 'clarify', weekIntroduced: 3 }, fromStatus: 'grey', toStatus: 'monitored', weekNumber: 7, reason: 'Active monitoring initiated. Usage will be logged.' },
+
+    // Week 10: Monitored words become proscribed
+    { wordKey: { word: 'contradiction', weekIntroduced: 2 }, fromStatus: 'monitored', toStatus: 'proscribed', weekNumber: 10, reason: 'PROSCRIBED — This term has been removed from approved vocabulary. Use "revision opportunity" instead.' },
+    { wordKey: { word: 'evidence', weekIntroduced: 2 }, fromStatus: 'monitored', toStatus: 'proscribed', weekNumber: 10, reason: 'PROSCRIBED — This term has been restricted. Use "verified information" instead.' },
+  ];
+
+  for (const evt of statusEvents) {
+    // Look up the word to get its ID
+    const dictWord = await prisma.dictionaryWord.findUnique({
+      where: { word_weekIntroduced: evt.wordKey },
+    });
+    if (!dictWord) {
+      console.warn(`  Warning: Word "${evt.wordKey.word}" (week ${evt.wordKey.weekIntroduced}) not found for status event`);
+      continue;
+    }
+    const evtId = `evt-${dictWord.id}-w${evt.weekNumber}-${evt.toStatus}`;
+    await prisma.wordStatusEvent.upsert({
+      where: { id: evtId },
+      update: {
+        fromStatus: evt.fromStatus,
+        toStatus: evt.toStatus,
+        reason: evt.reason,
+      },
+      create: {
+        id: evtId,
+        wordId: dictWord.id,
+        fromStatus: evt.fromStatus,
+        toStatus: evt.toStatus,
+        weekNumber: evt.weekNumber,
+        reason: evt.reason,
+      },
+    });
+  }
+  console.log(`  Word status events: ${statusEvents.length} narrative beats seeded`);
+
+  // ─── Session Configs (Weeks 1-3 Phase-Based Runner) ───
+  // Each phase gets a backing Mission row for score storage via MissionScore.
+  // Phase IDs are deterministic: `phase-w{week}-{orderIndex}`
+  // Mission IDs are deterministic: `mission-phase-w{week}-{orderIndex}`
+
+  const sessionConfigs = [
+    // ── Week 1: First Shift Orientation ──
+    {
+      weekId: 'week-1',
+      totalMinutes: 35,
+      phases: [
+        {
+          id: 'phase-w1-0',
+          type: 'settle',
+          label: 'Shift Intake',
+          location: 'shift-intake',
+          minutes: 3,
+          missionId: 'mission-phase-w1-0',
+          clipBefore: null,
+          clipAfter: null,
+          dictionaryLocked: false,
+          config: {
+            atmosphereText: 'The fluorescent lights hum overhead. Your badge reads CA-7. The office smells of recycled air and institutional carpet. A screen on the wall cycles through approved slogans. Everything here is designed to be helpful.',
+            pearlGreeting: 'Good morning, Clarity Associate. Your shift begins now. Please follow all posted directives.',
+          },
+        },
+        {
+          id: 'phase-w1-1',
+          type: 'grammar_toeic',
+          label: 'Language Lab',
+          location: 'language-lab',
+          minutes: 4,
+          missionId: 'mission-phase-w1-1',
+          clipBefore: {
+            title: 'Party Onboarding Broadcast',
+            embedUrl: null,
+            uploadPath: null,
+            fallbackText: 'Welcome to the Department of Clarity. You are now Clarity Associate-7. A directive is an official order. A protocol is a step-by-step process. Compliance means following the rules correctly. Your job is to process documents with accuracy and speed.',
+          },
+          clipAfter: null,
+          dictionaryLocked: true,
+          config: {
+            requiredCount: 3,
+            documents: [
+              {
+                id: 'w1-g1',
+                prompt: 'Choose the correct answer:',
+                text: 'What is a directive?',
+                options: ['A rumor', 'An official order', 'A celebration', 'A private message'],
+                correctIndex: 1,
+                targets: ['vocabulary-directive'],
+              },
+              {
+                id: 'w1-g2',
+                prompt: 'Choose the correct answer:',
+                text: 'What should an associate do first?',
+                options: ['Guess quickly', 'Follow protocol carefully', 'Ignore unclear parts', 'Ask social feed users'],
+                correctIndex: 1,
+                targets: ['vocabulary-protocol'],
+              },
+              {
+                id: 'w1-g3',
+                prompt: 'Choose the correct answer:',
+                text: 'What does compliance mean in the broadcast?',
+                options: ['Following rules correctly', 'Speaking loudly', 'Working alone', 'Skipping review'],
+                correctIndex: 0,
+                targets: ['vocabulary-compliance'],
+              },
+            ],
+          },
+        },
+        {
+          id: 'phase-w1-2',
+          type: 'd1_structured_writing',
+          label: 'Filing Desk',
+          location: 'filing-desk',
+          minutes: 20,
+          missionId: 'mission-phase-w1-2',
+          clipBefore: null,
+          clipAfter: null,
+          dictionaryLocked: false,
+          config: {
+            prompt: 'Complete your first shift intake note. Describe your role as a Clarity Associate, the rules you must follow, and one directive you received. Use at least 4 sentences.',
+            minWords: 30,
+            grammarTarget: 'present simple + be-verb + basic agreement',
+            targetVocab: ['compliance', 'directive', 'protocol', 'clearance', 'associate', 'process', 'submit', 'schedule', 'employee', 'register'],
+            formHeader: {
+              department: 'DEPARTMENT OF CLARITY',
+              formTitle: 'SHIFT INTAKE NOTE',
+              formSubtitle: 'Form CL-7 — First Shift Documentation',
+            },
+            sentenceFrames: [
+              'My name is ___ and I am a Clarity Associate.',
+              'A directive is ___.',
+              'I must follow protocol by ___.',
+              'My first task is to ___.',
+            ],
+            vocabBank: ['compliance', 'directive', 'protocol', 'clearance', 'associate', 'process', 'submit'],
+            ambientMessages: [
+              'Excellent start. Accurate language creates safe communities.',
+              'A directive is an order. Follow each step exactly.',
+              'Strong compliance protects citizens from confusion.',
+              'System stable. Continue to processing.',
+            ],
+          },
+        },
+        {
+          id: 'phase-w1-3',
+          type: 'debrief',
+          label: 'Shift Debrief',
+          location: 'debrief',
+          minutes: 6,
+          missionId: 'mission-phase-w1-3',
+          clipBefore: null,
+          clipAfter: {
+            title: 'Assignment Confirmation',
+            embedUrl: null,
+            uploadPath: null,
+            fallbackText: 'You have temporary clearance for your first set of files. Write what you can prove. System stable. Continue to processing.',
+          },
+          dictionaryLocked: false,
+          config: {
+            discussionTiers: [
+              {
+                tier: 'Comprehension',
+                questions: [
+                  'What is a directive?',
+                  'In this system, what does compliance mean?',
+                ],
+              },
+              {
+                tier: 'Analysis',
+                questions: [
+                  'Why does PEARL describe language rules as "safety"?',
+                  'What might happen to an associate who does not comply?',
+                ],
+              },
+              {
+                tier: 'Reflection',
+                questions: [
+                  'Does following rules always mean being safe? Why or why not?',
+                  'Hook: Two versions of the same memo. This is normal.',
+                ],
+              },
+            ],
+          },
+        },
+      ],
+    },
+
+    // ── Week 2: The Memo That Wasn't There ──
+    {
+      weekId: 'week-2',
+      totalMinutes: 35,
+      phases: [
+        {
+          id: 'phase-w2-0',
+          type: 'settle',
+          label: 'Shift Intake',
+          location: 'shift-intake',
+          minutes: 3,
+          missionId: 'mission-phase-w2-0',
+          clipBefore: null,
+          clipAfter: null,
+          dictionaryLocked: false,
+          config: {
+            atmosphereText: 'The morning dispatch has arrived. Two documents sit on your desk — Memo 14 and a revised version, Memo 14-R. The dates are different. The wording has changed. No one else seems concerned.',
+            pearlGreeting: 'Morning dispatch begins. Review the evidence desk. Updates happen because leadership cares about clarity.',
+          },
+        },
+        {
+          id: 'phase-w2-1',
+          type: 'grammar_toeic',
+          label: 'Language Lab',
+          location: 'language-lab',
+          minutes: 4,
+          missionId: 'mission-phase-w2-1',
+          clipBefore: {
+            title: 'Dispatch Conflict',
+            embedUrl: null,
+            uploadPath: null,
+            fallbackText: 'Morning dispatch includes Memo 14 and Memo 14-R. Updates happen because leadership cares about clarity. Yesterday the memo said one thing. Today it says another. Identify any contradiction. If a line is missing, check the latest revision before concern.',
+          },
+          clipAfter: null,
+          dictionaryLocked: true,
+          config: {
+            requiredCount: 3,
+            documents: [
+              {
+                id: 'w2-g1',
+                prompt: 'Choose the correct answer:',
+                text: 'Which statement shows a contradiction?',
+                options: [
+                  'Two memos give the same rule',
+                  'Yesterday and today show different instructions',
+                  'Both memos are blank',
+                  'Both memos are deleted',
+                ],
+                correctIndex: 1,
+                targets: ['vocabulary-contradiction'],
+              },
+              {
+                id: 'w2-g2',
+                prompt: 'Choose the best sentence:',
+                text: 'Which is the best way to report a contradiction?',
+                options: [
+                  'There is a contradiction between Memo 14 and Memo 14-R.',
+                  'Memo weird.',
+                  'I feel not good.',
+                  'Nothing changed.',
+                ],
+                correctIndex: 0,
+                targets: ['grammar-there_be'],
+              },
+              {
+                id: 'w2-g3',
+                prompt: 'Choose the correct answer:',
+                text: 'In this lesson, "revision" means:',
+                options: [
+                  'Correction or update',
+                  'Personal opinion',
+                  'Holiday activity',
+                  'Password reset',
+                ],
+                correctIndex: 0,
+                targets: ['vocabulary-revision'],
+              },
+            ],
+          },
+        },
+        {
+          id: 'phase-w2-2',
+          type: 'd2_document_compare',
+          label: 'Evidence Desk',
+          location: 'evidence-desk',
+          minutes: 20,
+          missionId: 'mission-phase-w2-2',
+          clipBefore: null,
+          clipAfter: null,
+          dictionaryLocked: false,
+          config: {
+            prompt: 'Compare Memo 14 and Memo 14-R below. Click on the differences you find, then write your contradiction report.',
+            grammarTarget: 'past vs present simple + there is/are reporting',
+            targetVocab: ['contradiction', 'missing', 'notice', 'revision', 'evidence', 'record', 'report', 'verify', 'document', 'update'],
+            requiredDiffs: { 1: 3, 2: 4, 3: 5 },
+            requiredSentences: { 1: 3, 2: 5, 3: 8 },
+            reportPrompt: 'Describe the differences you found. Use "there is" / "there are" to report each contradiction. Include at least one past tense and one present tense sentence.',
+            dismissalText: 'The latest version is the correct version. Thank you for your diligence. Your contradiction report has been filed and archived.',
+            ambientMessages: [
+              'Associates report differences with calm precision.',
+              'Identify any contradiction. Report only verified differences.',
+              'Morning dispatch includes Memo 14 and Memo 14-R.',
+              'A revised notice replaces earlier wording automatically.',
+            ],
+            originalMemo: {
+              title: 'Memo 14',
+              subtitle: 'Issued: Monday — Department of Clarity',
+              segments: [
+                'All Clarity Associates ',
+                { id: 'diff-1', text: 'process cases in order received', side: 'original' },
+                '. Each associate must ',
+                { id: 'diff-2', text: 'verify all documents before filing', side: 'original' },
+                '. The department operates under ',
+                { id: 'diff-3', text: 'Director Chen', side: 'original' },
+                '\'s supervision. ',
+                { id: 'diff-4', text: 'Break periods are scheduled at 10:00 and 14:00.', side: 'original' },
+                ' ',
+                { id: 'diff-5', text: 'Associates may request schedule adjustments through their supervisor.', side: 'original' },
+              ],
+            },
+            revisedMemo: {
+              title: 'Memo 14-R',
+              subtitle: 'Issued: Tuesday — Department of Clarity',
+              segments: [
+                'All Clarity Associates ',
+                { id: 'diff-1r', text: 'process priority cases first', side: 'revised' },
+                '. Each associate must ',
+                { id: 'diff-2r', text: 'submit documents directly to processing', side: 'revised' },
+                '. The department operates under ',
+                { id: 'diff-3r', text: 'the Department Committee', side: 'revised' },
+                '\'s supervision. ',
+                { id: 'diff-4r', text: 'Break periods are determined by workload requirements.', side: 'revised' },
+                ' ',
+                { id: 'diff-5r', text: '[This line has been removed from the current revision.]', side: 'revised' },
+              ],
+            },
+          },
+        },
+        {
+          id: 'phase-w2-3',
+          type: 'debrief',
+          label: 'Shift Debrief',
+          location: 'debrief',
+          minutes: 6,
+          missionId: 'mission-phase-w2-3',
+          clipBefore: null,
+          clipAfter: {
+            title: 'Official Reframe',
+            embedUrl: null,
+            uploadPath: null,
+            fallbackText: 'A revised notice replaces earlier wording automatically. What if the earlier one was true? Contradiction report accepted. Continue standard operations.',
+          },
+          dictionaryLocked: false,
+          config: {
+            discussionTiers: [
+              {
+                tier: 'Comprehension',
+                questions: [
+                  'What changed between Memo 14 and Memo 14-R?',
+                  'Which version is the "correct" one according to the Ministry?',
+                ],
+              },
+              {
+                tier: 'Analysis',
+                questions: [
+                  'Why might a memo be revised without explanation?',
+                  'What happens when yesterday\'s rules change today?',
+                ],
+              },
+              {
+                tier: 'Reflection',
+                questions: [
+                  'Should you always trust the latest version? Why or why not?',
+                  'Hook: The queue is getting longer. Everyone looks calm.',
+                ],
+              },
+            ],
+          },
+        },
+      ],
+    },
+
+    // ── Week 3: Clarity Bay Intake ──
+    {
+      weekId: 'week-3',
+      totalMinutes: 35,
+      phases: [
+        {
+          id: 'phase-w3-0',
+          type: 'settle',
+          label: 'Shift Intake',
+          location: 'shift-intake',
+          minutes: 3,
+          missionId: 'mission-phase-w3-0',
+          clipBefore: null,
+          clipAfter: null,
+          dictionaryLocked: false,
+          config: {
+            atmosphereText: 'The queue counter on the wall shows 14 citizens waiting. The number keeps climbing. No one is leaving. Betty gives you a look that says: just keep moving. Ivan hasn\'t looked up from his desk in twenty minutes.',
+            pearlGreeting: 'Welcome back. Queue volume awaits your attention. Maintain quality and speed.',
+          },
+        },
+        {
+          id: 'phase-w3-1',
+          type: 'grammar_toeic',
+          label: 'Language Lab',
+          location: 'language-lab',
+          minutes: 4,
+          missionId: 'mission-phase-w3-1',
+          clipBefore: {
+            title: 'Queue Pressure',
+            embedUrl: null,
+            uploadPath: null,
+            fallbackText: 'Queue volume has doubled. Maintain quality and speed. High priority cases should be processed first. If a message is unclear, clarify before you approve. Fast, accurate dispatch protects the collective. A calm associate keeps the queue moving.',
+          },
+          clipAfter: null,
+          dictionaryLocked: true,
+          config: {
+            requiredCount: 3,
+            documents: [
+              {
+                id: 'w3-g1',
+                prompt: 'Choose the correct answer:',
+                text: 'What is the best first action when content is unclear?',
+                options: [
+                  'Approve immediately',
+                  'Clarify before processing',
+                  'Skip the case',
+                  'Delete the post',
+                ],
+                correctIndex: 1,
+                targets: ['grammar-modality'],
+              },
+              {
+                id: 'w3-g2',
+                prompt: 'Choose the best sentence using "priority":',
+                text: 'Which sentence correctly uses "priority"?',
+                options: [
+                  'This case has priority, so we should dispatch it first.',
+                  'Priority not important.',
+                  'I dispatch random files.',
+                  'Queue waits forever.',
+                ],
+                correctIndex: 0,
+                targets: ['vocabulary-priority'],
+              },
+              {
+                id: 'w3-g3',
+                prompt: 'Choose the correct answer:',
+                text: 'Which sentence matches Ministry process language?',
+                options: [
+                  'You should verify before dispatch.',
+                  'You send maybe maybe.',
+                  'You skip all checks.',
+                  'You stop all work now.',
+                ],
+                correctIndex: 0,
+                targets: ['grammar-imperative'],
+              },
+            ],
+          },
+        },
+        {
+          id: 'phase-w3-2',
+          type: 'd5_audio_log',
+          label: 'Voice Booth',
+          location: 'voice-booth',
+          minutes: 20,
+          missionId: 'mission-phase-w3-2',
+          clipBefore: null,
+          clipAfter: null,
+          dictionaryLocked: false,
+          config: {
+            prompt: 'Record your observation for each citizen scenario. Describe what happened using past tense. Use "should" to suggest what the citizen needs to do.',
+            grammarTarget: 'modal can/should + past tense observation',
+            targetVocab: ['clarify', 'queue', 'priority', 'dispatch', 'verify', 'process', 'submit', 'approve', 'register', 'schedule'],
+            requiredScenarios: { 1: 2, 2: 3, 3: 4 },
+            queueCounter: {
+              startCount: 14,
+              incrementInterval: 30,
+              thresholds: [20, 30],
+            },
+            pearlResponses: [
+              'Observation filed. Standard processing.',
+              'Noted. Added to your case log. Queue volume increasing.',
+              'Monitoring increased. Your observations are being reviewed.',
+              'Concern level elevated. Your observations have been escalated to the Committee.',
+            ],
+            scenarios: [
+              {
+                id: 'w3-s1',
+                title: 'Citizen Request: Schedule Change',
+                description: 'A citizen arrived at the desk requesting a schedule change. They said their work hours were updated last week, but the system still shows the old schedule. They seem confused but calm.',
+                prompt: 'Describe what happened. What should the citizen do next?',
+                grammarHint: 'Use past tense to describe + "should" for advice',
+              },
+              {
+                id: 'w3-s2',
+                title: 'Citizen Report: Missing Document',
+                description: 'A citizen reported that their registration form is missing from the system. They submitted it two days ago. The system shows no record. The citizen is becoming anxious.',
+                prompt: 'Describe the situation. What can you do to help?',
+                grammarHint: 'Use past tense to describe + "can" for possibility',
+              },
+              {
+                id: 'w3-s3',
+                title: 'Citizen Complaint: Priority Processing',
+                description: 'A citizen complained that priority cases are being processed before regular cases. They waited for three hours. Another citizen with a priority stamp was processed in fifteen minutes.',
+                prompt: 'Describe what you observed. Should the system be different?',
+                grammarHint: 'Use past tense + "should" for opinion',
+              },
+              {
+                id: 'w3-s4',
+                title: 'Citizen Concern: Unclear Instructions',
+                description: 'A citizen cannot understand the new dispatch form. The instructions were changed overnight. The old form had clear steps. The new form uses unfamiliar vocabulary. The citizen asked you to clarify.',
+                prompt: 'Describe the problem. What should the Ministry do about unclear instructions?',
+                grammarHint: 'Use past tense + "should" + personal observation',
+              },
+            ],
+          },
+        },
+        {
+          id: 'phase-w3-3',
+          type: 'debrief',
+          label: 'Shift Debrief',
+          location: 'debrief',
+          minutes: 6,
+          missionId: 'mission-phase-w3-3',
+          clipBefore: null,
+          clipAfter: {
+            title: 'Pressure Choice Beat',
+            embedUrl: null,
+            uploadPath: null,
+            fallbackText: 'Fast work can hide mistakes. Confidence matters. Hesitation spreads doubt. Priority queue updated. Continue to Language Desk.',
+          },
+          dictionaryLocked: false,
+          config: {
+            discussionTiers: [
+              {
+                tier: 'Comprehension',
+                questions: [
+                  'Before dispatch, what should an associate do?',
+                  'When a message is unclear, what can you do?',
+                ],
+              },
+              {
+                tier: 'Analysis',
+                questions: [
+                  'Why does the queue counter keep increasing?',
+                  'Is speed or accuracy more important? Can you have both?',
+                ],
+              },
+              {
+                tier: 'Reflection',
+                questions: [
+                  'How did the queue pressure affect your decisions?',
+                  'What would change if the queue wasn\'t real?',
+                ],
+              },
+            ],
+            revealText: 'This counter was not real. The queue was never moving. The numbers were designed to create urgency. How did that pressure affect your language?',
+          },
+        },
+      ],
+    },
+  ];
+
+  // Create backing Mission rows for each phase, then upsert SessionConfig
+  for (const sc of sessionConfigs) {
+    const phases = sc.phases as Array<{ id: string; missionId: string; label: string; type: string }>;
+    for (let i = 0; i < phases.length; i++) {
+      const phase = phases[i];
+      await prisma.mission.upsert({
+        where: { id: phase.missionId },
+        update: {
+          title: phase.label,
+          orderIndex: 100 + i, // High orderIndex to not conflict with legacy missions
+        },
+        create: {
+          id: phase.missionId,
+          weekId: sc.weekId,
+          orderIndex: 100 + i,
+          title: phase.label,
+          description: `Phase: ${phase.type}`,
+          missionType: phase.type,
+          config: {},
+        },
+      });
+    }
+
+    await prisma.sessionConfig.upsert({
+      where: { weekId: sc.weekId },
+      update: {
+        phases: sc.phases as unknown as Prisma.InputJsonValue,
+        totalMinutes: sc.totalMinutes,
+        isActive: true,
+      },
+      create: {
+        weekId: sc.weekId,
+        phases: sc.phases as unknown as Prisma.InputJsonValue,
+        totalMinutes: sc.totalMinutes,
+        isActive: true,
+      },
+    });
+  }
+  console.log(`  Session configs: ${sessionConfigs.length} weeks seeded (${sessionConfigs.reduce((s, c) => s + c.phases.length, 0)} phases, backing missions created)`);
 
   // ─── PEARL Messages ───
   // Existing propaganda/notice messages

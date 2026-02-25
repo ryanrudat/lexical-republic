@@ -1,7 +1,7 @@
 import { Server } from 'socket.io';
 import { createServer } from 'http';
 import type { Express } from 'express';
-import { verifyToken } from './utils/jwt';
+import { verifyToken, normalizePayload, isTeacherPayload, isPairPayload } from './utils/jwt';
 import cookie from 'cookie';
 import prisma from './utils/prisma';
 
@@ -10,6 +10,7 @@ export let io: Server;
 // ── Live student tracking ──────────────────────────────────────────
 
 export interface StudentStatus {
+  /** pairId for pair tokens, userId for legacy */
   userId: string;
   socketId: string;
   designation: string | null;
@@ -52,14 +53,30 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
         next(new Error('Authentication required'));
         return;
       }
-      const payload = verifyToken(token);
-      (socket as any).userId = payload.userId;
-      (socket as any).role = payload.role;
+      const raw = verifyToken(token);
+      const payload = normalizePayload(raw);
+
+      if (isPairPayload(payload)) {
+        (socket as any).entityId = payload.pairId;
+        (socket as any).role = 'student';
+        (socket as any).designation = payload.designation;
+        (socket as any).displayName = '';
+      } else if (isTeacherPayload(payload)) {
+        (socket as any).entityId = payload.userId;
+        (socket as any).role = payload.role;
+      }
 
       // Accept optional metadata from handshake query
       const query = socket.handshake.query;
-      (socket as any).designation = typeof query.designation === 'string' ? query.designation : null;
-      (socket as any).displayName = typeof query.displayName === 'string' ? query.displayName : 'Unknown';
+      if (typeof query.designation === 'string') {
+        (socket as any).designation = query.designation;
+      }
+      if (typeof query.displayName === 'string') {
+        (socket as any).displayName = query.displayName;
+      }
+
+      // Keep backward compat field
+      (socket as any).userId = (socket as any).entityId;
 
       next();
     } catch {
@@ -68,7 +85,7 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
   });
 
   io.on('connection', async (socket) => {
-    const userId = (socket as any).userId as string;
+    const entityId = (socket as any).entityId as string;
     const role = (socket as any).role as string;
 
     // ── Teacher auto-joins teacher room ──
@@ -80,12 +97,17 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
 
     // ── Student tracking ──
     if (role === 'student') {
-      // Look up class enrollment
+      // Look up class enrollment — try pairId first, then userId
       let classId: string | null = null;
       let className: string | null = null;
       try {
         const enrollment = await prisma.classEnrollment.findFirst({
-          where: { userId },
+          where: {
+            OR: [
+              { pairId: entityId },
+              { userId: entityId },
+            ],
+          },
           include: { class: { select: { id: true, name: true } } },
         });
         if (enrollment) {
@@ -97,7 +119,7 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
       }
 
       const status: StudentStatus = {
-        userId,
+        userId: entityId,
         socketId: socket.id,
         designation: (socket as any).designation,
         displayName: (socket as any).displayName,
@@ -108,7 +130,7 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
         connectedAt: new Date().toISOString(),
         lastActivityAt: new Date().toISOString(),
       };
-      onlineStudents.set(userId, status);
+      onlineStudents.set(entityId, status);
 
       // Join class-specific room
       if (classId) {
@@ -120,7 +142,7 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
 
     // ── Student shift/step events ──
     socket.on('student:enter-shift', (data: { weekNumber: number; stepId?: string }) => {
-      const existing = onlineStudents.get(userId);
+      const existing = onlineStudents.get(entityId);
       if (existing) {
         existing.weekNumber = data.weekNumber;
         existing.stepId = data.stepId || null;
@@ -130,7 +152,7 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
     });
 
     socket.on('student:change-step', (data: { stepId: string }) => {
-      const existing = onlineStudents.get(userId);
+      const existing = onlineStudents.get(entityId);
       if (existing) {
         existing.stepId = data.stepId;
         existing.lastActivityAt = new Date().toISOString();
@@ -149,10 +171,10 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
     // ── Disconnect cleanup ──
     socket.on('disconnect', () => {
       if (role === 'student') {
-        const status = onlineStudents.get(userId);
-        onlineStudents.delete(userId);
+        const status = onlineStudents.get(entityId);
+        onlineStudents.delete(entityId);
         io.to('teacher').emit('student:disconnected', {
-          userId,
+          userId: entityId,
           designation: status?.designation ?? null,
         });
       }

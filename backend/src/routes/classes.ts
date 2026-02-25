@@ -122,7 +122,7 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/classes/:classId — Class detail with enrolled students
+// GET /api/classes/:classId — Class detail with enrolled students (pairs + legacy)
 router.get('/:classId', async (req: Request, res: Response) => {
   try {
     const classId = req.params.classId as string;
@@ -142,6 +142,17 @@ router.get('/:classId', async (req: Request, res: Response) => {
                 lastLoginAt: true,
               },
             },
+            pair: {
+              select: {
+                id: true,
+                designation: true,
+                studentAName: true,
+                studentBName: true,
+                lane: true,
+                xp: true,
+                lastLoginAt: true,
+              },
+            },
           },
           orderBy: { enrolledAt: 'asc' },
         },
@@ -157,16 +168,33 @@ router.get('/:classId', async (req: Request, res: Response) => {
       return;
     }
 
+    const students = cls.enrollments.map((e) => {
+      if (e.pair) {
+        return {
+          id: e.pair.id,
+          designation: e.pair.designation,
+          displayName: `${e.pair.studentAName}${e.pair.studentBName ? ` & ${e.pair.studentBName}` : ''}`,
+          lane: e.pair.lane,
+          xp: e.pair.xp,
+          lastLoginAt: e.pair.lastLoginAt,
+          enrolledAt: e.enrolledAt,
+          isPair: true,
+        };
+      }
+      return {
+        ...e.user,
+        enrolledAt: e.enrolledAt,
+        isPair: false,
+      };
+    });
+
     res.json({
       id: cls.id,
       name: cls.name,
       joinCode: cls.joinCode,
       isActive: cls.isActive,
       createdAt: cls.createdAt,
-      students: cls.enrollments.map((e) => ({
-        ...e.user,
-        enrolledAt: e.enrolledAt,
-      })),
+      students,
       unlockedWeeks: cls.weekUnlocks.map((u) => ({
         weekId: u.week.id,
         weekNumber: u.week.weekNumber,

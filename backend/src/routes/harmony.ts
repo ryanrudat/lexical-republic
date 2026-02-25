@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth';
+import { authenticate, getPairId } from '../middleware/auth';
 import prisma from '../utils/prisma';
 
 const router = Router();
@@ -11,29 +11,33 @@ router.use(authenticate);
 router.get('/posts', async (req, res) => {
   try {
     const userId = req.user!.userId;
+    const pairId = getPairId(req);
 
     // Determine student's classId for scoping
     let studentClassId: string | null = null;
     const enrollment = await prisma.classEnrollment.findFirst({
-      where: { userId },
+      where: pairId ? { pairId } : { userId },
       select: { classId: true },
     });
     if (enrollment) {
       studentClassId = enrollment.classId;
     }
 
+    // Build ownership filter for "own pending" posts
+    const ownFilter = pairId ? { pairId } : { userId };
+
     const posts = await prisma.harmonyPost.findMany({
       where: {
         parentId: null,
-        // Scope to same class if student has one
         ...(studentClassId ? { classId: studentClassId } : {}),
         OR: [
           { status: 'approved' },
-          { userId, status: 'pending_review' },
+          { ...ownFilter, status: 'pending_review' },
         ],
       },
       include: {
         user: { select: { designation: true, displayName: true } },
+        pair: { select: { designation: true, studentAName: true } },
         _count: { select: { replies: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -43,13 +47,13 @@ router.get('/posts', async (req, res) => {
     res.json({
       posts: posts.map((p) => ({
         id: p.id,
-        designation: p.user.designation || p.user.displayName,
+        designation: p.pair?.designation || p.user?.designation || p.user?.displayName || 'Unknown',
         content: p.content,
         status: p.status,
         pearlNote: p.pearlNote,
         replyCount: p._count.replies,
         createdAt: p.createdAt.toISOString(),
-        isOwn: p.userId === userId,
+        isOwn: pairId ? p.pairId === pairId : p.userId === userId,
       })),
     });
   } catch (err) {
@@ -62,6 +66,7 @@ router.get('/posts', async (req, res) => {
 router.post('/posts', async (req, res) => {
   try {
     const userId = req.user!.userId;
+    const pairId = getPairId(req);
     const { content } = req.body;
 
     if (!content || typeof content !== 'string' || content.trim().length === 0) {
@@ -77,7 +82,7 @@ router.post('/posts', async (req, res) => {
     // Get student's classId
     let classId: string | null = null;
     const enrollment = await prisma.classEnrollment.findFirst({
-      where: { userId },
+      where: pairId ? { pairId } : { userId },
       select: { classId: true },
     });
     if (enrollment) {
@@ -86,7 +91,8 @@ router.post('/posts', async (req, res) => {
 
     const post = await prisma.harmonyPost.create({
       data: {
-        userId,
+        userId: pairId ? undefined : userId,
+        pairId: pairId ?? undefined,
         content: content.trim(),
         status: 'pending_review',
         classId,
@@ -130,6 +136,7 @@ router.get('/posts/:id/replies', async (req, res) => {
       },
       include: {
         user: { select: { designation: true, displayName: true } },
+        pair: { select: { designation: true, studentAName: true } },
       },
       orderBy: { createdAt: 'asc' },
     });
@@ -137,7 +144,7 @@ router.get('/posts/:id/replies', async (req, res) => {
     res.json({
       replies: replies.map((r) => ({
         id: r.id,
-        designation: r.user.designation || r.user.displayName,
+        designation: r.pair?.designation || r.user?.designation || r.user?.displayName || 'Unknown',
         content: r.content,
         createdAt: r.createdAt.toISOString(),
       })),
@@ -152,6 +159,7 @@ router.get('/posts/:id/replies', async (req, res) => {
 router.post('/posts/:id/replies', async (req, res) => {
   try {
     const userId = req.user!.userId;
+    const pairId = getPairId(req);
     const parentId = req.params.id as string;
     const { content } = req.body;
 
@@ -169,7 +177,8 @@ router.post('/posts/:id/replies', async (req, res) => {
 
     const reply = await prisma.harmonyPost.create({
       data: {
-        userId,
+        userId: pairId ? undefined : userId,
+        pairId: pairId ?? undefined,
         content: content.trim(),
         parentId,
         status: 'pending_review',

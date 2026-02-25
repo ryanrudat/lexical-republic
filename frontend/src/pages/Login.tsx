@@ -7,10 +7,11 @@ export default function Login() {
   const [pin, setPin] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [regStudentNumber, setRegStudentNumber] = useState('');
+  const [regDesignation, setRegDesignation] = useState('');
   const [regPin, setRegPin] = useState('');
   const [regPinConfirm, setRegPinConfirm] = useState('');
-  const [regDisplayName, setRegDisplayName] = useState('');
+  const [regStudentAName, setRegStudentAName] = useState('');
+  const [regStudentBName, setRegStudentBName] = useState('');
   const [regClassCode, setRegClassCode] = useState('');
   const { login, loginTeacher, register, loading, error } = useStudentStore();
 
@@ -22,7 +23,14 @@ export default function Login() {
       } else if (mode === 'teacher') {
         await loginTeacher(username.trim(), password);
       } else {
-        await register(regStudentNumber.trim(), regPin, regDisplayName.trim() || undefined, regClassCode.trim().toUpperCase());
+        await register(
+          regDesignation.trim(),
+          regPin,
+          undefined,
+          regClassCode.trim().toUpperCase(),
+          regStudentAName.trim() || undefined,
+          regStudentBName.trim() || undefined
+        );
       }
     } catch {
       // Error handled in store
@@ -33,7 +41,13 @@ export default function Login() {
     ? Boolean(designation && pin)
     : mode === 'teacher'
     ? Boolean(username && password)
-    : Boolean(regStudentNumber.trim() && regPin.length >= 4 && regPin === regPinConfirm && regClassCode.trim().length >= 4);
+    : Boolean(
+        regDesignation.trim() &&
+        regPin.length >= 4 &&
+        regPin === regPinConfirm &&
+        regClassCode.trim().length >= 4 &&
+        regStudentAName.trim()
+      );
 
   const pinMismatch = mode === 'register' && regPinConfirm.length > 0 && regPin !== regPinConfirm;
 
@@ -70,7 +84,7 @@ export default function Login() {
         >
           <div className="text-center mb-6">
             <p className="font-ibm-mono text-retro-warm-wood text-sm tracking-wider">
-              {mode === 'student' ? 'CITIZEN IDENTIFICATION' : mode === 'teacher' ? 'DIRECTOR ACCESS' : 'NEW CITIZEN REGISTRATION'}
+              {mode === 'student' ? 'CITIZEN IDENTIFICATION' : mode === 'teacher' ? 'DIRECTOR ACCESS' : 'NEW PAIR REGISTRATION'}
             </p>
             <p className="font-ibm-mono text-chrome-dark/50 text-xs mt-1">
               v4.7.1 // AUTHORIZED ACCESS ONLY
@@ -167,17 +181,43 @@ export default function Login() {
 
               <div className="mb-4">
                 <label className="block font-ibm-mono text-xs text-retro-warm-wood/70 uppercase tracking-wider mb-2">
-                  Student Number
+                  Pair Designation
                 </label>
                 <input
                   type="text"
-                  value={regStudentNumber}
-                  onChange={(e) => setRegStudentNumber(e.target.value)}
-                  placeholder="110234"
+                  value={regDesignation}
+                  onChange={(e) => setRegDesignation(e.target.value.toUpperCase())}
+                  placeholder="CA-33"
                   className="w-full px-4 py-3 text-lg tracking-wider bg-white/80 border border-chrome-mid rounded-lg font-ibm-mono text-retro-warm-wood focus:outline-none focus:border-pearl-iris focus:ring-1 focus:ring-pearl-iris/20"
                   autoComplete="off"
-                  autoFocus
                 />
+              </div>
+
+              <div className="mb-4 grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-ibm-mono text-xs text-retro-warm-wood/70 uppercase tracking-wider mb-2">
+                    Student A Name
+                  </label>
+                  <input
+                    type="text"
+                    value={regStudentAName}
+                    onChange={(e) => setRegStudentAName(e.target.value)}
+                    placeholder="Your name"
+                    className="w-full px-4 py-3 text-base tracking-wider bg-white/80 border border-chrome-mid rounded-lg font-ibm-mono text-retro-warm-wood focus:outline-none focus:border-pearl-iris focus:ring-1 focus:ring-pearl-iris/20"
+                  />
+                </div>
+                <div>
+                  <label className="block font-ibm-mono text-xs text-retro-warm-wood/70 uppercase tracking-wider mb-2">
+                    Student B <span className="text-chrome-dark/40">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={regStudentBName}
+                    onChange={(e) => setRegStudentBName(e.target.value)}
+                    placeholder="Partner name"
+                    className="w-full px-4 py-3 text-base tracking-wider bg-white/80 border border-chrome-mid rounded-lg font-ibm-mono text-retro-warm-wood focus:outline-none focus:border-pearl-iris focus:ring-1 focus:ring-pearl-iris/20"
+                  />
+                </div>
               </div>
 
               <div className="mb-4">
@@ -194,7 +234,7 @@ export default function Login() {
                 />
               </div>
 
-              <div className="mb-4">
+              <div className="mb-6">
                 <label className="block font-ibm-mono text-xs text-retro-warm-wood/70 uppercase tracking-wider mb-2">
                   Confirm PIN
                 </label>
@@ -213,19 +253,6 @@ export default function Login() {
                 {pinMismatch && (
                   <p className="font-ibm-mono text-neon-pink text-xs mt-1">PINs do not match</p>
                 )}
-              </div>
-
-              <div className="mb-6">
-                <label className="block font-ibm-mono text-xs text-retro-warm-wood/70 uppercase tracking-wider mb-2">
-                  Display Name <span className="text-chrome-dark/40">(optional)</span>
-                </label>
-                <input
-                  type="text"
-                  value={regDisplayName}
-                  onChange={(e) => setRegDisplayName(e.target.value)}
-                  placeholder="Your name"
-                  className="w-full px-4 py-3 text-lg tracking-wider bg-white/80 border border-chrome-mid rounded-lg font-ibm-mono text-retro-warm-wood focus:outline-none focus:border-pearl-iris focus:ring-1 focus:ring-pearl-iris/20"
-                />
               </div>
             </>
           ) : (
@@ -281,7 +308,7 @@ export default function Login() {
                 {mode === 'register' ? 'REGISTERING...' : 'AUTHENTICATING...'}
               </span>
             ) : mode === 'register' ? (
-              'REGISTER'
+              'REGISTER PAIR'
             ) : (
               'AUTHENTICATE'
             )}
