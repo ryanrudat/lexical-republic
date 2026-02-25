@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import type { PearlMessage } from '../api/pearl';
-import { fetchPearlMessages, generateBark } from '../api/pearl';
+import type { PearlMessage, ChatMessage } from '../api/pearl';
+import { fetchPearlMessages, generateBark, sendPearlChat } from '../api/pearl';
 import type { BarkType, BarkEntry } from '../types/shifts';
 import type { BarkContext } from '../hooks/useBarkContext';
 
@@ -90,6 +90,11 @@ interface PearlState {
   barkHistory: BarkEntry[];
   activeBark: BarkEntry | null;
   activeAnnouncement: PearlAnnouncement | null;
+  // Chat state
+  chatMessages: ChatMessage[];
+  chatLoading: boolean;
+  chatError: string | null;
+  lastChatTime: number;
   loadMessages: () => Promise<void>;
   nextMessage: () => void;
   setEyeState: (state: EyeStateArc) => void;
@@ -99,6 +104,8 @@ interface PearlState {
   dismissBark: () => void;
   triggerAnnouncement: (type: AnnouncementType, title: string, body: string, dismissLabel?: string) => void;
   dismissAnnouncement: () => void;
+  sendChat: (message: string) => Promise<void>;
+  clearChat: () => void;
 }
 
 export const usePearlStore = create<PearlState>((set, get) => ({
@@ -109,6 +116,10 @@ export const usePearlStore = create<PearlState>((set, get) => ({
   barkHistory: [],
   activeBark: null,
   activeAnnouncement: null,
+  chatMessages: [],
+  chatLoading: false,
+  chatError: null,
+  lastChatTime: 0,
 
   loadMessages: async () => {
     set({ loading: true });
@@ -187,4 +198,43 @@ export const usePearlStore = create<PearlState>((set, get) => ({
   },
 
   dismissAnnouncement: () => set({ activeAnnouncement: null }),
+
+  sendChat: async (message: string) => {
+    const { chatMessages, lastChatTime, chatLoading } = get();
+
+    // Rate limit: 5s cooldown
+    const now = Date.now();
+    if (now - lastChatTime < 5000) {
+      set({ chatError: 'Please wait a moment before sending another message.' });
+      return;
+    }
+
+    // Already loading
+    if (chatLoading) return;
+
+    // Max 200 chars
+    const trimmed = message.trim();
+    if (!trimmed || trimmed.length > 200) return;
+
+    // Append user message immediately
+    const userMsg: ChatMessage = { role: 'user', content: trimmed };
+    const updatedMessages = [...chatMessages, userMsg];
+    set({ chatMessages: updatedMessages, chatLoading: true, chatError: null, lastChatTime: now });
+
+    try {
+      // Send history (without the just-appended user message — backend receives it as `message`)
+      const history = chatMessages.map(m => ({ role: m.role, content: m.content }));
+      const { reply } = await sendPearlChat(trimmed, history);
+      const assistantMsg: ChatMessage = { role: 'assistant', content: reply };
+      set({ chatMessages: [...get().chatMessages, assistantMsg], chatLoading: false });
+    } catch {
+      const fallback: ChatMessage = {
+        role: 'assistant',
+        content: 'PEARL communication channels are temporarily under maintenance, Citizen. Please try again shortly.',
+      };
+      set({ chatMessages: [...get().chatMessages, fallback], chatLoading: false });
+    }
+  },
+
+  clearChat: () => set({ chatMessages: [], chatError: null }),
 }));

@@ -5,6 +5,7 @@ import { useStudentStore } from '../../stores/studentStore';
 import OfficeHUD from './OfficeHUD';
 import PearlSphere3D from './PearlSphere3D';
 import PearlPanel from '../pearl/PearlPanel';
+import { usePearlStore } from '../../stores/pearlStore';
 
 // Source image: 2528×1696. Screen area measured in image-space percentages.
 const IMG_W = 2528;
@@ -154,6 +155,7 @@ export default function OfficeView() {
   useViewTheme();
   const enterTerminal = useViewStore((s) => s.enterTerminal);
   const { logout, user } = useStudentStore();
+  const { messages: pearlMessages, loadMessages } = usePearlStore();
   const [pearlVisible, setPearlVisible] = useState(true);
   const [pearlOpen, setPearlOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
@@ -192,6 +194,11 @@ export default function OfficeView() {
     return () => window.removeEventListener('resize', recalc);
   }, [recalc]);
 
+  // Load PEARL broadcast messages on mount
+  useEffect(() => {
+    loadMessages();
+  }, [loadMessages]);
+
   useEffect(() => {
     const interval = setInterval(() => setTime(new Date()), 30000);
     return () => clearInterval(interval);
@@ -220,7 +227,14 @@ export default function OfficeView() {
     };
   }, []);
 
-  // PEARL propaganda chyron — shows every 15-25s for 14s when face not showing
+  // Build merged chyron pool: hardcoded slogans + PEARL broadcast messages
+  const chyronPoolRef = useRef<string[]>(PROPAGANDA);
+  useEffect(() => {
+    const broadcastTexts = pearlMessages.map(m => m.text).filter(Boolean);
+    chyronPoolRef.current = [...PROPAGANDA, ...broadcastTexts];
+  }, [pearlMessages]);
+
+  // PEARL propaganda chyron — shows every 15-25s with dynamic duration
   useEffect(() => {
     const schedule = () => {
       const delay = 15000 + Math.random() * 10000;
@@ -230,12 +244,16 @@ export default function OfficeView() {
           propagandaTimeoutRef.current = setTimeout(schedule, 5000);
           return;
         }
-        setPropagandaText(PROPAGANDA[Math.floor(Math.random() * PROPAGANDA.length)]);
+        const pool = chyronPoolRef.current;
+        const text = pool[Math.floor(Math.random() * pool.length)];
+        setPropagandaText(text);
         setPropagandaVisible(true);
+        // Dynamic duration: min 14s, scales up ~100ms per character for longer text
+        const duration = Math.max(14000, text.length * 100);
         propagandaTimeoutRef.current = setTimeout(() => {
           setPropagandaVisible(false);
           schedule();
-        }, 14000);
+        }, duration);
       }, delay);
     };
     schedule();
