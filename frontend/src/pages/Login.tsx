@@ -52,280 +52,304 @@ export default function Login() {
   const pinMismatch = mode === 'register' && regPinConfirm.length > 0 && regPin !== regPinConfirm;
 
   return (
-    <div className="fixed inset-0 bg-retro-cream-wall flex items-center justify-center z-20">
-      {/* Subtle background pattern */}
+    <div className="fixed inset-0 bg-[#f5f0e8] flex flex-col z-20 overflow-y-auto">
+      {/* Subtle linen texture */}
       <div
-        className="absolute inset-0 opacity-[0.03]"
+        className="absolute inset-0 opacity-[0.04] pointer-events-none"
         style={{
           backgroundImage:
-            'linear-gradient(rgba(139,115,85,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(139,115,85,0.5) 1px, transparent 1px)',
-          backgroundSize: '40px 40px',
+            'linear-gradient(rgba(100,80,60,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(100,80,60,0.4) 1px, transparent 1px)',
+          backgroundSize: '32px 32px',
         }}
       />
 
-      <div className="relative w-full max-w-md mx-4">
-        {/* Party logo + Ministry header */}
-        <div className="text-center mb-8">
+      {/* Top gold accent bar */}
+      <div className="w-full h-1.5 bg-gradient-to-r from-[#8B6914] via-[#C9A84C] to-[#8B6914] shrink-0" />
+
+      {/* Official header banner */}
+      <div className="relative w-full bg-[#1a1a1a] py-8 shrink-0">
+        <div className="max-w-lg mx-auto text-center px-4">
+          {/* Party seal */}
           <img
             src="/images/party-logo.png"
-            alt="The Party"
-            className="w-28 h-28 mx-auto mb-4 drop-shadow-lg"
+            alt="The Party — Unity, Happiness, Obedience"
+            className="w-44 h-44 mx-auto mb-5 drop-shadow-[0_4px_20px_rgba(201,168,76,0.3)]"
           />
-          <div className="inline-block retro-card px-6 py-3 rounded-xl mb-4">
-            <h1 className="font-special-elite text-retro-warm-wood text-lg tracking-wider">
-              Ministry for Healthy
-            </h1>
-            <h2 className="font-special-elite text-retro-warm-wood text-lg tracking-wider">
-              & Safe Communication
-            </h2>
+
+          {/* Ministry name */}
+          <h1 className="font-special-elite text-[#C9A84C] text-2xl tracking-[0.15em] leading-tight">
+            Ministry for Healthy
+          </h1>
+          <h1 className="font-special-elite text-[#C9A84C] text-2xl tracking-[0.15em] leading-tight">
+            & Safe Communication
+          </h1>
+
+          {/* Divider */}
+          <div className="mt-4 mb-3 flex items-center justify-center gap-3">
+            <div className="h-px w-16 bg-gradient-to-r from-transparent to-[#C9A84C]/40" />
+            <div className="w-1.5 h-1.5 rotate-45 bg-[#C9A84C]/50" />
+            <div className="h-px w-16 bg-gradient-to-l from-transparent to-[#C9A84C]/40" />
           </div>
-          <div className="h-px bg-gradient-to-r from-transparent via-chrome-mid to-transparent" />
+
+          <p className="font-ibm-mono text-[#C9A84C]/50 text-[10px] tracking-[0.4em] uppercase">
+            Department of Clarity — Secure Access Portal
+          </p>
         </div>
+      </div>
 
-        {/* Login card */}
-        <form
-          onSubmit={handleSubmit}
-          className="retro-card p-8 rounded-xl"
-        >
-          <div className="text-center mb-6">
-            <p className="font-ibm-mono text-retro-warm-wood text-sm tracking-wider">
-              {mode === 'student' ? 'CITIZEN IDENTIFICATION' : mode === 'teacher' ? 'DIRECTOR ACCESS' : 'NEW PAIR REGISTRATION'}
-            </p>
-            <p className="font-ibm-mono text-chrome-dark/50 text-xs mt-1">
-              v4.7.1 // AUTHORIZED ACCESS ONLY
-            </p>
-          </div>
+      {/* Bottom gold accent bar */}
+      <div className="w-full h-0.5 bg-gradient-to-r from-[#8B6914] via-[#C9A84C] to-[#8B6914] shrink-0" />
 
-          <div className="mb-4 flex rounded-lg border border-chrome-mid overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setMode('student')}
-              className={`flex-1 py-2 font-ibm-mono text-xs tracking-wider ${
-                mode === 'student'
-                  ? 'bg-pearl-iris/10 text-pearl-iris'
-                  : 'bg-white/60 text-retro-warm-wood/60'
-              }`}
-            >
-              STUDENT
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('register')}
-              className={`flex-1 py-2 font-ibm-mono text-xs tracking-wider ${
-                mode === 'register'
-                  ? 'bg-pearl-iris/10 text-pearl-iris'
-                  : 'bg-white/60 text-retro-warm-wood/60'
-              }`}
-            >
-              REGISTER
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('teacher')}
-              className={`flex-1 py-2 font-ibm-mono text-xs tracking-wider ${
-                mode === 'teacher'
-                  ? 'bg-pearl-iris/10 text-pearl-iris'
-                  : 'bg-white/60 text-retro-warm-wood/60'
-              }`}
-            >
-              TEACHER
-            </button>
-          </div>
-
-          {mode === 'student' ? (
-            <>
-              <div className="mb-4">
-                <label className="block font-ibm-mono text-xs text-retro-warm-wood/70 uppercase tracking-wider mb-2">
-                  Designation
-                </label>
-                <input
-                  type="text"
-                  value={designation}
-                  onChange={(e) => setDesignation(e.target.value.toUpperCase())}
-                  placeholder="CA-1"
-                  className="w-full px-4 py-3 text-lg tracking-wider bg-white/80 border border-chrome-mid rounded-lg font-ibm-mono text-retro-warm-wood focus:outline-none focus:border-pearl-iris focus:ring-1 focus:ring-pearl-iris/20"
-                  autoComplete="off"
-                  autoFocus
-                />
-              </div>
-
-              <div className="mb-6">
-                <label className="block font-ibm-mono text-xs text-retro-warm-wood/70 uppercase tracking-wider mb-2">
-                  Security Pin
-                </label>
-                <input
-                  type="password"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  placeholder="****"
-                  maxLength={8}
-                  className="w-full px-4 py-3 text-lg tracking-[0.5em] bg-white/80 border border-chrome-mid rounded-lg font-ibm-mono text-retro-warm-wood focus:outline-none focus:border-pearl-iris focus:ring-1 focus:ring-pearl-iris/20"
-                />
-              </div>
-            </>
-          ) : mode === 'register' ? (
-            <>
-              <div className="mb-4">
-                <label className="block font-ibm-mono text-xs text-retro-warm-wood/70 uppercase tracking-wider mb-2">
-                  Class Code
-                </label>
-                <input
-                  type="text"
-                  value={regClassCode}
-                  onChange={(e) => setRegClassCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
-                  placeholder="ALPHA1"
-                  maxLength={6}
-                  className="w-full px-4 py-3 text-lg tracking-[0.3em] bg-white/80 border border-chrome-mid rounded-lg font-ibm-mono text-retro-warm-wood focus:outline-none focus:border-pearl-iris focus:ring-1 focus:ring-pearl-iris/20"
-                  autoComplete="off"
-                  autoFocus
-                />
-                <p className="font-ibm-mono text-chrome-dark/40 text-[10px] mt-1">
-                  PROVIDED BY YOUR INSTRUCTOR
-                </p>
-              </div>
-
-              <div className="mb-4">
-                <label className="block font-ibm-mono text-xs text-retro-warm-wood/70 uppercase tracking-wider mb-2">
-                  Pair Designation
-                </label>
-                <input
-                  type="text"
-                  value={regDesignation}
-                  onChange={(e) => setRegDesignation(e.target.value.toUpperCase())}
-                  placeholder="CA-33"
-                  className="w-full px-4 py-3 text-lg tracking-wider bg-white/80 border border-chrome-mid rounded-lg font-ibm-mono text-retro-warm-wood focus:outline-none focus:border-pearl-iris focus:ring-1 focus:ring-pearl-iris/20"
-                  autoComplete="off"
-                />
-              </div>
-
-              <div className="mb-4 grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-ibm-mono text-xs text-retro-warm-wood/70 uppercase tracking-wider mb-2">
-                    Student A Name
-                  </label>
-                  <input
-                    type="text"
-                    value={regStudentAName}
-                    onChange={(e) => setRegStudentAName(e.target.value)}
-                    placeholder="Your name"
-                    className="w-full px-4 py-3 text-base tracking-wider bg-white/80 border border-chrome-mid rounded-lg font-ibm-mono text-retro-warm-wood focus:outline-none focus:border-pearl-iris focus:ring-1 focus:ring-pearl-iris/20"
-                  />
-                </div>
-                <div>
-                  <label className="block font-ibm-mono text-xs text-retro-warm-wood/70 uppercase tracking-wider mb-2">
-                    Student B <span className="text-chrome-dark/40">(optional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={regStudentBName}
-                    onChange={(e) => setRegStudentBName(e.target.value)}
-                    placeholder="Partner name"
-                    className="w-full px-4 py-3 text-base tracking-wider bg-white/80 border border-chrome-mid rounded-lg font-ibm-mono text-retro-warm-wood focus:outline-none focus:border-pearl-iris focus:ring-1 focus:ring-pearl-iris/20"
-                  />
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <label className="block font-ibm-mono text-xs text-retro-warm-wood/70 uppercase tracking-wider mb-2">
-                  Choose PIN (4-8 digits)
-                </label>
-                <input
-                  type="password"
-                  value={regPin}
-                  onChange={(e) => setRegPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                  placeholder="****"
-                  maxLength={8}
-                  className="w-full px-4 py-3 text-lg tracking-[0.5em] bg-white/80 border border-chrome-mid rounded-lg font-ibm-mono text-retro-warm-wood focus:outline-none focus:border-pearl-iris focus:ring-1 focus:ring-pearl-iris/20"
-                />
-              </div>
-
-              <div className="mb-6">
-                <label className="block font-ibm-mono text-xs text-retro-warm-wood/70 uppercase tracking-wider mb-2">
-                  Confirm PIN
-                </label>
-                <input
-                  type="password"
-                  value={regPinConfirm}
-                  onChange={(e) => setRegPinConfirm(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                  placeholder="****"
-                  maxLength={8}
-                  className={`w-full px-4 py-3 text-lg tracking-[0.5em] bg-white/80 border rounded-lg font-ibm-mono text-retro-warm-wood focus:outline-none focus:ring-1 ${
-                    pinMismatch
-                      ? 'border-neon-pink focus:border-neon-pink focus:ring-neon-pink/20'
-                      : 'border-chrome-mid focus:border-pearl-iris focus:ring-pearl-iris/20'
-                  }`}
-                />
-                {pinMismatch && (
-                  <p className="font-ibm-mono text-neon-pink text-xs mt-1">PINs do not match</p>
-                )}
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="mb-4">
-                <label className="block font-ibm-mono text-xs text-retro-warm-wood/70 uppercase tracking-wider mb-2">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="teacher"
-                  className="w-full px-4 py-3 text-lg tracking-wider bg-white/80 border border-chrome-mid rounded-lg font-ibm-mono text-retro-warm-wood focus:outline-none focus:border-pearl-iris focus:ring-1 focus:ring-pearl-iris/20"
-                  autoComplete="username"
-                  autoFocus
-                />
-              </div>
-
-              <div className="mb-6">
-                <label className="block font-ibm-mono text-xs text-retro-warm-wood/70 uppercase tracking-wider mb-2">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full px-4 py-3 text-lg bg-white/80 border border-chrome-mid rounded-lg font-ibm-mono text-retro-warm-wood focus:outline-none focus:border-pearl-iris focus:ring-1 focus:ring-pearl-iris/20"
-                  autoComplete="current-password"
-                />
-              </div>
-            </>
-          )}
-
-          {/* Error */}
-          {error && (
-            <div className="mb-4 p-3 border border-neon-pink/30 bg-neon-pink/5 rounded-lg">
-              <p className="font-ibm-mono text-neon-pink text-xs text-center">
-                ACCESS DENIED: {error.toUpperCase()}
+      {/* Content area */}
+      <div className="flex-1 flex items-start justify-center pt-8 pb-12 px-4">
+        <div className="w-full max-w-md">
+          {/* Login card */}
+          <form
+            onSubmit={handleSubmit}
+            className="bg-white/70 backdrop-blur-sm border border-[#d4cbbe] rounded-lg shadow-[0_2px_12px_rgba(0,0,0,0.06)] p-8"
+          >
+            <div className="text-center mb-6">
+              <p className="font-ibm-mono text-[#5a4a38] text-sm tracking-[0.2em] font-medium">
+                {mode === 'student' ? 'CITIZEN IDENTIFICATION' : mode === 'teacher' ? 'DIRECTOR ACCESS' : 'NEW PAIR REGISTRATION'}
+              </p>
+              <p className="font-ibm-mono text-[#5a4a38]/40 text-[10px] mt-1 tracking-wider">
+                v4.7.1 // AUTHORIZED ACCESS ONLY
               </p>
             </div>
-          )}
 
-          {/* Submit */}
-          <button
-            type="submit"
-            disabled={loading || !canSubmit}
-            className="w-full py-3 bg-pearl-iris/10 border border-pearl-iris text-pearl-iris font-ibm-mono text-sm uppercase tracking-[0.3em] rounded-lg hover:bg-pearl-iris/20 transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed neon-glow-cyan"
-          >
-            {loading ? (
-              <span className="animate-pulse">
-                {mode === 'register' ? 'REGISTERING...' : 'AUTHENTICATING...'}
-              </span>
+            <div className="mb-5 flex rounded-md border border-[#d4cbbe] overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setMode('student')}
+                className={`flex-1 py-2.5 font-ibm-mono text-xs tracking-wider transition-colors ${
+                  mode === 'student'
+                    ? 'bg-[#1a1a1a] text-[#C9A84C]'
+                    : 'bg-[#f5f0e8] text-[#5a4a38]/50 hover:bg-[#ede7db]'
+                }`}
+              >
+                STUDENT
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('register')}
+                className={`flex-1 py-2.5 font-ibm-mono text-xs tracking-wider border-x border-[#d4cbbe] transition-colors ${
+                  mode === 'register'
+                    ? 'bg-[#1a1a1a] text-[#C9A84C]'
+                    : 'bg-[#f5f0e8] text-[#5a4a38]/50 hover:bg-[#ede7db]'
+                }`}
+              >
+                REGISTER
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('teacher')}
+                className={`flex-1 py-2.5 font-ibm-mono text-xs tracking-wider transition-colors ${
+                  mode === 'teacher'
+                    ? 'bg-[#1a1a1a] text-[#C9A84C]'
+                    : 'bg-[#f5f0e8] text-[#5a4a38]/50 hover:bg-[#ede7db]'
+                }`}
+              >
+                TEACHER
+              </button>
+            </div>
+
+            {mode === 'student' ? (
+              <>
+                <div className="mb-4">
+                  <label className="block font-ibm-mono text-[11px] text-[#5a4a38]/70 uppercase tracking-[0.15em] mb-2">
+                    Designation
+                  </label>
+                  <input
+                    type="text"
+                    value={designation}
+                    onChange={(e) => setDesignation(e.target.value.toUpperCase())}
+                    placeholder="CA-1"
+                    className="w-full px-4 py-3 text-lg tracking-wider bg-white border border-[#d4cbbe] rounded-md font-ibm-mono text-[#3a3025] focus:outline-none focus:border-[#8B6914] focus:ring-1 focus:ring-[#C9A84C]/30"
+                    autoComplete="off"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="mb-6">
+                  <label className="block font-ibm-mono text-[11px] text-[#5a4a38]/70 uppercase tracking-[0.15em] mb-2">
+                    Security Pin
+                  </label>
+                  <input
+                    type="password"
+                    value={pin}
+                    onChange={(e) => setPin(e.target.value)}
+                    placeholder="****"
+                    maxLength={8}
+                    className="w-full px-4 py-3 text-lg tracking-[0.5em] bg-white border border-[#d4cbbe] rounded-md font-ibm-mono text-[#3a3025] focus:outline-none focus:border-[#8B6914] focus:ring-1 focus:ring-[#C9A84C]/30"
+                  />
+                </div>
+              </>
             ) : mode === 'register' ? (
-              'REGISTER PAIR'
-            ) : (
-              'AUTHENTICATE'
-            )}
-          </button>
+              <>
+                <div className="mb-4">
+                  <label className="block font-ibm-mono text-[11px] text-[#5a4a38]/70 uppercase tracking-[0.15em] mb-2">
+                    Class Code
+                  </label>
+                  <input
+                    type="text"
+                    value={regClassCode}
+                    onChange={(e) => setRegClassCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
+                    placeholder="ALPHA1"
+                    maxLength={6}
+                    className="w-full px-4 py-3 text-lg tracking-[0.3em] bg-white border border-[#d4cbbe] rounded-md font-ibm-mono text-[#3a3025] focus:outline-none focus:border-[#8B6914] focus:ring-1 focus:ring-[#C9A84C]/30"
+                    autoComplete="off"
+                    autoFocus
+                  />
+                  <p className="font-ibm-mono text-[#5a4a38]/35 text-[10px] mt-1 tracking-wider">
+                    PROVIDED BY YOUR INSTRUCTOR
+                  </p>
+                </div>
 
-          {/* Footer */}
-          <p className="mt-6 text-center font-ibm-mono text-chrome-dark/30 text-xs leading-relaxed">
-            UNAUTHORIZED ACCESS IS A CLASS-3 VIOLATION
-            <br />
-            ALL SESSIONS ARE MONITORED BY P.E.A.R.L.
-          </p>
-        </form>
+                <div className="mb-4">
+                  <label className="block font-ibm-mono text-[11px] text-[#5a4a38]/70 uppercase tracking-[0.15em] mb-2">
+                    Pair Designation
+                  </label>
+                  <input
+                    type="text"
+                    value={regDesignation}
+                    onChange={(e) => setRegDesignation(e.target.value.toUpperCase())}
+                    placeholder="CA-33"
+                    className="w-full px-4 py-3 text-lg tracking-wider bg-white border border-[#d4cbbe] rounded-md font-ibm-mono text-[#3a3025] focus:outline-none focus:border-[#8B6914] focus:ring-1 focus:ring-[#C9A84C]/30"
+                    autoComplete="off"
+                  />
+                </div>
+
+                <div className="mb-4 grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-ibm-mono text-[11px] text-[#5a4a38]/70 uppercase tracking-[0.15em] mb-2">
+                      Student A Name
+                    </label>
+                    <input
+                      type="text"
+                      value={regStudentAName}
+                      onChange={(e) => setRegStudentAName(e.target.value)}
+                      placeholder="Your name"
+                      className="w-full px-4 py-3 text-base tracking-wider bg-white border border-[#d4cbbe] rounded-md font-ibm-mono text-[#3a3025] focus:outline-none focus:border-[#8B6914] focus:ring-1 focus:ring-[#C9A84C]/30"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-ibm-mono text-[11px] text-[#5a4a38]/70 uppercase tracking-[0.15em] mb-2">
+                      Student B <span className="opacity-50">(optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={regStudentBName}
+                      onChange={(e) => setRegStudentBName(e.target.value)}
+                      placeholder="Partner name"
+                      className="w-full px-4 py-3 text-base tracking-wider bg-white border border-[#d4cbbe] rounded-md font-ibm-mono text-[#3a3025] focus:outline-none focus:border-[#8B6914] focus:ring-1 focus:ring-[#C9A84C]/30"
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <label className="block font-ibm-mono text-[11px] text-[#5a4a38]/70 uppercase tracking-[0.15em] mb-2">
+                    Choose PIN (4-8 digits)
+                  </label>
+                  <input
+                    type="password"
+                    value={regPin}
+                    onChange={(e) => setRegPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                    placeholder="****"
+                    maxLength={8}
+                    className="w-full px-4 py-3 text-lg tracking-[0.5em] bg-white border border-[#d4cbbe] rounded-md font-ibm-mono text-[#3a3025] focus:outline-none focus:border-[#8B6914] focus:ring-1 focus:ring-[#C9A84C]/30"
+                  />
+                </div>
+
+                <div className="mb-6">
+                  <label className="block font-ibm-mono text-[11px] text-[#5a4a38]/70 uppercase tracking-[0.15em] mb-2">
+                    Confirm PIN
+                  </label>
+                  <input
+                    type="password"
+                    value={regPinConfirm}
+                    onChange={(e) => setRegPinConfirm(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                    placeholder="****"
+                    maxLength={8}
+                    className={`w-full px-4 py-3 text-lg tracking-[0.5em] bg-white border rounded-md font-ibm-mono text-[#3a3025] focus:outline-none focus:ring-1 ${
+                      pinMismatch
+                        ? 'border-neon-pink focus:border-neon-pink focus:ring-neon-pink/20'
+                        : 'border-[#d4cbbe] focus:border-[#8B6914] focus:ring-[#C9A84C]/30'
+                    }`}
+                  />
+                  {pinMismatch && (
+                    <p className="font-ibm-mono text-neon-pink text-xs mt-1">PINs do not match</p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="mb-4">
+                  <label className="block font-ibm-mono text-[11px] text-[#5a4a38]/70 uppercase tracking-[0.15em] mb-2">
+                    Username
+                  </label>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="teacher"
+                    className="w-full px-4 py-3 text-lg tracking-wider bg-white border border-[#d4cbbe] rounded-md font-ibm-mono text-[#3a3025] focus:outline-none focus:border-[#8B6914] focus:ring-1 focus:ring-[#C9A84C]/30"
+                    autoComplete="username"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="mb-6">
+                  <label className="block font-ibm-mono text-[11px] text-[#5a4a38]/70 uppercase tracking-[0.15em] mb-2">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full px-4 py-3 text-lg bg-white border border-[#d4cbbe] rounded-md font-ibm-mono text-[#3a3025] focus:outline-none focus:border-[#8B6914] focus:ring-1 focus:ring-[#C9A84C]/30"
+                    autoComplete="current-password"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Error */}
+            {error && (
+              <div className="mb-4 p-3 border border-[#8B2020]/30 bg-[#8B2020]/5 rounded-md">
+                <p className="font-ibm-mono text-[#8B2020] text-xs text-center tracking-wider">
+                  ACCESS DENIED: {error.toUpperCase()}
+                </p>
+              </div>
+            )}
+
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={loading || !canSubmit}
+              className="w-full py-3.5 bg-[#1a1a1a] text-[#C9A84C] font-ibm-mono text-sm uppercase tracking-[0.3em] rounded-md hover:bg-[#2a2a2a] transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed border border-[#C9A84C]/30"
+            >
+              {loading ? (
+                <span className="animate-pulse">
+                  {mode === 'register' ? 'REGISTERING...' : 'AUTHENTICATING...'}
+                </span>
+              ) : mode === 'register' ? (
+                'REGISTER PAIR'
+              ) : (
+                'AUTHENTICATE'
+              )}
+            </button>
+
+            {/* Footer warning */}
+            <div className="mt-6 pt-4 border-t border-[#d4cbbe]/60">
+              <p className="text-center font-ibm-mono text-[#5a4a38]/30 text-[10px] leading-relaxed tracking-wider">
+                UNAUTHORIZED ACCESS IS A CLASS-3 VIOLATION
+                <br />
+                ALL SESSIONS ARE MONITORED BY P.E.A.R.L.
+              </p>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
