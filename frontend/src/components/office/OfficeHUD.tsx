@@ -1,6 +1,7 @@
 import { useStudentStore } from '../../stores/studentStore';
 import { useNavigate } from 'react-router-dom';
 import PearlEye from '../pearl/PearlEye';
+import DictionaryIcon from '../dictionary/DictionaryIcon';
 
 // ─── Speaker Icon (inline SVG) ───────────────────────────────
 function SpeakerIcon({ muted }: { muted: boolean }) {
@@ -77,8 +78,9 @@ export default function OfficeHUD({ isMuted, setIsMuted, pearlOpen, setPearlOpen
           HAPPINESS: OPTIMAL
         </span>
 
-        {/* Volume button + PEARL eye */}
+        {/* Dictionary + Volume button + PEARL eye */}
         <div className="flex items-center gap-3">
+          <DictionaryIcon variant="office" />
           <button
             onClick={() => setIsMuted(!isMuted)}
             className="retro-card px-2.5 py-1.5 rounded-lg text-chrome-dark/60 hover:text-neon-cyan transition-colors"

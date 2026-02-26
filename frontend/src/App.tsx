@@ -7,6 +7,7 @@ import BootSequence from './components/layout/BootSequence';
 import GameShell from './components/layout/GameShell';
 import { GUIDED_STUDENT_MODE } from './config/runtimeFlags';
 import { connectSocket } from './utils/socket';
+import WelcomeVideoModal from './components/welcome/WelcomeVideoModal';
 
 export default function App() {
   const { user, loading, refresh } = useStudentStore();
@@ -70,6 +71,17 @@ export default function App() {
 
   if (!bootSeen) {
     return <BootSequence onComplete={() => forceBootRefresh((v) => v + 1)} />;
+  }
+
+  // Welcome video gate — pairs only, one-time
+  const isPair = user.role === 'student' && !!user.pairId;
+  if (isPair && user.hasWatchedWelcome === false) {
+    return (
+      <WelcomeVideoModal
+        designation={user.designation}
+        onComplete={() => refresh()}
+      />
+    );
   }
 
   const studentHome = GUIDED_STUDENT_MODE

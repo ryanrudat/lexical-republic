@@ -6,6 +6,8 @@ import {
   updateWordNotes as apiUpdateNotes,
   recordWordEncounter as apiRecordEncounter,
   recoverWord as apiRecoverWord,
+  toggleStarred as apiToggleStarred,
+  revealChinese as apiRevealChinese,
 } from '../api/dictionary';
 
 interface DictionaryState {
@@ -30,6 +32,8 @@ interface DictionaryState {
   updateNotes: (wordId: string, notes: string) => Promise<void>;
   recordEncounter: (wordId: string) => Promise<void>;
   recoverWord: (wordId: string) => Promise<void>;
+  toggleStarred: (wordId: string) => Promise<void>;
+  revealChinese: (wordId: string) => Promise<void>;
 }
 
 export const useDictionaryStore = create<DictionaryState>((set, get) => ({
@@ -117,6 +121,41 @@ export const useDictionaryStore = create<DictionaryState>((set, get) => ({
       });
     } catch {
       // Silently fail
+    }
+  },
+
+  toggleStarred: async (wordId) => {
+    // Optimistic update
+    const prev = get().words.find((w) => w.id === wordId);
+    if (!prev) return;
+    set({
+      words: get().words.map((w) =>
+        w.id === wordId ? { ...w, starred: !w.starred } : w
+      ),
+    });
+    try {
+      await apiToggleStarred(wordId);
+    } catch {
+      // Revert on failure
+      set({
+        words: get().words.map((w) =>
+          w.id === wordId ? { ...w, starred: prev.starred } : w
+        ),
+      });
+    }
+  },
+
+  revealChinese: async (wordId) => {
+    // Optimistic update — one-way, cannot un-reveal
+    set({
+      words: get().words.map((w) =>
+        w.id === wordId ? { ...w, chineseRevealed: true } : w
+      ),
+    });
+    try {
+      await apiRevealChinese(wordId);
+    } catch {
+      // DB persist failed, but keep local state revealed for UX
     }
   },
 }));

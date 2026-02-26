@@ -33,3 +33,25 @@ export async function recordWordEncounter(wordId: string): Promise<void> {
 export async function recoverWord(wordId: string): Promise<void> {
   await client.post(`/dictionary/${wordId}/recover`);
 }
+
+export async function markWelcomeWatched(): Promise<void> {
+  await client.post('/dictionary/welcome-watched');
+}
+
+export async function toggleStarred(wordId: string): Promise<{ starred: boolean }> {
+  const { data } = await client.patch(`/dictionary/${wordId}/starred`);
+  return data;
+}
+
+export async function revealChinese(wordId: string): Promise<{ chineseRevealed: boolean }> {
+  const { data } = await client.patch(`/dictionary/${wordId}/chinese-revealed`);
+  return data;
+}
+
+export async function updateTeacherDictionaryWord(
+  wordId: string,
+  fields: Record<string, unknown>
+): Promise<unknown> {
+  const { data } = await client.patch(`/teacher/dictionary/${wordId}`, fields);
+  return data;
+}

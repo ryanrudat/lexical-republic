@@ -849,4 +849,44 @@ router.post('/weeks/:weekId/steps/:missionType/video', uploadVideo.single('video
   }
 });
 
+// PATCH /api/teacher/dictionary/:wordId — Teacher edits dictionary word fields
+router.patch('/dictionary/:wordId', async (req: Request, res: Response) => {
+  try {
+    const wordId = req.params.wordId as string;
+    const {
+      partyDefinition,
+      trueDefinition,
+      exampleSentence,
+      translationZhTw,
+      initialStatus,
+      isWorldBuilding,
+      toeicCategory,
+    } = req.body;
+
+    const data: Record<string, unknown> = {};
+    if (partyDefinition !== undefined) data.partyDefinition = partyDefinition;
+    if (trueDefinition !== undefined) data.trueDefinition = trueDefinition;
+    if (exampleSentence !== undefined) data.exampleSentence = exampleSentence;
+    if (translationZhTw !== undefined) data.translationZhTw = translationZhTw;
+    if (initialStatus !== undefined) data.initialStatus = initialStatus;
+    if (isWorldBuilding !== undefined) data.isWorldBuilding = isWorldBuilding;
+    if (toeicCategory !== undefined) data.toeicCategory = toeicCategory;
+
+    if (Object.keys(data).length === 0) {
+      res.status(400).json({ error: 'No fields to update' });
+      return;
+    }
+
+    const updated = await prisma.dictionaryWord.update({
+      where: { id: wordId },
+      data,
+    });
+
+    res.json(updated);
+  } catch (err) {
+    console.error('Teacher dictionary edit error:', err);
+    res.status(500).json({ error: 'Failed to update dictionary word' });
+  }
+});
+
 export default router;

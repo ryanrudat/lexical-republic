@@ -19,6 +19,7 @@ export interface User {
   studentAName?: string | null;
   studentBName?: string | null;
   concernScore?: number;
+  hasWatchedWelcome?: boolean;
 }
 
 export async function loginStudent(designation: string, pin: string) {

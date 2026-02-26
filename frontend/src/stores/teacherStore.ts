@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type TeacherTab = 'class' | 'grades' | 'shifts';
+export type TeacherTab = 'class' | 'grades' | 'shifts' | 'dictionary';
 
 export interface OnlineStudent {
   userId: string;

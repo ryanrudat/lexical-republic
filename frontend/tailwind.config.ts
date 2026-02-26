@@ -89,6 +89,8 @@ export default {
         'ibm-mono': ['"IBM Plex Mono"', 'monospace'],
         'merriweather': ['"Merriweather"', 'serif'],
         'caveat': ['"Caveat"', 'cursive'],
+        'source-serif': ['"Source Serif 4"', 'serif'],
+        'noto-tc': ['"Noto Sans TC"', 'sans-serif'],
         'dseg7': ['"DSEG7Classic"', 'monospace'],
       },
       animation: {

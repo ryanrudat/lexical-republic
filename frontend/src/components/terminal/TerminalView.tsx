@@ -15,7 +15,7 @@ import MyFileApp from './apps/MyFileApp';
 import PearlEye from '../pearl/PearlEye';
 import PearlPanel from '../pearl/PearlPanel';
 import DictionarySidebar from '../dictionary/DictionarySidebar';
-import { useDictionaryStore } from '../../stores/dictionaryStore';
+import DictionaryIcon from '../dictionary/DictionaryIcon';
 import SystemAuditOverlay from '../shift/SystemAuditOverlay';
 
 const APP_CONFIG = {
@@ -35,9 +35,6 @@ export default function TerminalView() {
   const eyeState = usePearlStore((s) => s.eyeState);
   const concernScore = useSessionStore((s) => s.concernScore);
   const [pearlOpen, setPearlOpen] = useState(false);
-  const dictionaryOpen = useDictionaryStore((s) => s.isOpen);
-  const toggleDictionary = useDictionaryStore((s) => s.toggle);
-
   const handleHome = useCallback(() => {
     returnToDesktop();
     navigate('/', { replace: true });
@@ -123,23 +120,8 @@ export default function TerminalView() {
               </div>
             )}
 
-            {/* Dictionary toggle */}
-            <button
-              onClick={toggleDictionary}
-              className={`ios-glass-pill px-2.5 py-1 flex items-center gap-1.5 transition-colors ${
-                dictionaryOpen
-                  ? 'border-neon-mint/40 bg-neon-mint/10'
-                  : 'hover:border-neon-mint/30'
-              }`}
-              aria-label="Toggle dictionary"
-            >
-              <span className="font-ibm-mono text-xs">
-                {'\u{1F4D6}'}
-              </span>
-              <span className="font-ibm-mono text-[10px] text-white/50 tracking-wider uppercase hidden sm:inline">
-                Lexicon
-              </span>
-            </button>
+            {/* Dictionary icon */}
+            <DictionaryIcon variant="terminal" />
 
             <div className="flex items-center gap-2 ios-glass-pill px-2.5 py-1">
               <PearlEye

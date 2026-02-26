@@ -8,6 +8,7 @@ export interface DictionaryWord {
   partyDefinition: string;
   trueDefinition: string;
   exampleSentence: string;
+  translationZhTw: string | null;
   toeicCategory: string;
   wordFamilyGroup: string | null;
   weekIntroduced: number;
@@ -16,6 +17,8 @@ export interface DictionaryWord {
   mastery: number;
   encounters: number;
   isRecovered: boolean;
+  starred: boolean;
+  chineseRevealed: boolean;
   studentNotes: string;
   lastSeenAt: string | null;
 }
@@ -46,4 +49,4 @@ export interface WordStatusEvent {
   createdAt: string;
 }
 
-export type DictionaryFilter = 'all' | 'target' | 'world-building' | WordStatus;
+export type DictionaryFilter = 'all' | 'mastered' | 'starred' | 'proscribed' | 'family' | 'toeic' | number;

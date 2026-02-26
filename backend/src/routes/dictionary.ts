@@ -1,7 +1,12 @@
 import { Router, Request, Response } from 'express';
-import { authenticate, requirePair, getPairId } from '../middleware/auth';
+import { authenticate, requirePair, requireRole, getPairId } from '../middleware/auth';
 import { isPairPayload } from '../utils/jwt';
 import prisma from '../utils/prisma';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+
+const uploadPath = process.env.UPLOAD_DIR || path.join(__dirname, '../../uploads');
 
 const router = Router();
 router.use(authenticate);
@@ -61,6 +66,7 @@ router.get('/', async (req: Request, res: Response) => {
         partyDefinition: w.partyDefinition,
         trueDefinition: currentWeek >= 7 ? w.trueDefinition : '', // Unlocked in Act II
         exampleSentence: w.exampleSentence,
+        translationZhTw: w.translationZhTw ?? null,
         toeicCategory: w.toeicCategory,
         wordFamilyGroup: w.wordFamilyGroup,
         weekIntroduced: w.weekIntroduced,
@@ -69,6 +75,8 @@ router.get('/', async (req: Request, res: Response) => {
         mastery: prog?.mastery ?? 0,
         encounters: prog?.encounters ?? 0,
         isRecovered: prog?.isRecovered ?? false,
+        starred: prog?.starred ?? false,
+        chineseRevealed: prog?.chineseRevealed ?? false,
         studentNotes: prog?.studentNotes ?? '',
         lastSeenAt: prog?.lastSeenAt?.toISOString() ?? null,
       };
@@ -135,6 +143,113 @@ router.get('/families', async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/dictionary/welcome-watched — Mark pair as having watched welcome video
+router.post('/welcome-watched', requirePair, async (req: Request, res: Response) => {
+  try {
+    const pairId = getPairId(req)!;
+    await prisma.pair.update({
+      where: { id: pairId },
+      data: { hasWatchedWelcome: true },
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Welcome watched error:', err);
+    res.status(500).json({ error: 'Failed to mark welcome as watched' });
+  }
+});
+
+// POST /api/dictionary/welcome-video — Teacher uploads welcome video
+const welcomeStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    const dir = path.isAbsolute(uploadPath)
+      ? path.join(uploadPath, 'welcome')
+      : path.join(__dirname, '../../', uploadPath, 'welcome');
+    fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (_req, _file, cb) => {
+    cb(null, 'welcome-video.mp4');
+  },
+});
+const welcomeUpload = multer({ storage: welcomeStorage, limits: { fileSize: 200 * 1024 * 1024 } });
+
+router.post('/welcome-video', requireRole('teacher'), welcomeUpload.single('video'), async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ error: 'No video file provided' });
+      return;
+    }
+    res.json({ success: true, filename: req.file.filename });
+  } catch (err) {
+    console.error('Welcome video upload error:', err);
+    res.status(500).json({ error: 'Failed to upload welcome video' });
+  }
+});
+
+// GET /api/dictionary/welcome-video — Serve the welcome video file
+router.get('/welcome-video', async (_req: Request, res: Response) => {
+  try {
+    const dir = path.isAbsolute(uploadPath)
+      ? path.join(uploadPath, 'welcome')
+      : path.join(__dirname, '../../', uploadPath, 'welcome');
+    const filePath = path.join(dir, 'welcome-video.mp4');
+    if (!fs.existsSync(filePath)) {
+      res.status(404).json({ error: 'No welcome video uploaded yet' });
+      return;
+    }
+    res.sendFile(filePath);
+  } catch (err) {
+    console.error('Welcome video serve error:', err);
+    res.status(500).json({ error: 'Failed to serve welcome video' });
+  }
+});
+
+// PATCH /api/dictionary/:wordId/starred — Toggle starred status
+router.patch('/:wordId/starred', requirePair, async (req: Request, res: Response) => {
+  try {
+    const wordId = req.params.wordId as string;
+    const pairId = getPairId(req)!;
+
+    const existing = await prisma.pairDictionaryProgress.findUnique({
+      where: { pairId_wordId: { pairId, wordId } },
+    });
+
+    if (existing) {
+      const updated = await prisma.pairDictionaryProgress.update({
+        where: { id: existing.id },
+        data: { starred: !existing.starred },
+      });
+      res.json({ starred: updated.starred });
+    } else {
+      const created = await prisma.pairDictionaryProgress.create({
+        data: { pairId, wordId, starred: true },
+      });
+      res.json({ starred: created.starred });
+    }
+  } catch (err) {
+    console.error('Dictionary starred toggle error:', err);
+    res.status(500).json({ error: 'Failed to toggle starred' });
+  }
+});
+
+// PATCH /api/dictionary/:wordId/chinese-revealed — Mark Chinese translation as revealed (one-way)
+router.patch('/:wordId/chinese-revealed', requirePair, async (req: Request, res: Response) => {
+  try {
+    const wordId = req.params.wordId as string;
+    const pairId = getPairId(req)!;
+
+    await prisma.pairDictionaryProgress.upsert({
+      where: { pairId_wordId: { pairId, wordId } },
+      update: { chineseRevealed: true },
+      create: { pairId, wordId, chineseRevealed: true },
+    });
+    res.json({ chineseRevealed: true });
+  } catch (err) {
+    console.error('Dictionary chinese-revealed error:', err);
+    res.status(500).json({ error: 'Failed to reveal Chinese translation' });
+  }
+});
+
 // GET /api/dictionary/:wordId — Single word detail + status history
 router.get('/:wordId', async (req: Request, res: Response) => {
   try {
@@ -158,9 +273,12 @@ router.get('/:wordId', async (req: Request, res: Response) => {
 
     res.json({
       ...word,
+      translationZhTw: word.translationZhTw ?? null,
       mastery: prog?.mastery ?? 0,
       encounters: prog?.encounters ?? 0,
       isRecovered: prog?.isRecovered ?? false,
+      starred: prog?.starred ?? false,
+      chineseRevealed: prog?.chineseRevealed ?? false,
       studentNotes: prog?.studentNotes ?? '',
       lastSeenAt: prog?.lastSeenAt?.toISOString() ?? null,
     });

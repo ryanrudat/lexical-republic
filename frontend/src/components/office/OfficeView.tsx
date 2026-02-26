@@ -5,6 +5,7 @@ import { useStudentStore } from '../../stores/studentStore';
 import OfficeHUD from './OfficeHUD';
 import PearlSphere3D from './PearlSphere3D';
 import PearlPanel from '../pearl/PearlPanel';
+import DictionarySidebar from '../dictionary/DictionarySidebar';
 import { usePearlStore } from '../../stores/pearlStore';
 
 // Source image: 2528×1696. Screen area measured in image-space percentages.
@@ -728,6 +729,9 @@ export default function OfficeView() {
         onClose={() => setPearlOpen(false)}
         variant="chrome"
       />
+
+      {/* Dictionary Sidebar — slides from LEFT (PEARL panel is on RIGHT) */}
+      <DictionarySidebar />
 
       {/* Inline keyframe animations */}
       <style>{`

@@ -393,6 +393,47 @@ body.view-terminal {
 /* ═══════════════════════════════════════════
    REDUCED MOTION
    ═══════════════════════════════════════════ */
+/* ─── Dictionary Panel ─── */
+.dict-panel {
+  --dict-bg: #0a0f0a;
+  --dict-panel: #0d1a0d;
+  --dict-surface: rgba(0, 40, 0, 0.4);
+  --dict-border: #1a3d1a;
+  --dict-green: #00ff88;
+  --dict-green-dim: #00cc6a;
+  --dict-green-dark: #003d1f;
+  --dict-text: #b8e6c8;
+  --dict-text-dim: #5a8a6a;
+  --dict-gold: #d4a847;
+  --dict-gold-dim: #a88636;
+  --dict-gold-glow: rgba(212, 168, 71, 0.15);
+  --dict-red: #cc3333;
+  --dict-red-dim: rgba(204, 51, 51, 0.15);
+  --dict-amber: #ffb347;
+  --dict-amber-dim: rgba(255, 179, 71, 0.1);
+}
+.dict-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.4) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+.dict-panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 255, 136, 0.03) 2px,
+    rgba(0, 255, 136, 0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .crt-overlay {
     display: none;

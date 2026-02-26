@@ -78,6 +78,7 @@ model Pair {
   lane          Int       @default(2)
   xp            Int       @default(0)
   concernScore  Float     @default(0)
+  hasWatchedWelcome Boolean @default(false)
   lastLoginAt   DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -103,6 +104,7 @@ model DictionaryWord {
   partyDefinition  String
   trueDefinition   String     @default("")
   exampleSentence  String     @default("")
+  translationZhTw  String?
   toeicCategory    String     @default("")
   wordFamilyGroup  String?
   weekIntroduced   Int
@@ -127,6 +129,8 @@ model PairDictionaryProgress {
   mastery      Float      @default(0)
   encounters   Int        @default(0)
   isRecovered  Boolean    @default(false)
+  starred      Boolean    @default(false)
+  chineseRevealed Boolean @default(false)
   studentNotes String     @default("")
   lastSeenAt   DateTime?
   createdAt    DateTime   @default(now())
