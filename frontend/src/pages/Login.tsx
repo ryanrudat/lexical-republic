@@ -52,7 +52,8 @@ export default function Login() {
   const pinMismatch = mode === 'register' && regPinConfirm.length > 0 && regPin !== regPinConfirm;
 
   // Translucent by default, solid on focus — pure CSS, no state needed
-  const inputCls = 'w-full px-4 py-3 rounded-xl font-ibm-mono bg-white/30 border border-white/40 text-[#3a4a58]/80 placeholder:text-[#3a4a58]/30 focus:outline-none focus:bg-white focus:border-[#2D8A6E]/40 focus:ring-2 focus:ring-[#2D8A6E]/15 focus:text-[#3a4a58] focus:shadow-sm';
+  // text-base (16px) minimum prevents iOS Safari auto-zoom on focus
+  const inputCls = 'w-full px-4 py-3 text-base rounded-xl font-ibm-mono bg-white/30 border border-white/40 text-[#3a4a58]/80 placeholder:text-[#3a4a58]/30 focus:outline-none focus:bg-white focus:border-[#2D8A6E]/40 focus:ring-2 focus:ring-[#2D8A6E]/15 focus:text-[#3a4a58] focus:shadow-sm';
 
   return (
     <div className="fixed inset-0 bg-gradient-to-b from-[#E8F5E9] via-[#F0F7FA] to-[#FFF9C4]/30 z-20 overflow-hidden">
@@ -97,7 +98,7 @@ export default function Login() {
       </div>
 
       {/* Form card area — card itself scrolls internally */}
-      <div className="absolute left-0 right-0 bottom-0 flex justify-center px-4 pb-6 z-10" style={{ top: '220px' }}>
+      <div className="absolute left-0 right-0 bottom-0 flex justify-center px-4 pb-6 z-10 safe-area-bottom" style={{ top: 'min(220px, 30dvh)' }}>
         <div className="w-full max-w-md max-h-full">
           <form
             onSubmit={handleSubmit}
@@ -116,7 +117,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setMode('student')}
-                  className={`flex-1 py-2.5 font-ibm-mono text-xs tracking-wider transition-all ${
+                  className={`flex-1 py-3 min-h-[44px] font-ibm-mono text-xs tracking-wider transition-all ${
                     mode === 'student'
                       ? 'bg-[#2D8A6E] text-white rounded-full shadow-sm'
                       : 'text-[#5a6a78]/50 hover:text-[#2D8A6E]/70'
@@ -127,7 +128,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setMode('register')}
-                  className={`flex-1 py-2.5 font-ibm-mono text-xs tracking-wider transition-all ${
+                  className={`flex-1 py-3 min-h-[44px] font-ibm-mono text-xs tracking-wider transition-all ${
                     mode === 'register'
                       ? 'bg-[#2D8A6E] text-white rounded-full shadow-sm'
                       : 'text-[#5a6a78]/50 hover:text-[#2D8A6E]/70'
@@ -138,7 +139,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setMode('teacher')}
-                  className={`flex-1 py-2.5 font-ibm-mono text-xs tracking-wider transition-all ${
+                  className={`flex-1 py-3 min-h-[44px] font-ibm-mono text-xs tracking-wider transition-all ${
                     mode === 'teacher'
                       ? 'bg-[#2D8A6E] text-white rounded-full shadow-sm'
                       : 'text-[#5a6a78]/50 hover:text-[#2D8A6E]/70'

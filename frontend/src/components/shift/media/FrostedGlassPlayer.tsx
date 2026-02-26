@@ -100,6 +100,7 @@ export default function FrostedGlassPlayer({ src, title }: FrostedGlassPlayerPro
       className="relative rounded-2xl overflow-hidden"
       onMouseMove={handleMouseMove}
       onMouseEnter={() => setShowControls(true)}
+      onTouchStart={scheduleHide}
       style={{
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
@@ -151,11 +152,11 @@ export default function FrostedGlassPlayer({ src, title }: FrostedGlassPlayerPro
               step={0.1}
               value={currentTime}
               onChange={handleSeek}
-              className="w-full h-[3px] appearance-none rounded-full cursor-pointer
-                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3
+              className="w-full h-[6px] appearance-none rounded-full cursor-pointer
+                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5
                 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-neon-cyan
                 [&::-webkit-slider-thumb]:shadow-[0_0_8px_rgba(0,229,255,0.6)]
-                [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:rounded-full
+                [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full
                 [&::-moz-range-thumb]:bg-neon-cyan [&::-moz-range-thumb]:border-none"
               style={{
                 background: `linear-gradient(to right, rgba(0,229,255,0.7) ${progress}%, rgba(255,255,255,0.1) ${progress}%)`,
@@ -168,7 +169,7 @@ export default function FrostedGlassPlayer({ src, title }: FrostedGlassPlayerPro
             <button
               onClick={togglePlay}
               disabled={!ready}
-              className="w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-30"
+              className="w-11 h-11 rounded-full flex items-center justify-center transition-all disabled:opacity-30"
               style={{
                 backdropFilter: 'blur(8px)',
                 WebkitBackdropFilter: 'blur(8px)',
@@ -264,7 +265,7 @@ export default function FrostedGlassPlayer({ src, title }: FrostedGlassPlayerPro
             </p>
             <button
               onClick={handleRetry}
-              className="font-ibm-mono text-[10px] text-neon-cyan/60 tracking-[0.2em] uppercase px-4 py-1.5 rounded-full transition-all hover:text-neon-cyan"
+              className="font-ibm-mono text-[10px] text-neon-cyan/60 tracking-[0.2em] uppercase px-6 py-3 min-h-[44px] rounded-full transition-all hover:text-neon-cyan"
               style={{
                 border: '1px solid rgba(0,229,255,0.2)',
                 background: 'rgba(0,229,255,0.05)',
