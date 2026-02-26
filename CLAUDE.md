@@ -1,6 +1,6 @@
 # The Lexical Republic — Project Memory
 
-Last updated: 2026-02-24
+Last updated: 2026-02-26
 
 ## Vision
 The Lexical Republic is a dystopian ESL learning game where Taiwanese Grade 10 students (A2-B1) learn English through 18 weekly "Shifts" inside an authoritarian language-control world.
@@ -19,7 +19,8 @@ Story and learning are coupled: grammar, listening, speaking, and writing tasks 
   - `my-file` (student profile)
 - Harmony is locked until Shift 3.
 - **Terminal header Home button**: `⌂ HOME` button in terminal header returns to terminal desktop and navigates URL to `/`. Always visible in shift views.
-- **Terminal desktop Office tile**: prominent `Office` tile (first in grid) returns to office view. Replaces hard-to-find text link.
+- **Terminal desktop tiles** (in order): Office, Lexicon (dictionary sidebar), Current Shift, Duty Roster, Harmony, My File.
+- **Dictionary icon** in terminal header opens sidebar overlay.
 - Students are guided (not free-roam) in the current phase.
 - Students see a simple home desktop before entering the guided shift.
 
@@ -62,6 +63,39 @@ Student-facing location labels map directly to learning purpose:
 - `triggerBark(type, text)` still works unchanged for custom narrative barks.
 - GrammarStep wired to pass grammar target + mastery state to AI barks on correct/incorrect/concern.
 
+### Party Lexical Dictionary (implemented)
+- **Terminal-only** — dictionary lives exclusively in the terminal/shift view, NOT in the office view.
+- **DictionarySidebar**: slides from LEFT (`z-[40]`), dark overlay behind (`z-[39]`). CRT scanline/vignette pseudo-elements via `.dict-panel` CSS class. PEARL panel stays on RIGHT — no mutual exclusion needed.
+- **DictionaryIcon**: book-shape SVG in terminal header. Green glow pulse, gold word count badge, tilt-open hover.
+- **Lexicon tile**: app tile on terminal desktop grid (alongside Office, Current Shift, etc.) — opens sidebar overlay.
+- **Own CSS variable system**: `.dict-panel` class with `--dict-*` tokens (green, gold, red, amber). Does NOT touch existing Tailwind tokens.
+- **Fonts**: Source Serif 4 (definitions), Noto Sans TC (Chinese translations) via Google Fonts.
+- **Three card variants** based on `word.status`:
+  - **Approved** (green): mastery bar, Chinese toggle (DB-persisted, one-way), notes, family chips, TOEIC
+  - **Proscribed** (red, week 10+): struck-through definition, "REMOVED FOR COLLECTIVE SAFETY"
+  - **Recovered** (amber, week 10+): restored definition, amber mastery bar
+- **Merged filter tabs**: ALL / WEEK [dropdown] / MASTERED / STARRED / BY FAMILY / BY TOEIC / PROSCRIBED (hidden until week 10)
+- **Rank ribbon**: Lexical Trainee → Associate → Officer → Commander → Director based on mastered word count
+- **Starred words**: persisted to DB via `PairDictionaryProgress.starred`
+- **Chinese reveal**: persisted to DB via `PairDictionaryProgress.chineseRevealed` (one-way, cannot un-reveal)
+- **Stats ribbon**: word count, mastered count, mini mastery meter, rank title
+- **Gold certificate border** title block with rotating tagline by `currentWeek`
+
+### Welcome Video Gate (implemented)
+- **One-time**: pair students with `hasWatchedWelcome === false` see `WelcomeVideoModal` (z-[70]) before any routes.
+- Real `<video>` element pointing to `/api/dictionary/welcome-video` (teacher-uploadable).
+- If no video uploaded: static fallback with "WELCOME TO THE MINISTRY" text, auto-proceeds after 5s.
+- "PROCEED TO YOUR STATION" button fades in at 90% of video duration.
+- **CA-1 bypass**: test pair sees "SKIP (TEST)" button immediately.
+- After watching: `POST /api/dictionary/welcome-watched` → `pair.hasWatchedWelcome = true` → never shows again.
+- Mounted in `App.tsx` after boot sequence, before routes.
+
+### Teacher Dictionary Manager (implemented)
+- Editable table in teacher dashboard "Dictionary" tab (indigo/slate palette).
+- Columns: Word (ro), POS (ro), Definition (edit), 中文 (edit), Example (edit), Status (dropdown), Week (ro), Target (checkbox), TOEIC (dropdown).
+- Inline edit → blur/Enter → PATCH `/api/teacher/dictionary/:wordId` → "Saved" indicator.
+- Welcome video upload section at top (MP4/WebM/MOV).
+
 ### Voice Log Quality Gate (implemented)
 Voice log completion requires:
 - at least one rubric item checked
@@ -96,6 +130,12 @@ Vocabulary now seeds:
 - 15 Week-1 baseline words
 - plus 72 story words from weekly plans (4 new words × 18 weeks)
 
+### Dictionary seeding
+Dictionary seeds separately from Vocabulary (different Prisma models):
+- 49 `DictionaryWord` entries across Weeks 1-3 with Traditional Chinese translations (`translationZhTw`)
+- 28 `WordFamily` groups (e.g., `fam-employ`, `fam-comply`, `fam-submit`)
+- 8 `WordStatusEvent` entries for narrative status changes (grey week 6, monitored week 7, proscribed week 10)
+
 ### Character voice designations (from Dplan canon)
 - William Flannery (`Clarity Associate-7`)
 - Betty (`Welcome Associate-14`)
@@ -109,9 +149,20 @@ File: `backend/src/routes/teacher.ts`
 - `GET /api/teacher/weeks` — returns week list plus briefing config snapshot
 - `PATCH /api/teacher/weeks/:weekId/briefing` — updates briefing mission config fields:
   - `embedUrl`, `episodeTitle`, `episodeSubtitle`, `fallbackText`
+- `PATCH /api/teacher/dictionary/:wordId` — edits dictionary word fields (partyDefinition, trueDefinition, exampleSentence, translationZhTw, initialStatus, isWorldBuilding, toeicCategory)
+
+File: `backend/src/routes/dictionary.ts`
+- `GET /api/dictionary` — full word list with `translationZhTw`, `starred`, `chineseRevealed`
+- `GET /api/dictionary/:wordId` — single word detail
+- `POST /api/dictionary/welcome-watched` — marks pair's welcome video as watched
+- `POST /api/dictionary/welcome-video` — teacher upload (multer, MP4/WebM/MOV)
+- `GET /api/dictionary/welcome-video` — serves uploaded welcome video
+- `PATCH /api/dictionary/:wordId/starred` — toggles starred on PairDictionaryProgress
+- `PATCH /api/dictionary/:wordId/chinese-revealed` — sets chineseRevealed=true (one-way)
 
 ### Teacher dashboard UI
 File: `frontend/src/pages/TeacherDashboard.tsx`
+- Tabs: Class, Grades, Shifts, Dictionary
 - Episode Briefing Setup section:
   - Choose shift, edit episode title/subtitle
   - Set Canva/share/embed URL
@@ -121,6 +172,7 @@ File: `frontend/src/pages/TeacherDashboard.tsx`
 - Clip-specific media inputs (Clip A / Clip B upload or embed URL)
 - Briefing video system supports both embed URL and true file upload (MP4/WebM/MOV)
 - Uploaded briefing videos play in a Three.js retro TV presentation
+- Dictionary tab: editable word table + welcome video upload (see Teacher Dictionary Manager above)
 - Teacher is the only active operator in this phase — keep video upload open each week, use sequence control for class pacing
 
 ### 50-minute class structure
@@ -136,7 +188,7 @@ In a 50-minute class, required activities must stay lean:
 - Express 5 + TypeScript
 - Prisma + PostgreSQL
 - Auth via JWT in HTTP-only cookies + Bearer token fallback (Safari ITP)
-- Major route groups: `/api/auth`, `/api/shifts`, `/api/recordings`, `/api/pearl`, `/api/harmony`, `/api/teacher`, `/api/vocabulary`, `/api/ai`, `/api/classes`
+- Major route groups: `/api/auth`, `/api/shifts`, `/api/recordings`, `/api/pearl`, `/api/harmony`, `/api/teacher`, `/api/vocabulary`, `/api/ai`, `/api/classes`, `/api/dictionary`
 - Socket.IO for real-time teacher dashboard (student activity tracking, briefing stage broadcasts). Student socket connects on login (App.tsx), not just on shift entry. Socket auth supports both cookie and `auth.token` Bearer fallback.
 - AI services (fail-open): OpenAI direct API (GPT-4.1-mini default) for grammar checking and PEARL contextual barks, Azure Whisper for transcription
 - Shared OpenAI client: `backend/src/utils/openai.ts` — lazy-init singleton, exports `getOpenAI()` and `OPENAI_MODEL`
@@ -156,7 +208,13 @@ In a 50-minute class, required activities must stay lean:
 - **FrostedGlassPlayer**: `frontend/src/components/shift/media/FrostedGlassPlayer.tsx` — dark glass video player with cyan tint, frosted title/controls bars, seek bar, loading spinner, error state with retry button.
 
 ### Data model (Prisma)
-Primary models: `User`, `Arc`, `Week`, `Mission`, `MissionScore`, `Recording`, `Vocabulary`, `StudentVocabulary`, `HarmonyPost`, `PearlMessage`, `Class`, `ClassEnrollment`, `ClassWeekUnlock`, `Character`, `DialogueNode`, `PearlConversation`, `NarrativeChoice`, `TeacherConfig`
+Primary models: `User`, `Arc`, `Week`, `Mission`, `MissionScore`, `Recording`, `Vocabulary`, `StudentVocabulary`, `HarmonyPost`, `PearlMessage`, `Class`, `ClassEnrollment`, `ClassWeekUnlock`, `Character`, `DialogueNode`, `PearlConversation`, `NarrativeChoice`, `TeacherConfig`, `DictionaryWord`, `WordFamily`, `PairDictionaryProgress`, `Pair`
+
+Dictionary-specific fields added:
+- `DictionaryWord.translationZhTw` — Traditional Chinese translation (nullable)
+- `PairDictionaryProgress.starred` — boolean, default false
+- `PairDictionaryProgress.chineseRevealed` — boolean, default false (one-way)
+- `Pair.hasWatchedWelcome` — boolean, default false
 
 ### Deployment (Railway — LIVE)
 - **Platform**: Railway (project: `delightful-forgiveness`)
@@ -322,10 +380,16 @@ External canon source: `/Users/ryanrudat/Desktop/Dplan/`
 6. Full scripted dialogue pass for all character beats (especially Weeks 2-18).
 7. Harmony moderation gameplay depth (basic feed exists; richer decision loops can expand).
 8. ~~Large OfficeView bundle warning~~ — DONE: office-bg.png → JPEG (6.6 MB → 892 KB), video preload deferred.
-9. Rank progression (Associate→Guardian), Dplan color palette alignment, end-to-end testing.
+9. ~~Rank progression~~ — DONE: Lexical rank system in dictionary (Trainee → Director). Dplan color palette alignment, end-to-end testing still pending.
 10. Custom domain setup for student-friendly URLs (optional).
+11. Expand dictionary seed data beyond Weeks 1-3 (currently 49 words, target ~120+ across 18 weeks).
 
 ## Change Log
+- 2026-02-26: Party Lexical Dictionary — full implementation: sidebar (terminal-only, slides from LEFT), 3 card variants (approved/proscribed/recovered), Chinese translations with DB-persisted reveal, starred words, merged filter tabs (ALL/WEEK/MASTERED/STARRED/FAMILY/TOEIC/PROSCRIBED), rank ribbon, gold mastery celebration, DictionaryIcon in terminal header, Lexicon tile on terminal desktop.
+- 2026-02-26: Welcome Video Gate — WelcomeVideoModal for first-login pairs, teacher-uploadable video, CA-1 test bypass, DB-persisted `hasWatchedWelcome` flag.
+- 2026-02-26: Teacher Dictionary Manager — editable word table in teacher dashboard Dictionary tab, welcome video upload, inline edit with PATCH save.
+- 2026-02-26: Schema migration — `translationZhTw` on DictionaryWord, `starred`/`chineseRevealed` on PairDictionaryProgress, `hasWatchedWelcome` on Pair.
+- 2026-02-26: Dictionary seed — 49 words with Traditional Chinese translations across Weeks 1-3, 28 word families, 8 status events.
 - 2026-02-24: Propaganda chyron 3D sphere-wrapping effect — per-character RAF animation with cosine-curve scale/opacity/arc. Display widened (visibleHalf 0.8, gentle fade) and duration extended to 14s to show full slogans. Frequency 15-25s.
 - 2026-02-24: PEARL face first-login-only autoplay — module-level `pearlFacePlayedThisSession` flag. Video resilience: force-reset `video.src` + 8s canplay timeout.
 - 2026-02-24: PEARL eye blink removed — all blink state, intervals, and double_blink attention moment deleted. Eye never blinks.
