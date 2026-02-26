@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useViewStore } from '../../stores/viewStore';
 import { useStudentStore } from '../../stores/studentStore';
 import { useSeasonStore } from '../../stores/seasonStore';
+import { useDictionaryStore } from '../../stores/dictionaryStore';
 import type { TerminalApp } from '../../types/views';
 import { GUIDED_STUDENT_MODE } from '../../config/runtimeFlags';
 
@@ -66,6 +67,7 @@ export default function TerminalDesktop() {
   const user = useStudentStore((s) => s.user);
   const weeks = useSeasonStore((s) => s.weeks);
   const loadSeason = useSeasonStore((s) => s.loadSeason);
+  const toggleDictionary = useDictionaryStore((s) => s.toggle);
 
   useEffect(() => {
     if (weeks.length === 0) {
@@ -110,6 +112,22 @@ export default function TerminalDesktop() {
           </h3>
           <p className="font-ibm-mono text-[10px] text-white/40 tracking-wider">
             Return to your desk
+          </p>
+        </button>
+
+        {/* Dictionary tile — opens sidebar overlay */}
+        <button
+          onClick={toggleDictionary}
+          className="text-left p-4 ios-glass-card transition-all group hover:scale-[1.03] hover:border-neon-cyan/30 hover:shadow-[0_0_20px_rgba(0,229,255,0.1)]"
+        >
+          <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">
+            {'\uD83D\uDCD6'}
+          </div>
+          <h3 className="font-ibm-mono text-sm tracking-wider mb-1 text-white/90">
+            Lexicon
+          </h3>
+          <p className="font-ibm-mono text-[10px] text-white/40 tracking-wider">
+            Party vocabulary reference
           </p>
         </button>
 
