@@ -166,7 +166,7 @@ export default function DictionarySidebar() {
             ? 'translate-x-0 opacity-100'
             : '-translate-x-full opacity-0 pointer-events-none'
         }`}
-        style={{ width: '380px', background: 'var(--dict-panel)', position: 'relative' }}
+        style={{ width: '380px', background: 'var(--dict-panel)' }}
       >
         <div className="h-full flex flex-col relative" style={{ zIndex: 3 }}>
           {/* Title block with gold certificate border */}
