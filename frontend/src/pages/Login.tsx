@@ -96,14 +96,13 @@ export default function Login() {
         </div>
       </div>
 
-      {/* Scrollable form area — only this part scrolls */}
-      <div className="absolute left-0 right-0 bottom-0 overflow-y-auto z-10" style={{ top: '220px' }}>
-        <div className="flex justify-center px-4 pb-12 pt-2">
-          <div className="w-full max-w-md">
-            <form
-              onSubmit={handleSubmit}
-              className="bg-white/35 backdrop-blur-sm border border-white/50 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.03)] p-8"
-            >
+      {/* Form card area — card itself scrolls internally */}
+      <div className="absolute left-0 right-0 bottom-0 flex justify-center px-4 pb-6 z-10" style={{ top: '220px' }}>
+        <div className="w-full max-w-md max-h-full">
+          <form
+            onSubmit={handleSubmit}
+            className="bg-white/35 backdrop-blur-sm border border-white/50 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.03)] max-h-full overflow-y-auto p-8"
+          >
               <div className="text-center mb-6">
                 <p className="font-ibm-mono text-[#2D8A6E] text-sm tracking-[0.2em] font-medium">
                   {mode === 'student' ? 'CITIZEN IDENTIFICATION' : mode === 'teacher' ? 'DIRECTOR ACCESS' : 'NEW PAIR REGISTRATION'}
@@ -342,8 +341,7 @@ export default function Login() {
                   ALL SESSIONS ARE MONITORED BY P.E.A.R.L.
                 </p>
               </div>
-            </form>
-          </div>
+          </form>
         </div>
       </div>
     </div>
