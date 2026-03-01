@@ -1,6 +1,6 @@
 # The Lexical Republic — Project Memory
 
-Last updated: 2026-02-26
+Last updated: 2026-03-01
 
 ## Vision
 The Lexical Republic is a dystopian ESL learning game where Taiwanese Grade 10 students (A2-B1) learn English through 18 weekly "Shifts" inside an authoritarian language-control world.
@@ -12,11 +12,11 @@ Story and learning are coupled: grammar, listening, speaking, and writing tasks 
 ### Student Experience (implemented)
 - Login and boot sequence are live.
 - Terminal view is the primary learning interface.
-- Active terminal apps are intentionally reduced to:
+- Active terminal apps in guided mode are intentionally reduced to:
   - `clarity-queue` (main mission flow)
-  - `duty-roster` (18-shift progression)
   - `harmony` (social feed)
   - `my-file` (student profile)
+- `duty-roster` (18-shift progression) is hidden in guided mode; visible in free-roam mode.
 - Harmony is locked until Shift 3.
 - **Terminal header Home button**: `⌂ HOME` button in terminal header returns to terminal desktop and navigates URL to `/`. Always visible in shift views.
 - **Terminal desktop tiles** (in order): Office, Lexicon (dictionary sidebar), Current Shift, Duty Roster, Harmony, My File.
@@ -188,7 +188,7 @@ In a 50-minute class, required activities must stay lean:
 - Express 5 + TypeScript
 - Prisma + PostgreSQL
 - Auth via JWT in HTTP-only cookies + Bearer token fallback (Safari ITP)
-- Major route groups: `/api/auth`, `/api/shifts`, `/api/recordings`, `/api/pearl`, `/api/harmony`, `/api/teacher`, `/api/vocabulary`, `/api/ai`, `/api/classes`, `/api/dictionary`
+- Major route groups: `/api/auth`, `/api/shifts`, `/api/recordings`, `/api/pearl`, `/api/harmony`, `/api/teacher`, `/api/vocabulary`, `/api/ai`, `/api/classes`, `/api/dictionary`, `/api/sessions`, `/api/submissions`
 - Socket.IO for real-time teacher dashboard (student activity tracking, briefing stage broadcasts). Student socket connects on login (App.tsx), not just on shift entry. Socket auth supports both cookie and `auth.token` Bearer fallback.
 - AI services (fail-open): OpenAI direct API (GPT-4.1-mini default) for grammar checking and PEARL contextual barks, Azure Whisper for transcription
 - Shared OpenAI client: `backend/src/utils/openai.ts` — lazy-init singleton, exports `getOpenAI()` and `OPENAI_MODEL`
@@ -208,7 +208,7 @@ In a 50-minute class, required activities must stay lean:
 - **FrostedGlassPlayer**: `frontend/src/components/shift/media/FrostedGlassPlayer.tsx` — dark glass video player with cyan tint, frosted title/controls bars, seek bar, loading spinner, error state with retry button.
 
 ### Data model (Prisma)
-Primary models: `User`, `Arc`, `Week`, `Mission`, `MissionScore`, `Recording`, `Vocabulary`, `StudentVocabulary`, `HarmonyPost`, `PearlMessage`, `Class`, `ClassEnrollment`, `ClassWeekUnlock`, `Character`, `DialogueNode`, `PearlConversation`, `NarrativeChoice`, `TeacherConfig`, `DictionaryWord`, `WordFamily`, `PairDictionaryProgress`, `Pair`
+Primary models: `User`, `Arc`, `Week`, `Mission`, `MissionScore`, `Recording`, `Vocabulary` (deprecated), `StudentVocabulary` (deprecated), `HarmonyPost`, `PearlMessage`, `Class`, `ClassEnrollment`, `ClassWeekUnlock`, `Character`, `DialogueNode`, `PearlConversation`, `NarrativeChoice`, `TeacherConfig`, `DictionaryWord`, `WordFamily`, `WordStatusEvent`, `PairDictionaryProgress`, `Pair`, `SessionConfig`
 
 Dictionary-specific fields added:
 - `DictionaryWord.translationZhTw` — Traditional Chinese translation (nullable)
@@ -358,6 +358,8 @@ Key files in `/Users/ryanrudat/Desktop/Lexical Republic/Dplan/`:
 - `Lesson_02_Memo_Contradiction.md` — Week 2 lesson package
 - `Lesson_03_Clarity_Bay_Intake.md` — Week 3 lesson package
 - `Dplay_Source_Integration_Notes.md` — Desktop Dplan canon integration
+- `Project_Update_Log.md` — session-level project updates and timeline locks
+- `Weeks_01_03_Script_Pack.md` — consolidated Week 1-3 script pack (concatenation of Canva scripts + Lessons 01-03)
 
 External canon source: `/Users/ryanrudat/Desktop/Dplan/`
 
@@ -385,6 +387,8 @@ External canon source: `/Users/ryanrudat/Desktop/Dplan/`
 11. Expand dictionary seed data beyond Weeks 1-3 (currently 49 words, target ~120+ across 18 weeks).
 
 ## Change Log
+- 2026-03-01: Fix shift progression saving — PhaseRunner now marks `clock_out` mission as complete (was never persisted, blocking Duty Roster unlock). Added "Return to Office" button to both PhaseRunner and ClockOutStep shift-complete screens. Season data refreshed after clock-out so next shift unlocks immediately.
+- 2026-03-01: Documentation audit and cleanup — fixed "Lexicon Republic" → "Lexical Republic" in World_Canon.md, deleted stale Render_Deployment_Checklist.md, added missing `/api/sessions` + `/api/submissions` routes and `SessionConfig` + `WordStatusEvent` models to CLAUDE.md, marked deprecated Prisma models, fixed duty-roster guided-mode docs, updated frontend README.md, fixed duplicate "override" in vocab list, deleted stale worktree, trimmed MEMORY.md from 210→80 lines.
 - 2026-02-26: Party Lexical Dictionary — full implementation: sidebar (terminal-only, slides from LEFT), 3 card variants (approved/proscribed/recovered), Chinese translations with DB-persisted reveal, starred words, merged filter tabs (ALL/WEEK/MASTERED/STARRED/FAMILY/TOEIC/PROSCRIBED), rank ribbon, gold mastery celebration, DictionaryIcon in terminal header, Lexicon tile on terminal desktop.
 - 2026-02-26: Welcome Video Gate — WelcomeVideoModal for first-login pairs, teacher-uploadable video, CA-1 test bypass, DB-persisted `hasWatchedWelcome` flag.
 - 2026-02-26: Teacher Dictionary Manager — editable word table in teacher dashboard Dictionary tab, welcome video upload, inline edit with PATCH save.

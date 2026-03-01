@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSessionConfigStore } from '../../stores/sessionConfigStore';
+import { useShiftStore } from '../../stores/shiftStore';
+import { useSeasonStore } from '../../stores/seasonStore';
 import { useDictionaryStore } from '../../stores/dictionaryStore';
+import { useViewStore } from '../../stores/viewStore';
 import PhaseNav from './PhaseNav';
 import PhaseClipPlayer from './PhaseClipPlayer';
 import PhaseRenderer from './PhaseRenderer';
@@ -17,12 +21,31 @@ export default function PhaseRunner() {
   } = useSessionConfigStore();
 
   const closeDictionary = useDictionaryStore((s) => s.close);
+  const { missions, updateStepStatus, submitMissionScore } = useShiftStore();
+  const loadSeason = useSeasonStore((s) => s.loadSeason);
+  const returnToDesktop = useViewStore((s) => s.returnToDesktop);
+  const navigate = useNavigate();
   const [shiftComplete, setShiftComplete] = useState(false);
 
   const phase = session?.phases[currentPhaseIndex];
   const isLastPhase = session
     ? currentPhaseIndex >= session.phases.length - 1
     : false;
+
+  // Mark the shift as fully complete — persist clock_out and refresh season
+  const markShiftComplete = useCallback(async () => {
+    setShiftComplete(true);
+
+    // Mark the clock_out mission as complete so Duty Roster unlocks the next shift
+    const clockOutMission = missions.find((m) => m.missionType === 'clock_out');
+    if (clockOutMission) {
+      updateStepStatus('clock_out', 'complete');
+      await submitMissionScore(clockOutMission.id, 1, { status: 'complete' });
+    }
+
+    // Refresh season data so Duty Roster shows updated unlock state
+    loadSeason();
+  }, [missions, updateStepStatus, submitMissionScore, loadSeason]);
 
   // Auto-advance clip states when no clip exists
   useEffect(() => {
@@ -31,12 +54,12 @@ export default function PhaseRunner() {
       setClipState('content');
     } else if (clipState === 'after' && !phase.clipAfter) {
       if (isLastPhase) {
-        setShiftComplete(true);
+        markShiftComplete();
       } else {
         nextPhase();
       }
     }
-  }, [clipState, phase, isLastPhase, setClipState, nextPhase]);
+  }, [clipState, phase, isLastPhase, setClipState, nextPhase, markShiftComplete]);
 
   // Close dictionary when entering clip states
   useEffect(() => {
@@ -67,11 +90,11 @@ export default function PhaseRunner() {
   // Handle clip after completion
   const handleClipAfterComplete = useCallback(() => {
     if (isLastPhase) {
-      setShiftComplete(true);
+      markShiftComplete();
       return;
     }
     nextPhase();
-  }, [isLastPhase, nextPhase]);
+  }, [isLastPhase, nextPhase, markShiftComplete]);
 
   if (!session || !phase) {
     return (
@@ -104,8 +127,17 @@ export default function PhaseRunner() {
               All phases have been processed. Your records have been filed.
             </p>
             <p className="font-ibm-mono text-[10px] text-neon-cyan/40 tracking-wider">
-              Return to the terminal to continue your duties.
+              Return to your station to continue your duties.
             </p>
+            <button
+              onClick={() => {
+                returnToDesktop();
+                navigate('/', { replace: true });
+              }}
+              className="px-8 py-3 rounded-full font-ibm-mono text-sm uppercase tracking-[0.3em] ios-glass-pill-action text-neon-cyan hover:shadow-[0_0_20px_rgba(0,229,255,0.25)] transition-all"
+            >
+              Return to Office
+            </button>
           </div>
         </div>
       </div>

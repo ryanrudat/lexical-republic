@@ -12,7 +12,7 @@ Derived from Desktop Dplan source files:
 - `/Users/ryanrudat/Desktop/Dplan/docs/scripts/day-0-7-scripts.md`
 
 ## 1) Setting
-- Nation: The Lexicon Republic.
+- Nation: The Lexical Republic.
 - Origin myth: founded after the "Babel Collapse."
 - Core doctrine: controlled language prevents chaos.
 - Main institution: Ministry of Healthy and Safe Information.

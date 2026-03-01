@@ -1,6 +1,9 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useShiftStore } from '../../stores/shiftStore';
 import { usePearlStore } from '../../stores/pearlStore';
+import { useSeasonStore } from '../../stores/seasonStore';
+import { useViewStore } from '../../stores/viewStore';
 import { STEP_ORDER } from '../../types/shifts';
 import StoryBeatCard from './shared/StoryBeatCard';
 import type { StoryBeatConfig } from './shared/StoryBeatCard';
@@ -9,6 +12,9 @@ import StepVideoClip from './shared/StepVideoClip';
 export default function ClockOutStep() {
   const { missions, weekProgress, currentWeek, updateStepStatus, submitMissionScore } = useShiftStore();
   const triggerAnnouncement = usePearlStore(s => s.triggerAnnouncement);
+  const loadSeason = useSeasonStore(s => s.loadSeason);
+  const returnToDesktop = useViewStore(s => s.returnToDesktop);
+  const navigate = useNavigate();
 
   const mission = missions.find(m => m.missionType === 'clock_out');
   const config = (mission?.config || {}) as { cliffhanger?: string; storyBeat?: StoryBeatConfig };
@@ -29,6 +35,9 @@ export default function ClockOutStep() {
     setClockedOut(true);
     updateStepStatus('clock_out', 'complete');
     await submitMissionScore(mission.id, 1, { status: 'complete' });
+
+    // Refresh season data so Duty Roster shows updated unlock state
+    loadSeason();
 
     setTimeout(() => {
       setShowCliffhanger(true);
@@ -97,9 +106,9 @@ export default function ClockOutStep() {
         )
       )}
 
-      {/* Cliffhanger reveal */}
+      {/* Cliffhanger reveal + return button */}
       {showCliffhanger && (
-        <div className="animate-fade-in">
+        <div className="animate-fade-in space-y-4">
           <div className="ios-glass-card-strong border-neon-cyan/30 p-6 text-center">
             <div className="font-ibm-mono text-[10px] text-neon-cyan/60 tracking-[0.4em] uppercase mb-3">
               END OF SHIFT {currentWeek?.weekNumber}
@@ -108,6 +117,15 @@ export default function ClockOutStep() {
               &ldquo;{cliffhanger}&rdquo;
             </p>
           </div>
+          <button
+            onClick={() => {
+              returnToDesktop();
+              navigate('/', { replace: true });
+            }}
+            className="w-full py-3 rounded-full font-ibm-mono text-sm uppercase tracking-[0.3em] ios-glass-pill-action text-neon-cyan hover:shadow-[0_0_20px_rgba(0,229,255,0.25)] transition-all"
+          >
+            Return to Office
+          </button>
         </div>
       )}
     </div>

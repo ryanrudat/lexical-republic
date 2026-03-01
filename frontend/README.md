@@ -30,22 +30,37 @@ npm run build
 ```
 
 ## Main routes
-- `/terminal` - student terminal desktop
-- `/season` - duty roster
+- `/` - office home (default landing page on all reloads)
+- `/terminal` - redirects to `/` on reload
+- `/season` - redirects to `/` in guided mode
 - `/shift/:weekNumber` - shift runner
 - `/shift/:weekNumber/:stepId` - direct step route
-- `/teacher` - teacher dashboard
+- `/teacher` - teacher dashboard (role-gated, non-teachers redirected to `/`)
 
 ## Current student app structure
-Terminal desktop intentionally exposes only:
+Terminal desktop tiles (in order): Office, Lexicon, Current Shift, Duty Roster, Harmony, My File.
+
+In guided mode, visible apps are limited to:
 - Current Shift (`clarity-queue`)
-- Duty Roster (`duty-roster`)
 - Harmony (`harmony`, unlocks Shift 3)
 - My File (`my-file`)
 
+Office and Lexicon tiles are always visible (not gated by guided mode).
+Duty Roster (`duty-roster`) is hidden in guided mode.
+
+## Dictionary system
+- **DictionarySidebar**: slides from left as an overlay (`z-[40]`), terminal-only (not in office view)
+- **DictionaryIcon**: book-shape SVG in terminal header, opens sidebar
+- **Lexicon tile**: app tile on terminal desktop grid, opens sidebar overlay
+
+## Welcome video gate
+- **WelcomeVideoModal**: one-time modal (`z-[70]`) shown to pair students with `hasWatchedWelcome === false`
+- Mounted in `App.tsx` after boot sequence, before routes
+- Teacher-uploadable video via `/api/dictionary/welcome-video`
+
 ## Shift structure
 Each shift has 7 ordered steps:
-1. Check-In (`recap`)
+1. Shift Start (`recap`)
 2. Briefing (`briefing`)
 3. Language Desk (`grammar`)
 4. Evidence (`listening`)

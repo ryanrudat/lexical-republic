@@ -69,7 +69,7 @@ This remains draft and can be tuned by textbook alignment.
 - Week 11: index, catalog, designation, anomaly
 - Week 12: discrepancy, suppression, elevated, monitoring
 - Week 13: pattern, public, choice, consequence
-- Week 14: override, fallback, risk, outcome
+- Week 14: contingency, fallback, risk, outcome
 - Week 15: statement, audience, credibility, response
 - Week 16: appeal, petition, review, justification
 - Week 17: synthesize, archive, corroborate, record
