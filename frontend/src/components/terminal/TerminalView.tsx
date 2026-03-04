@@ -127,10 +127,10 @@ export default function TerminalView() {
             {/* Messaging icon */}
             <button
               onClick={() => useMessagingStore.getState().isPanelOpen ? useMessagingStore.getState().closePanel() : useMessagingStore.getState().openPanel()}
-              className="relative ios-glass-pill px-2 py-1.5 hover:border-neon-cyan/30 transition-all"
+              className="relative ios-glass-pill px-2.5 py-2 hover:border-neon-cyan/30 transition-all"
               aria-label="Messages"
             >
-              <svg width="16" height="14" viewBox="0 0 16 14" fill="none" className="text-white/50 hover:text-neon-cyan transition-colors">
+              <svg width="24" height="20" viewBox="0 0 16 14" fill="none" className="text-white/50 hover:text-neon-cyan transition-colors">
                 <path d="M1 1h14v9H5l-4 3V1z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
                 <line x1="4" y1="4" x2="12" y2="4" stroke="currentColor" strokeWidth="0.8" opacity="0.5" />
                 <line x1="4" y1="6.5" x2="10" y2="6.5" stroke="currentColor" strokeWidth="0.8" opacity="0.5" />

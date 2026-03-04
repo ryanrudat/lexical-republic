@@ -11,6 +11,7 @@ interface MessagingState {
   messages: CharacterMessage[];
   unreadCount: number;
   isPanelOpen: boolean;
+  selectedMessageId: string | null;
   activeNotification: ActiveNotification | null;
   loading: boolean;
 
@@ -24,6 +25,8 @@ interface MessagingState {
   sendReply: (id: string, reply: string) => Promise<void>;
   openPanel: () => void;
   closePanel: () => void;
+  selectMessage: (id: string) => void;
+  backToInbox: () => void;
   dismissNotification: () => void;
   refreshUnreadCount: () => Promise<void>;
 }
@@ -35,6 +38,7 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
   messages: [],
   unreadCount: 0,
   isPanelOpen: false,
+  selectedMessageId: null,
   activeNotification: null,
   loading: false,
 
@@ -133,7 +137,9 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
   },
 
   openPanel: () => set({ isPanelOpen: true }),
-  closePanel: () => set({ isPanelOpen: false }),
+  closePanel: () => set({ isPanelOpen: false, selectedMessageId: null }),
+  selectMessage: (id: string) => set({ selectedMessageId: id }),
+  backToInbox: () => set({ selectedMessageId: null }),
 
   dismissNotification: () => {
     const { activeNotification } = get();

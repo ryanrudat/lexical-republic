@@ -21,12 +21,12 @@ export default function DictionaryIcon({ variant = 'terminal' }: Props) {
       <div
         className="relative flex items-center justify-center transition-transform duration-200 group-hover:rotate-[-15deg]"
         style={{
-          width: 24,
-          height: 28,
+          width: 32,
+          height: 36,
         }}
       >
         {/* Book body */}
-        <svg width="24" height="28" viewBox="0 0 24 28" fill="none">
+        <svg width="32" height="36" viewBox="0 0 24 28" fill="none">
           {/* Book cover */}
           <rect x="2" y="2" width="18" height="24" rx="2"
             fill={isOffice ? '#2a2520' : '#0d1a0d'}
@@ -74,7 +74,7 @@ export default function DictionaryIcon({ variant = 'terminal' }: Props) {
       {/* Word count badge */}
       {wordCount > 0 && (
         <div
-          className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] flex items-center justify-center rounded-full font-ibm-mono text-[8px] font-bold"
+          className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full font-ibm-mono text-[9px] font-bold"
           style={{
             background: isOffice ? '#d4a847' : '#00cc6a',
             color: '#0a0f0a',
