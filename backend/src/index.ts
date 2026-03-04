@@ -19,6 +19,7 @@ import classRoutes from './routes/classes';
 import dictionaryRoutes from './routes/dictionary';
 import sessionRoutes from './routes/sessions';
 import submissionRoutes from './routes/submissions';
+import messageRoutes from './routes/messages';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -72,6 +73,7 @@ app.use('/api/classes', classRoutes);
 app.use('/api/dictionary', dictionaryRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/submissions', submissionRoutes);
+app.use('/api/messages', messageRoutes);
 
 httpServer.listen(PORT, () => {
   console.log(`[Lexical Republic] Server running on port ${PORT}`);

@@ -1,0 +1,500 @@
+// ─── Week 1: First Shift Orientation ─────────────────────────────
+import type { WeekConfig } from './types';
+
+export const WEEK_1_CONFIG: WeekConfig = {
+  weekNumber: 1,
+  grammarTarget: "present-simple",
+  targetWords: [
+    "arrive", "follow", "check", "report", "submit",
+    "approve", "describe", "assign", "standard", "confirm",
+  ],
+  previousWords: [],
+  shiftType: "queue",
+
+  // ─── Tasks ──────────────────────────────────────────────────────
+  tasks: [
+    // 1. Intake Form
+    {
+      id: "intake_form",
+      type: "intake_form",
+      location: "Shift Intake",
+      label: "Intake Processing",
+      config: {
+        cards: [
+          {
+            type: "personal_info",
+            fields: [
+              { label: "Designation", value: "{designation}", readonly: true },
+              { label: "Department", value: "Clarity", readonly: true },
+              { label: "Date", value: "{date}", readonly: true },
+              {
+                label: "Supervisor",
+                type: "dropdown",
+                options: ["Betty Lyle \u2014 WA-14", "Unassigned"],
+              },
+            ],
+          },
+          {
+            type: "writing",
+            prompt:
+              "In 3-5 sentences, describe your role as a new Clarity Associate. What do you expect to do each day? Use the target words in your response.",
+            minWords: 30,
+            lane: {
+              "1": {
+                minWords: 20,
+                sentenceStarters: true,
+                wordBankChinese: true,
+                pearlHints: [
+                  "Start with: 'I arrive at...'",
+                  "Try: 'I follow the...'",
+                  "Use: 'I check the...'",
+                ],
+              },
+              "2": { minWords: 30, wordListVisible: true },
+              "3": {
+                minWords: 40,
+                bonusQuestion:
+                  "What happens if an associate does not follow standard protocol?",
+              },
+            },
+          },
+          {
+            type: "acknowledgment",
+            blanks: [
+              {
+                text: "I, {designation}, confirm that I will follow all Ministry _____ and maintain full _____ with Department _____.",
+                answers: ["directives", "compliance", "protocol"],
+              },
+            ],
+            checkbox:
+              "I understand that my work will be monitored by P.E.A.R.L. at all times.",
+          },
+        ],
+      },
+    },
+
+    // 2. Vocabulary Clearance
+    {
+      id: "vocab_clearance",
+      type: "vocab_clearance",
+      location: "Language Lab",
+      label: "Vocabulary Clearance",
+      config: {
+        items: [
+          {
+            type: "definition",
+            word: "arrive",
+            question: "Which word means 'to reach a place after traveling'?",
+            options: ["arrive", "approve", "assign", "describe"],
+            correctIndex: 0,
+          },
+          {
+            type: "definition",
+            word: "follow",
+            question: "Which word means 'to do what someone tells you to do'?",
+            options: ["check", "submit", "follow", "report"],
+            correctIndex: 2,
+          },
+          {
+            type: "toeic_p5",
+            word: "check",
+            question:
+              "All associates must _____ their documents before submission.",
+            options: ["check", "arrive", "describe", "assign"],
+            correctIndex: 0,
+          },
+          {
+            type: "definition",
+            word: "report",
+            question:
+              "Which word means 'to give information about something'?",
+            options: ["standard", "confirm", "approve", "report"],
+            correctIndex: 3,
+          },
+          {
+            type: "toeic_p5",
+            word: "submit",
+            question:
+              "Please _____ your completed form to the Department of Clarity.",
+            options: ["follow", "submit", "arrive", "check"],
+            correctIndex: 1,
+          },
+          {
+            type: "definition",
+            word: "approve",
+            question:
+              "Which word means 'to officially agree that something is correct'?",
+            options: ["assign", "approve", "describe", "follow"],
+            correctIndex: 1,
+          },
+          {
+            type: "toeic_p5",
+            word: "describe",
+            question:
+              "In your report, _____ what you observed during the shift.",
+            options: ["confirm", "standard", "describe", "submit"],
+            correctIndex: 2,
+          },
+          {
+            type: "definition",
+            word: "assign",
+            question: "Which word means 'to give someone a job or task'?",
+            options: ["assign", "arrive", "report", "check"],
+            correctIndex: 0,
+          },
+          {
+            type: "context",
+            word: "standard",
+            question:
+              "In the passage, what does 'standard' most likely mean?",
+            context:
+              "All documents must meet the standard format required by the Ministry. Documents that do not follow the standard will be returned.",
+            options: [
+              "A type of flag",
+              "An expected level of quality",
+              "A piece of furniture",
+              "A greeting",
+            ],
+            correctIndex: 1,
+          },
+          {
+            type: "toeic_p5",
+            word: "confirm",
+            question:
+              "The supervisor will _____ your assignment before you begin.",
+            options: ["arrive", "confirm", "describe", "follow"],
+            correctIndex: 1,
+          },
+        ],
+      },
+    },
+
+    // 3. Document Review
+    {
+      id: "document_review",
+      type: "document_review",
+      location: "Evidence Desk",
+      label: "Document Review",
+      config: {
+        documents: [
+          {
+            id: "doc_welcome",
+            type: "approve",
+            title: "WELCOME NOTICE \u2014 NEW ASSOCIATE ORIENTATION",
+            department: "Human Resources",
+            classification: "STANDARD",
+            priority: "ROUTINE",
+            from: "Betty Lyle \u2014 WA-14",
+            to: "All New Associates",
+            re: "Welcome and Orientation Schedule",
+            body: "Welcome to the Department of Clarity. All new associates arrive at 08:00 for morning briefing. You will follow your assigned supervisor to your workstation. Please check your schedule each morning and report any changes to your supervisor. The Ministry values every associate who follows standard procedures.",
+          },
+          {
+            id: "doc_schedule",
+            type: "error_correction",
+            title: "SHIFT SCHEDULE \u2014 WEEKLY ASSIGNMENTS",
+            department: "Operations",
+            classification: "STANDARD",
+            priority: "ROUTINE",
+            from: "Scheduling Division",
+            to: "Department of Clarity \u2014 All Associates",
+            re: "Weekly Schedule Update",
+            body: "Each associate arrive at their assigned station by 08:00. Associates follows the daily checklist without exception. All report is submitted before 17:00. The supervisor confirm each document before filing. Associates does not leave until the shift report is approve. New associates is assigned a mentor for the first week.",
+            errors: [
+              {
+                sentenceIndex: 0,
+                wordStart: 2,
+                wordEnd: 3,
+                errorText: "arrive",
+                options: ["arrive", "arrives", "arriving"],
+                correctIndex: 1,
+              },
+              {
+                sentenceIndex: 1,
+                wordStart: 1,
+                wordEnd: 2,
+                errorText: "follows",
+                options: ["follows", "follow", "following"],
+                correctIndex: 1,
+              },
+              {
+                sentenceIndex: 2,
+                wordStart: 1,
+                wordEnd: 2,
+                errorText: "report",
+                options: ["report", "reports", "reporting"],
+                correctIndex: 1,
+              },
+              {
+                sentenceIndex: 3,
+                wordStart: 2,
+                wordEnd: 3,
+                errorText: "confirm",
+                options: ["confirm", "confirms", "confirmed"],
+                correctIndex: 1,
+              },
+              {
+                sentenceIndex: 4,
+                wordStart: 8,
+                wordEnd: 9,
+                errorText: "approve",
+                options: ["approve", "approved", "approves"],
+                correctIndex: 1,
+              },
+              {
+                sentenceIndex: 5,
+                wordStart: 2,
+                wordEnd: 3,
+                errorText: "is",
+                options: ["is", "are", "was"],
+                correctIndex: 1,
+              },
+            ],
+            laneHints: {
+              "1": [
+                "Look at the subject. Is it singular or plural?",
+                "The subject is 'Associates' \u2014 that is plural.",
+                "Check: does the verb match a singular or plural subject?",
+                "The subject is 'supervisor' \u2014 that is singular.",
+                "Look for the passive voice pattern: is/are + past participle.",
+                "The subject is 'New associates' \u2014 that is plural.",
+              ],
+            },
+          },
+          {
+            id: "doc_memo",
+            type: "comprehension",
+            title: "DEPARTMENT MEMO 14 \u2014 UPDATED FILING PROCEDURE",
+            department: "Records Management",
+            classification: "INTERNAL",
+            priority: "STANDARD",
+            from: "Records Division",
+            to: "Department of Clarity \u2014 All Associates",
+            re: "Updated Filing Procedure",
+            reviewedBy: "CA-19 \u2014 L. Vasquez",
+            body: "Effective immediately, all associates must submit completed documents to the central filing system before 16:00. Documents submitted after 16:00 will not be processed until the following day. Associates must check that all required fields are complete before submission. The supervisor will confirm receipt of each document. This procedure replaces the previous paper-based filing system. All associates are expected to follow the new standard without exception.",
+            questions: [
+              {
+                question:
+                  "What is the new deadline for document submission?",
+                options: ["08:00", "16:00", "17:00", "12:00"],
+                correctIndex: 1,
+              },
+              {
+                question:
+                  "What happens to documents submitted after the deadline?",
+                options: [
+                  "They are rejected",
+                  "They are processed the next day",
+                  "They are filed by the supervisor",
+                  "They are returned to the associate",
+                ],
+                correctIndex: 1,
+              },
+              {
+                question: "What does this new procedure replace?",
+                options: [
+                  "The digital filing system",
+                  "The paper-based filing system",
+                  "The supervisor approval system",
+                  "The morning briefing schedule",
+                ],
+                correctIndex: 1,
+              },
+            ],
+          },
+        ],
+      },
+    },
+
+    // 4. Shift Report
+    {
+      id: "shift_report",
+      type: "shift_report",
+      location: "Filing Desk",
+      label: "Shift Report",
+      config: {
+        prompt:
+          "Write your first shift report. Describe what you did today: what documents did you check? What procedures did you follow? What did you learn about the Department of Clarity?",
+        minWords: 40,
+        lane: {
+          "1": {
+            minWords: 25,
+            sentenceStarters: true,
+            wordBankChinese: true,
+            pearlHints: [
+              "Start with: 'Today I arrive at...'",
+              "Then: 'I check the...'",
+              "End with: 'I follow the...'",
+            ],
+            guidedQuestions: [
+              "What time did you arrive?",
+              "What documents did you check?",
+              "What standard procedures did you follow?",
+            ],
+          },
+          "2": { minWords: 40, wordListVisible: true },
+          "3": {
+            minWords: 55,
+            bonusQuestion:
+              "Were there any documents that seemed unusual or inconsistent? Explain.",
+          },
+        },
+      },
+    },
+  ],
+
+  // ─── Character Messages ─────────────────────────────────────────
+  characterMessages: [
+    // Betty greets at intake
+    {
+      characterName: "Betty",
+      designation: "WA-14",
+      triggerType: "task_start",
+      triggerConfig: { taskId: "intake_form" },
+      messageText:
+        "Well hi there, sugar! Welcome to the Department of Clarity! I'm Betty \u2014 WA-14, your Welcome Associate. Don't you worry about a thing \u2014 we'll get you settled in no time! Just fill out your intake form and we'll have you processing documents before you know it!",
+      replyType: "canned",
+      replyOptions: [
+        {
+          text: "Thank you, Betty. I will follow all procedures.",
+          responseText:
+            "That's the spirit, darlin'! The Ministry just loves a cooperative associate!",
+          isCompliant: true,
+        },
+        {
+          text: "What exactly will I be doing here?",
+          responseText:
+            "Oh, you'll be checking documents, sugar! Making sure everything is clear and correct. It's important work!",
+          isCompliant: false,
+        },
+        {
+          text: "This seems like a lot of paperwork.",
+          responseText:
+            "Ha! You sound just like my first day! But trust me, honey \u2014 every form has a purpose. The Ministry wouldn't waste your time!",
+          isCompliant: false,
+        },
+      ],
+    },
+
+    // Ivan warns before document review
+    {
+      characterName: "Ivan",
+      designation: "CA-22",
+      triggerType: "task_start",
+      triggerConfig: { taskId: "document_review" },
+      messageText:
+        "Hey... it's Ivan. CA-22. I sit two desks over from you, I think. Quick tip about the document review \u2014 read everything twice. The first time you miss things. Probably. I mean, I did when I started. Just... pay attention to the details, okay?",
+      replyType: "canned",
+      replyOptions: [
+        {
+          text: "Thanks for the advice. I will be careful.",
+          responseText:
+            "Yeah... careful is good. That's what they want. I mean, it's what we should be. Right?",
+          isCompliant: true,
+        },
+        {
+          text: "Do a lot of people make mistakes?",
+          responseText:
+            "I mean... some do. Some documents are tricky. Like, the wording changes sometimes? But that's probably normal... Right?",
+          isCompliant: false,
+        },
+        {
+          text: "I'll be fine. I don't need help.",
+          responseText:
+            "Oh, sure. Yeah. Sorry. I just... never mind. Good luck with the review.",
+          isCompliant: false,
+        },
+      ],
+    },
+
+    // M.K. silent observation after document review
+    {
+      characterName: "M.K.",
+      designation: "",
+      triggerType: "task_complete",
+      triggerConfig: { taskId: "document_review" },
+      messageText:
+        "You found all the errors. Most new associates miss at least two.",
+      replyType: "canned",
+      replyOptions: [
+        {
+          text: "Thank you. I tried to be thorough.",
+          responseText: null,
+          isCompliant: true,
+        },
+        {
+          text: "How do you know my score?",
+          responseText: null,
+          isCompliant: false,
+        },
+        {
+          text: "Who are you?",
+          responseText: null,
+          isCompliant: false,
+        },
+      ],
+    },
+
+    // Betty congratulates after shift report
+    {
+      characterName: "Betty",
+      designation: "WA-14",
+      triggerType: "task_complete",
+      triggerConfig: { taskId: "shift_report" },
+      messageText:
+        "Look at you, finishing your very first shift report! I knew you were going to be a good one, sugar! The Department needs associates like you. See you next shift, darlin'!",
+      replyType: "canned",
+      replyOptions: [
+        {
+          text: "Thank you, Betty. See you next shift.",
+          responseText:
+            "You take care now, hear? And remember \u2014 clear language makes a happy Republic!",
+          isCompliant: true,
+        },
+        {
+          text: "Is it always this much work?",
+          responseText:
+            "Oh honey, you haven't seen anything yet! But don't worry \u2014 it gets easier. Or... well, you get used to it!",
+          isCompliant: false,
+        },
+      ],
+    },
+  ],
+
+  // ─── Citizen-4488 Post ──────────────────────────────────────────
+  citizen4488Post: {
+    content:
+      "Has anyone seen my neighbor? She always arrive at the community center on Tuesday, but her chair was empty this week. I am sure she is fine. The Ministry takes care of everyone. I should not worry.",
+    type: "concerning",
+    grammarError: { original: "arrive", corrected: "arrives" },
+  },
+
+  // ─── Harmony Config ─────────────────────────────────────────────
+  harmonyConfig: {
+    totalPosts: 8,
+    cleanPosts: 3,
+    grammarErrorPosts: 2,
+    concerningPosts: 2,
+    propagandaPosts: 1,
+  },
+
+  // ─── Narrative Hook ─────────────────────────────────────────────
+  narrativeHook: {
+    title: "Two Versions",
+    body: "Two versions of the same memo arrived in your queue today. Both carry official Ministry seals. Both are signed by the same supervisor. But they do not say the same thing.",
+    borderColor: "amber",
+  },
+
+  // ─── Shift Closing ──────────────────────────────────────────────
+  shiftClosing: {
+    clearanceFrom: "PROBATIONARY",
+    clearanceTo: "PROVISIONAL",
+    pearlQuote:
+      "First shift processing complete. Accuracy metrics have been recorded. The Ministry appreciates diligent service.",
+    narrativeHook: {
+      title: "Two Versions",
+      body: "Two versions of the same memo arrived in your queue today. Both carry official Ministry seals. Both are signed by the same supervisor. But they do not say the same thing.",
+    },
+  },
+};

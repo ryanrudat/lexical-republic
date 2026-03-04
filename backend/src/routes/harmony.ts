@@ -209,4 +209,49 @@ router.post('/posts/:id/replies', async (req, res) => {
   }
 });
 
+// POST /api/harmony/posts/:id/censure — APPROVE/CORRECT/FLAG action on NPC post
+router.post('/posts/:id/censure', async (req, res) => {
+  try {
+    const pairId = getPairId(req);
+    if (!pairId) {
+      res.status(403).json({ error: 'Pair auth required' });
+      return;
+    }
+    const postId = req.params.id as string;
+    const { action, weekNumber } = req.body;
+    if (!action || !['approve', 'correct', 'flag'].includes(action)) {
+      res.status(400).json({ error: 'action must be approve, correct, or flag' });
+      return;
+    }
+
+    const post = await prisma.harmonyPost.findUnique({ where: { id: postId } });
+    if (!post) {
+      res.status(404).json({ error: 'Post not found' });
+      return;
+    }
+
+    // Log Citizen-4488 interaction if NPC post (userId === null && pairId === null)
+    if (!post.userId && !post.pairId && weekNumber) {
+      await prisma.citizen4488Interaction.upsert({
+        where: { pairId_weekNumber: { pairId, weekNumber } },
+        update: { action, context: { postId } },
+        create: { pairId, weekNumber, action, context: { postId } },
+      });
+    }
+
+    // Update post status based on action
+    if (action === 'flag') {
+      await prisma.harmonyPost.update({
+        where: { id: postId },
+        data: { status: 'flagged', pearlNote: 'Flag received. Forwarded for Wellness Review.' },
+      });
+    }
+
+    res.json({ success: true, action });
+  } catch (err) {
+    console.error('Censure action error:', err);
+    res.status(500).json({ error: 'Failed to process censure action' });
+  }
+});
+
 export default router;

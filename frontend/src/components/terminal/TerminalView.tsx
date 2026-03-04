@@ -17,6 +17,10 @@ import PearlPanel from '../pearl/PearlPanel';
 import DictionarySidebar from '../dictionary/DictionarySidebar';
 import DictionaryIcon from '../dictionary/DictionaryIcon';
 import SystemAuditOverlay from '../shift/SystemAuditOverlay';
+import MessagingPanel from '../messaging/MessagingPanel';
+import MessageNotification from '../messaging/MessageNotification';
+import MessageBadge from '../messaging/MessageBadge';
+import { useMessagingStore } from '../../stores/messagingStore';
 
 const APP_CONFIG = {
   'clarity-queue': { title: 'Clarity Queue', component: ClarityQueueApp },
@@ -103,22 +107,36 @@ export default function TerminalView() {
             {concernScore > 0 && (
               <div className="ios-glass-pill px-2 py-1 flex items-center gap-1.5">
                 <div className={`w-1.5 h-1.5 rounded-full ${
-                  concernScore >= 75 ? 'bg-neon-pink animate-pulse' :
-                  concernScore >= 50 ? 'bg-terminal-amber animate-pulse' :
+                  concernScore >= 3.0 ? 'bg-neon-pink animate-pulse' :
+                  concernScore >= 1.0 ? 'bg-terminal-amber animate-pulse' :
                   'bg-terminal-amber'
                 }`} />
                 <span className="font-ibm-mono text-[8px] text-white/40 tracking-wider uppercase">
                   CONCERN
                 </span>
                 <span className={`font-dseg7 text-sm tracking-wider tabular-nums ${
-                  concernScore >= 75 ? 'text-neon-pink' :
-                  concernScore >= 50 ? 'text-terminal-amber' :
+                  concernScore >= 3.0 ? 'text-neon-pink' :
+                  concernScore >= 1.0 ? 'text-terminal-amber' :
                   'text-terminal-amber/70'
                 }`}>
-                  {String(Math.min(concernScore, 999)).padStart(3, '0')}
+                  {concernScore.toFixed(1)}
                 </span>
               </div>
             )}
+
+            {/* Messaging icon */}
+            <button
+              onClick={() => useMessagingStore.getState().isPanelOpen ? useMessagingStore.getState().closePanel() : useMessagingStore.getState().openPanel()}
+              className="relative ios-glass-pill px-2 py-1.5 hover:border-neon-cyan/30 transition-all"
+              aria-label="Messages"
+            >
+              <svg width="16" height="14" viewBox="0 0 16 14" fill="none" className="text-white/50 hover:text-neon-cyan transition-colors">
+                <path d="M1 1h14v9H5l-4 3V1z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+                <line x1="4" y1="4" x2="12" y2="4" stroke="currentColor" strokeWidth="0.8" opacity="0.5" />
+                <line x1="4" y1="6.5" x2="10" y2="6.5" stroke="currentColor" strokeWidth="0.8" opacity="0.5" />
+              </svg>
+              <MessageBadge />
+            </button>
 
             {/* Dictionary icon */}
             <DictionaryIcon variant="terminal" />
@@ -168,6 +186,9 @@ export default function TerminalView() {
       />
 
       <DictionarySidebar />
+
+      <MessagingPanel />
+      <MessageNotification />
 
       {/* System Audit Overlay — triggers at concern score 100 */}
       <SystemAuditOverlay />

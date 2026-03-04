@@ -2,6 +2,7 @@ import { PrismaClient, Prisma } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import dotenv from 'dotenv';
 import path from 'path';
+import { getWeekConfig } from '../src/data/week-configs';
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
@@ -765,6 +766,93 @@ function createDefaultWeekMissions(week: WeekSeed): MissionSeed[] {
   ];
 }
 
+async function createQueueWeekMissions(weekId: string, weekNumber: number) {
+  const config = getWeekConfig(weekNumber);
+  if (!config) return;
+
+  for (let i = 0; i < config.tasks.length; i++) {
+    const task = config.tasks[i];
+
+    // Find existing mission by weekId + missionType for idempotent upsert
+    const existing = await prisma.mission.findFirst({
+      where: { weekId, missionType: task.type },
+    });
+
+    const missionId = existing?.id ?? `mission-queue-${weekId}-${i}`;
+
+    await prisma.mission.upsert({
+      where: { id: missionId },
+      update: {
+        weekId,
+        orderIndex: i,
+        title: task.label,
+        missionType: task.type,
+        config: { weekConfigTask: task.id } as unknown as Prisma.InputJsonValue,
+      },
+      create: {
+        id: missionId,
+        weekId,
+        orderIndex: i,
+        title: task.label,
+        description: `Queue task: ${task.label}`,
+        missionType: task.type,
+        config: { weekConfigTask: task.id } as unknown as Prisma.InputJsonValue,
+      },
+    });
+  }
+
+  console.log(`  Queue missions: ${config.tasks.length} tasks seeded for week ${weekNumber}`);
+}
+
+async function seedCitizen4488Posts() {
+  const firstClass = await prisma.class.findFirst();
+  if (!firstClass) {
+    console.warn('  Warning: No class found, skipping Citizen-4488 posts');
+    return;
+  }
+
+  const posts = [
+    {
+      content:
+        'Has anyone seen my neighbor? She always arrive at the community center on Tuesday, but her chair was empty this week. I am sure she is fine. The Ministry takes care of everyone. I should not worry.',
+      weekLabel: 'Week 1',
+    },
+    {
+      content:
+        'I noticed the community center updated its schedule. Tuesday activities were removed. My neighbor used to attend on Tuesdays. I requested information but no one informed me of changes. Everything is fine. Change is normal.',
+      weekLabel: 'Week 2',
+    },
+    {
+      content:
+        'The community center schedule was updated again. All Tuesday and Thursday activities have been removed. I cannot identify who approved these changes. I should not delay my own schedule to ask questions. Delays cause problems for everyone.',
+      weekLabel: 'Week 3',
+    },
+  ];
+
+  let created = 0;
+  for (const post of posts) {
+    // Content hash check — skip if post with same content + classId already exists
+    const existing = await prisma.harmonyPost.findFirst({
+      where: { content: post.content, classId: firstClass.id },
+    });
+    if (existing) continue;
+
+    await prisma.harmonyPost.create({
+      data: {
+        content: post.content,
+        status: 'approved',
+        classId: firstClass.id,
+        userId: null,
+        pairId: null,
+        pearlNote: 'Community post from Citizen-4488',
+      },
+    });
+    created++;
+  }
+
+  console.log(`  Citizen-4488 posts: ${created} created (${posts.length - created} already existed)`);
+}
+
 async function main() {
   console.log('Seeding database...');
 
@@ -1021,352 +1109,14 @@ async function main() {
   }
   console.log(`  Weeks 1-3 unlocked for class ${defaultClass.name}`);
 
-  // ─── Week 1 Missions (7 steps) ───
-  const week1Story = WEEK_STORY_PLANS[1];
-  const week1Missions = [
-    {
-      id: 'mission-w1-recap',
-      weekId: 'week-1',
-      orderIndex: 0,
-      title: 'Recap',
-      description: 'Review what you remember from orientation.',
-      missionType: 'recap',
-      config: {
-        minAnswers: 2,
-        prompts: [
-          'What is one rule you remember about Right & Proper language?',
-          'Who are you in the Lexicon Republic (your role)?',
-          'What detail felt suspicious in the briefing?',
-        ],
-        storyBeat: {
-          beatTitle: 'Day 1 Arrival',
-          location: 'Shift Intake',
-          objective: 'Anchor identity and rules before first assignment.',
-          speaker: 'WILLIAM (internal)',
-          line: 'By tonight I will have a real badge. I will be someone who matters.',
-          learningFocus: week1Story.grammarFocus,
-          knownWords: week1Story.knownWords,
-          newWords: week1Story.newWords,
-        },
-      },
-    },
-    {
-      id: 'mission-w1-briefing',
-      weekId: 'week-1',
-      orderIndex: 1,
-      title: 'Briefing',
-      description: 'Today\u2019s official communication from The Party.',
-      missionType: 'briefing',
-      config: {
-        episodeTitle: 'Episode 1: Party Onboarding Broadcast',
-        episodeSubtitle: 'Mandatory onboarding transmission for all new Clarity Associates.',
-        nowShowingStage: 'clip_a',
-        videoSource: 'auto',
-        embedUrl: '',
-        clipAEmbedUrl: '',
-        clipBEmbedUrl: '',
-        uploadedVideoUrl: '',
-        uploadedVideoFilename: '',
-        clipAUploadedVideoUrl: '',
-        clipAUploadedVideoFilename: '',
-        clipBUploadedVideoUrl: '',
-        clipBUploadedVideoFilename: '',
-        bridgeLine: 'Your first compliance report will be reviewed. Accurate associates are valued associates.',
-        weekSlogan: 'Clarity is Comfort',
-        fallbackText: 'Welcome to the Ministry onboarding episode. The Party explains your role, your badge connection to PEARL, and the rules for processing language in Clarity Bay.',
-        transcript: [
-          'Welcome, future Clarity Associate. I am PEARL, and I will be with you today, tomorrow, and every day after.',
-          'The Party above all. Happiness through clarity. Confusion is corrected with care.',
-          'Your assignment begins in Clarity Bay: correct irregular language before it spreads.',
-          'If a document cannot be corrected, flag it for supervisor review and remain calm.',
-          'Clear words create safe minds. The Party thanks you for your service.',
-        ],
-        storyBeat: {
-          beatTitle: 'Onboarding Broadcast',
-          location: 'Broadcast Terminal',
-          objective: 'Identify how language rules are framed as safety and care.',
-          speaker: 'PEARL',
-          line: 'Before you correct others, we must calibrate you. This is for everyone\'s well-being.',
-          learningFocus: week1Story.grammarFocus,
-          knownWords: week1Story.knownWords,
-          newWords: week1Story.newWords,
-        },
-        checks: [
-          {
-            id: 'b1_gist',
-            question: 'What is the main purpose of today\u2019s briefing?',
-            choices: [
-              'To onboard new associates into Party language procedures',
-              'To announce a public festival',
-              'To provide transport updates',
-              'To train physical fitness',
-            ],
-            answerIndex: 0,
-          },
-          {
-            id: 'b1_detail',
-            question: 'What must an associate do when language cannot be corrected?',
-            choices: [
-              'Ignore the sentence',
-              'Publish it anyway',
-              'Flag it for supervisor review',
-              'Send it to a friend',
-            ],
-            answerIndex: 2,
-          },
-          {
-            id: 'b1_infer',
-            question: 'How does the broadcast frame control?',
-            choices: ['As punishment', 'As care and safety', 'As entertainment', 'As optional advice'],
-            answerIndex: 1,
-          },
-        ],
-      },
-    },
-    {
-      id: 'mission-w1-grammar',
-      weekId: 'week-1',
-      orderIndex: 2,
-      title: 'Clarity Bay',
-      description: 'Grammar exercises for Right & Proper language.',
-      missionType: 'grammar',
-      config: {
-        requiredCount: 8,
-        storyBeat: {
-          beatTitle: 'First Desk Assignment',
-          location: 'Language Lab',
-          objective: 'Complete your first processing batch with high accuracy.',
-          speaker: 'IVAN',
-          line: 'If PEARL marks too many errors, it goes in your file. Just... stay precise.',
-          learningFocus: week1Story.grammarFocus,
-          knownWords: week1Story.knownWords,
-          newWords: week1Story.newWords,
-        },
-        documents: [
-          {
-            id: 'w01_d01',
-            type: 'choose_correct',
-            prompt: 'Choose the correct sentence.',
-            text: 'Agent Mira ____ on time every day.',
-            options: ['clock in', 'clocks in', 'clocking in', 'clocked in'],
-            correctIndex: 1,
-            targets: ['present-simple', 'third-person-s'],
-          },
-          {
-            id: 'w01_d02',
-            type: 'choose_correct',
-            prompt: 'Choose the correct sentence.',
-            text: 'Yesterday we ____ the memo twice.',
-            options: ['read', 'reads', 'reading', 'will read'],
-            correctIndex: 0,
-            targets: ['simple-past', 'irregular-verbs'],
-          },
-          {
-            id: 'w01_d03',
-            type: 'choose_correct',
-            prompt: 'Choose the correct sentence.',
-            text: 'There ____ two new rules today.',
-            options: ['is', 'are', 'was', 'be'],
-            correctIndex: 1,
-            targets: ['there-is-are'],
-          },
-          {
-            id: 'w01_d04',
-            type: 'choose_correct',
-            prompt: 'Choose the correct sentence.',
-            text: 'I can ____ the evidence clearly.',
-            options: ['to hear', 'hear', 'hears', 'hearing'],
-            correctIndex: 1,
-            targets: ['modals', 'base-verb'],
-          },
-          {
-            id: 'w01_d05',
-            type: 'choose_correct',
-            prompt: 'Choose the correct sentence.',
-            text: 'We ____ in the briefing room now.',
-            options: ['am', 'is', 'are', 'be'],
-            correctIndex: 2,
-            targets: ['be-verb', 'present-continuous'],
-          },
-          {
-            id: 'w01_d06',
-            type: 'choose_correct',
-            prompt: 'Choose the correct sentence.',
-            text: 'The agent ____ finish the Case File.',
-            options: ['have to', 'has to', 'having to', 'had to'],
-            correctIndex: 1,
-            targets: ['have-to', 'third-person-s'],
-          },
-          {
-            id: 'w01_d07',
-            type: 'choose_correct',
-            prompt: 'Choose the correct sentence.',
-            text: 'Please ____ your answers before you submit.',
-            options: ['check', 'checks', 'checked', 'checking'],
-            correctIndex: 0,
-            targets: ['imperatives'],
-          },
-          {
-            id: 'w01_d08',
-            type: 'choose_correct',
-            prompt: 'Choose the correct sentence.',
-            text: 'If Canva is blocked, you ____ use fallback checks.',
-            options: ['can', 'cans', 'coulds', 'to can'],
-            correctIndex: 0,
-            targets: ['modals'],
-          },
-        ],
-      },
-    },
-    {
-      id: 'mission-w1-listening',
-      weekId: 'week-1',
-      orderIndex: 3,
-      title: 'Evidence',
-      description: 'Listen to the broadcast and answer comprehension checks.',
-      missionType: 'listening',
-      config: {
-        mediaUrl: '',
-        transcript: [
-          'Broadcast: All agents must follow Right & Proper language in official documents.',
-          'Reminder: If a briefing cannot load, proceed with the in\u2011app checks.',
-          'Notice: Unverified memos should be archived until further instruction.',
-        ],
-        highlightPrompt: 'Which transcript line best explains what to do with unverified memos?',
-        highlightAnswerIndex: 2,
-        storyBeat: {
-          beatTitle: 'Evidence Packet A',
-          location: 'Evidence Desk',
-          objective: 'Prove your answer using exact transcript evidence.',
-          speaker: 'BETTY',
-          line: 'Details matter, sugar. The right line can protect your whole shift record.',
-          learningFocus: week1Story.grammarFocus,
-          knownWords: week1Story.knownWords,
-          newWords: week1Story.newWords,
-        },
-        checks: [
-          {
-            id: 'l1_gist',
-            question: 'What is the broadcast mainly about?',
-            choices: [
-              'A new schedule',
-              'Language rules',
-              'A weather report',
-              'A game',
-            ],
-            answerIndex: 1,
-          },
-          {
-            id: 'l1_detail',
-            question: 'What should you do if a briefing cannot load?',
-            choices: [
-              'Quit the Shift',
-              'Proceed with in\u2011app checks',
-              'Wait 30 minutes',
-              'Ask for a password',
-            ],
-            answerIndex: 1,
-          },
-          {
-            id: 'l1_infer',
-            question: 'Why might memos be archived?',
-            choices: [
-              'They are unverified',
-              'They are funny',
-              'They are long',
-              'They are new',
-            ],
-            answerIndex: 0,
-          },
-        ],
-      },
-    },
-    {
-      id: 'mission-w1-voice-log',
-      weekId: 'week-1',
-      orderIndex: 4,
-      title: 'Voice Log',
-      description: 'Record your retelling of the briefing.',
-      missionType: 'voice_log',
-      config: {
-        prompt: 'Retell the briefing in 45 seconds using: "We have to\u2026", "I can\u2026", "There are\u2026".',
-        targetPhrases: ['We have to\u2026', 'I can\u2026', 'There are\u2026'],
-        storyBeat: {
-          beatTitle: 'Badge Voice Check',
-          location: 'Voice Booth',
-          objective: 'Demonstrate controlled speech before end-of-shift filing.',
-          speaker: 'PEARL',
-          line: 'Speech confirms clarity. Clarity confirms loyalty.',
-          learningFocus: week1Story.grammarFocus,
-          knownWords: week1Story.knownWords,
-          newWords: week1Story.newWords,
-        },
-      },
-    },
-    {
-      id: 'mission-w1-case-file',
-      weekId: 'week-1',
-      orderIndex: 5,
-      title: 'Case File',
-      description: 'Write your summary of today\u2019s Shift.',
-      missionType: 'case_file',
-      config: {
-        prompt: 'Write a 4\u20136 sentence Case File summary. Include one Right & Proper rule and one suspicious detail.',
-        minWords: 40,
-        storyBeat: {
-          beatTitle: 'First Official Record',
-          location: 'Filing Desk',
-          objective: 'Write a compliant summary while noting one irregular signal.',
-          speaker: 'M.K. CATSKIL',
-          line: 'Most people learn to write what they are told. Fewer learn to notice what is missing.',
-          learningFocus: week1Story.grammarFocus,
-          knownWords: week1Story.knownWords,
-          newWords: week1Story.newWords,
-        },
-      },
-    },
-    {
-      id: 'mission-w1-clock-out',
-      weekId: 'week-1',
-      orderIndex: 6,
-      title: 'Clock-Out',
-      description: 'Review your Shift and clock out.',
-      missionType: 'clock_out',
-      config: {
-        cliffhanger: 'A memo arrives stamped HIDDEN LEXICON \u2014 and your supervisor says it never existed.',
-        storyBeat: {
-          beatTitle: 'Clock-Out',
-          location: 'End of Day',
-          objective: 'Complete your first shift and capture the final anomaly.',
-          speaker: 'PEARL',
-          line: 'Excellent first shift, Associate-7. Rest well. Tomorrow\'s queue may feel... unfamiliar.',
-          pressure: 'System note: Unlogged memo signature detected.',
-          learningFocus: week1Story.grammarFocus,
-          knownWords: week1Story.knownWords,
-          newWords: week1Story.newWords,
-        },
-      },
-    },
-  ];
-
-  for (const m of week1Missions) {
-    await prisma.mission.upsert({
-      where: { id: m.id },
-      update: {
-        weekId: m.weekId,
-        title: m.title,
-        description: m.description,
-        missionType: m.missionType,
-        config: m.config,
-        orderIndex: m.orderIndex,
-      },
-      create: m,
-    });
+  // ─── Weeks 1-3 Queue Missions (from WeekConfig) ───
+  for (const wk of weekData.filter((w) => w.weekNumber >= 1 && w.weekNumber <= 3)) {
+    await createQueueWeekMissions(wk.id, wk.weekNumber);
   }
-  console.log(`  Week 1 Missions: ${week1Missions.length} steps seeded`);
 
+  // ─── Weeks 4-18 Default Missions (7-step legacy runner) ───
   const remainingWeekMissions = weekData
-    .filter((week) => week.id !== 'week-1')
+    .filter((week) => week.weekNumber >= 4)
     .flatMap((week) => createDefaultWeekMissions(week));
 
   for (const mission of remainingWeekMissions) {
@@ -1383,7 +1133,7 @@ async function main() {
       create: mission,
     });
   }
-  console.log(`  Additional Missions: ${remainingWeekMissions.length} steps seeded for weeks 2–18`);
+  console.log(`  Default Missions: ${remainingWeekMissions.length} steps seeded for weeks 4–18`);
 
   // ─── Vocabulary (15 approved words for Week 1) ───
   const words = [
@@ -2089,6 +1839,402 @@ async function main() {
       toeicCategory: 'procedures',
       wordFamilyGroup: 'verify',
       isWorldBuilding: true,
+      weekIntroduced: 3,
+    },
+
+    // ── Week 1: Target Vocabulary (queue system) ──
+    {
+      word: 'arrive',
+      partOfSpeech: 'verb',
+      phonetic: '/əˈraɪv/',
+      partyDefinition: 'To present oneself at an approved location at the designated time.',
+      trueDefinition: 'To reach a place after traveling.',
+      exampleSentence: 'All associates arrive at their stations before the shift begins.',
+      translationZhTw: '到達',
+      toeicCategory: 'General Business',
+      wordFamilyGroup: 'arrive',
+      isWorldBuilding: false,
+      weekIntroduced: 1,
+    },
+    {
+      word: 'follow',
+      partOfSpeech: 'verb',
+      phonetic: '/ˈfɑː.loʊ/',
+      partyDefinition: 'To comply with established directives without deviation.',
+      trueDefinition: 'To act according to instructions or rules.',
+      exampleSentence: 'Follow the protocol exactly as written in the directive.',
+      translationZhTw: '遵循',
+      toeicCategory: 'Office Procedures',
+      wordFamilyGroup: 'follow',
+      isWorldBuilding: false,
+      weekIntroduced: 1,
+    },
+    {
+      word: 'check',
+      partOfSpeech: 'verb',
+      phonetic: '/tʃek/',
+      partyDefinition: 'To verify conformity with Ministry-approved standards.',
+      trueDefinition: 'To examine something to see if it is correct, safe, or suitable.',
+      exampleSentence: 'Check each document before submitting it to the archive.',
+      translationZhTw: '檢查',
+      toeicCategory: 'Office Procedures',
+      wordFamilyGroup: null,
+      isWorldBuilding: false,
+      weekIntroduced: 1,
+    },
+    {
+      word: 'report',
+      partOfSpeech: 'verb',
+      phonetic: '/rɪˈpɔːrt/',
+      partyDefinition: 'To submit documented observations to the appropriate authority.',
+      trueDefinition: 'To give a description of something or information about it to someone in authority.',
+      exampleSentence: 'Report any irregularities to your supervisor before the shift ends.',
+      translationZhTw: '報告',
+      toeicCategory: 'Communication',
+      wordFamilyGroup: 'report',
+      isWorldBuilding: false,
+      weekIntroduced: 1,
+    },
+    {
+      word: 'submit',
+      partOfSpeech: 'verb',
+      phonetic: '/səbˈmɪt/',
+      partyDefinition: 'To deliver completed materials for official review and processing.',
+      trueDefinition: 'To give a document or plan to someone in authority for them to consider.',
+      exampleSentence: 'Submit your intake form before the end of the shift.',
+      translationZhTw: '提交',
+      toeicCategory: 'Office Procedures',
+      wordFamilyGroup: 'submit',
+      isWorldBuilding: false,
+      weekIntroduced: 1,
+    },
+    {
+      word: 'approve',
+      partOfSpeech: 'verb',
+      phonetic: '/əˈpruːv/',
+      partyDefinition: 'To confirm that submitted content meets the approved standard.',
+      trueDefinition: 'To officially agree to or accept something as satisfactory.',
+      exampleSentence: 'The supervisor must approve all outgoing documents.',
+      translationZhTw: '批准',
+      toeicCategory: 'Office Procedures',
+      wordFamilyGroup: 'approve',
+      isWorldBuilding: false,
+      weekIntroduced: 1,
+    },
+    {
+      word: 'describe',
+      partOfSpeech: 'verb',
+      phonetic: '/dɪˈskraɪb/',
+      partyDefinition: 'To provide a detailed account using Ministry-approved terminology.',
+      trueDefinition: 'To say or write what someone or something is like.',
+      exampleSentence: 'Describe the contents of each memo in your shift report.',
+      translationZhTw: '描述',
+      toeicCategory: 'Communication',
+      wordFamilyGroup: 'describe',
+      isWorldBuilding: false,
+      weekIntroduced: 1,
+    },
+    {
+      word: 'assign',
+      partOfSpeech: 'verb',
+      phonetic: '/əˈsaɪn/',
+      partyDefinition: 'To allocate responsibilities according to departmental protocol.',
+      trueDefinition: 'To give someone a particular job or task.',
+      exampleSentence: 'The supervisor will assign your cases for the day.',
+      translationZhTw: '指派',
+      toeicCategory: 'Personnel',
+      wordFamilyGroup: 'assign',
+      isWorldBuilding: false,
+      weekIntroduced: 1,
+    },
+    {
+      word: 'standard',
+      partOfSpeech: 'noun',
+      phonetic: '/ˈstæn.dɚd/',
+      partyDefinition: 'The prescribed level of quality established by the Ministry.',
+      trueDefinition: 'A level of quality or achievement that is considered acceptable.',
+      exampleSentence: 'All documents must meet the Ministry standard before release.',
+      translationZhTw: '標準',
+      toeicCategory: 'General Business',
+      wordFamilyGroup: null,
+      isWorldBuilding: false,
+      weekIntroduced: 1,
+    },
+    {
+      word: 'confirm',
+      partOfSpeech: 'verb',
+      phonetic: '/kənˈfɜːrm/',
+      partyDefinition: 'To verify and acknowledge the accuracy of processed information.',
+      trueDefinition: 'To state or show that something is definitely true or correct.',
+      exampleSentence: 'Confirm the details before submitting your intake form.',
+      translationZhTw: '確認',
+      toeicCategory: 'General Business',
+      wordFamilyGroup: 'confirm',
+      isWorldBuilding: false,
+      weekIntroduced: 1,
+    },
+
+    // ── Week 2: Target Vocabulary (queue system) ──
+    {
+      word: 'notice',
+      partOfSpeech: 'verb',
+      phonetic: '/ˈnoʊ.tɪs/',
+      partyDefinition: 'To become aware of information through approved observation channels.',
+      trueDefinition: 'To see or become aware of something.',
+      exampleSentence: 'Did you notice that the memo was revised overnight?',
+      translationZhTw: '注意到',
+      toeicCategory: 'Communication',
+      wordFamilyGroup: 'notice',
+      isWorldBuilding: false,
+      weekIntroduced: 2,
+    },
+    {
+      word: 'compare',
+      partOfSpeech: 'verb',
+      phonetic: '/kəmˈper/',
+      partyDefinition: 'To examine multiple documents for consistency with current directives.',
+      trueDefinition: 'To examine two or more things to see how they are similar or different.',
+      exampleSentence: 'Compare both versions of the memo and note the differences.',
+      translationZhTw: '比較',
+      toeicCategory: 'Office Procedures',
+      wordFamilyGroup: 'compare',
+      isWorldBuilding: false,
+      weekIntroduced: 2,
+    },
+    {
+      word: 'replace',
+      partOfSpeech: 'verb',
+      phonetic: '/rɪˈpleɪs/',
+      partyDefinition: 'To substitute outdated content with Ministry-approved revisions.',
+      trueDefinition: 'To take the place of something, or put something new in the place of something.',
+      exampleSentence: 'Replace any outdated forms with the latest revision.',
+      translationZhTw: '替換',
+      toeicCategory: 'Office Procedures',
+      wordFamilyGroup: 'replace',
+      isWorldBuilding: false,
+      weekIntroduced: 2,
+    },
+    {
+      word: 'update',
+      partOfSpeech: 'verb',
+      phonetic: '/ʌpˈdeɪt/',
+      partyDefinition: 'To apply authorized modifications to existing records or procedures.',
+      trueDefinition: 'To make something more modern or suitable for use now.',
+      exampleSentence: 'Update the file with the latest information from dispatch.',
+      translationZhTw: '更新',
+      toeicCategory: 'Office Procedures',
+      wordFamilyGroup: 'update',
+      isWorldBuilding: false,
+      weekIntroduced: 2,
+    },
+    {
+      word: 'request',
+      partOfSpeech: 'verb',
+      phonetic: '/rɪˈkwest/',
+      partyDefinition: 'To formally submit an inquiry through proper administrative channels.',
+      trueDefinition: 'To ask for something politely or officially.',
+      exampleSentence: 'You may request additional information through your supervisor.',
+      translationZhTw: '請求',
+      toeicCategory: 'Communication',
+      wordFamilyGroup: null,
+      isWorldBuilding: false,
+      weekIntroduced: 2,
+    },
+    {
+      word: 'remove',
+      partOfSpeech: 'verb',
+      phonetic: '/rɪˈmuːv/',
+      partyDefinition: 'To eliminate non-compliant or outdated material from circulation.',
+      trueDefinition: 'To take something away from its place.',
+      exampleSentence: 'Remove all unapproved entries from the public record.',
+      translationZhTw: '移除',
+      toeicCategory: 'Office Procedures',
+      wordFamilyGroup: 'remove',
+      isWorldBuilding: false,
+      weekIntroduced: 2,
+    },
+    {
+      word: 'change',
+      partOfSpeech: 'verb',
+      phonetic: '/tʃeɪndʒ/',
+      partyDefinition: 'To implement authorized modifications to established procedures.',
+      trueDefinition: 'To become different, or to make something different.',
+      exampleSentence: 'The Ministry may change the schedule without prior notice.',
+      translationZhTw: '改變',
+      toeicCategory: 'General Business',
+      wordFamilyGroup: null,
+      isWorldBuilding: false,
+      weekIntroduced: 2,
+    },
+    {
+      word: 'include',
+      partOfSpeech: 'verb',
+      phonetic: '/ɪnˈkluːd/',
+      partyDefinition: 'To incorporate approved elements within official documentation.',
+      trueDefinition: 'To contain something as a part of something else.',
+      exampleSentence: 'Include all required fields in your dispatch report.',
+      translationZhTw: '包含',
+      toeicCategory: 'General Business',
+      wordFamilyGroup: 'include',
+      isWorldBuilding: false,
+      weekIntroduced: 2,
+    },
+    {
+      word: 'require',
+      partOfSpeech: 'verb',
+      phonetic: '/rɪˈkwaɪɚ/',
+      partyDefinition: 'To mandate compliance with specified Ministry standards.',
+      trueDefinition: 'To need something or make something necessary.',
+      exampleSentence: 'All reports require supervisor verification before filing.',
+      translationZhTw: '要求',
+      toeicCategory: 'Personnel',
+      wordFamilyGroup: 'require',
+      isWorldBuilding: false,
+      weekIntroduced: 2,
+    },
+    {
+      word: 'inform',
+      partOfSpeech: 'verb',
+      phonetic: '/ɪnˈfɔːrm/',
+      partyDefinition: 'To communicate approved information through designated channels.',
+      trueDefinition: 'To tell someone about something.',
+      exampleSentence: 'Inform your supervisor if any records are missing.',
+      translationZhTw: '通知',
+      toeicCategory: 'Communication',
+      wordFamilyGroup: 'inform',
+      isWorldBuilding: false,
+      weekIntroduced: 2,
+    },
+
+    // ── Week 3: Target Vocabulary (queue system) ──
+    {
+      word: 'process',
+      partOfSpeech: 'verb',
+      phonetic: '/ˈprɑː.ses/',
+      partyDefinition: 'To handle official matters using established departmental procedures.',
+      trueDefinition: 'To deal with something by following an established procedure or set of steps.',
+      exampleSentence: 'Process each citizen request in the order it was received.',
+      translationZhTw: '處理',
+      toeicCategory: 'Office Procedures',
+      wordFamilyGroup: 'process',
+      isWorldBuilding: false,
+      weekIntroduced: 3,
+    },
+    {
+      word: 'complete',
+      partOfSpeech: 'verb',
+      phonetic: '/kəmˈpliːt/',
+      partyDefinition: 'To finalize all required elements of an assigned task.',
+      trueDefinition: 'To finish doing or making something.',
+      exampleSentence: 'Complete each form before moving to the next case.',
+      translationZhTw: '完成',
+      toeicCategory: 'General Business',
+      wordFamilyGroup: 'complete',
+      isWorldBuilding: false,
+      weekIntroduced: 3,
+    },
+    {
+      word: 'review',
+      partOfSpeech: 'verb',
+      phonetic: '/rɪˈvjuː/',
+      partyDefinition: 'To examine submitted materials for compliance and accuracy.',
+      trueDefinition: 'To examine or consider something carefully.',
+      exampleSentence: 'Review your shift report before submitting it to the archive.',
+      translationZhTw: '審查',
+      toeicCategory: 'Office Procedures',
+      wordFamilyGroup: 'review',
+      isWorldBuilding: false,
+      weekIntroduced: 3,
+    },
+    {
+      word: 'delay',
+      partOfSpeech: 'noun',
+      phonetic: '/dɪˈleɪ/',
+      partyDefinition: 'An unauthorized interruption to scheduled processing timelines.',
+      trueDefinition: 'A situation in which something happens later than expected or planned.',
+      exampleSentence: 'Any delay in processing will be noted in your performance record.',
+      translationZhTw: '延遲',
+      toeicCategory: 'General Business',
+      wordFamilyGroup: 'delay',
+      isWorldBuilding: false,
+      weekIntroduced: 3,
+    },
+    {
+      word: 'schedule',
+      partOfSpeech: 'noun',
+      phonetic: '/ˈsked.juːl/',
+      partyDefinition: 'The Ministry-approved timetable for assigned activities.',
+      trueDefinition: 'A plan that lists all the work that you have to do and when you must do each thing.',
+      exampleSentence: 'Check the schedule before beginning your shift.',
+      translationZhTw: '時間表',
+      toeicCategory: 'Office Procedures',
+      wordFamilyGroup: 'schedule',
+      isWorldBuilding: false,
+      weekIntroduced: 3,
+    },
+    {
+      word: 'respond',
+      partOfSpeech: 'verb',
+      phonetic: '/rɪˈspɑːnd/',
+      partyDefinition: 'To provide an authorized reply within designated timeframes.',
+      trueDefinition: 'To say or do something as an answer or reaction to something.',
+      exampleSentence: 'Respond to all citizen requests before the end of your shift.',
+      translationZhTw: '回應',
+      toeicCategory: 'Communication',
+      wordFamilyGroup: 'respond',
+      isWorldBuilding: false,
+      weekIntroduced: 3,
+    },
+    {
+      word: 'identify',
+      partOfSpeech: 'verb',
+      phonetic: '/aɪˈden.tɪ.faɪ/',
+      partyDefinition: 'To classify and categorize items according to Ministry standards.',
+      trueDefinition: 'To recognize someone or something and say who or what they are.',
+      exampleSentence: 'Identify each case type before assigning a priority level.',
+      translationZhTw: '識別',
+      toeicCategory: 'Personnel',
+      wordFamilyGroup: 'identify',
+      isWorldBuilding: false,
+      weekIntroduced: 3,
+    },
+    {
+      word: 'separate',
+      partOfSpeech: 'verb',
+      phonetic: '/ˈsep.ə.reɪt/',
+      partyDefinition: 'To organize materials into distinct Ministry-approved categories.',
+      trueDefinition: 'To divide or split something into different parts or groups.',
+      exampleSentence: 'Separate urgent cases from routine processing.',
+      translationZhTw: '分開',
+      toeicCategory: 'Office Procedures',
+      wordFamilyGroup: 'separate',
+      isWorldBuilding: false,
+      weekIntroduced: 3,
+    },
+    {
+      word: 'maintain',
+      partOfSpeech: 'verb',
+      phonetic: '/meɪnˈteɪn/',
+      partyDefinition: 'To preserve approved conditions and standards without deviation.',
+      trueDefinition: 'To keep something in good condition by checking or repairing it regularly.',
+      exampleSentence: 'Maintain accurate records throughout your entire shift.',
+      translationZhTw: '維持',
+      toeicCategory: 'General Business',
+      wordFamilyGroup: 'maintain',
+      isWorldBuilding: false,
+      weekIntroduced: 3,
+    },
+    {
+      word: 'forward',
+      partOfSpeech: 'verb',
+      phonetic: '/ˈfɔːr.wɚd/',
+      partyDefinition: 'To redirect materials to the appropriate processing authority.',
+      trueDefinition: 'To send a letter, email, or document to someone else.',
+      exampleSentence: 'Forward all flagged cases to the supervisor immediately.',
+      translationZhTw: '轉發',
+      toeicCategory: 'Communication',
+      wordFamilyGroup: 'forward',
+      isWorldBuilding: false,
       weekIntroduced: 3,
     },
   ];
@@ -2913,6 +3059,9 @@ async function main() {
     hintMessages.length +
     concernMessages.length;
   console.log(`  PEARL messages: ${totalPearlMessages} (across 5 categories)`);
+
+  // ─── Citizen-4488 Harmony Posts ───
+  await seedCitizen4488Posts();
 
   console.log('Seed complete!');
 }

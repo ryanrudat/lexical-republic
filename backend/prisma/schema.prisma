@@ -83,13 +83,22 @@ model Pair {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  missionScores      MissionScore[]
-  recordings         Recording[]
-  enrollments        ClassEnrollment[]
-  harmonyPosts       HarmonyPost[]
-  pearlConversations PearlConversation[]
-  narrativeChoices   NarrativeChoice[]
-  dictionaryProgress PairDictionaryProgress[]
+  clearanceLevel               String   @default("PROBATIONARY")
+  suggestedLane                Int?
+  consecutiveQualifyingShifts  Int      @default(0)
+  laneLocked                   Boolean  @default(false)
+  harmonyUnlockedAt            DateTime?
+
+  missionScores          MissionScore[]
+  recordings             Recording[]
+  enrollments            ClassEnrollment[]
+  harmonyPosts           HarmonyPost[]
+  pearlConversations     PearlConversation[]
+  narrativeChoices       NarrativeChoice[]
+  dictionaryProgress     PairDictionaryProgress[]
+  characterMessages      CharacterMessage[]
+  citizen4488Interactions Citizen4488Interaction[]
+  shiftResults           ShiftResult[]
 
   @@map("pairs")
 }
@@ -431,4 +440,59 @@ enum HarmonyStatus {
   approved
   flagged
   redacted
+}
+
+// ─── ShiftQueue System ──────────────────────────────────────────
+
+model CharacterMessage {
+  id            String   @id @default(uuid())
+  pairId        String
+  pair          Pair     @relation(fields: [pairId], references: [id])
+  characterName String
+  designation   String
+  messageText   String
+  replyType     String   @default("canned")
+  replyOptions  Json?
+  triggerType   String
+  triggerConfig Json
+  weekNumber    Int
+  isRead        Boolean  @default(false)
+  studentReply  String?
+  createdAt     DateTime @default(now())
+
+  @@map("character_messages")
+}
+
+model Citizen4488Interaction {
+  id         String   @id @default(uuid())
+  pairId     String
+  pair       Pair     @relation(fields: [pairId], references: [id])
+  weekNumber Int
+  action     String
+  context    Json?
+  createdAt  DateTime @default(now())
+
+  @@unique([pairId, weekNumber])
+  @@map("citizen_4488_interactions")
+}
+
+model ShiftResult {
+  id                 String    @id @default(uuid())
+  pairId             String
+  pair               Pair      @relation(fields: [pairId], references: [id])
+  weekNumber         Int
+  documentsProcessed Int       @default(0)
+  documentsTotal     Int       @default(0)
+  errorsFound        Int       @default(0)
+  errorsTotal        Int       @default(0)
+  vocabScore         Float     @default(0)
+  grammarAccuracy    Float     @default(0)
+  targetWordsUsed    Int       @default(0)
+  concernScoreDelta  Float     @default(0)
+  taskResults        Json      @default("{}")
+  completedAt        DateTime?
+  createdAt          DateTime  @default(now())
+
+  @@unique([pairId, weekNumber])
+  @@map("shift_results")
 }

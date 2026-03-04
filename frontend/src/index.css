@@ -434,6 +434,66 @@ body.view-terminal {
   z-index: 2;
 }
 
+/* ─── ShiftQueue Stamp Animation ─────────────────────────────── */
+
+.task-card-approved {
+  background: linear-gradient(135deg, rgba(105, 240, 174, 0.08) 0%, rgba(105, 240, 174, 0.02) 100%) !important;
+  border-color: rgba(105, 240, 174, 0.3) !important;
+}
+
+.stamp-watermark {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Special Elite', cursive;
+  font-size: 3rem;
+  color: rgba(105, 240, 174, 0.15);
+  transform: rotate(-3deg);
+  pointer-events: none;
+  animation: stamp-fade-in 0.6s ease-out forwards;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+@keyframes stamp-fade-in {
+  from {
+    opacity: 0;
+    transform: rotate(-3deg) scale(1.5);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(-3deg) scale(1);
+  }
+}
+
+.stamp-glow-pulse {
+  animation: stamp-glow 2s ease-in-out infinite;
+}
+
+@keyframes stamp-glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(105, 240, 174, 0.2); }
+  50% { box-shadow: 0 0 16px rgba(105, 240, 174, 0.4); }
+}
+
+/* ─── Messaging Notification Animations ──────────────────────── */
+
+.animate-slideInRight {
+  animation: slideInRight 0.3s ease-out forwards;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .crt-overlay {
     display: none;
