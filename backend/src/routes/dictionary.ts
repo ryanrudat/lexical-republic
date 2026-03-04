@@ -17,22 +17,25 @@ router.get('/', async (req: Request, res: Response) => {
   try {
     const pairId = getPairId(req);
 
-    // Determine current week: pair uses their class unlocks, teacher sees all
+    // Determine current week: pair uses their shift progress, teacher sees all
     let currentWeek = 18; // Teachers see everything
     if (pairId) {
-      const enrollment = await prisma.classEnrollment.findFirst({
+      // Find the highest week the student has engaged with (scored a mission)
+      const latestScore = await prisma.missionScore.findFirst({
         where: { pairId },
-        select: { classId: true },
+        include: { mission: { include: { week: { select: { weekNumber: true } } } } },
+        orderBy: { createdAt: 'desc' },
       });
-      currentWeek = 1;
-      if (enrollment) {
-        const unlocks = await prisma.classWeekUnlock.findMany({
-          where: { classId: enrollment.classId },
-          include: { week: { select: { weekNumber: true } } },
-        });
-        const maxWeek = Math.max(...unlocks.map((u) => u.week.weekNumber), 1);
-        currentWeek = maxWeek;
-      }
+      const latestResult = await prisma.shiftResult.findFirst({
+        where: { pairId },
+        orderBy: { weekNumber: 'desc' },
+        select: { weekNumber: true },
+      });
+      currentWeek = Math.max(
+        latestScore?.mission?.week?.weekNumber ?? 0,
+        latestResult?.weekNumber ?? 0,
+        1, // minimum: always show week 1 words
+      );
     }
 
     // Fetch all words introduced up to current week

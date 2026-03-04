@@ -213,7 +213,26 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
           </p>
         )}
 
-        {/* Lane scaffolding (inline, since LaneScaffolding component is not yet built) */}
+        {/* Target words — always shown so students know which words to use */}
+        {weekConfig.targetWords.length > 0 && (
+          <div className="ios-glass-card p-3 rounded-lg">
+            <p className="font-ibm-mono text-[10px] text-white/40 uppercase tracking-wider mb-2">
+              Target Words — use these in your response
+            </p>
+            <div className="flex flex-wrap">
+              {weekConfig.targetWords.map(word => (
+                <span
+                  key={word}
+                  className="ios-glass-pill px-2 py-0.5 font-ibm-mono text-[10px] text-white/70 inline-block m-0.5"
+                >
+                  {word}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Lane scaffolding — additional hints per lane */}
         {scaffolding && (
           <div className="ios-glass-card p-3 border-l-2 border-neon-cyan/30 space-y-2">
             {scaffolding.prompt && (

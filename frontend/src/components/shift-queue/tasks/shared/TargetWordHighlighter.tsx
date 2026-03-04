@@ -62,8 +62,10 @@ export default function TargetWordHighlighter({
         />
       </div>
       <div className="flex items-center justify-between mt-1.5">
-        <span className="font-dseg7 text-xs text-white/50">
-          {wordCount}{minWords != null ? ` / ${minWords}` : ''} words
+        <span className="font-ibm-mono text-xs text-white/50">
+          <span className="font-dseg7">{wordCount}</span>
+          {minWords != null && <><span className="mx-0.5">/</span><span className="font-dseg7">{minWords}</span></>}
+          <span className="ml-1">words</span>
         </span>
         {targetWords.length > 0 && (
           <span className="font-ibm-mono text-[10px] text-white/40">

@@ -17,10 +17,21 @@ router.get('/', async (req: Request, res: Response) => {
     const where: Record<string, unknown> = { pairId };
     if (weekNumber) where.weekNumber = weekNumber;
 
-    const messages = await prisma.characterMessage.findMany({
+    const allMessages = await prisma.characterMessage.findMany({
       where,
       orderBy: { createdAt: 'asc' },
     });
+
+    // Deduplicate: keep first message per character+trigger+week+taskId
+    const seen = new Set<string>();
+    const messages = allMessages.filter(m => {
+      const taskId = (m.triggerConfig as Record<string, unknown>)?.taskId ?? '';
+      const key = `${m.characterName}:${m.triggerType}:${m.weekNumber}:${taskId}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
     res.json({ messages });
   } catch (err) {
     console.error('Messages fetch error:', err);
@@ -38,35 +49,35 @@ router.post('/', async (req: Request, res: Response) => {
     }
     const { characterName, designation, messageText, replyType, replyOptions, triggerType, triggerConfig, weekNumber } = req.body;
 
-    // Dedup check: same pair + week + character + trigger + taskId
+    // Atomic dedup: transaction ensures no race condition between check + create
     const taskId = triggerConfig?.taskId;
-    const existing = await prisma.characterMessage.findFirst({
-      where: {
-        pairId,
-        weekNumber,
-        characterName,
-        triggerType,
-        ...(taskId ? { triggerConfig: { path: ['taskId'], equals: taskId } } : {}),
-      },
-    });
-    if (existing) {
-      res.json(existing);
-      return;
-    }
+    const dedupWhere = {
+      pairId,
+      weekNumber,
+      characterName,
+      triggerType,
+      ...(taskId ? { triggerConfig: { path: ['taskId'] as string[], equals: taskId } } : {}),
+    };
 
-    const message = await prisma.characterMessage.create({
-      data: {
-        pairId,
-        characterName,
-        designation: designation || '',
-        messageText,
-        replyType: replyType || 'canned',
-        replyOptions: replyOptions || null,
-        triggerType,
-        triggerConfig: triggerConfig || {},
-        weekNumber,
-      },
+    const message = await prisma.$transaction(async (tx) => {
+      const existing = await tx.characterMessage.findFirst({ where: dedupWhere });
+      if (existing) return existing;
+
+      return tx.characterMessage.create({
+        data: {
+          pairId,
+          characterName,
+          designation: designation || '',
+          messageText,
+          replyType: replyType || 'canned',
+          replyOptions: replyOptions || null,
+          triggerType,
+          triggerConfig: triggerConfig || {},
+          weekNumber,
+        },
+      });
     });
+
     res.status(201).json(message);
   } catch (err) {
     console.error('Message create error:', err);

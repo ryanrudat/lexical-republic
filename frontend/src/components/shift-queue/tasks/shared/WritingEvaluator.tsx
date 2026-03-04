@@ -97,7 +97,9 @@ export default function WritingEvaluator({
       setAttempt(prev => prev + 1);
       onResult(result, currentAttempt);
     } catch {
-      // On error, treat as degraded non-pass
+      // On error, increment attempt so auto-pass kicks in at attempt 3
+      const currentAttempt = attempt;
+      setAttempt(prev => prev + 1);
       const result: EvalResult = {
         passed: false,
         grammarScore: 0,
@@ -106,7 +108,7 @@ export default function WritingEvaluator({
         isDegraded: true,
       };
       setLastResult(result);
-      onResult(result, attempt);
+      onResult(result, currentAttempt);
     } finally {
       setEvaluating(false);
     }

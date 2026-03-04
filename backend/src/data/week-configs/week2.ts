@@ -28,10 +28,11 @@ export const WEEK_2_CONFIG: WeekConfig = {
           {
             type: "status_review",
             fields: [
-              { label: "Designation", value: "{designation}", readonly: true },
-              { label: "Department", value: "Clarity", readonly: true },
-              { label: "Clearance Level", value: "PROVISIONAL", readonly: true },
+              { key: "designation", label: "Designation", type: "readonly", value: "{designation}" },
+              { key: "department", label: "Department", type: "readonly", value: "Clarity" },
+              { key: "clearance", label: "Clearance Level", type: "readonly", value: "PROVISIONAL" },
               {
+                key: "unusual_notice",
                 label: "Have you noticed anything unusual since your last shift?",
                 type: "dropdown",
                 logToNarrativeChoice: true,

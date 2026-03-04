@@ -24,10 +24,11 @@ export const WEEK_1_CONFIG: WeekConfig = {
           {
             type: "personal_info",
             fields: [
-              { label: "Designation", value: "{designation}", readonly: true },
-              { label: "Department", value: "Clarity", readonly: true },
-              { label: "Date", value: "{date}", readonly: true },
+              { key: "designation", label: "Designation", type: "readonly", value: "{designation}" },
+              { key: "department", label: "Department", type: "readonly", value: "Clarity" },
+              { key: "date", label: "Date", type: "readonly", value: "{date}" },
               {
+                key: "supervisor",
                 label: "Supervisor",
                 type: "dropdown",
                 options: ["Betty Lyle \u2014 WA-14", "Unassigned"],

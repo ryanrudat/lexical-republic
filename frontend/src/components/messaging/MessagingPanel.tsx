@@ -3,10 +3,10 @@ import { useMessagingStore } from '../../stores/messagingStore';
 import type { CharacterMessage, ReplyOption } from '../../types/shiftQueue';
 
 const CHARACTER_COLORS: Record<string, string> = {
-  'Betty Lyle': 'border-neon-mint/40',
-  'Ivan Petrov': 'border-neon-cyan/40',
-  'M.K. Catskil': 'border-terminal-amber/40',
-  'Chad Worthington': 'border-violet-400/40',
+  'Betty': 'border-neon-mint/40',
+  'Ivan': 'border-neon-cyan/40',
+  'M.K.': 'border-terminal-amber/40',
+  'Chad': 'border-violet-400/40',
 };
 
 function MessageThread({ message }: { message: CharacterMessage }) {

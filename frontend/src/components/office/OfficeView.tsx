@@ -159,6 +159,7 @@ export default function OfficeView() {
   const [pearlVisible, setPearlVisible] = useState(true);
   const [pearlOpen, setPearlOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const [time, setTime] = useState(new Date());
   const [screenFlicker, setScreenFlicker] = useState(false);
   const [propagandaVisible, setPropagandaVisible] = useState(false);
@@ -286,8 +287,33 @@ export default function OfficeView() {
           alt="Ministry Hall"
           className="w-full h-full object-contain"
           draggable={false}
+          onLoad={() => setImageLoaded(true)}
         />
       </div>
+
+      {/* Loading gate — all overlays hidden until background image loads */}
+      {!imageLoaded && (
+        <div className="absolute inset-0 z-[99] flex items-center justify-center bg-[#a8a49c]">
+          <div className="text-center space-y-3">
+            <div
+              className="w-6 h-6 mx-auto rounded-full border-2 border-white/20 border-t-white/60"
+              style={{ animation: 'spin 1s linear infinite' }}
+            />
+            <p className="font-ibm-mono text-[10px] text-white/40 tracking-[0.3em] uppercase">
+              Initializing Station
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* === All overlays — fade in after background image loads === */}
+      <div
+        style={{
+          opacity: imageLoaded ? 1 : 0,
+          transition: 'opacity 0.6s ease-in',
+          pointerEvents: imageLoaded ? 'auto' : 'none',
+        }}
+      >
 
       {/* === Neon light effects layer === */}
 
@@ -729,6 +755,8 @@ export default function OfficeView() {
         variant="chrome"
       />
 
+      </div>{/* end overlay fade wrapper */}
+
       {/* Inline keyframe animations */}
       <style>{`
         @keyframes neonPulse {
@@ -765,7 +793,9 @@ export default function OfficeView() {
           0%, 100% { opacity: 0.5; }
           50% { opacity: 1; }
         }
-
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
       `}</style>
     </div>
   );

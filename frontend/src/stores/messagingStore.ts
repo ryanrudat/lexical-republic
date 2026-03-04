@@ -28,6 +28,9 @@ interface MessagingState {
   refreshUnreadCount: () => Promise<void>;
 }
 
+// Track in-flight message creation keys to prevent race-condition duplicates
+const inFlightKeys = new Set<string>();
+
 export const useMessagingStore = create<MessagingState>((set, get) => ({
   messages: [],
   unreadCount: 0,
@@ -59,7 +62,11 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
     );
 
     for (const config of configs) {
-      // Dedup check: already created?
+      // Build dedup key
+      const dedupKey = `${config.characterName}:${triggerType}:${context.weekNumber}:${context.taskId ?? ''}`;
+
+      // Dedup check: already created or in-flight?
+      if (inFlightKeys.has(dedupKey)) continue;
       const exists = messages.some(
         m =>
           m.characterName === config.characterName &&
@@ -69,6 +76,7 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
       );
       if (exists) continue;
 
+      inFlightKeys.add(dedupKey);
       try {
         const newMsg = await createMessage({
           characterName: config.characterName,
@@ -86,19 +94,11 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
           unreadCount: state.unreadCount + 1,
         }));
 
-        // Show notification toast
-        const timer = setTimeout(() => {
-          set(state => {
-            if (state.activeNotification?.message.id === newMsg.id) {
-              return { activeNotification: null };
-            }
-            return state;
-          });
-        }, 6000);
-
-        set({ activeNotification: { message: newMsg, dismissTimer: timer } });
+        // Show notification toast — stays until student clicks it
+        set({ activeNotification: { message: newMsg } });
       } catch {
         // Silently fail — character messages are non-critical
+        inFlightKeys.delete(dedupKey);
       }
     }
   },

@@ -33,11 +33,12 @@ export default function ShiftQueue() {
   const weekNumber = currentWeek?.weekNumber ?? 0;
   const currentTask = weekConfig?.tasks[currentTaskIndex] ?? null;
 
-  // Fire shift_start on mount and load messages
+  // Load messages first, then fire shift_start
   useEffect(() => {
     if (!weekConfig) return;
-    triggerMessage('shift_start', { weekNumber }, weekConfig);
-    loadMessages(weekNumber);
+    loadMessages(weekNumber).then(() => {
+      triggerMessage('shift_start', { weekNumber }, weekConfig);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekConfig?.weekNumber]);
 
