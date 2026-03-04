@@ -89,10 +89,16 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
           weekNumber: context.weekNumber,
         });
 
-        set(state => ({
-          messages: [...state.messages, newMsg],
-          unreadCount: state.unreadCount + 1,
-        }));
+        set(state => {
+          // Guard: don't append if already present (loadMessages may have added it)
+          if (state.messages.some(m => m.id === newMsg.id)) {
+            return state;
+          }
+          return {
+            messages: [...state.messages, newMsg],
+            unreadCount: state.unreadCount + 1,
+          };
+        });
 
         // Show notification toast — stays until student clicks it
         set({ activeNotification: { message: newMsg } });

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useShiftQueueStore } from '../../stores/shiftQueueStore';
 import { useMessagingStore } from '../../stores/messagingStore';
 import { useShiftStore } from '../../stores/shiftStore';
@@ -32,19 +32,32 @@ export default function ShiftQueue() {
 
   const weekNumber = currentWeek?.weekNumber ?? 0;
   const currentTask = weekConfig?.tasks[currentTaskIndex] ?? null;
+  const messagesReadyRef = useRef(false);
+  const lastTriggeredTaskRef = useRef<string | null>(null);
 
-  // Load messages first, then fire shift_start
+  // Load messages on mount, then fire shift_start + initial task_start
   useEffect(() => {
     if (!weekConfig) return;
+    messagesReadyRef.current = false;
+    lastTriggeredTaskRef.current = null;
     loadMessages(weekNumber).then(() => {
+      messagesReadyRef.current = true;
       triggerMessage('shift_start', { weekNumber }, weekConfig);
+      // Also fire initial task_start
+      const task = weekConfig.tasks[currentTaskIndex];
+      if (task) {
+        lastTriggeredTaskRef.current = task.id;
+        triggerMessage('task_start', { taskId: task.id, weekNumber }, weekConfig);
+      }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekConfig?.weekNumber]);
 
-  // Fire task_start when current task changes
+  // Fire task_start when task changes AFTER initial load
   useEffect(() => {
-    if (!currentTask || !weekConfig) return;
+    if (!currentTask || !weekConfig || !messagesReadyRef.current) return;
+    if (lastTriggeredTaskRef.current === currentTask.id) return;
+    lastTriggeredTaskRef.current = currentTask.id;
     triggerMessage('task_start', { taskId: currentTask.id, weekNumber }, weekConfig);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTask?.id]);
