@@ -17,50 +17,35 @@ export default function TargetWordHighlighter({
   minWords,
   rows = 5,
 }: TargetWordHighlighterProps) {
-  const highlightedHtml = useMemo(() => {
-    if (!targetWords.length || !text) return text;
-    const pattern = new RegExp(
-      '\\b(' + targetWords.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')\\b',
-      'gi',
-    );
-    return text.replace(
-      pattern,
-      '<mark class="bg-neon-mint/20 text-neon-mint rounded px-0.5">$1</mark>',
-    );
-  }, [text, targetWords]);
-
   const wordCount = useMemo(() => {
     return text.split(/\s+/).filter(Boolean).length;
   }, [text]);
 
-  const matchedCount = useMemo(() => {
-    if (!targetWords.length) return 0;
+  // Track which target words have been used
+  const wordStatus = useMemo(() => {
+    if (!targetWords.length) return [];
     const lower = text.toLowerCase();
-    return targetWords.filter(w => {
-      const pattern = new RegExp('\\b' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
-      return pattern.test(lower);
-    }).length;
+    return targetWords.map(w => ({
+      word: w,
+      used: new RegExp('\\b' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(lower),
+    }));
   }, [text, targetWords]);
+
+  const matchedCount = wordStatus.filter(w => w.used).length;
 
   return (
     <div>
-      <div className="relative">
-        {/* Hidden mirror div for highlights */}
-        <div
-          className="absolute inset-0 font-ibm-mono text-sm text-transparent whitespace-pre-wrap break-words pointer-events-none overflow-hidden p-3"
-          aria-hidden="true"
-          dangerouslySetInnerHTML={{ __html: highlightedHtml }}
-        />
-        {/* Textarea on top */}
-        <textarea
-          className="ios-glass-input bg-transparent relative z-10 w-full font-ibm-mono text-sm text-white p-3 resize-none"
-          rows={rows}
-          value={text}
-          onChange={e => onChange(e.target.value)}
-          placeholder={placeholder}
-          spellCheck={false}
-        />
-      </div>
+      {/* Textarea — clean, no overlay */}
+      <textarea
+        className="ios-glass-input w-full font-ibm-mono text-sm text-white p-3 resize-none"
+        rows={rows}
+        value={text}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        spellCheck={false}
+      />
+
+      {/* Word count */}
       <div className="flex items-center justify-between mt-1.5">
         <span className="font-ibm-mono text-xs text-white/50">
           <span className="font-dseg7">{wordCount}</span>
@@ -73,6 +58,25 @@ export default function TargetWordHighlighter({
           </span>
         )}
       </div>
+
+      {/* Target word chips — green when used, dim when not */}
+      {targetWords.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-2">
+          {wordStatus.map(({ word, used }) => (
+            <span
+              key={word}
+              className={`font-ibm-mono text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
+                used
+                  ? 'border-neon-mint/50 text-neon-mint bg-neon-mint/10'
+                  : 'border-white/10 text-white/30'
+              }`}
+            >
+              {used && <span className="mr-0.5">&#10003;</span>}
+              {word}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
