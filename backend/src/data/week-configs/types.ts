@@ -143,10 +143,8 @@ export interface DocumentConfig {
 
 export interface ErrorConfig {
   sentenceIndex: number;
-  wordStart: number;
-  wordEnd: number;
-  errorText: string;
-  options: string[];
+  errorWord: string;
+  options: Array<{ text: string }>;
   correctIndex: number;
 }
 

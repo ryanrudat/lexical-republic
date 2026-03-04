@@ -35,12 +35,29 @@ interface ErrorCorrectionDocProps {
   onComplete: (score: number) => void;
 }
 
+// Normalize errors from either config format:
+//   { errorText, options: string[] }  →  { errorWord, options: { text }[] }
+//   { errorWord, options: { text }[] }  →  unchanged
+function normalizeErrors(errors: DocError[]): DocError[] {
+  return errors.map(err => {
+    const raw = err as unknown as Record<string, unknown>;
+    const errorWord = err.errorWord ?? (raw.errorText as string) ?? '';
+    const options = err.options.map(opt =>
+      typeof opt === 'string' ? { text: opt } : opt,
+    );
+    return { ...err, errorWord, options };
+  });
+}
+
 export default function ErrorCorrectionDoc({
   doc,
   lane,
   onComplete,
 }: ErrorCorrectionDocProps) {
   const addConcern = useShiftQueueStore(s => s.addConcern);
+
+  // Normalize errors once on mount / doc change
+  const normalizedDoc = { ...doc, errors: normalizeErrors(doc.errors) };
 
   // Track which error is currently showing options
   const [activeError, setActiveError] = useState<number | null>(null);
@@ -62,13 +79,13 @@ export default function ErrorCorrectionDoc({
     };
   }, []);
 
-  const sentences = doc.body.split(/(?<=\.)\s+/);
+  const sentences = normalizedDoc.body.split(/(?<=\.)\s+/);
 
   const handleSelectOption = useCallback(
     (errorIndex: number, optionIndex: number) => {
       if (lockedErrors.has(errorIndex)) return;
 
-      const error = doc.errors[errorIndex];
+      const error = normalizedDoc.errors[errorIndex];
       const isCorrect = optionIndex === error.correctIndex;
 
       setCorrections(prev => ({ ...prev, [errorIndex]: optionIndex }));
@@ -86,12 +103,12 @@ export default function ErrorCorrectionDoc({
           next.add(errorIndex);
 
           // Check if all errors are now locked
-          if (next.size === doc.errors.length) {
-            const correctCount = doc.errors.filter((err, idx) => {
+          if (next.size === normalizedDoc.errors.length) {
+            const correctCount = normalizedDoc.errors.filter((err, idx) => {
               const selected = idx === errorIndex ? optionIndex : corrections[idx];
               return selected === err.correctIndex;
             }).length;
-            const score = correctCount / doc.errors.length;
+            const score = correctCount / normalizedDoc.errors.length;
 
             setAllDone(true);
             // Slight delay before calling onComplete
@@ -107,7 +124,7 @@ export default function ErrorCorrectionDoc({
 
       timerRefs.current.set(errorIndex, timer);
     },
-    [corrections, doc.errors, lockedErrors, addConcern, onComplete],
+    [corrections, normalizedDoc.errors, lockedErrors, addConcern, onComplete],
   );
 
   const handleClickError = useCallback(
@@ -120,15 +137,15 @@ export default function ErrorCorrectionDoc({
 
   // Build the lane hints lookup
   const laneHints =
-    lane === 1 && doc.laneHints?.['1']
-      ? (doc.laneHints['1'] as string[])
+    lane === 1 && normalizedDoc.laneHints?.['1']
+      ? (normalizedDoc.laneHints['1'] as string[])
       : null;
 
   // Render body with interactive error spans
   const renderBody = () => {
     // Build a map of sentence index -> error entries for quick lookup
     const errorsBySentence = new Map<number, { error: DocError; errorIndex: number }[]>();
-    doc.errors.forEach((error, idx) => {
+    normalizedDoc.errors.forEach((error, idx) => {
       const list = errorsBySentence.get(error.sentenceIndex) ?? [];
       list.push({ error, errorIndex: idx });
       errorsBySentence.set(error.sentenceIndex, list);
@@ -245,21 +262,21 @@ export default function ErrorCorrectionDoc({
   return (
     <div className="flex flex-col gap-3">
       <DocumentCard
-        title={doc.title}
-        department={doc.department}
-        classification={doc.classification}
-        priority={doc.priority}
-        from={doc.from}
-        to={doc.to}
-        re={doc.re}
+        title={normalizedDoc.title}
+        department={normalizedDoc.department}
+        classification={normalizedDoc.classification}
+        priority={normalizedDoc.priority}
+        from={normalizedDoc.from}
+        to={normalizedDoc.to}
+        re={normalizedDoc.re}
         body={renderBody()}
-        reviewedBy={doc.reviewedBy}
+        reviewedBy={normalizedDoc.reviewedBy}
       />
 
       {/* Status line */}
       <div className="flex items-center justify-between px-1">
         <span className="font-ibm-mono text-[10px] text-white/30 tracking-wider">
-          ERRORS: {lockedErrors.size} / {doc.errors.length} CORRECTED
+          ERRORS: {lockedErrors.size} / {normalizedDoc.errors.length} CORRECTED
         </span>
         {allDone && (
           <span className="font-ibm-mono text-[10px] text-neon-mint tracking-wider animate-pulse">

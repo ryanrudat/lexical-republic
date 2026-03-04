@@ -23,7 +23,8 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
-  const [, setAnswered] = useState<boolean[]>(() => items.map(() => false));
+  const [eliminatedOptions, setEliminatedOptions] = useState<Set<number>>(new Set());
+  const [attempt, setAttempt] = useState(1); // 1 = first try, 2 = second try
 
   const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -39,48 +40,56 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
   const total = items.length;
   const item = items[currentItem];
 
+  const advanceToNext = useCallback((finalCorrectCount: number) => {
+    if (currentItem < total - 1) {
+      setCurrentItem(prev => prev + 1);
+      setSelectedOption(null);
+      setShowResult(false);
+      setEliminatedOptions(new Set());
+      setAttempt(1);
+    } else {
+      // Quiz complete
+      const score = total > 0 ? finalCorrectCount / total : 1;
+      onComplete(score, {
+        correct: finalCorrectCount,
+        total,
+      });
+    }
+  }, [currentItem, total, onComplete]);
+
   const handleSelect = useCallback((optionIndex: number) => {
     if (showResult || selectedOption !== null) return;
+    if (eliminatedOptions.has(optionIndex)) return;
 
     setSelectedOption(optionIndex);
 
-    // Show result after brief delay
     resultTimerRef.current = setTimeout(() => {
-      setShowResult(true);
-
       const isCorrect = optionIndex === item.correctIndex;
 
       if (isCorrect) {
-        setCorrectCount(prev => prev + 1);
-      } else {
-        addConcern(0.1);
-      }
-
-      // Mark as answered
-      setAnswered(prev => {
-        const updated = [...prev];
-        updated[currentItem] = true;
-        return updated;
-      });
-
-      // Auto-advance after showing result
-      advanceTimerRef.current = setTimeout(() => {
-        if (currentItem < total - 1) {
-          setCurrentItem(prev => prev + 1);
+        // Correct — show mint highlight, advance
+        setShowResult(true);
+        const newCount = correctCount + 1;
+        setCorrectCount(newCount);
+        advanceTimerRef.current = setTimeout(() => advanceToNext(newCount), 1200);
+      } else if (attempt === 1) {
+        // First wrong — cross out, let them try again
+        setShowResult(true);
+        addConcern(0.05);
+        advanceTimerRef.current = setTimeout(() => {
+          setEliminatedOptions(prev => new Set(prev).add(optionIndex));
           setSelectedOption(null);
           setShowResult(false);
-        } else {
-          // Quiz complete
-          const finalCorrect = isCorrect ? correctCount + 1 : correctCount;
-          const score = total > 0 ? finalCorrect / total : 1;
-          onComplete(score, {
-            correct: finalCorrect,
-            total,
-          });
-        }
-      }, 1500);
+          setAttempt(2);
+        }, 800);
+      } else {
+        // Second wrong — show correct answer, then advance
+        setShowResult(true);
+        addConcern(0.05);
+        advanceTimerRef.current = setTimeout(() => advanceToNext(correctCount), 1500);
+      }
     }, 300);
-  }, [showResult, selectedOption, item, currentItem, total, correctCount, addConcern, onComplete]);
+  }, [showResult, selectedOption, eliminatedOptions, item, attempt, correctCount, addConcern, advanceToNext]);
 
   // ── Render ───────────────────────────────────────────────────
 
@@ -128,21 +137,33 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
         {/* Options */}
         <div className="space-y-2">
           {item.options.map((option, i) => {
+            const isEliminated = eliminatedOptions.has(i);
+            const isCorrectAnswer = i === item.correctIndex;
+            const isSelected = i === selectedOption;
+
             let borderClass = '';
-            if (showResult && i === item.correctIndex) {
+            let extraClass = '';
+
+            if (isEliminated) {
+              // Previously wrong — crossed out, dimmed
+              borderClass = 'border-white/5 opacity-30';
+              extraClass = 'line-through';
+            } else if (showResult && isCorrectAnswer && (isSelected || attempt === 2)) {
+              // Correct answer revealed
               borderClass = 'border-neon-mint text-neon-mint';
-            } else if (showResult && i === selectedOption && i !== item.correctIndex) {
+            } else if (showResult && isSelected && !isCorrectAnswer) {
+              // Wrong selection this attempt
               borderClass = 'border-neon-pink text-neon-pink';
-            } else if (selectedOption === i && !showResult) {
+            } else if (isSelected && !showResult) {
               borderClass = 'border-neon-cyan';
             }
 
             return (
               <button
                 key={i}
-                className={`ios-glass-pill w-full text-left px-4 py-3 font-ibm-mono text-sm transition-all ${borderClass}`}
+                className={`ios-glass-pill w-full text-left px-4 py-3 font-ibm-mono text-sm transition-all ${borderClass} ${extraClass}`}
                 onClick={() => handleSelect(i)}
-                disabled={showResult}
+                disabled={showResult || isEliminated}
               >
                 {option}
               </button>
@@ -156,6 +177,10 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
             {selectedOption === item.correctIndex ? (
               <span className="font-ibm-mono text-xs text-neon-mint/80 tracking-wider">
                 CORRECT
+              </span>
+            ) : attempt === 1 ? (
+              <span className="font-ibm-mono text-xs text-neon-pink/60 tracking-wider">
+                TRY AGAIN
               </span>
             ) : (
               <span className="font-ibm-mono text-xs text-neon-pink/80 tracking-wider">
