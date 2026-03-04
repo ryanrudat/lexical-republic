@@ -53,12 +53,11 @@ export default function WritingEvaluator({
         };
       } else {
         const response = await client.post('/submissions/evaluate', {
-          text,
+          content: text,
           weekNumber,
-          grammarTarget,
-          targetVocab,
-          lane,
-          metadata: { missionId },
+          phaseId: 'shift_queue',
+          activityType: 'writing',
+          metadata: { grammarTarget, targetVocab, missionId, lane },
         });
 
         const data = response.data;

@@ -25,6 +25,11 @@ interface LaneScaffold {
   } | undefined;
 }
 
+interface BlankConfig {
+  text: string;
+  answers: string[];
+}
+
 interface CardConfig {
   type: 'personal_info' | 'status_review' | 'writing' | 'acknowledgment';
   title?: string;
@@ -32,9 +37,8 @@ interface CardConfig {
   prompt?: string;
   minWords?: number;
   lane?: LaneScaffold;
-  text?: string;
-  blanks?: string[];
-  checkboxLabel?: string;
+  blanks?: BlankConfig[];
+  checkbox?: string;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────
@@ -87,9 +91,9 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
 
   const isAcknowledgmentReady = useCallback(() => {
     if (!card || card.type !== 'acknowledgment') return false;
-    const blanks = card.blanks ?? [];
-    if (blanks.length > 0 && blanksValues.length < blanks.length) return false;
-    if (blanks.length > 0 && blanksValues.some(v => !v.trim())) return false;
+    const answers = card.blanks?.[0]?.answers ?? [];
+    if (answers.length > 0 && blanksValues.length < answers.length) return false;
+    if (answers.length > 0 && blanksValues.some(v => !v.trim())) return false;
     return checkboxChecked;
   }, [card, blanksValues, checkboxChecked]);
 
@@ -300,15 +304,21 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
   }
 
   function renderAcknowledgmentCard(c: CardConfig) {
-    const blanks = c.blanks ?? [];
-    const rawText = c.text ?? '';
+    const blankConfigs = c.blanks ?? [];
+    // Use the first blank config (the template with text + answers)
+    const blankDef = blankConfigs[0];
+    const rawText = blankDef?.text ?? '';
+    const answers = blankDef?.answers ?? [];
+
+    // Replace {designation} in the text
+    const resolvedText = rawText.replace('{designation}', designation);
 
     // Split text on _____ placeholders
-    const segments = rawText.split('_____');
+    const segments = resolvedText.split('_____');
 
     // Initialize blanksValues if needed
-    if (blanksValues.length === 0 && blanks.length > 0) {
-      setBlanksValues(blanks.map(() => ''));
+    if (blanksValues.length === 0 && answers.length > 0) {
+      setBlanksValues(answers.map(() => ''));
     }
 
     return (
@@ -323,15 +333,14 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
           {segments.map((segment, idx) => (
             <span key={idx}>
               {segment}
-              {idx < segments.length - 1 && idx < blanks.length && (
+              {idx < segments.length - 1 && idx < answers.length && (
                 <input
                   type="text"
-                  className="ios-glass-input font-ibm-mono text-sm w-24 inline-block mx-1 text-center"
-                  placeholder={blanks[idx]}
+                  className="ios-glass-input font-ibm-mono text-sm w-28 inline-block mx-1 text-center"
+                  placeholder={answers[idx]}
                   value={blanksValues[idx] ?? ''}
                   onChange={e => {
                     const updated = [...blanksValues];
-                    // Pad array if needed
                     while (updated.length <= idx) updated.push('');
                     updated[idx] = e.target.value;
                     setBlanksValues(updated);
@@ -342,7 +351,7 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
           ))}
         </div>
 
-        {c.checkboxLabel && (
+        {c.checkbox && (
           <label className="flex items-center gap-2 font-ibm-mono text-xs text-white/60">
             <input
               type="checkbox"
@@ -350,7 +359,7 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
               onChange={e => setCheckboxChecked(e.target.checked)}
               className="accent-neon-cyan"
             />
-            {c.checkboxLabel}
+            {c.checkbox}
           </label>
         )}
 
