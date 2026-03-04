@@ -93,7 +93,9 @@ export default function WritingEvaluator({
 
       setLastResult(result);
       const currentAttempt = attempt;
-      setAttempt(prev => prev + 1);
+      if (!result.passed) {
+        setAttempt(prev => prev + 1);
+      }
       onResult(result, currentAttempt);
     } catch {
       // On error, increment attempt so auto-pass kicks in at attempt 3
