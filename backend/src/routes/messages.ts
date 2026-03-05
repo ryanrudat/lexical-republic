@@ -85,6 +85,25 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/messages/unread-count — Count unread messages
+// IMPORTANT: Must be defined BEFORE /:id routes to avoid Express matching "unread-count" as :id
+router.get('/unread-count', async (req: Request, res: Response) => {
+  try {
+    const pairId = getPairId(req);
+    if (!pairId) {
+      res.status(403).json({ error: 'Pair auth required' });
+      return;
+    }
+    const count = await prisma.characterMessage.count({
+      where: { pairId, isRead: false },
+    });
+    res.json({ count });
+  } catch (err) {
+    console.error('Unread count error:', err);
+    res.status(500).json({ error: 'Failed to get unread count' });
+  }
+});
+
 // PATCH /api/messages/:id/read — Mark message as read
 router.patch('/:id/read', async (req: Request, res: Response) => {
   try {
@@ -139,24 +158,6 @@ router.patch('/:id/reply', async (req: Request, res: Response) => {
   } catch (err) {
     console.error('Message reply error:', err);
     res.status(500).json({ error: 'Failed to save reply' });
-  }
-});
-
-// GET /api/messages/unread-count — Count unread messages
-router.get('/unread-count', async (req: Request, res: Response) => {
-  try {
-    const pairId = getPairId(req);
-    if (!pairId) {
-      res.status(403).json({ error: 'Pair auth required' });
-      return;
-    }
-    const count = await prisma.characterMessage.count({
-      where: { pairId, isRead: false },
-    });
-    res.json({ count });
-  } catch (err) {
-    console.error('Unread count error:', err);
-    res.status(500).json({ error: 'Failed to get unread count' });
   }
 });
 

@@ -2,8 +2,8 @@ import { create } from 'zustand';
 import type { GrammarError } from '../api/ai';
 
 /**
- * Session-only store for compliance mechanics.
- * Resets on page refresh — by design for MVP.
+ * Session store for compliance mechanics.
+ * Concern score is hydrated from DB on login; other fields reset on refresh.
  */
 
 interface SessionState {
@@ -19,6 +19,7 @@ interface SessionState {
   /** Whether a System Audit is currently active */
   isAuditActive: boolean;
 
+  hydrateConcern: (score: number) => void;
   addConcern: (amount: number) => void;
   resetConcern: () => void;
   incrementAttempt: (missionId: string) => number;
@@ -32,6 +33,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   attemptCounts: {},
   lastGrammarError: null,
   isAuditActive: false,
+
+  hydrateConcern: (score) => set({ concernScore: score }),
 
   addConcern: (amount) => {
     const newScore = get().concernScore + amount;

@@ -6,6 +6,7 @@ import { uploadVideo } from '../middleware/upload';
 import prisma from '../utils/prisma';
 import { io, getOnlineStudents } from '../socketServer';
 import { getAlternatives, findAlternative } from '../data/activityPool';
+import { getWeekConfig } from '../data/week-configs';
 
 const router = Router();
 router.use(authenticate, requireRole('teacher'));
@@ -573,10 +574,133 @@ router.get('/gradebook', async (req: Request, res: Response) => {
       },
     });
 
-    res.json({ students: [...pairStudents, ...legacyResults], weeks });
+    // Annotate weeks with shift type and task types
+    const annotatedWeeks = weeks.map(w => {
+      const config = getWeekConfig(w.weekNumber);
+      if (config) {
+        return {
+          ...w,
+          shiftType: 'queue' as const,
+          taskTypes: config.tasks.map(t => ({ id: t.id, type: t.type, title: t.label })),
+        };
+      }
+      return { ...w, shiftType: 'phase' as const, taskTypes: null };
+    });
+
+    res.json({ students: [...pairStudents, ...legacyResults], weeks: annotatedWeeks });
   } catch (err) {
     console.error('Teacher gradebook fetch error:', err);
     res.status(500).json({ error: 'Failed to fetch gradebook data' });
+  }
+});
+
+// ── Grade Management ──────────────────────────────────────────────
+
+// PATCH /api/teacher/scores/:scoreId — Edit a MissionScore
+router.patch('/scores/:scoreId', async (req: Request, res: Response) => {
+  try {
+    const scoreId = req.params.scoreId as string;
+    const { score, details } = req.body;
+    const updateData: Record<string, unknown> = {};
+    if (typeof score === 'number') updateData.score = score;
+    if (details !== undefined) updateData.details = details;
+
+    const result = await prisma.missionScore.update({
+      where: { id: scoreId },
+      data: updateData,
+    });
+    res.json(result);
+  } catch (err) {
+    console.error('Teacher score edit error:', err);
+    res.status(500).json({ error: 'Failed to update score' });
+  }
+});
+
+// DELETE /api/teacher/scores/:scoreId — Delete a MissionScore (reset single task)
+router.delete('/scores/:scoreId', async (req: Request, res: Response) => {
+  try {
+    const scoreId = req.params.scoreId as string;
+    const existing = await prisma.missionScore.findUnique({ where: { id: scoreId } });
+    if (!existing) {
+      res.status(404).json({ error: 'Score not found' });
+      return;
+    }
+    await prisma.missionScore.delete({ where: { id: scoreId } });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Teacher score delete error:', err);
+    res.status(500).json({ error: 'Failed to delete score' });
+  }
+});
+
+// DELETE /api/teacher/students/:pairId/weeks/:weekId/progress — Reset all progress for a week
+router.delete('/students/:pairId/weeks/:weekId/progress', async (req: Request, res: Response) => {
+  try {
+    const pairId = req.params.pairId as string;
+    const weekId = req.params.weekId as string;
+
+    const pair = await prisma.pair.findUnique({ where: { id: pairId } });
+    if (!pair) {
+      res.status(404).json({ error: 'Pair not found' });
+      return;
+    }
+
+    const week = await prisma.week.findUnique({ where: { id: weekId } });
+    if (!week) {
+      res.status(404).json({ error: 'Week not found' });
+      return;
+    }
+
+    // Delete all mission scores for this pair in this week
+    const missions = await prisma.mission.findMany({
+      where: { weekId },
+      select: { id: true },
+    });
+    const missionIds = missions.map(m => m.id);
+
+    await prisma.missionScore.deleteMany({
+      where: { pairId, missionId: { in: missionIds } },
+    });
+
+    // Delete shift result for this week
+    await prisma.shiftResult.deleteMany({
+      where: { pairId, weekNumber: week.weekNumber },
+    });
+
+    // Delete character messages for this week
+    await prisma.characterMessage.deleteMany({
+      where: { pairId, weekNumber: week.weekNumber },
+    });
+
+    res.json({ success: true, weekNumber: week.weekNumber });
+  } catch (err) {
+    console.error('Teacher progress reset error:', err);
+    res.status(500).json({ error: 'Failed to reset progress' });
+  }
+});
+
+// PATCH /api/teacher/students/:pairId/concern — Override concern score
+router.patch('/students/:pairId/concern', async (req: Request, res: Response) => {
+  try {
+    const pairId = req.params.pairId as string;
+    const { concernScore } = req.body;
+    if (typeof concernScore !== 'number') {
+      res.status(400).json({ error: 'concernScore (number) required' });
+      return;
+    }
+    const existing = await prisma.pair.findUnique({ where: { id: pairId } });
+    if (!existing) {
+      res.status(404).json({ error: 'Pair not found' });
+      return;
+    }
+    const pair = await prisma.pair.update({
+      where: { id: pairId },
+      data: { concernScore },
+    });
+    res.json({ concernScore: pair.concernScore });
+  } catch (err) {
+    console.error('Teacher concern override error:', err);
+    res.status(500).json({ error: 'Failed to update concern score' });
   }
 });
 

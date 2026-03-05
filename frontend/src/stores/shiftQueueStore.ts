@@ -8,6 +8,7 @@ interface ShiftQueueState {
   taskProgress: TaskProgress[];
   currentTaskIndex: number;
   concernScoreDelta: number;
+  concernScorePersisted: number;
   shiftComplete: boolean;
   loading: boolean;
   error: string | null;
@@ -24,6 +25,7 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
   taskProgress: [],
   currentTaskIndex: 0,
   concernScoreDelta: 0,
+  concernScorePersisted: 0,
   shiftComplete: false,
   loading: false,
   error: null,
@@ -121,10 +123,12 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
       shiftComplete: allComplete,
     });
 
-    // Persist concern delta incrementally
-    const { concernScoreDelta } = get();
-    if (concernScoreDelta > 0) {
-      patchConcern(concernScoreDelta).catch(() => {});
+    // Persist only the unpersisted concern delta
+    const { concernScoreDelta, concernScorePersisted } = get();
+    const unpersisted = concernScoreDelta - concernScorePersisted;
+    if (unpersisted > 0) {
+      patchConcern(unpersisted).catch(() => {});
+      set({ concernScorePersisted: concernScoreDelta });
     }
   },
 
@@ -144,6 +148,7 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
     taskProgress: [],
     currentTaskIndex: 0,
     concernScoreDelta: 0,
+    concernScorePersisted: 0,
     shiftComplete: false,
     loading: false,
     error: null,

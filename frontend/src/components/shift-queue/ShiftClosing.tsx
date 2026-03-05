@@ -19,6 +19,7 @@ export default function ShiftClosing() {
   const weekConfig = useShiftQueueStore(s => s.weekConfig);
   const taskProgress = useShiftQueueStore(s => s.taskProgress);
   const concernScoreDelta = useShiftQueueStore(s => s.concernScoreDelta);
+  const concernScorePersisted = useShiftQueueStore(s => s.concernScorePersisted);
   const resetQueue = useShiftQueueStore(s => s.reset);
 
   const currentWeek = useShiftStore(s => s.currentWeek);
@@ -47,27 +48,42 @@ export default function ShiftClosing() {
     const d = tp.details ?? {};
     const taskType = String(d.type ?? '');
 
+    // DocumentReview passes { documentsProcessed, errors }
     if (taskType.includes('document') || d.documentsProcessed != null) {
       docsProcessed += Number(d.documentsProcessed ?? 1);
-      docsTotal += Number(d.documentsTotal ?? 1);
+      docsTotal += Number(d.documentsTotal ?? d.documentsProcessed ?? 1);
     }
 
-    if (d.errorsFound != null || d.errorsTotal != null) {
-      errorsFound += Number(d.errorsFound ?? 0);
-      errorsTotal += Number(d.errorsTotal ?? 0);
+    // ErrorCorrectionDoc + DocumentReview pass { errors } (total error count)
+    if (d.errors != null) {
+      errorsTotal += Number(d.errors);
+    }
+    if (d.errorsFound != null) {
+      errorsFound += Number(d.errorsFound);
     }
 
-    if (d.vocabScore != null) {
+    // VocabClearance passes { correct, total }
+    if (d.correct != null && d.total != null) {
+      vocabScore += Number(d.correct) / Math.max(Number(d.total), 1);
+      vocabCount += 1;
+    } else if (d.vocabScore != null) {
       vocabScore += Number(d.vocabScore);
       vocabCount += 1;
     }
 
-    if (d.grammarAccuracy != null) {
+    // ContradictionReport passes { correctClassifications, diffsTotal }
+    if (d.correctClassifications != null) {
+      grammarAccuracy += Number(d.correctClassifications) / Math.max(Number(d.diffsTotal ?? 1), 1);
+      grammarCount += 1;
+    } else if (d.grammarAccuracy != null) {
       grammarAccuracy += Number(d.grammarAccuracy);
       grammarCount += 1;
     }
 
-    if (d.targetWordsUsed != null) {
+    // ShiftReport passes { wordCount }
+    if (d.wordCount != null) {
+      targetWordsUsed += Number(d.wordCount);
+    } else if (d.targetWordsUsed != null) {
       targetWordsUsed += Number(d.targetWordsUsed);
     }
   }
@@ -114,8 +130,9 @@ export default function ShiftClosing() {
         await postShiftResult(currentWeek.id, resultPayload);
         await patchClearance(weekConfig.shiftClosing.clearanceTo);
 
-        if (concernScoreDelta > 0) {
-          await patchConcern(concernScoreDelta);
+        const remainingDelta = concernScoreDelta - concernScorePersisted;
+        if (remainingDelta > 0) {
+          await patchConcern(remainingDelta);
         }
 
         // Mark the last mission (clock_out equivalent) as complete

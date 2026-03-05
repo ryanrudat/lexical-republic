@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { User } from '../api/auth';
 import { loginStudent, loginTeacher as apiLoginTeacher, registerStudent as apiRegister, logout as apiLogout, getMe } from '../api/auth';
 import { disconnectSocket } from '../utils/socket';
+import { useSessionStore } from './sessionStore';
 
 interface ApiErrorShape {
   response?: {
@@ -41,6 +42,9 @@ export const useStudentStore = create<StudentState>((set) => ({
       console.log('[LOGIN] Calling API with', designation);
       const user = await loginStudent(designation, pin);
       console.log('[LOGIN] Success:', user);
+      if (user.concernScore != null) {
+        useSessionStore.getState().hydrateConcern(user.concernScore);
+      }
       set({ user, loading: false });
     } catch (err: unknown) {
       console.error('[LOGIN] Failed:', err);
@@ -66,6 +70,9 @@ export const useStudentStore = create<StudentState>((set) => ({
     set({ loading: true, error: null });
     try {
       const user = await apiRegister(studentNumber, pin, displayName, classCode, studentAName, studentBName);
+      if (user.concernScore != null) {
+        useSessionStore.getState().hydrateConcern(user.concernScore);
+      }
       set({ user, loading: false });
     } catch (err: unknown) {
       const message = getApiErrorMessage(err, 'Registration failed');
@@ -87,6 +94,9 @@ export const useStudentStore = create<StudentState>((set) => ({
     set({ loading: true });
     try {
       const user = await getMe();
+      if (user.concernScore != null) {
+        useSessionStore.getState().hydrateConcern(user.concernScore);
+      }
       set({ user, loading: false });
     } catch {
       set({ user: null, loading: false });

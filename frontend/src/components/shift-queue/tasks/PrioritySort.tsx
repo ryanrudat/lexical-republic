@@ -124,11 +124,12 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
   const advanceJustify = useCallback(() => {
     if (!currentJustifyCase) return;
 
-    // Save current justification
-    setJustifications(prev => ({
-      ...prev,
+    // Build complete justifications including the current case
+    const allJustifications = {
+      ...justifications,
       [currentJustifyCase.caseId]: justifications[currentJustifyCase.caseId] ?? '',
-    }));
+    };
+    setJustifications(allJustifications);
 
     if (currentJustifyIdx < justifyCases.length - 1) {
       setCurrentJustifyIdx(currentJustifyIdx + 1);
@@ -142,6 +143,7 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
         casesCorrect: correctCount,
         totalCases: cases.length,
         disappeared: [...disappearedCases],
+        justifications: allJustifications,
       });
       setPhase('done');
     }

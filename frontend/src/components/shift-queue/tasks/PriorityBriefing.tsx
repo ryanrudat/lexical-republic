@@ -40,6 +40,7 @@ export default function PriorityBriefing({ config, weekConfig, onComplete }: Tas
   const [currentCard, setCurrentCard] = useState(0);
   const [queueCount, setQueueCount] = useState(0);
   const [writingText, setWritingText] = useState('');
+  const [writingSubmissions, setWritingSubmissions] = useState<Record<number, string>>({});
   const [writingPassed, setWritingPassed] = useState(false);
   const [cardCompleted, setCardCompleted] = useState<boolean[]>(() => cards.map(() => false));
 
@@ -82,17 +83,18 @@ export default function PriorityBriefing({ config, weekConfig, onComplete }: Tas
       setWritingText('');
       setWritingPassed(false);
     } else {
-      onComplete(1, { type: 'priority_briefing' });
+      onComplete(1, { type: 'priority_briefing', writingSubmissions });
     }
-  }, [currentCard, total, cardCompleted, onComplete]);
+  }, [currentCard, total, cardCompleted, writingSubmissions, onComplete]);
 
   // ── Writing result handler ─────────────────────────────────────
 
   const handleWritingResult = useCallback((result: EvalResult, _attempt: number) => {
     if (result.passed) {
+      setWritingSubmissions(prev => ({ ...prev, [currentCard]: writingText }));
       setWritingPassed(true);
     }
-  }, []);
+  }, [currentCard, writingText]);
 
   // ── Render: Queue Status card ──────────────────────────────────
 

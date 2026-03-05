@@ -155,6 +155,8 @@ export interface GradebookWeek {
   id: string;
   weekNumber: number;
   title: string;
+  shiftType: 'queue' | 'phase';
+  taskTypes: Array<{ id: string; type: string; title: string }> | null;
 }
 
 export interface GradebookData {
@@ -166,6 +168,24 @@ export async function fetchGradebook(classId?: string): Promise<GradebookData> {
   const params = classId ? { classId } : {};
   const { data } = await client.get('/teacher/gradebook', { params });
   return data as GradebookData;
+}
+
+// ── Grade Management ─────────────────────────────────────────
+
+export async function updateScore(scoreId: string, score: number, details?: Record<string, unknown>): Promise<void> {
+  await client.patch(`/teacher/scores/${scoreId}`, { score, details });
+}
+
+export async function deleteScore(scoreId: string): Promise<void> {
+  await client.delete(`/teacher/scores/${scoreId}`);
+}
+
+export async function resetWeekProgress(pairId: string, weekId: string): Promise<void> {
+  await client.delete(`/teacher/students/${pairId}/weeks/${weekId}/progress`);
+}
+
+export async function overrideConcern(pairId: string, concernScore: number): Promise<void> {
+  await client.patch(`/teacher/students/${pairId}/concern`, { concernScore });
 }
 
 // ── Class Management ───────────────────────────────────────────

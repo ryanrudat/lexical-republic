@@ -9,7 +9,7 @@ import LaneScaffolding from './shared/LaneScaffolding';
 
 // ─── Types ───────────────────────────────────────────────────────
 
-interface MemoHeader {
+interface MemoConfig {
   title: string;
   department: string;
   date: string;
@@ -17,10 +17,6 @@ interface MemoHeader {
   to: string;
   re: string;
   reviewedBy?: string;
-}
-
-interface MemoConfig {
-  header: MemoHeader;
   body: string;
 }
 
@@ -112,15 +108,14 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
       diffsFound: foundDiffs.size,
       diffsTotal: differences.length,
       correctClassifications: correctCount,
+      writingText,
     });
     setPhase('done');
-  }, [differences, foundDiffs, classifications, onComplete]);
+  }, [differences, foundDiffs, classifications, writingText, onComplete]);
 
   // ── Render: Memo card ─────────────────────────────────────────
 
   function renderMemo(memo: MemoConfig, label: string, highlightedDiffIds: Set<string>, side: 'A' | 'B') {
-    const header = memo.header;
-
     // Build body with diff highlights
     let bodyText = memo.body;
     const bodySegments: { text: string; diffId: string | null; isHighlighted: boolean }[] = [];
@@ -162,23 +157,23 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
         {/* Header */}
         <div className="px-4 py-3 border-b border-white/5 space-y-1">
           <span className="font-special-elite text-sm text-white/90 tracking-wider">
-            {header.title}
+            {memo.title}
           </span>
           <p className="font-ibm-mono text-[10px] text-white/30 tracking-wider">
-            {header.department}
+            {memo.department}
           </p>
           <p className="font-ibm-mono text-[10px] text-white/30">
-            {header.date}
+            {memo.date}
           </p>
           <div className="space-y-0.5 pt-1">
             <p className="font-ibm-mono text-[10px] text-white/40">
-              <span className="text-white/20 mr-2">FROM:</span>{header.from}
+              <span className="text-white/20 mr-2">FROM:</span>{memo.from}
             </p>
             <p className="font-ibm-mono text-[10px] text-white/40">
-              <span className="text-white/20 mr-2">TO:</span>{header.to}
+              <span className="text-white/20 mr-2">TO:</span>{memo.to}
             </p>
             <p className="font-ibm-mono text-[10px] text-white/40">
-              <span className="text-white/20 mr-2">RE:</span>{header.re}
+              <span className="text-white/20 mr-2">RE:</span>{memo.re}
             </p>
           </div>
           <div className="pt-1">
@@ -218,10 +213,10 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
         </div>
 
         {/* Reviewed stamp */}
-        {header.reviewedBy && (
+        {memo.reviewedBy && (
           <div className="px-4 py-2 border-t border-white/5">
             <p className="font-ibm-mono text-[9px] text-white/20 tracking-wider">
-              Reviewed by: {header.reviewedBy}
+              Reviewed by: {memo.reviewedBy}
             </p>
           </div>
         )}
@@ -255,7 +250,11 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
   // ── Render: Classify phase ────────────────────────────────────
 
   function renderClassifyPhase() {
-    const classifyOptions = ['Minor correction', 'Information changed', 'Information removed'];
+    const classifyOptions = [
+      { value: 'minor_correction', label: 'Minor correction' },
+      { value: 'information_changed', label: 'Information changed' },
+      { value: 'information_removed', label: 'Information removed' },
+    ];
 
     return (
       <div className="space-y-4">
@@ -291,7 +290,7 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
             >
               <option value="">-- Classify this change --</option>
               {classifyOptions.map(opt => (
-                <option key={opt} value={opt}>{opt}</option>
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
           </div>

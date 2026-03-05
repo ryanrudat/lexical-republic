@@ -28,7 +28,8 @@ interface DocumentConfig {
   laneHints?: Record<string, string[]>;
   // comprehension fields
   questions?: Array<{
-    text: string;
+    text?: string;
+    question?: string;
     options: string[];
     correctIndex: number;
   }>;

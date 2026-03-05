@@ -2,7 +2,8 @@ import { useState, useCallback } from 'react';
 import DocumentCard from './DocumentCard';
 
 interface ComprehensionQuestion {
-  text: string;
+  text?: string;
+  question?: string;
   options: string[];
   correctIndex: number;
 }
@@ -101,7 +102,7 @@ export default function ComprehensionDoc({
               {/* Question text */}
               <p className="font-ibm-mono text-sm text-white/80 leading-relaxed">
                 <span className="text-white/30 mr-2">{String(qIdx + 1).padStart(2, '0')}.</span>
-                {question.text}
+                {question.text || question.question}
               </p>
 
               {/* Options */}

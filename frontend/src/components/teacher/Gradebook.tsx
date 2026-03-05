@@ -1,9 +1,18 @@
-import { useEffect, useState } from 'react';
-import { fetchGradebook } from '../../api/teacher';
+import { useEffect, useState, useCallback } from 'react';
+import { fetchGradebook, updateScore, deleteScore, resetWeekProgress } from '../../api/teacher';
 import type { GradebookData, GradebookStudent, GradebookWeek, GradebookMissionScore } from '../../api/teacher';
 import { STEP_ORDER } from '../../types/shifts';
 
-const GRADED_STEPS = ['briefing', 'grammar', 'listening'];
+// Queue task labels for display
+const QUEUE_TASK_LABELS: Record<string, string> = {
+  intake_form: 'Intake Form',
+  vocab_clearance: 'Vocab Clearance',
+  document_review: 'Document Review',
+  contradiction_report: 'Contradiction Report',
+  shift_report: 'Shift Report',
+  priority_briefing: 'Priority Briefing',
+  priority_sort: 'Priority Sort',
+};
 
 const stepLabel = (stepId: string) =>
   STEP_ORDER.find((s) => s.id === stepId)?.label ?? stepId;
@@ -26,19 +35,18 @@ function computeCell(
     return { state: 'gray', avgScore: null, scores: [] };
   }
 
-  const clockOut = weekScores.find(
-    (ms) => ms.mission.missionType === 'clock_out'
+  // Check completion: clock_out for phase weeks, last task for queue weeks
+  const isComplete = weekScores.some(
+    (ms) =>
+      (ms.details as Record<string, unknown>)?.status === 'complete' &&
+      (ms.mission.missionType === 'clock_out' || ms.mission.missionType === 'shift_report')
   );
-  const isComplete =
-    clockOut && (clockOut.details as any)?.status === 'complete';
 
-  const gradedScores = weekScores.filter((ms) =>
-    GRADED_STEPS.includes(ms.mission.missionType)
-  );
-  const avg =
-    gradedScores.length > 0
-      ? gradedScores.reduce((sum, ms) => sum + ms.score, 0) / gradedScores.length
-      : null;
+  // Calculate average from scored tasks
+  const scoredTasks = weekScores.filter(ms => ms.score > 0);
+  const avg = scoredTasks.length > 0
+    ? scoredTasks.reduce((sum, ms) => sum + ms.score, 0) / scoredTasks.length
+    : null;
 
   if (!isComplete) {
     return { state: 'blue', avgScore: avg, scores: weekScores };
@@ -67,13 +75,21 @@ export default function Gradebook({ classId }: { classId?: string | null }) {
     cell: CellStatus;
   } | null>(null);
 
-  useEffect(() => {
+  const loadData = useCallback(() => {
     setLoading(true);
     setSelected(null);
     void fetchGradebook(classId || undefined)
       .then(setData)
       .finally(() => setLoading(false));
   }, [classId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleRefresh = useCallback(() => {
+    loadData();
+  }, [loadData]);
 
   if (loading) {
     return (
@@ -179,6 +195,7 @@ export default function Gradebook({ classId }: { classId?: string | null }) {
           week={selected.week}
           cell={selected.cell}
           onClose={() => setSelected(null)}
+          onRefresh={handleRefresh}
         />
       )}
 
@@ -196,12 +213,34 @@ function DrillDown({
   week,
   cell,
   onClose,
+  onRefresh,
 }: {
   student: GradebookStudent;
   week: GradebookWeek;
   cell: CellStatus;
   onClose: () => void;
+  onRefresh: () => void;
 }) {
+  const [resetting, setResetting] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  const handleReset = async () => {
+    setResetting(true);
+    try {
+      await resetWeekProgress(student.id, week.id);
+      onRefresh();
+      onClose();
+    } catch {
+      setResetting(false);
+    }
+  };
+
+  // Determine task list based on week type
+  const isQueue = week.shiftType === 'queue';
+  const taskList = isQueue && week.taskTypes
+    ? week.taskTypes.map(t => ({ id: t.type, label: QUEUE_TASK_LABELS[t.type] || t.title }))
+    : STEP_ORDER.map(s => ({ id: s.id, label: stepLabel(s.id) }));
+
   return (
     <div className="bg-white rounded-xl border border-indigo-200 shadow-sm p-5">
       <div className="flex items-center justify-between mb-4">
@@ -214,63 +253,60 @@ function DrillDown({
           </h3>
           {cell.avgScore !== null && (
             <p className="text-xs text-slate-500 mt-0.5">
-              Graded average: {Math.round(cell.avgScore * 100)}%
+              Average: {Math.round(cell.avgScore * 100)}%
             </p>
           )}
         </div>
-        <button
-          onClick={onClose}
-          className="text-xs text-slate-400 hover:text-slate-600"
-        >
-          Close
-        </button>
+        <div className="flex items-center gap-2">
+          {!confirmReset ? (
+            <button
+              onClick={() => setConfirmReset(true)}
+              className="text-xs px-2.5 py-1 rounded-md bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+            >
+              Reset Week
+            </button>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-red-600">Reset all progress?</span>
+              <button
+                onClick={handleReset}
+                disabled={resetting}
+                className="text-xs px-2 py-1 rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {resetting ? 'Resetting...' : 'Confirm'}
+              </button>
+              <button
+                onClick={() => setConfirmReset(false)}
+                className="text-xs px-2 py-1 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+          <button
+            onClick={onClose}
+            className="text-xs text-slate-400 hover:text-slate-600 ml-2"
+          >
+            Close
+          </button>
+        </div>
       </div>
 
       <div className="space-y-2">
-        {STEP_ORDER.map((step) => {
+        {taskList.map((task) => {
           const score = cell.scores.find(
-            (ms) => ms.mission.missionType === step.id
+            (ms) => ms.mission.missionType === task.id
           );
-          const isGraded = GRADED_STEPS.includes(step.id);
-          const details = (score?.details ?? {}) as Record<string, unknown>;
 
           return (
-            <div
-              key={step.id}
-              className="flex items-start gap-3 py-2 border-b border-slate-100 last:border-0"
-            >
-              <div className="w-28 shrink-0">
-                <div className="text-xs font-medium text-slate-700">
-                  {stepLabel(step.id)}
-                </div>
-                <div className="text-[10px] text-slate-400">{step.id}</div>
-              </div>
-
-              <div className="flex-1 text-xs text-slate-600">
-                {score ? (
-                  <>
-                    <span
-                      className={`font-semibold ${
-                        isGraded
-                          ? score.score >= 0.7
-                            ? 'text-emerald-600'
-                            : 'text-amber-600'
-                          : 'text-slate-600'
-                      }`}
-                    >
-                      {isGraded
-                        ? `${Math.round(score.score * 100)}%`
-                        : score.score >= 1
-                          ? 'Pass'
-                          : 'Incomplete'}
-                    </span>
-                    <StepDetails missionType={step.id} details={details} />
-                  </>
-                ) : (
-                  <span className="text-slate-400">—</span>
-                )}
-              </div>
-            </div>
+            <TaskRow
+              key={task.id}
+              taskId={task.id}
+              label={task.label}
+              score={score ?? null}
+              isQueue={isQueue}
+              onRefresh={onRefresh}
+            />
           );
         })}
       </div>
@@ -278,25 +314,215 @@ function DrillDown({
   );
 }
 
-function StepDetails({
-  missionType,
-  details,
+function TaskRow({
+  taskId,
+  label,
+  score,
+  isQueue,
+  onRefresh,
 }: {
-  missionType: string;
-  details: Record<string, unknown>;
+  taskId: string;
+  label: string;
+  score: GradebookMissionScore | null;
+  isQueue: boolean;
+  onRefresh: () => void;
 }) {
-  switch (missionType) {
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  const details = (score?.details ?? {}) as Record<string, unknown>;
+  const hasWriting = !!(details.writingText || details.writingSubmissions || details.text || details.justifications);
+
+  const handleSave = async () => {
+    if (!score) return;
+    const newScore = parseFloat(editValue) / 100;
+    if (isNaN(newScore) || newScore < 0 || newScore > 1) return;
+    setSaving(true);
+    try {
+      await updateScore(score.id, newScore);
+      onRefresh();
+    } finally {
+      setSaving(false);
+      setEditing(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!score) return;
+    setSaving(true);
+    try {
+      await deleteScore(score.id);
+      onRefresh();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="border-b border-slate-100 last:border-0">
+      <div className="flex items-start gap-3 py-2">
+        <div className="w-36 shrink-0">
+          <div className="text-xs font-medium text-slate-700">{label}</div>
+          <div className="text-[10px] text-slate-400">{taskId}</div>
+        </div>
+
+        <div className="flex-1 text-xs text-slate-600">
+          {score ? (
+            <div className="flex items-center gap-2">
+              {editing ? (
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+                    className="w-14 px-1.5 py-0.5 text-xs border border-indigo-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                    autoFocus
+                  />
+                  <span className="text-slate-400">%</span>
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500 text-white hover:bg-indigo-600 disabled:opacity-50"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => setEditing(false)}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={() => {
+                      setEditValue(String(Math.round(score.score * 100)));
+                      setEditing(true);
+                    }}
+                    className="font-semibold hover:underline cursor-pointer"
+                    title="Click to edit score"
+                  >
+                    {score.score > 0
+                      ? `${Math.round(score.score * 100)}%`
+                      : 'Incomplete'}
+                  </button>
+                  <QueueTaskDetails taskId={taskId} details={details} isQueue={isQueue} />
+                  {hasWriting && (
+                    <button
+                      onClick={() => setExpanded(!expanded)}
+                      className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 hover:bg-indigo-100 ml-1"
+                    >
+                      {expanded ? 'Hide Writing' : 'View Writing'}
+                    </button>
+                  )}
+                  <button
+                    onClick={handleDelete}
+                    disabled={saving}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-500 hover:bg-red-100 ml-1 disabled:opacity-50"
+                    title="Reset this task"
+                  >
+                    Reset
+                  </button>
+                </>
+              )}
+            </div>
+          ) : (
+            <span className="text-slate-400">—</span>
+          )}
+        </div>
+      </div>
+
+      {/* Expanded writing display */}
+      {expanded && score && <WritingDisplay details={details} />}
+    </div>
+  );
+}
+
+function QueueTaskDetails({
+  taskId,
+  details,
+  isQueue,
+}: {
+  taskId: string;
+  details: Record<string, unknown>;
+  isQueue: boolean;
+}) {
+  if (isQueue) {
+    switch (taskId) {
+      case 'vocab_clearance': {
+        const correct = details.correct as number | undefined;
+        const total = details.total as number | undefined;
+        if (correct != null && total != null) {
+          return <span className="ml-2 text-slate-400">({correct}/{total} correct)</span>;
+        }
+        return null;
+      }
+      case 'document_review': {
+        const docs = details.documentsProcessed as number | undefined;
+        const errors = details.errors as number | undefined;
+        return (
+          <span className="ml-2 text-slate-400">
+            {docs != null ? `${docs} docs` : ''}
+            {errors != null ? `, ${errors} errors` : ''}
+          </span>
+        );
+      }
+      case 'contradiction_report': {
+        const found = details.diffsFound as number | undefined;
+        const total = details.diffsTotal as number | undefined;
+        const correct = details.correctClassifications as number | undefined;
+        return (
+          <span className="ml-2 text-slate-400">
+            {found != null && total != null ? `${found}/${total} diffs` : ''}
+            {correct != null ? `, ${correct} correct` : ''}
+          </span>
+        );
+      }
+      case 'shift_report': {
+        const wordCount = details.wordCount as number | undefined;
+        const attempt = details.attempt as number | undefined;
+        return (
+          <span className="ml-2 text-slate-400">
+            {wordCount != null ? `${wordCount} words` : ''}
+            {attempt != null ? ` (attempt ${attempt})` : ''}
+          </span>
+        );
+      }
+      case 'priority_sort': {
+        const casesCorrect = details.casesCorrect as number | undefined;
+        const totalCases = details.totalCases as number | undefined;
+        return casesCorrect != null && totalCases != null
+          ? <span className="ml-2 text-slate-400">({casesCorrect}/{totalCases} cases correct)</span>
+          : null;
+      }
+      case 'intake_form': {
+        const cards = details.cardsCompleted as number | undefined;
+        return cards != null
+          ? <span className="ml-2 text-slate-400">({cards} cards)</span>
+          : null;
+      }
+      default:
+        return null;
+    }
+  }
+
+  // PhaseRunner step details
+  switch (taskId) {
     case 'grammar': {
-      const mastery = details.mastery as
-        | Array<{ target: string; state: string }>
-        | undefined;
+      const mastery = details.mastery as Array<{ target: string; state: string }> | undefined;
       if (!mastery?.length) return null;
       return (
-        <div className="mt-1 flex flex-wrap gap-1">
+        <span className="ml-2">
           {mastery.map((m, i) => (
             <span
               key={i}
-              className={`px-1.5 py-0.5 rounded text-[10px] ${
+              className={`inline-block px-1.5 py-0.5 rounded text-[10px] mr-1 ${
                 m.state === 'mastered'
                   ? 'bg-emerald-100 text-emerald-700'
                   : m.state === 'struggling'
@@ -307,15 +533,13 @@ function StepDetails({
               {m.target}: {m.state}
             </span>
           ))}
-        </div>
+        </span>
       );
     }
     case 'case_file': {
       const wordCount = details.wordCount;
       if (typeof wordCount !== 'number') return null;
-      return (
-        <span className="ml-2 text-slate-400">({wordCount} words)</span>
-      );
+      return <span className="ml-2 text-slate-400">({wordCount} words)</span>;
     }
     case 'voice_log': {
       const rubricChecks = details.rubricChecks;
@@ -329,4 +553,55 @@ function StepDetails({
     default:
       return null;
   }
+}
+
+function WritingDisplay({ details }: { details: Record<string, unknown> }) {
+  const writings: Array<{ label: string; text: string }> = [];
+
+  // ShiftReport / ContradictionReport: single text field
+  if (typeof details.text === 'string') {
+    writings.push({ label: 'Shift Report', text: details.text });
+  }
+  if (typeof details.writingText === 'string') {
+    writings.push({ label: 'Report Writing', text: details.writingText });
+  }
+
+  // IntakeForm / PriorityBriefing: keyed by card index
+  if (details.writingSubmissions && typeof details.writingSubmissions === 'object') {
+    const subs = details.writingSubmissions as Record<string, string>;
+    Object.entries(subs).forEach(([key, text]) => {
+      writings.push({ label: `Card ${Number(key) + 1} Writing`, text });
+    });
+  }
+
+  // PrioritySort: keyed by case ID
+  if (details.justifications && typeof details.justifications === 'object') {
+    const justs = details.justifications as Record<string, string>;
+    Object.entries(justs).forEach(([caseId, text]) => {
+      writings.push({ label: `Justification: ${caseId}`, text });
+    });
+  }
+
+  if (writings.length === 0) {
+    return (
+      <div className="px-3 pb-3 text-xs text-slate-400 italic">
+        No writing content saved.
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-3 pb-3 space-y-2">
+      {writings.map((w, i) => (
+        <div key={i} className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+          <div className="text-[10px] font-medium text-slate-500 uppercase tracking-wider mb-1">
+            {w.label}
+          </div>
+          <div className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
+            {w.text}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }

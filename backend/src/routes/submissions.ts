@@ -175,27 +175,25 @@ router.post('/evaluate', requirePair, async (req: Request, res: Response) => {
         select: { id: true },
       });
       for (const dw of dictWords) {
-        const existing = await prisma.pairDictionaryProgress.findUnique({
+        const progress = await prisma.pairDictionaryProgress.upsert({
           where: { pairId_wordId: { pairId, wordId: dw.id } },
+          update: {
+            encounters: { increment: 1 },
+            lastSeenAt: new Date(),
+          },
+          create: {
+            pairId,
+            wordId: dw.id,
+            encounters: 1,
+            mastery: 0.1,
+            lastSeenAt: new Date(),
+          },
         });
-        if (existing) {
+        // Cap mastery at 1.0 (upsert increment doesn't support clamping)
+        if (progress.mastery < 1.0) {
           await prisma.pairDictionaryProgress.update({
-            where: { id: existing.id },
-            data: {
-              encounters: existing.encounters + 1,
-              mastery: Math.min(1.0, existing.mastery + 0.1),
-              lastSeenAt: new Date(),
-            },
-          });
-        } else {
-          await prisma.pairDictionaryProgress.create({
-            data: {
-              pairId,
-              wordId: dw.id,
-              encounters: 1,
-              mastery: 0.1,
-              lastSeenAt: new Date(),
-            },
+            where: { id: progress.id },
+            data: { mastery: Math.min(1.0, progress.mastery + 0.1) },
           });
         }
       }

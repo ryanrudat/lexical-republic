@@ -83,17 +83,18 @@ export default function TerminalView() {
 
       <div className="relative z-10 flex-1 flex flex-col overflow-hidden">
         <header className="border-b border-white/10 bg-ios-bg/80 backdrop-blur-md px-4 py-2">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between gap-3">
+            {/* Left: Home + Title */}
+            <div className="flex items-center gap-3 min-w-0">
               <button
                 onClick={handleHome}
-                className="ios-glass-pill font-ibm-mono text-[10px] text-white/60 hover:text-neon-cyan hover:border-neon-cyan/30 px-2.5 py-1.5 tracking-wider transition-all uppercase"
+                className="ios-glass-pill font-ibm-mono text-[10px] text-white/60 hover:text-neon-cyan hover:border-neon-cyan/30 px-2.5 py-1.5 tracking-wider transition-all uppercase shrink-0"
                 aria-label="Return to terminal desktop"
               >
                 ⌂ HOME
               </button>
-              <div>
-                <p className="font-ibm-mono text-[10px] text-white/40 tracking-[0.3em] uppercase">
+              <div className="min-w-0 hidden sm:block">
+                <p className="font-ibm-mono text-[10px] text-white/40 tracking-[0.3em] uppercase truncate">
                   Ministry of Healthy and Safe Information
                 </p>
                 <p className="font-ibm-mono text-xs text-white/80 tracking-wider mt-0.5">
@@ -103,9 +104,9 @@ export default function TerminalView() {
               </div>
             </div>
 
-            {/* Concern counter — only visible when > 0 */}
+            {/* Center: Concern counter — only visible when > 0 */}
             {concernScore > 0 && (
-              <div className="ios-glass-pill px-2 py-1 flex items-center gap-1.5">
+              <div className="ios-glass-pill px-2 py-1 flex items-center gap-1.5 shrink-0">
                 <div className={`w-1.5 h-1.5 rounded-full ${
                   concernScore >= 3.0 ? 'bg-neon-pink animate-pulse' :
                   concernScore >= 1.0 ? 'bg-terminal-amber animate-pulse' :
@@ -124,37 +125,45 @@ export default function TerminalView() {
               </div>
             )}
 
-            {/* Messaging icon */}
-            <button
-              onClick={() => useMessagingStore.getState().isPanelOpen ? useMessagingStore.getState().closePanel() : useMessagingStore.getState().openPanel()}
-              className="relative ios-glass-pill px-2.5 py-2 hover:border-neon-cyan/30 transition-all"
-              aria-label="Messages"
-            >
-              <svg width="24" height="20" viewBox="0 0 16 14" fill="none" className="text-white/50 hover:text-neon-cyan transition-colors">
-                <path d="M1 1h14v9H5l-4 3V1z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-                <line x1="4" y1="4" x2="12" y2="4" stroke="currentColor" strokeWidth="0.8" opacity="0.5" />
-                <line x1="4" y1="6.5" x2="10" y2="6.5" stroke="currentColor" strokeWidth="0.8" opacity="0.5" />
-              </svg>
-              <MessageBadge />
-            </button>
+            {/* Right: App icons + PEARL */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {/* Dictionary icon */}
+              <DictionaryIcon variant="terminal" />
 
-            {/* Dictionary icon */}
-            <DictionaryIcon variant="terminal" />
+              {/* Messaging icon */}
+              <button
+                onClick={() => useMessagingStore.getState().isPanelOpen ? useMessagingStore.getState().closePanel() : useMessagingStore.getState().openPanel()}
+                className="relative ios-glass-pill px-2 py-1.5 hover:border-neon-cyan/30 transition-all group"
+                aria-label="Messages"
+                title="Messages"
+              >
+                <svg width="20" height="16" viewBox="0 0 16 14" fill="none" className="text-white/50 group-hover:text-neon-cyan transition-colors">
+                  <path d="M1 1h14v9H5l-4 3V1z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+                  <line x1="4" y1="4" x2="12" y2="4" stroke="currentColor" strokeWidth="0.8" opacity="0.5" />
+                  <line x1="4" y1="6.5" x2="10" y2="6.5" stroke="currentColor" strokeWidth="0.8" opacity="0.5" />
+                </svg>
+                <MessageBadge />
+              </button>
 
-            <div className="flex items-center gap-2 ios-glass-pill px-2.5 py-1">
-              <PearlEye
-                onClick={() => setPearlOpen((v) => !v)}
-                panelOpen={pearlOpen}
-                variant="crt"
-                size="md"
-              />
-              <div className="text-left">
-                <p className="font-ibm-mono text-[10px] text-neon-cyan tracking-[0.2em] uppercase">
-                  P.E.A.R.L.
-                </p>
-                <p className="font-ibm-mono text-[10px] text-white/40 tracking-wider">
-                  {eyeStateLabel[eyeState]}
-                </p>
+              {/* Divider */}
+              <div className="w-px h-6 bg-white/10 mx-0.5" />
+
+              {/* PEARL */}
+              <div className="flex items-center gap-2 ios-glass-pill px-2.5 py-1">
+                <PearlEye
+                  onClick={() => setPearlOpen((v) => !v)}
+                  panelOpen={pearlOpen}
+                  variant="crt"
+                  size="md"
+                />
+                <div className="text-left hidden sm:block">
+                  <p className="font-ibm-mono text-[10px] text-neon-cyan tracking-[0.2em] uppercase">
+                    P.E.A.R.L.
+                  </p>
+                  <p className="font-ibm-mono text-[10px] text-white/40 tracking-wider">
+                    {eyeStateLabel[eyeState]}
+                  </p>
+                </div>
               </div>
             </div>
           </div>

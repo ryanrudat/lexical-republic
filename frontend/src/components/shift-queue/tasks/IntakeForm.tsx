@@ -65,6 +65,7 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
 
   const [currentCard, setCurrentCard] = useState(0);
   const [writingText, setWritingText] = useState('');
+  const [writingSubmissions, setWritingSubmissions] = useState<Record<number, string>>({});
   const [dropdownValues, setDropdownValues] = useState<Record<string, string>>({});
   const [blanksValues, setBlanksValues] = useState<string[]>([]);
   const [checkboxChecked, setCheckboxChecked] = useState(false);
@@ -118,20 +119,22 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
       const details: Record<string, unknown> = {
         cardsCompleted: total,
         dropdownChoices: dropdownValues,
+        writingSubmissions,
       };
       onComplete(score, details);
     }
-  }, [currentCard, total, cardCompleted, dropdownValues, onComplete]);
+  }, [currentCard, total, cardCompleted, dropdownValues, writingSubmissions, onComplete]);
 
   // ── Writing result handler ───────────────────────────────────
 
   const handleWritingResult = useCallback((result: EvalResult, _attempt: number) => {
     if (result.passed) {
+      setWritingSubmissions(prev => ({ ...prev, [currentCard]: writingText }));
       setWritingPassed(true);
     } else if (!result.isDegraded) {
       addConcern(0.05);
     }
-  }, [addConcern]);
+  }, [addConcern, currentCard, writingText]);
 
   // ── Render helpers ───────────────────────────────────────────
 

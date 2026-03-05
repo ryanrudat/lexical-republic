@@ -1,6 +1,6 @@
 # The Lexical Republic — Project Memory
 
-Last updated: 2026-03-05
+Last updated: 2026-03-06
 
 ## Vision
 The Lexical Republic is a dystopian ESL learning game where Taiwanese Grade 10 students (A2-B1) learn English through 18 weekly "Shifts" inside an authoritarian language-control world.
@@ -46,11 +46,14 @@ Config-driven task queue replaces the 7-step PhaseRunner for Weeks 1-3. Each wee
 - `TaskCard` — Wraps tasks with stamp animation (idle → completing → stamped)
 
 **Character messaging system:**
-- `MessagingPanel` — Slides from right, threaded message view with canned reply options
-- `MessageNotification` — Toast (stays until student clicks body to open or X to dismiss)
+- `MessagingPanel` — Slides from right (360px, z-[41]), inbox/thread navigation with `selectedMessageId` in store
+- `InboxView` — Message preview cards sorted most-recent-first: character color dot, name, designation, 60-char preview, relative timestamp, REPLIED chip (cyan) or unread dot (pink)
+- `ThreadView` — Full conversation view: character message → reply options → student reply → typing indicator → character response. Reconstructs `selectedReply` from DB on reload via `useMemo` matching `studentReply` against `replyOptions` JSON — character responses survive page refresh.
+- `MessageNotification` — Toast (stays until student clicks body to deep-link into thread or X to dismiss)
 - Messages triggered by `task_start`, `task_complete`, `shift_start` events from WeekConfig
 - Dedup: module-level `inFlightKeys` Set + backend `$transaction` atomic create + GET response dedup
 - Characters: Betty (WA-14), Ivan (CA-22), M.K. (silent reply pattern), Chad (CA-31)
+- **Header icon layout**: Right-side grouped toolbar: [Dictionary] [Messages] | [PEARL eye + label]. Dictionary and Messaging icons are peer tools, separated from PEARL system indicator by thin divider. Ministry text and PEARL label hidden on mobile (`hidden sm:block`).
 
 **Writing evaluation:**
 - Frontend sends `content` (not `text`), `phaseId`, `activityType`, with `grammarTarget`/`targetVocab`/`lane` in `metadata`
@@ -103,7 +106,7 @@ Student-facing location labels map directly to learning purpose:
 ### Party Lexical Dictionary (implemented)
 - **Terminal-only** — dictionary lives exclusively in the terminal/shift view, NOT in the office view.
 - **DictionarySidebar**: slides from LEFT (`z-[40]`), dark overlay behind (`z-[39]`). CRT scanline/vignette pseudo-elements via `.dict-panel` CSS class. PEARL panel stays on RIGHT — no mutual exclusion needed.
-- **DictionaryIcon**: book-shape SVG in terminal header. Green glow pulse, gold word count badge, tilt-open hover.
+- **DictionaryIcon**: book-shape SVG (32×36) in terminal header. Green glow pulse, gold word count badge, tilt-open hover.
 - **Lexicon tile**: app tile on terminal desktop grid (alongside Office, Current Shift, etc.) — opens sidebar overlay.
 - **Own CSS variable system**: `.dict-panel` class with `--dict-*` tokens (green, gold, red, amber). Does NOT touch existing Tailwind tokens.
 - **Fonts**: Source Serif 4 (definitions), Noto Sans TC (Chinese translations) via Google Fonts.
@@ -422,12 +425,14 @@ External canon source: `/Users/ryanrudat/Desktop/Dplan/`
 9. ~~Rank progression~~ — DONE: Lexical rank system in dictionary (Trainee → Director). Dplan color palette alignment, end-to-end testing still pending.
 10. Custom domain setup for student-friendly URLs (optional).
 11. Expand dictionary seed data beyond Weeks 1-3 (currently 49 words, target ~120+ across 18 weeks).
-12. Week 3 task components: `PriorityBriefing` and `PrioritySort` (with @dnd-kit drag-and-drop) — planned but not yet implemented.
+12. ~~Week 3 task components: `PriorityBriefing` and `PrioritySort`~~ — DONE: implemented with click-to-assign sorting (no drag-and-drop), writing justification phase, and disappearing case mechanic.
 13. ShiftClosing component — stats grid, clearance upgrade animation, narrative hook card, Harmony access button.
 14. Concern score wiring — delta tracking per task, PATCH to Pair.concernScore at shift close.
 15. Lane adjustment system — auto-promote/demote evaluation after each shift (deferred to Phase B).
 
 ## Change Log
+- 2026-03-06: Shifts 1-3 audit and fixes — fixed ContradictionReport crash (flat memo structure, not nested `header`), fixed classification scoring (dropdown values now match config snake_case), fixed ComprehensionDoc blank questions (`question` field accepted alongside `text`), fixed backend `/api/messages/unread-count` route ordering (was matching `/:id/read` first), relocated Dictionary + Messaging icons to grouped toolbar on right side of terminal header with thin divider before PEARL, fixed ShiftClosing stats to match actual task detail shapes (`correct`/`total` from VocabClearance, `correctClassifications` from ContradictionReport, `wordCount` from ShiftReport), responsive header hides Ministry text and PEARL label on mobile. Confirmed PriorityBriefing and PrioritySort are fully implemented (updated CLAUDE.md gap list).
+- 2026-03-05: Messaging panel redesign — inbox/thread navigation (InboxView with preview cards, ThreadView with full conversation), character response persistence fix (reconstructs selectedReply from DB on reload), enlarged header icons (messaging SVG 24×20, dictionary SVG 32×36), notification toast deep-links to thread, thread slide-in CSS animation.
 - 2026-03-05: ShiftQueue bug fixes — fixed duplicate character messages (sequenced loadMessages before triggers, inFlightKeys dedup, backend $transaction atomic create, GET response dedup), toast notification stays until student clicks (X dismiss or body opens panel), WritingEvaluator sends correct field names to backend (`content` not `text`, grammarTarget/targetVocab in `metadata`), attempt counter only increments on non-pass results, DSEG7 font only on numbers (not "words" label), acknowledgment card reads config's `blanks[0].text`/`blanks[0].answers` format, intake form readonly fields match config `type: "readonly"` format, target word highlighting replaced broken mirror-div overlay with status chips below textarea, dictionary words gated by student progress (MissionScore/ShiftResult) not ClassWeekUnlock.
 - 2026-03-04: ShiftQueue system built — config-driven task queue for Weeks 1-3 with 5 task types (IntakeForm, VocabClearance, DocumentReview, ContradictionReport, ShiftReport), character messaging system (MessagingPanel, MessageNotification, MessageBadge), WritingEvaluator with 3-attempt system, TargetWordHighlighter, TaskCard stamp animations, ShiftClosing placeholder. Backend: WeekConfig type system, week1-3 config files, messages API (CRUD + dedup), Prisma schema (CharacterMessage, Citizen4488Interaction, ShiftResult models + Pair fields). Frontend: shiftQueueStore, messagingStore, ClarityQueueApp branching.
 - 2026-03-01: Fix shift progression saving — PhaseRunner now marks `clock_out` mission as complete (was never persisted, blocking Duty Roster unlock). Added "Return to Office" button to both PhaseRunner and ClockOutStep shift-complete screens. Season data refreshed after clock-out so next shift unlocks immediately.
