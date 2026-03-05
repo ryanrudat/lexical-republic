@@ -61,19 +61,19 @@ export default function DictionaryManager() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search words..."
-          className="px-3 py-1.5 text-sm bg-slate-800 border border-slate-700 rounded text-slate-200 placeholder:text-slate-500 outline-none focus:border-indigo-500"
+          className="px-3 py-1.5 text-sm bg-white border border-slate-300 rounded text-slate-800 placeholder:text-slate-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
         />
         <select
           value={weekFilter}
           onChange={(e) => setWeekFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-          className="px-3 py-1.5 text-sm bg-slate-800 border border-slate-700 rounded text-slate-200 outline-none"
+          className="px-3 py-1.5 text-sm bg-white border border-slate-300 rounded text-slate-800 outline-none focus:border-indigo-500"
         >
           <option value="all">All Weeks</option>
           {availableWeeks.map((w) => (
             <option key={w} value={w}>Week {w}</option>
           ))}
         </select>
-        <span className="text-xs text-slate-400 ml-auto">
+        <span className="text-xs text-slate-500 ml-auto">
           {filteredWords.length} of {words.length} words
         </span>
       </div>
@@ -82,17 +82,17 @@ export default function DictionaryManager() {
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-700 text-left">
-              <th className="px-2 py-2 text-xs text-slate-400 font-medium">Word</th>
-              <th className="px-2 py-2 text-xs text-slate-400 font-medium">POS</th>
-              <th className="px-2 py-2 text-xs text-slate-400 font-medium w-64">Definition</th>
-              <th className="px-2 py-2 text-xs text-slate-400 font-medium">&#x4E2D;&#x6587;</th>
-              <th className="px-2 py-2 text-xs text-slate-400 font-medium w-48">Example</th>
-              <th className="px-2 py-2 text-xs text-slate-400 font-medium">Status</th>
-              <th className="px-2 py-2 text-xs text-slate-400 font-medium">Wk</th>
-              <th className="px-2 py-2 text-xs text-slate-400 font-medium">Target</th>
-              <th className="px-2 py-2 text-xs text-slate-400 font-medium">TOEIC</th>
-              <th className="px-2 py-2 text-xs text-slate-400 font-medium w-12"></th>
+            <tr className="border-b border-slate-200 text-left">
+              <th className="px-2 py-2 text-xs text-slate-500 font-medium">Word</th>
+              <th className="px-2 py-2 text-xs text-slate-500 font-medium">POS</th>
+              <th className="px-2 py-2 text-xs text-slate-500 font-medium w-64">Definition</th>
+              <th className="px-2 py-2 text-xs text-slate-500 font-medium">&#x4E2D;&#x6587;</th>
+              <th className="px-2 py-2 text-xs text-slate-500 font-medium w-48">Example</th>
+              <th className="px-2 py-2 text-xs text-slate-500 font-medium">Status</th>
+              <th className="px-2 py-2 text-xs text-slate-500 font-medium">Wk</th>
+              <th className="px-2 py-2 text-xs text-slate-500 font-medium">Target</th>
+              <th className="px-2 py-2 text-xs text-slate-500 font-medium">TOEIC</th>
+              <th className="px-2 py-2 text-xs text-slate-500 font-medium w-12"></th>
             </tr>
           </thead>
           <tbody>
@@ -121,9 +121,9 @@ function WordRow({
   status: string;
 }) {
   return (
-    <tr className="border-b border-slate-800 hover:bg-slate-800/30">
-      <td className="px-2 py-1.5 text-slate-200 font-medium">{word.word}</td>
-      <td className="px-2 py-1.5 text-slate-400 text-xs">{word.partOfSpeech}</td>
+    <tr className="border-b border-slate-100 hover:bg-slate-50">
+      <td className="px-2 py-1.5 text-slate-800 font-medium">{word.word}</td>
+      <td className="px-2 py-1.5 text-slate-500 text-xs">{word.partOfSpeech}</td>
       <td className="px-2 py-1.5">
         <EditableCell
           value={word.partyDefinition}
@@ -147,14 +147,14 @@ function WordRow({
         <select
           defaultValue={word.status}
           onChange={(e) => onSave(word.id, 'initialStatus', e.target.value)}
-          className="text-xs bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-slate-300 outline-none"
+          className="text-xs bg-white border border-slate-300 rounded px-1 py-0.5 text-slate-700 outline-none"
         >
           {STATUS_OPTIONS.map((s) => (
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
       </td>
-      <td className="px-2 py-1.5 text-slate-400 text-xs text-center">{word.weekIntroduced}</td>
+      <td className="px-2 py-1.5 text-slate-600 text-xs text-center">{word.weekIntroduced}</td>
       <td className="px-2 py-1.5 text-center">
         <input
           type="checkbox"
@@ -167,7 +167,7 @@ function WordRow({
         <select
           defaultValue={word.toeicCategory}
           onChange={(e) => onSave(word.id, 'toeicCategory', e.target.value)}
-          className="text-xs bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-slate-300 outline-none"
+          className="text-xs bg-white border border-slate-300 rounded px-1 py-0.5 text-slate-700 outline-none"
         >
           {TOEIC_OPTIONS.map((c) => (
             <option key={c} value={c}>{c}</option>
@@ -211,7 +211,7 @@ function EditableCell({
         onChange={(e) => setText(e.target.value)}
         onBlur={handleSave}
         onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
-        className="w-full text-xs bg-slate-700 border border-indigo-500 rounded px-1 py-0.5 text-slate-200 outline-none"
+        className="w-full text-xs bg-white border border-indigo-500 rounded px-1 py-0.5 text-slate-800 outline-none"
       />
     );
   }
@@ -219,10 +219,10 @@ function EditableCell({
   return (
     <span
       onClick={() => setEditing(true)}
-      className="text-xs text-slate-300 cursor-pointer hover:text-slate-100 block truncate"
+      className="text-xs text-slate-700 cursor-pointer hover:text-slate-900 block truncate"
       title={value || placeholder}
     >
-      {value || <span className="text-slate-600">{placeholder || 'Click to edit'}</span>}
+      {value || <span className="text-slate-400">{placeholder || 'Click to edit'}</span>}
     </span>
   );
 }
