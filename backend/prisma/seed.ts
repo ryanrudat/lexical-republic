@@ -892,38 +892,46 @@ async function main() {
   });
   console.log(`  Class: ${defaultClass.name} (code: ${defaultClass.joinCode})`);
 
-  // ─── Pairs (student pairs — new system) ───
+  // ─── Test Pair (CA-1 only — for development/testing) ───
   const pinHash = await bcrypt.hash('1234', 10);
-  const lanes = [1, 2, 3, 2, 1];
-  const pairNames: [string, string][] = [
-    ['Alice', 'Bob'],
-    ['Charlie', 'Diana'],
-    ['Ethan', 'Fiona'],
-    ['Grace', 'Henry'],
-    ['Iris', ''],
-  ];
+  const testPair = await prisma.pair.upsert({
+    where: { designation: 'CA-1' },
+    update: {},
+    create: {
+      designation: 'CA-1',
+      pin: pinHash,
+      studentAName: 'Test',
+      studentBName: 'Student',
+      lane: 2,
+    },
+  });
+  console.log(`  Test Pair: ${testPair.designation} — ${testPair.studentAName} & ${testPair.studentBName}`);
 
-  for (let i = 0; i < 5; i++) {
-    const designation = `CA-${i + 1}`;
-    const pair = await prisma.pair.upsert({
-      where: { designation },
-      update: {},
-      create: {
-        designation,
-        pin: pinHash,
-        studentAName: pairNames[i][0],
-        studentBName: pairNames[i][1],
-        lane: lanes[i],
-      },
-    });
-    console.log(`  Pair: ${pair.designation} (lane ${pair.lane}) — ${pair.studentAName}${pair.studentBName ? ` & ${pair.studentBName}` : ''}`);
+  // Enroll test pair in default class
+  await prisma.classEnrollment.upsert({
+    where: { pairId_classId: { pairId: testPair.id, classId: defaultClass.id } },
+    update: {},
+    create: { pairId: testPair.id, classId: defaultClass.id },
+  });
 
-    // Enroll pair in default class
-    await prisma.classEnrollment.upsert({
-      where: { pairId_classId: { pairId: pair.id, classId: defaultClass.id } },
-      update: {},
-      create: { pairId: pair.id, classId: defaultClass.id },
-    });
+  // ─── Clean up old test pairs (CA-2 through CA-5) ───
+  for (const oldDesignation of ['CA-2', 'CA-3', 'CA-4', 'CA-5']) {
+    const oldPair = await prisma.pair.findUnique({ where: { designation: oldDesignation } });
+    if (oldPair) {
+      // Remove all associated data
+      await prisma.missionScore.deleteMany({ where: { pairId: oldPair.id } });
+      await prisma.shiftResult.deleteMany({ where: { pairId: oldPair.id } });
+      await prisma.characterMessage.deleteMany({ where: { pairId: oldPair.id } });
+      await prisma.narrativeChoice.deleteMany({ where: { pairId: oldPair.id } });
+      await prisma.pairDictionaryProgress.deleteMany({ where: { pairId: oldPair.id } });
+      await prisma.pearlConversation.deleteMany({ where: { pairId: oldPair.id } });
+      await prisma.harmonyPost.deleteMany({ where: { pairId: oldPair.id } });
+      await prisma.recording.deleteMany({ where: { pairId: oldPair.id } });
+      await prisma.classEnrollment.deleteMany({ where: { pairId: oldPair.id } });
+      await prisma.citizen4488Interaction.deleteMany({ where: { pairId: oldPair.id } });
+      await prisma.pair.delete({ where: { id: oldPair.id } });
+      console.log(`  Removed old test pair: ${oldDesignation}`);
+    }
   }
 
   // ─── Arcs (3 Acts) ───
