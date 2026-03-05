@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { authenticate, requirePair, getPairId } from '../middleware/auth';
 import prisma from '../utils/prisma';
 import { getOpenAI, OPENAI_MODEL } from '../utils/openai';
+import { matchesTargetWord } from '../utils/stemmer';
 
 const router = Router();
 router.use(authenticate);
@@ -62,17 +63,9 @@ router.post('/evaluate', requirePair, async (req: Request, res: Response) => {
       return;
     }
 
-    // Vocab usage check — accepts inflected forms (arrive → arrived, arriving, etc.)
-    const contentLower = content.toLowerCase();
-    const INFLECTION_SUFFIXES = '(?:s|es|ed|d|ing|ment|ments|tion|tions|ness|ly|er|ers|ure|ures)?';
-    const vocabUsed = targetVocab.filter((v) => {
-      const escaped = v.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      return new RegExp(`\\b${escaped}${INFLECTION_SUFFIXES}\\b`, 'i').test(contentLower);
-    });
-    const vocabMissed = targetVocab.filter((v) => {
-      const escaped = v.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      return !new RegExp(`\\b${escaped}${INFLECTION_SUFFIXES}\\b`, 'i').test(contentLower);
-    });
+    // Vocab usage check via Porter stemming — "arrived" counts as "arrive", etc.
+    const vocabUsed = targetVocab.filter((v) => matchesTargetWord(content, v));
+    const vocabMissed = targetVocab.filter((v) => !matchesTargetWord(content, v));
 
     const minVocabRequired = Math.max(1, Math.floor(targetVocab.length * 0.3));
     if (targetVocab.length > 0 && vocabUsed.length < minVocabRequired) {
