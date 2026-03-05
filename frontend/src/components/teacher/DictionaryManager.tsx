@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchDictionary, updateTeacherDictionaryWord } from '../../api/dictionary';
 import type { DictionaryWord, WordStatus } from '../../types/dictionary';
-import client from '../../api/client';
 
 const STATUS_OPTIONS: WordStatus[] = ['approved', 'monitored', 'grey', 'proscribed', 'recovered'];
 const TOEIC_OPTIONS = ['business', 'communication', 'office', 'personnel', 'procedures'];
@@ -12,9 +11,6 @@ export default function DictionaryManager() {
   const [searchQuery, setSearchQuery] = useState('');
   const [weekFilter, setWeekFilter] = useState<number | 'all'>('all');
   const [saveStatus, setSaveStatus] = useState<Record<string, string>>({});
-  const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [videoUploading, setVideoUploading] = useState(false);
-  const [videoUploadStatus, setVideoUploadStatus] = useState('');
 
   useEffect(() => {
     loadWords();
@@ -41,24 +37,6 @@ export default function DictionaryManager() {
     }
   }, []);
 
-  const handleWelcomeVideoUpload = async () => {
-    if (!videoFile) return;
-    setVideoUploading(true);
-    setVideoUploadStatus('');
-    try {
-      const formData = new FormData();
-      formData.append('video', videoFile);
-      await client.post('/dictionary/welcome-video', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      setVideoUploadStatus('Uploaded successfully');
-      setVideoFile(null);
-    } catch {
-      setVideoUploadStatus('Upload failed');
-    }
-    setVideoUploading(false);
-  };
-
   const filteredWords = words.filter((w) => {
     if (weekFilter !== 'all' && w.weekIntroduced !== weekFilter) return false;
     if (searchQuery.trim()) {
@@ -76,34 +54,6 @@ export default function DictionaryManager() {
 
   return (
     <div className="space-y-6">
-      {/* Welcome Video Upload */}
-      <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
-        <h3 className="text-sm font-semibold text-slate-200 mb-3">Welcome Video</h3>
-        <p className="text-xs text-slate-400 mb-3">
-          Upload a welcome video that new students will see on their first login.
-        </p>
-        <div className="flex items-center gap-3">
-          <input
-            type="file"
-            accept="video/mp4,video/webm,video/quicktime"
-            onChange={(e) => setVideoFile(e.target.files?.[0] ?? null)}
-            className="text-xs text-slate-300"
-          />
-          <button
-            onClick={handleWelcomeVideoUpload}
-            disabled={!videoFile || videoUploading}
-            className="px-3 py-1.5 text-xs font-medium bg-indigo-600 text-white rounded hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {videoUploading ? 'Uploading...' : 'Upload'}
-          </button>
-          {videoUploadStatus && (
-            <span className={`text-xs ${videoUploadStatus.includes('fail') ? 'text-red-400' : 'text-emerald-400'}`}>
-              {videoUploadStatus}
-            </span>
-          )}
-        </div>
-      </div>
-
       {/* Filters */}
       <div className="flex items-center gap-3">
         <input
