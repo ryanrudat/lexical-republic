@@ -1,6 +1,6 @@
 # The Lexical Republic — Project Memory
 
-Last updated: 2026-03-01
+Last updated: 2026-03-05
 
 ## Vision
 The Lexical Republic is a dystopian ESL learning game where Taiwanese Grade 10 students (A2-B1) learn English through 18 weekly "Shifts" inside an authoritarian language-control world.
@@ -24,7 +24,44 @@ Story and learning are coupled: grammar, listening, speaking, and writing tasks 
 - Students are guided (not free-roam) in the current phase.
 - Students see a simple home desktop before entering the guided shift.
 
-### Shift Runner (implemented)
+### ShiftQueue System (implemented — Weeks 1-3)
+Config-driven task queue replaces the 7-step PhaseRunner for Weeks 1-3. Each week has 4 tasks driven by static `WeekConfig` TypeScript files on backend.
+
+**Architecture:**
+- Backend: `backend/src/data/week-configs/week1.ts`, `week2.ts`, `week3.ts` — static config files served via `GET /api/shifts/weeks/:weekId/config`
+- Frontend: `ShiftQueue.tsx` container renders tasks via `TASK_REGISTRY` lookup (extensible — new task types register without touching ShiftQueue)
+- Branching: `ClarityQueueApp.tsx` checks `weekConfig?.shiftType === 'queue'` before falling through to PhaseRunner
+- Stores: `shiftQueueStore` (task progress, concern delta), `messagingStore` (character messages, notifications)
+
+**Task types implemented:**
+- `intake_form` — Multi-card: personal info fields, writing with target word chips, fill-in-the-blank acknowledgment
+- `vocab_clearance` — 10 MCQ items per week (definition, TOEIC Part 5, context reading)
+- `document_review` — Queue of 3 documents: approve, error correction (tap-to-fix grammar), comprehension MCQ
+- `contradiction_report` — Side-by-side memo comparison, difference classification, writing report
+- `shift_report` — Lane-scaffolded writing with target word highlighting and 3-attempt evaluator
+
+**Shared components:**
+- `TargetWordHighlighter` — Textarea with target word status chips (green checkmark when used), DSEG7 word counter
+- `WritingEvaluator` — 3-attempt system: full eval → relaxed threshold → auto-pass. Calls `POST /api/submissions/evaluate`
+- `TaskCard` — Wraps tasks with stamp animation (idle → completing → stamped)
+
+**Character messaging system:**
+- `MessagingPanel` — Slides from right, threaded message view with canned reply options
+- `MessageNotification` — Toast (stays until student clicks body to open or X to dismiss)
+- Messages triggered by `task_start`, `task_complete`, `shift_start` events from WeekConfig
+- Dedup: module-level `inFlightKeys` Set + backend `$transaction` atomic create + GET response dedup
+- Characters: Betty (WA-14), Ivan (CA-22), M.K. (silent reply pattern), Chad (CA-31)
+
+**Writing evaluation:**
+- Frontend sends `content` (not `text`), `phaseId`, `activityType`, with `grammarTarget`/`targetVocab`/`lane` in `metadata`
+- Backend: `POST /api/submissions/evaluate` — Layer 1 auto-checks (word count, vocab usage) + Layer 2 AI rubric (OpenAI, fail-open)
+- Attempt counter only increments on non-pass results
+
+**Dictionary word gating:**
+- Words gated by student progress (MissionScore/ShiftResult), not ClassWeekUnlock
+- Students see words for completed weeks + current week, always accessible once unlocked
+
+### Shift Runner (implemented — Weeks 4+)
 Each shift uses a fixed 7-step sequence:
 1. `recap`
 2. `briefing`
@@ -188,7 +225,7 @@ In a 50-minute class, required activities must stay lean:
 - Express 5 + TypeScript
 - Prisma + PostgreSQL
 - Auth via JWT in HTTP-only cookies + Bearer token fallback (Safari ITP)
-- Major route groups: `/api/auth`, `/api/shifts`, `/api/recordings`, `/api/pearl`, `/api/harmony`, `/api/teacher`, `/api/vocabulary`, `/api/ai`, `/api/classes`, `/api/dictionary`, `/api/sessions`, `/api/submissions`
+- Major route groups: `/api/auth`, `/api/shifts`, `/api/recordings`, `/api/pearl`, `/api/harmony`, `/api/teacher`, `/api/vocabulary`, `/api/ai`, `/api/classes`, `/api/dictionary`, `/api/sessions`, `/api/submissions`, `/api/messages`
 - Socket.IO for real-time teacher dashboard (student activity tracking, briefing stage broadcasts). Student socket connects on login (App.tsx), not just on shift entry. Socket auth supports both cookie and `auth.token` Bearer fallback.
 - AI services (fail-open): OpenAI direct API (GPT-4.1-mini default) for grammar checking and PEARL contextual barks, Azure Whisper for transcription
 - Shared OpenAI client: `backend/src/utils/openai.ts` — lazy-init singleton, exports `getOpenAI()` and `OPENAI_MODEL`
@@ -208,7 +245,7 @@ In a 50-minute class, required activities must stay lean:
 - **FrostedGlassPlayer**: `frontend/src/components/shift/media/FrostedGlassPlayer.tsx` — dark glass video player with cyan tint, frosted title/controls bars, seek bar, loading spinner, error state with retry button.
 
 ### Data model (Prisma)
-Primary models: `User`, `Arc`, `Week`, `Mission`, `MissionScore`, `Recording`, `Vocabulary` (deprecated), `StudentVocabulary` (deprecated), `HarmonyPost`, `PearlMessage`, `Class`, `ClassEnrollment`, `ClassWeekUnlock`, `Character`, `DialogueNode`, `PearlConversation`, `NarrativeChoice`, `TeacherConfig`, `DictionaryWord`, `WordFamily`, `WordStatusEvent`, `PairDictionaryProgress`, `Pair`, `SessionConfig`
+Primary models: `User`, `Arc`, `Week`, `Mission`, `MissionScore`, `Recording`, `Vocabulary` (deprecated), `StudentVocabulary` (deprecated), `HarmonyPost`, `PearlMessage`, `Class`, `ClassEnrollment`, `ClassWeekUnlock`, `Character`, `DialogueNode`, `PearlConversation`, `NarrativeChoice`, `TeacherConfig`, `DictionaryWord`, `WordFamily`, `WordStatusEvent`, `PairDictionaryProgress`, `Pair`, `SessionConfig`, `CharacterMessage`, `Citizen4488Interaction`, `ShiftResult`
 
 Dictionary-specific fields added:
 - `DictionaryWord.translationZhTw` — Traditional Chinese translation (nullable)
@@ -374,19 +411,25 @@ External canon source: `/Users/ryanrudat/Desktop/Dplan/`
 - **ALL OfficeView overlays** must use image-space percentages + `imageToViewport()` — never fixed viewport CSS percentages.
 
 ## Known Gaps / Next Work
-1. Convert approved Week 1-3 scripts + media map into `backend/prisma/seed.ts` mission configs.
+1. ~~Convert approved Week 1-3 scripts + media map into mission configs~~ — DONE: ShiftQueue with WeekConfig files for Weeks 1-3.
 2. Write Weeks 4-6 full script packs using fixed media timeline.
 3. Define per-week vocabulary ladders (known vs new words) for all 18 shifts.
 4. Add teacher-facing per-week video checklist (Clip A/B upload status and sequence readiness).
 5. ~~Persistent media storage~~ — DONE: Railway volume mounted at `/data/uploads`.
-6. Full scripted dialogue pass for all character beats (especially Weeks 2-18).
+6. Full scripted dialogue pass for all character beats (especially Weeks 4-18).
 7. Harmony moderation gameplay depth (basic feed exists; richer decision loops can expand).
 8. ~~Large OfficeView bundle warning~~ — DONE: office-bg.png → JPEG (6.6 MB → 892 KB), video preload deferred.
 9. ~~Rank progression~~ — DONE: Lexical rank system in dictionary (Trainee → Director). Dplan color palette alignment, end-to-end testing still pending.
 10. Custom domain setup for student-friendly URLs (optional).
 11. Expand dictionary seed data beyond Weeks 1-3 (currently 49 words, target ~120+ across 18 weeks).
+12. Week 3 task components: `PriorityBriefing` and `PrioritySort` (with @dnd-kit drag-and-drop) — planned but not yet implemented.
+13. ShiftClosing component — stats grid, clearance upgrade animation, narrative hook card, Harmony access button.
+14. Concern score wiring — delta tracking per task, PATCH to Pair.concernScore at shift close.
+15. Lane adjustment system — auto-promote/demote evaluation after each shift (deferred to Phase B).
 
 ## Change Log
+- 2026-03-05: ShiftQueue bug fixes — fixed duplicate character messages (sequenced loadMessages before triggers, inFlightKeys dedup, backend $transaction atomic create, GET response dedup), toast notification stays until student clicks (X dismiss or body opens panel), WritingEvaluator sends correct field names to backend (`content` not `text`, grammarTarget/targetVocab in `metadata`), attempt counter only increments on non-pass results, DSEG7 font only on numbers (not "words" label), acknowledgment card reads config's `blanks[0].text`/`blanks[0].answers` format, intake form readonly fields match config `type: "readonly"` format, target word highlighting replaced broken mirror-div overlay with status chips below textarea, dictionary words gated by student progress (MissionScore/ShiftResult) not ClassWeekUnlock.
+- 2026-03-04: ShiftQueue system built — config-driven task queue for Weeks 1-3 with 5 task types (IntakeForm, VocabClearance, DocumentReview, ContradictionReport, ShiftReport), character messaging system (MessagingPanel, MessageNotification, MessageBadge), WritingEvaluator with 3-attempt system, TargetWordHighlighter, TaskCard stamp animations, ShiftClosing placeholder. Backend: WeekConfig type system, week1-3 config files, messages API (CRUD + dedup), Prisma schema (CharacterMessage, Citizen4488Interaction, ShiftResult models + Pair fields). Frontend: shiftQueueStore, messagingStore, ClarityQueueApp branching.
 - 2026-03-01: Fix shift progression saving — PhaseRunner now marks `clock_out` mission as complete (was never persisted, blocking Duty Roster unlock). Added "Return to Office" button to both PhaseRunner and ClockOutStep shift-complete screens. Season data refreshed after clock-out so next shift unlocks immediately.
 - 2026-03-01: Documentation audit and cleanup — fixed "Lexicon Republic" → "Lexical Republic" in World_Canon.md, deleted stale Render_Deployment_Checklist.md, added missing `/api/sessions` + `/api/submissions` routes and `SessionConfig` + `WordStatusEvent` models to CLAUDE.md, marked deprecated Prisma models, fixed duty-roster guided-mode docs, updated frontend README.md, fixed duplicate "override" in vocab list, deleted stale worktree, trimmed MEMORY.md from 210→80 lines.
 - 2026-02-26: Party Lexical Dictionary — full implementation: sidebar (terminal-only, slides from LEFT), 3 card variants (approved/proscribed/recovered), Chinese translations with DB-persisted reveal, starred words, merged filter tabs (ALL/WEEK/MASTERED/STARRED/FAMILY/TOEIC/PROSCRIBED), rank ribbon, gold mastery celebration, DictionaryIcon in terminal header, Lexicon tile on terminal desktop.
