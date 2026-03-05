@@ -62,14 +62,17 @@ router.post('/evaluate', requirePair, async (req: Request, res: Response) => {
       return;
     }
 
-    // Vocab usage check (case-insensitive string matching)
+    // Vocab usage check — accepts inflected forms (arrive → arrived, arriving, etc.)
     const contentLower = content.toLowerCase();
-    const vocabUsed = targetVocab.filter((v) =>
-      contentLower.includes(v.toLowerCase())
-    );
-    const vocabMissed = targetVocab.filter(
-      (v) => !contentLower.includes(v.toLowerCase())
-    );
+    const INFLECTION_SUFFIXES = '(?:s|es|ed|d|ing|ment|ments|tion|tions|ness|ly|er|ers|ure|ures)?';
+    const vocabUsed = targetVocab.filter((v) => {
+      const escaped = v.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return new RegExp(`\\b${escaped}${INFLECTION_SUFFIXES}\\b`, 'i').test(contentLower);
+    });
+    const vocabMissed = targetVocab.filter((v) => {
+      const escaped = v.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return !new RegExp(`\\b${escaped}${INFLECTION_SUFFIXES}\\b`, 'i').test(contentLower);
+    });
 
     const minVocabRequired = Math.max(1, Math.floor(targetVocab.length * 0.3));
     if (targetVocab.length > 0 && vocabUsed.length < minVocabRequired) {

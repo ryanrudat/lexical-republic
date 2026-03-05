@@ -21,14 +21,21 @@ export default function TargetWordHighlighter({
     return text.split(/\s+/).filter(Boolean).length;
   }, [text]);
 
-  // Track which target words have been used
+  // Track which target words have been used (accepts inflected forms:
+  // "arrive" matches "arrived", "arrives", "arriving", etc.)
   const wordStatus = useMemo(() => {
     if (!targetWords.length) return [];
     const lower = text.toLowerCase();
-    return targetWords.map(w => ({
-      word: w,
-      used: new RegExp('\\b' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(lower),
-    }));
+    return targetWords.map(w => {
+      const escaped = w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').toLowerCase();
+      // Match the base form at a word boundary, optionally followed by
+      // common English inflectional suffixes (s, es, ed, d, ing, ment, tion, etc.)
+      const pattern = new RegExp(
+        '\\b' + escaped + '(?:s|es|ed|d|ing|ment|ments|tion|tions|ness|ly|er|ers|ure|ures)?\\b',
+        'i'
+      );
+      return { word: w, used: pattern.test(lower) };
+    });
   }, [text, targetWords]);
 
   const matchedCount = wordStatus.filter(w => w.used).length;
