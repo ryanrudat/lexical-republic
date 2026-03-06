@@ -13,6 +13,7 @@ export default function DictionaryWordCard({ word, expanded, onToggle }: Props) 
   const [notes, setNotes] = useState(word.studentNotes);
   const [saveIndicator, setSaveIndicator] = useState<string | null>(null);
   const notesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevMasteredRef = useRef(false);
   const [pulseGold, setPulseGold] = useState(false);
 
   const masteryPercent = Math.round(word.mastery * 100);
@@ -38,13 +39,15 @@ export default function DictionaryWordCard({ word, expanded, onToggle }: Props) 
     };
   }, [notes, word.id, word.studentNotes, updateNotes, isRecovered]);
 
-  // Gold pulse on mastery
+  // Gold pulse on mastery — only fires on transition to mastered
   useEffect(() => {
-    if (isMastered) {
+    if (isMastered && !prevMasteredRef.current) {
       setPulseGold(true);
       const t = setTimeout(() => setPulseGold(false), 300);
+      prevMasteredRef.current = true;
       return () => clearTimeout(t);
     }
+    prevMasteredRef.current = isMastered;
   }, [isMastered]);
 
   // Border + accent color

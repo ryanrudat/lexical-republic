@@ -127,7 +127,7 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
 
   // ── Writing result handler ───────────────────────────────────
 
-  const handleWritingResult = useCallback((result: EvalResult, _attempt: number) => {
+  const handleWritingResult = useCallback((result: EvalResult) => {
     if (result.passed) {
       setWritingSubmissions(prev => ({ ...prev, [currentCard]: writingText }));
       setWritingPassed(true);

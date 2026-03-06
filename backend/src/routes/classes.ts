@@ -126,8 +126,9 @@ router.get('/', async (req: Request, res: Response) => {
 router.get('/:classId', async (req: Request, res: Response) => {
   try {
     const classId = req.params.classId as string;
+    const teacherId = req.user!.userId;
     const cls = await prisma.class.findUnique({
-      where: { id: classId },
+      where: { id: classId, teacherId },
       include: {
         enrollments: {
           include: {
@@ -212,7 +213,15 @@ router.get('/:classId', async (req: Request, res: Response) => {
 router.patch('/:classId', async (req: Request, res: Response) => {
   try {
     const classId = req.params.classId as string;
+    const teacherId = req.user!.userId;
     const { name, isActive } = req.body as { name?: string; isActive?: boolean };
+
+    // Verify ownership
+    const existing = await prisma.class.findUnique({ where: { id: classId } });
+    if (!existing || existing.teacherId !== teacherId) {
+      res.status(404).json({ error: 'Class not found' });
+      return;
+    }
 
     const updates: Record<string, unknown> = {};
     if (typeof name === 'string' && name.trim()) updates.name = name.trim();
@@ -244,6 +253,15 @@ router.patch('/:classId', async (req: Request, res: Response) => {
 router.post('/:classId/regenerate-code', async (req: Request, res: Response) => {
   try {
     const classId = req.params.classId as string;
+    const teacherId = req.user!.userId;
+
+    // Verify ownership
+    const existing = await prisma.class.findUnique({ where: { id: classId } });
+    if (!existing || existing.teacherId !== teacherId) {
+      res.status(404).json({ error: 'Class not found' });
+      return;
+    }
+
     const joinCode = await uniqueJoinCode();
 
     const cls = await prisma.class.update({
@@ -262,7 +280,15 @@ router.post('/:classId/regenerate-code', async (req: Request, res: Response) => 
 router.post('/:classId/unlock-week', async (req: Request, res: Response) => {
   try {
     const classId = req.params.classId as string;
+    const teacherId = req.user!.userId;
     const { weekId } = req.body as { weekId?: string };
+
+    // Verify ownership
+    const cls = await prisma.class.findUnique({ where: { id: classId } });
+    if (!cls || cls.teacherId !== teacherId) {
+      res.status(404).json({ error: 'Class not found' });
+      return;
+    }
 
     if (!weekId) {
       res.status(400).json({ error: 'weekId is required' });
@@ -297,7 +323,15 @@ router.post('/:classId/unlock-week', async (req: Request, res: Response) => {
 router.delete('/:classId/unlock-week/:weekId', async (req: Request, res: Response) => {
   try {
     const classId = req.params.classId as string;
+    const teacherId = req.user!.userId;
     const weekId = req.params.weekId as string;
+
+    // Verify ownership
+    const cls = await prisma.class.findUnique({ where: { id: classId } });
+    if (!cls || cls.teacherId !== teacherId) {
+      res.status(404).json({ error: 'Class not found' });
+      return;
+    }
 
     await prisma.classWeekUnlock.deleteMany({
       where: { classId, weekId },
@@ -314,6 +348,15 @@ router.delete('/:classId/unlock-week/:weekId', async (req: Request, res: Respons
 router.get('/:classId/unlocked-weeks', async (req: Request, res: Response) => {
   try {
     const classId = req.params.classId as string;
+    const teacherId = req.user!.userId;
+
+    // Verify ownership
+    const cls = await prisma.class.findUnique({ where: { id: classId } });
+    if (!cls || cls.teacherId !== teacherId) {
+      res.status(404).json({ error: 'Class not found' });
+      return;
+    }
+
     const unlocks = await prisma.classWeekUnlock.findMany({
       where: { classId },
       include: { week: { select: { id: true, weekNumber: true, title: true } } },

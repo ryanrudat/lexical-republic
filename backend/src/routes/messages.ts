@@ -113,6 +113,14 @@ router.patch('/:id/read', async (req: Request, res: Response) => {
       return;
     }
     const id = req.params.id as string;
+
+    // Verify message belongs to this pair
+    const existing = await prisma.characterMessage.findUnique({ where: { id } });
+    if (!existing || existing.pairId !== pairId) {
+      res.status(404).json({ error: 'Message not found' });
+      return;
+    }
+
     const message = await prisma.characterMessage.update({
       where: { id },
       data: { isRead: true },
@@ -136,6 +144,13 @@ router.patch('/:id/reply', async (req: Request, res: Response) => {
     const { reply } = req.body;
     if (!reply || typeof reply !== 'string') {
       res.status(400).json({ error: 'reply text required' });
+      return;
+    }
+
+    // Verify message belongs to this pair
+    const existing = await prisma.characterMessage.findUnique({ where: { id } });
+    if (!existing || existing.pairId !== pairId) {
+      res.status(404).json({ error: 'Message not found' });
       return;
     }
 

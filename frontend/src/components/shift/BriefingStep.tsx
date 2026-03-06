@@ -110,6 +110,14 @@ export default function BriefingStep() {
     ? clipBVideo
     : primaryVideo;
 
+  // Reset embed error when video source changes
+  const embedResetKey = `${activeVideo.src}:${nowShowingStage}`;
+  const prevEmbedKeyRef = useRef(embedResetKey);
+  if (prevEmbedKeyRef.current !== embedResetKey) {
+    prevEmbedKeyRef.current = embedResetKey;
+    if (embedFailed) setEmbedFailed(false);
+  }
+
   useEffect(() => {
     const details = (mission?.score?.details || null) as Record<string, unknown> | null;
     const status = typeof details?.status === 'string' ? details.status : '';
@@ -117,10 +125,6 @@ export default function BriefingStep() {
     setActivityAnswers(toNumberArray(details?.answers));
     setActivityScore(typeof details?.score === 'number' ? details.score : 0);
   }, [mission?.id, checks.length]);
-
-  useEffect(() => {
-    setEmbedFailed(false);
-  }, [activeVideo.src, nowShowingStage]);
 
   // Listen for real-time stage changes from teacher via WebSocket
   useEffect(() => {

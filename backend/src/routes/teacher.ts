@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { Router, Request, Response } from 'express';
-import { authenticate, requireRole } from '../middleware/auth';
+import { authenticate, requireRole, getTeacherId } from '../middleware/auth';
 import path from 'path';
 import { uploadVideo } from '../middleware/upload';
 import prisma from '../utils/prisma';
@@ -10,6 +10,51 @@ import { getWeekConfig } from '../data/week-configs';
 
 const router = Router();
 router.use(authenticate, requireRole('teacher'));
+
+// ── Ownership helpers ──────────────────────────────────────────────
+
+/** Returns class IDs owned by this teacher. */
+async function getTeacherClassIds(teacherId: string): Promise<string[]> {
+  const classes = await prisma.class.findMany({
+    where: { teacherId },
+    select: { id: true },
+  });
+  return classes.map(c => c.id);
+}
+
+/** Returns true if the pair belongs to one of the teacher's classes. */
+async function teacherOwnsPair(teacherId: string, pairId: string): Promise<boolean> {
+  const classIds = await getTeacherClassIds(teacherId);
+  if (classIds.length === 0) return false;
+  const enrollment = await prisma.classEnrollment.findFirst({
+    where: { pairId, classId: { in: classIds } },
+  });
+  return !!enrollment;
+}
+
+/** Returns true if the MissionScore belongs to a student in teacher's classes. */
+async function teacherOwnsScore(teacherId: string, scoreId: string): Promise<boolean> {
+  const score = await prisma.missionScore.findUnique({
+    where: { id: scoreId },
+    select: { pairId: true, userId: true },
+  });
+  if (!score) return false;
+  const classIds = await getTeacherClassIds(teacherId);
+  if (classIds.length === 0) return false;
+  if (score.pairId) {
+    const enrollment = await prisma.classEnrollment.findFirst({
+      where: { pairId: score.pairId, classId: { in: classIds } },
+    });
+    return !!enrollment;
+  }
+  if (score.userId) {
+    const enrollment = await prisma.classEnrollment.findFirst({
+      where: { userId: score.userId, classId: { in: classIds } },
+    });
+    return !!enrollment;
+  }
+  return false;
+}
 const UPLOAD_DIR = process.env.UPLOAD_DIR || 'uploads';
 const BRIEFING_UPLOAD_DIR = process.env.BRIEFING_UPLOAD_DIR || path.join(UPLOAD_DIR, 'briefings');
 // URL prefix for stored video paths — always relative, served by express.static('/uploads')
@@ -22,14 +67,24 @@ const VIDEO_SLOT_FIELDS: Record<VideoSlot, { urlKey: string; filenameKey: string
   clipB: { urlKey: 'clipBUploadedVideoUrl', filenameKey: 'clipBUploadedVideoFilename' },
 };
 
-// GET /api/teacher/students — All students (pairs + legacy users) with progress summary
+// GET /api/teacher/students — Students in teacher's classes only
 router.get('/students', async (req: Request, res: Response) => {
   try {
-    const classId = typeof req.query.classId === 'string' ? req.query.classId : undefined;
+    const teacherId = getTeacherId(req)!;
+    const classIds = await getTeacherClassIds(teacherId);
+    const requestedClassId = typeof req.query.classId === 'string' ? req.query.classId : undefined;
 
-    // Fetch pairs (new system)
+    // If a specific classId is requested, verify teacher owns it
+    if (requestedClassId && !classIds.includes(requestedClassId)) {
+      res.status(403).json({ error: 'Not your class' });
+      return;
+    }
+
+    const filterClassIds = requestedClassId ? [requestedClassId] : classIds;
+
+    // Fetch pairs (new system) — scoped to teacher's classes
     const pairs = await prisma.pair.findMany({
-      where: classId ? { enrollments: { some: { classId } } } : {},
+      where: { enrollments: { some: { classId: { in: filterClassIds } } } },
       include: {
         missionScores: {
           include: {
@@ -72,11 +127,11 @@ router.get('/students', async (req: Request, res: Response) => {
       };
     });
 
-    // Also fetch legacy User-based students
+    // Also fetch legacy User-based students — scoped to teacher's classes
     const legacyStudents = await prisma.user.findMany({
       where: {
         role: 'student',
-        ...(classId ? { enrollments: { some: { classId } } } : {}),
+        enrollments: { some: { classId: { in: filterClassIds } } },
       },
       include: {
         missionScores: {
@@ -380,7 +435,21 @@ router.patch('/weeks/:weekId/briefing', async (req: Request, res: Response) => {
 // GET /api/teacher/students/:id — Single student detail (pair or legacy user)
 router.get('/students/:id', async (req: Request, res: Response) => {
   try {
+    const teacherId = getTeacherId(req)!;
     const studentId = req.params.id as string;
+
+    // Verify this student belongs to one of the teacher's classes
+    const classIds = await getTeacherClassIds(teacherId);
+    const enrollment = await prisma.classEnrollment.findFirst({
+      where: {
+        classId: { in: classIds },
+        OR: [{ pairId: studentId }, { userId: studentId }],
+      },
+    });
+    if (!enrollment) {
+      res.status(404).json({ error: 'Student not found' });
+      return;
+    }
 
     // Try Pair first
     const pair = await prisma.pair.findUnique({
@@ -491,14 +560,23 @@ router.get('/online-students', (req: Request, res: Response) => {
   res.json({ students });
 });
 
-// GET /api/teacher/gradebook — All students (pairs + legacy) + all mission scores
+// GET /api/teacher/gradebook — Students in teacher's classes + mission scores
 router.get('/gradebook', async (req: Request, res: Response) => {
   try {
-    const classId = typeof req.query.classId === 'string' ? req.query.classId : undefined;
+    const teacherId = getTeacherId(req)!;
+    const classIds = await getTeacherClassIds(teacherId);
+    const requestedClassId = typeof req.query.classId === 'string' ? req.query.classId : undefined;
 
-    // Pairs
+    if (requestedClassId && !classIds.includes(requestedClassId)) {
+      res.status(403).json({ error: 'Not your class' });
+      return;
+    }
+
+    const filterClassIds = requestedClassId ? [requestedClassId] : classIds;
+
+    // Pairs — scoped to teacher's classes
     const pairs = await prisma.pair.findMany({
-      where: classId ? { enrollments: { some: { classId } } } : {},
+      where: { enrollments: { some: { classId: { in: filterClassIds } } } },
       select: {
         id: true,
         designation: true,
@@ -531,11 +609,11 @@ router.get('/gradebook', async (req: Request, res: Response) => {
       isPair: true,
     }));
 
-    // Legacy users
+    // Legacy users — scoped to teacher's classes
     const legacyStudents = await prisma.user.findMany({
       where: {
         role: 'student',
-        ...(classId ? { enrollments: { some: { classId } } } : {}),
+        enrollments: { some: { classId: { in: filterClassIds } } },
       },
       select: {
         id: true,
@@ -599,7 +677,14 @@ router.get('/gradebook', async (req: Request, res: Response) => {
 // PATCH /api/teacher/scores/:scoreId — Edit a MissionScore
 router.patch('/scores/:scoreId', async (req: Request, res: Response) => {
   try {
+    const teacherId = getTeacherId(req)!;
     const scoreId = req.params.scoreId as string;
+
+    if (!(await teacherOwnsScore(teacherId, scoreId))) {
+      res.status(404).json({ error: 'Score not found' });
+      return;
+    }
+
     const { score, details } = req.body;
     const updateData: Record<string, unknown> = {};
     if (typeof score === 'number') updateData.score = score;
@@ -619,12 +704,14 @@ router.patch('/scores/:scoreId', async (req: Request, res: Response) => {
 // DELETE /api/teacher/scores/:scoreId — Delete a MissionScore (reset single task)
 router.delete('/scores/:scoreId', async (req: Request, res: Response) => {
   try {
+    const teacherId = getTeacherId(req)!;
     const scoreId = req.params.scoreId as string;
-    const existing = await prisma.missionScore.findUnique({ where: { id: scoreId } });
-    if (!existing) {
+
+    if (!(await teacherOwnsScore(teacherId, scoreId))) {
       res.status(404).json({ error: 'Score not found' });
       return;
     }
+
     await prisma.missionScore.delete({ where: { id: scoreId } });
     res.json({ success: true });
   } catch (err) {
@@ -636,8 +723,14 @@ router.delete('/scores/:scoreId', async (req: Request, res: Response) => {
 // DELETE /api/teacher/students/:pairId/weeks/:weekId/progress — Reset all progress for a week
 router.delete('/students/:pairId/weeks/:weekId/progress', async (req: Request, res: Response) => {
   try {
+    const teacherId = getTeacherId(req)!;
     const pairId = req.params.pairId as string;
     const weekId = req.params.weekId as string;
+
+    if (!(await teacherOwnsPair(teacherId, pairId))) {
+      res.status(404).json({ error: 'Pair not found' });
+      return;
+    }
 
     const pair = await prisma.pair.findUnique({ where: { id: pairId } });
     if (!pair) {
@@ -682,14 +775,14 @@ router.delete('/students/:pairId/weeks/:weekId/progress', async (req: Request, r
 // PATCH /api/teacher/students/:pairId/concern — Override concern score
 router.patch('/students/:pairId/concern', async (req: Request, res: Response) => {
   try {
+    const teacherId = getTeacherId(req)!;
     const pairId = req.params.pairId as string;
     const { concernScore } = req.body;
     if (typeof concernScore !== 'number') {
       res.status(400).json({ error: 'concernScore (number) required' });
       return;
     }
-    const existing = await prisma.pair.findUnique({ where: { id: pairId } });
-    if (!existing) {
+    if (!(await teacherOwnsPair(teacherId, pairId))) {
       res.status(404).json({ error: 'Pair not found' });
       return;
     }

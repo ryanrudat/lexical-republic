@@ -40,16 +40,26 @@ export function verifyToken(token: string): DecodedPayload {
 
 // Type guards
 export function isTeacherPayload(p: DecodedPayload): p is TeacherPayload {
-  return ('type' in p && p.type === 'teacher') || (!('type' in p) && (p as LegacyPayload).role === 'teacher');
+  return 'type' in p && p.type === 'teacher' && (p as TeacherPayload).role === 'teacher';
 }
 
 export function isPairPayload(p: DecodedPayload): p is PairPayload {
   return 'type' in p && p.type === 'pair';
 }
 
-// Normalize legacy tokens to TeacherPayload
-export function normalizePayload(p: DecodedPayload): JwtPayload {
+/** Returns true for legacy User-table student tokens (no `type` field, role=student). */
+export function isLegacyStudentPayload(p: DecodedPayload): p is LegacyPayload {
+  return !('type' in p) && (p as LegacyPayload).role === 'student';
+}
+
+// Normalize decoded tokens — legacy tokens without `type` are REJECTED (not elevated)
+export function normalizePayload(p: DecodedPayload): JwtPayload | null {
   if ('type' in p) return p as JwtPayload;
-  // Legacy token without type — treat as teacher
-  return { type: 'teacher', userId: (p as LegacyPayload).userId, role: 'teacher' };
+  // Legacy token without type field — check role explicitly
+  const legacy = p as LegacyPayload;
+  if (legacy.role === 'teacher') {
+    return { type: 'teacher', userId: legacy.userId, role: 'teacher' };
+  }
+  // Legacy student tokens are NOT converted to teacher — return null (rejected)
+  return null;
 }

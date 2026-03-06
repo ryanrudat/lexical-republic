@@ -54,12 +54,10 @@ export default function DictionarySidebar() {
     }
   }, [isOpen]);
 
-  // Auto-expand selected word
-  useEffect(() => {
-    if (selectedWordId) {
-      setExpandedWordId(selectedWordId);
-    }
-  }, [selectedWordId]);
+  // Auto-expand selected word — derive from prop, not effect
+  if (selectedWordId && expandedWordId !== selectedWordId) {
+    setExpandedWordId(selectedWordId);
+  }
 
   // Available weeks from words
   const availableWeeks = useMemo(() => {

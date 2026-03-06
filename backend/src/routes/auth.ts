@@ -129,7 +129,7 @@ router.post('/login', async (req: Request, res: Response) => {
 
       // Fallback: try legacy User table for backward compat
       const user = await prisma.user.findUnique({ where: { designation: normalised } });
-      if (!user || !user.pin) {
+      if (!user || !user.pin || user.role !== 'student') {
         res.status(401).json({ error: 'Invalid designation or PIN' });
         return;
       }
@@ -144,25 +144,55 @@ router.post('/login', async (req: Request, res: Response) => {
         data: { lastLoginAt: new Date() },
       });
 
-      // Legacy student still gets old-style token for backward compat
+      // Auto-migrate legacy student to Pair model
       const enrollment = await prisma.classEnrollment.findFirst({
         where: { userId: user.id },
         include: { class: { select: { id: true, name: true } } },
       });
 
-      const token = signToken({ type: 'teacher', userId: user.id, role: 'student' as any });
+      // Create a Pair record from the legacy User, then issue a proper pair token
+      const legacyDesignation = user.designation || normalised;
+      let migratedPair = await prisma.pair.findUnique({ where: { designation: legacyDesignation } });
+      if (!migratedPair) {
+        migratedPair = await prisma.pair.create({
+          data: {
+            designation: legacyDesignation,
+            pin: user.pin!, // already hashed — validated non-null above
+            studentAName: user.displayName || `Citizen ${user.designation}`,
+            lane: user.lane,
+            xp: user.xp,
+            lastLoginAt: new Date(),
+          },
+        });
+        // Migrate enrollment if exists
+        if (enrollment) {
+          await prisma.classEnrollment.create({
+            data: { pairId: migratedPair.id, classId: enrollment.classId },
+          });
+        }
+      }
+
+      const token = signToken({
+        type: 'pair',
+        pairId: migratedPair.id,
+        designation: migratedPair.designation,
+        classId: enrollment?.class.id ?? '',
+        lane: migratedPair.lane,
+      });
       setCookie(res, token);
 
       res.json({
         token,
         user: {
-          id: user.id,
-          displayName: user.displayName,
-          designation: user.designation,
-          role: user.role,
-          lane: user.lane,
-          xp: user.xp,
-          streak: user.streak,
+          id: migratedPair.id,
+          pairId: migratedPair.id,
+          displayName: migratedPair.studentAName,
+          designation: migratedPair.designation,
+          role: 'student',
+          lane: migratedPair.lane,
+          xp: migratedPair.xp,
+          concernScore: migratedPair.concernScore,
+          hasWatchedWelcome: migratedPair.hasWatchedWelcome,
           classId: enrollment?.class.id ?? null,
           className: enrollment?.class.name ?? null,
         },
@@ -324,28 +354,18 @@ router.get('/me', authenticate, async (req: Request, res: Response) => {
         return;
       }
 
-      if (user.role === 'teacher') {
-        const classes = await prisma.class.findMany({
-          where: { teacherId: user.id },
-          select: { id: true, name: true, joinCode: true },
-          orderBy: { createdAt: 'asc' },
-        });
-        res.json({ token: existingToken, user: { ...user, classes } });
-      } else {
-        // Legacy student user
-        const enrollment = await prisma.classEnrollment.findFirst({
-          where: { userId: user.id },
-          include: { class: { select: { id: true, name: true } } },
-        });
-        res.json({
-          token: existingToken,
-          user: {
-            ...user,
-            classId: enrollment?.class.id ?? null,
-            className: enrollment?.class.name ?? null,
-          },
-        });
+      // Only actual teachers should have teacher tokens
+      if (user.role !== 'teacher') {
+        res.status(401).json({ error: 'Session expired — please log in again' });
+        return;
       }
+
+      const classes = await prisma.class.findMany({
+        where: { teacherId: user.id },
+        select: { id: true, name: true, joinCode: true },
+        orderBy: { createdAt: 'asc' },
+      });
+      res.json({ token: existingToken, user: { ...user, classes } });
     } else if (isPairPayload(auth)) {
       const pair = await prisma.pair.findUnique({
         where: { id: auth.pairId },

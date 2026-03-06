@@ -1,11 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { VideoTexture, SRGBColorSpace, LinearFilter } from 'three';
 
 /** Large propaganda video screen mounted on the back wall of the dome */
 export default function BackWallScreen() {
   const [videoTexture, setVideoTexture] = useState<VideoTexture | null>(null);
+  const initRef = useRef(false);
 
   useEffect(() => {
+    if (initRef.current) return;
+    initRef.current = true;
+
     const video = document.createElement('video');
     video.src = '/video/office-backdrop.mp4';
     video.crossOrigin = 'anonymous';

@@ -13,18 +13,17 @@ export default function DictionaryManager() {
   const [saveStatus, setSaveStatus] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    loadWords();
-  }, []);
-
-  const loadWords = async () => {
-    try {
-      const { words: w } = await fetchDictionary();
-      setWords(w);
-    } catch {
-      // ignore
+    async function load() {
+      try {
+        const { words: w } = await fetchDictionary();
+        setWords(w);
+      } catch {
+        // ignore
+      }
+      setLoading(false);
     }
-    setLoading(false);
-  };
+    load();
+  }, []);
 
   const handleCellSave = useCallback(async (wordId: string, field: string, value: unknown) => {
     setSaveStatus((s) => ({ ...s, [wordId]: 'saving...' }));

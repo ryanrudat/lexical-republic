@@ -89,7 +89,7 @@ export default function PriorityBriefing({ config, weekConfig, onComplete }: Tas
 
   // ── Writing result handler ─────────────────────────────────────
 
-  const handleWritingResult = useCallback((result: EvalResult, _attempt: number) => {
+  const handleWritingResult = useCallback((result: EvalResult) => {
     if (result.passed) {
       setWritingSubmissions(prev => ({ ...prev, [currentCard]: writingText }));
       setWritingPassed(true);

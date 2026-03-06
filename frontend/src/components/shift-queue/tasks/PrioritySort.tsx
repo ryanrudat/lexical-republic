@@ -113,7 +113,7 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
   const justifyCases = cases.filter(c => !disappearedCases.has(c.caseId));
   const currentJustifyCase = justifyCases[currentJustifyIdx];
 
-  const handleWritingResult = useCallback((result: EvalResult, _attempt: number) => {
+  const handleWritingResult = useCallback((result: EvalResult) => {
     if (result.passed) {
       setWritingPassed(true);
     } else if (!result.isDegraded) {

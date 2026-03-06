@@ -32,7 +32,6 @@ export function porterStem(w: string): string {
   if (w.length < 3) return w;
 
   let stem = w.toLowerCase();
-  let suffix: string;
   let re: RegExp;
   let re2: RegExp;
 
@@ -85,7 +84,7 @@ export function porterStem(w: string): string {
   } else if (re2.test(stem)) {
     const fp = re2.exec(stem)!;
     stem = fp[1] + fp[2];
-    if (mgr1.test(stem)) stem = stem; // keep it
+    // mgr1 check: keep stem as-is if m > 1 (already set above)
   }
 
   // Step 5a

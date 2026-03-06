@@ -90,7 +90,7 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
 
   // ── Writing phase handlers ────────────────────────────────────
 
-  const handleWritingResult = useCallback((result: EvalResult, _attempt: number) => {
+  const handleWritingResult = useCallback((result: EvalResult) => {
     if (result.passed) {
       setWritingPassed(true);
     } else if (!result.isDegraded) {
@@ -117,7 +117,7 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
 
   function renderMemo(memo: MemoConfig, label: string, highlightedDiffIds: Set<string>, side: 'A' | 'B') {
     // Build body with diff highlights
-    let bodyText = memo.body;
+    const bodyText = memo.body;
     const bodySegments: { text: string; diffId: string | null; isHighlighted: boolean }[] = [];
 
     // Find diff zones that apply to this side

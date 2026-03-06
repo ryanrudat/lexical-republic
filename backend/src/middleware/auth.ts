@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken, normalizePayload, isTeacherPayload, isPairPayload } from '../utils/jwt';
+import { verifyToken, normalizePayload, isTeacherPayload, isPairPayload, isLegacyStudentPayload } from '../utils/jwt';
 import type { JwtPayload, TeacherPayload, PairPayload } from '../utils/jwt';
 
 declare global {
@@ -24,7 +24,18 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
 
   try {
     const raw = verifyToken(token);
+
+    // Reject legacy student tokens — they must re-login to get a proper pair token
+    if (isLegacyStudentPayload(raw)) {
+      res.status(401).json({ error: 'Session expired — please log in again' });
+      return;
+    }
+
     const payload = normalizePayload(raw);
+    if (!payload) {
+      res.status(401).json({ error: 'Invalid token format' });
+      return;
+    }
     req.auth = payload;
 
     // Backward compat: populate req.user so existing route code doesn't break

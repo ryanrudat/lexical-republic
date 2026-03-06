@@ -23,7 +23,13 @@ export interface StudentStatus {
   lastActivityAt: string;
 }
 
+// Track multiple sockets per entityId (handles multi-tab)
+const entitySockets = new Map<string, Set<string>>();
 const onlineStudents = new Map<string, StudentStatus>();
+
+// Grace period timers for disconnect debouncing
+const disconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const DISCONNECT_GRACE_MS = 5000;
 
 export function getOnlineStudents(classId?: string): StudentStatus[] {
   const all = Array.from(onlineStudents.values());
@@ -55,6 +61,11 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
       }
       const raw = verifyToken(token);
       const payload = normalizePayload(raw);
+
+      if (!payload) {
+        next(new Error('Invalid token — please log in again'));
+        return;
+      }
 
       if (isPairPayload(payload)) {
         (socket as any).entityId = payload.pairId;
@@ -97,6 +108,19 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
 
     // ── Student tracking ──
     if (role === 'student') {
+      // Cancel any pending disconnect grace timer
+      const pendingTimer = disconnectTimers.get(entityId);
+      if (pendingTimer) {
+        clearTimeout(pendingTimer);
+        disconnectTimers.delete(entityId);
+      }
+
+      // Register this socket for the entity
+      if (!entitySockets.has(entityId)) {
+        entitySockets.set(entityId, new Set());
+      }
+      entitySockets.get(entityId)!.add(socket.id);
+
       // Look up class enrollment — try pairId first, then userId
       let classId: string | null = null;
       let className: string | null = null;
@@ -118,6 +142,7 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
         // Non-fatal: proceed without class info
       }
 
+      const existing = onlineStudents.get(entityId);
       const status: StudentStatus = {
         userId: entityId,
         socketId: socket.id,
@@ -125,9 +150,9 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
         displayName: (socket as any).displayName,
         classId,
         className,
-        weekNumber: null,
-        stepId: null,
-        connectedAt: new Date().toISOString(),
+        weekNumber: existing?.weekNumber ?? null,
+        stepId: existing?.stepId ?? null,
+        connectedAt: existing?.connectedAt ?? new Date().toISOString(),
         lastActivityAt: new Date().toISOString(),
       };
       onlineStudents.set(entityId, status);
@@ -171,12 +196,37 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
     // ── Disconnect cleanup ──
     socket.on('disconnect', () => {
       if (role === 'student') {
-        const status = onlineStudents.get(entityId);
-        onlineStudents.delete(entityId);
-        io.to('teacher').emit('student:disconnected', {
-          userId: entityId,
-          designation: status?.designation ?? null,
-        });
+        // Remove this socket from the entity's set
+        const sockets = entitySockets.get(entityId);
+        if (sockets) {
+          sockets.delete(socket.id);
+          if (sockets.size > 0) {
+            // Other tabs still connected — update socketId to one of the remaining
+            const remainingSocketId = sockets.values().next().value;
+            const existing = onlineStudents.get(entityId);
+            if (existing && remainingSocketId) {
+              existing.socketId = remainingSocketId;
+            }
+            return; // Don't mark offline
+          }
+          entitySockets.delete(entityId);
+        }
+
+        // All sockets gone — start grace period before marking offline
+        const timer = setTimeout(() => {
+          disconnectTimers.delete(entityId);
+          // Double-check no new sockets appeared during grace period
+          const currentSockets = entitySockets.get(entityId);
+          if (currentSockets && currentSockets.size > 0) return;
+
+          const status = onlineStudents.get(entityId);
+          onlineStudents.delete(entityId);
+          io.to('teacher').emit('student:disconnected', {
+            userId: entityId,
+            designation: status?.designation ?? null,
+          });
+        }, DISCONNECT_GRACE_MS);
+        disconnectTimers.set(entityId, timer);
       }
     });
   });

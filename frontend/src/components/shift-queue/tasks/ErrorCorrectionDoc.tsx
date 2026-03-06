@@ -208,7 +208,7 @@ export default function ErrorCorrectionDoc({
                   }`}
                   onClick={() => handleClickError(errorIndex)}
                 >
-                  {isLocked && !isCorrect
+                  {isLocked
                     ? error.options[error.correctIndex].text
                     : error.errorWord}
                 </span>
@@ -222,11 +222,11 @@ export default function ErrorCorrectionDoc({
 
                 {/* Options popup */}
                 {activeError === errorIndex && !isLocked && (
-                  <div className="absolute left-0 top-full mt-1 z-10 ios-glass-card-strong border border-white/15 rounded-lg p-1.5 min-w-[140px]">
+                  <div className="absolute left-0 top-full mt-1 z-10 bg-gray-900 border border-neon-cyan/30 rounded-lg p-1.5 min-w-[140px] shadow-lg shadow-black/50">
                     {error.options.map((option, oIdx) => (
                       <button
                         key={oIdx}
-                        className="block w-full text-left px-3 py-1.5 font-ibm-mono text-xs text-white/70 rounded hover:bg-white/10 transition-colors"
+                        className="block w-full text-left px-3 py-1.5 font-ibm-mono text-xs text-white rounded hover:bg-neon-cyan/20 transition-colors"
                         onClick={() => handleSelectOption(errorIndex, oIdx)}
                       >
                         {option.text}

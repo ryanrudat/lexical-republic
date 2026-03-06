@@ -77,15 +77,15 @@ export default function Gradebook({ classId }: { classId?: string | null }) {
 
   const loadData = useCallback(() => {
     setLoading(true);
-    setSelected(null);
     void fetchGradebook(classId || undefined)
-      .then(setData)
+      .then((d) => { setData(d); setSelected(null); })
       .finally(() => setLoading(false));
   }, [classId]);
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classId]);
 
   const handleRefresh = useCallback(() => {
     loadData();

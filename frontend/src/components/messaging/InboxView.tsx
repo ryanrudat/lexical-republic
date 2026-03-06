@@ -21,7 +21,7 @@ function MessagePreviewCard({ message }: { message: CharacterMessage }) {
     return text.length > 60 ? text.slice(0, 60) + '...' : text;
   }, [message.messageText]);
 
-  const timeAgo = useMemo(() => {
+  const timeAgo = (() => {
     const diff = Date.now() - new Date(message.createdAt).getTime();
     const mins = Math.floor(diff / 60000);
     if (mins < 1) return 'now';
@@ -29,7 +29,7 @@ function MessagePreviewCard({ message }: { message: CharacterMessage }) {
     const hrs = Math.floor(mins / 60);
     if (hrs < 24) return `${hrs}h`;
     return `${Math.floor(hrs / 24)}d`;
-  }, [message.createdAt]);
+  })();
 
   const handleClick = () => {
     if (!message.isRead) {

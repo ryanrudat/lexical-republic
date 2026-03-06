@@ -38,8 +38,9 @@ export default function ClassManager({ classes, onRefresh }: Props) {
       await createClass(newClassName.trim());
       setNewClassName('');
       await onRefresh();
-    } catch (err: any) {
-      const msg = err?.response?.data?.error || err?.message || 'Failed to create class';
+    } catch (err: unknown) {
+      const e = err as Record<string, Record<string, Record<string, string>>>;
+      const msg = e?.response?.data?.error || (err instanceof Error ? err.message : '') || 'Failed to create class';
       setError(msg);
       console.error('Failed to create class:', err);
     } finally {
