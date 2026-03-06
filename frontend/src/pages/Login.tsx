@@ -18,6 +18,7 @@ export default function Login() {
   // Background music — autoplay blocked by browsers, so start on first interaction
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const musicStartedRef = useRef(false);
+  const [muted, setMuted] = useState(false);
 
   useEffect(() => {
     const audio = new Audio('/audio/The_Iron_Grip_Overture.mp3');
@@ -46,6 +47,14 @@ export default function Login() {
       document.removeEventListener('keydown', handler);
     };
   }, [startMusic]);
+
+  const toggleMute = useCallback(() => {
+    setMuted(prev => {
+      const next = !prev;
+      if (audioRef.current) audioRef.current.muted = next;
+      return next;
+    });
+  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -100,6 +109,28 @@ export default function Login() {
 
       {/* Soft pastel accent bar */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#B3E5FC] via-[#E1BEE7] to-[#FCE4EC] z-10" />
+
+      {/* Music mute toggle */}
+      <button
+        type="button"
+        onClick={toggleMute}
+        className="absolute bottom-5 right-5 z-20 w-10 h-10 flex items-center justify-center rounded-full bg-white/30 backdrop-blur-sm border border-white/50 text-[#2D8A6E]/60 hover:bg-white/50 hover:text-[#2D8A6E] transition-all"
+        title={muted ? 'Unmute music' : 'Mute music'}
+      >
+        {muted ? (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            <line x1="23" y1="9" x2="17" y2="15" />
+            <line x1="17" y1="9" x2="23" y2="15" />
+          </svg>
+        ) : (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+          </svg>
+        )}
+      </button>
 
       {/* Fixed header — does NOT scroll */}
       <div className="relative pt-6 pb-4 z-10">
