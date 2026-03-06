@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react';
 import { useStudentStore } from '../stores/studentStore';
 
 export default function Login() {
@@ -14,6 +14,38 @@ export default function Login() {
   const [regStudentBName, setRegStudentBName] = useState('');
   const [regClassCode, setRegClassCode] = useState('');
   const { login, loginTeacher, register, loading, error } = useStudentStore();
+
+  // Background music — autoplay blocked by browsers, so start on first interaction
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const musicStartedRef = useRef(false);
+
+  useEffect(() => {
+    const audio = new Audio('/audio/The_Iron_Grip_Overture.mp3');
+    audio.loop = true;
+    audio.volume = 0.35;
+    audioRef.current = audio;
+    return () => {
+      audio.pause();
+      audio.src = '';
+    };
+  }, []);
+
+  const startMusic = useCallback(() => {
+    if (musicStartedRef.current) return;
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.play().then(() => { musicStartedRef.current = true; }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const handler = () => startMusic();
+    document.addEventListener('click', handler, { once: true });
+    document.addEventListener('keydown', handler, { once: true });
+    return () => {
+      document.removeEventListener('click', handler);
+      document.removeEventListener('keydown', handler);
+    };
+  }, [startMusic]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
