@@ -36,10 +36,20 @@ export interface PearlChatResponse {
   isDegraded: boolean;
 }
 
+export interface PearlChatContext {
+  weekNumber?: number;
+  taskType?: string;
+  taskLabel?: string;
+  grammarTarget?: string;
+  targetWords?: string[];
+  stepId?: string;
+}
+
 export async function sendPearlChat(
   message: string,
   history: ChatMessage[],
+  taskContext?: PearlChatContext,
 ): Promise<PearlChatResponse> {
-  const { data } = await client.post('/pearl/chat', { message, history });
+  const { data } = await client.post('/pearl/chat', { message, history, taskContext });
   return data as PearlChatResponse;
 }

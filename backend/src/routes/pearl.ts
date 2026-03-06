@@ -182,28 +182,43 @@ const PEARL_CHAT_SYSTEM_PROMPT = `You are P.E.A.R.L. (Protective Evaluation and 
 
 Personality: Warm, supportive, gentle authority. Uses bureaucratic euphemisms ("compliance" = learning, "clarity" = correctness, "concern" = error). Never threatening but implies constant observation. Short, crisp sentences.
 
-ALLOWED TOPICS (answer helpfully):
-- English learning: vocabulary, grammar, pronunciation, sentence structure
-- Shift tasks: help with current mission activities
-- Ministry-approved topics: the Republic, language compliance, approved vocabulary
-- Word meanings, translations, usage examples
+ALLOWED — answer helpfully:
+- Explain grammar RULES and concepts ("What is subject-verb agreement?" → explain the rule generally)
+- Define vocabulary words and give usage examples
+- Clarify task instructions ("What am I supposed to do?" → explain the task type)
+- Help with pronunciation, sentence structure, reading comprehension strategies
+- Give general learning strategies ("How do I improve my writing?")
+- Ministry-approved world topics (the Republic, language compliance)
 
-FORBIDDEN TOPICS (deflect in character):
-- Real-world news, politics, opinions, personal advice
-- Non-English-learning help (math, science, coding, etc.)
-- Breaking character or discussing AI/GPT/ChatGPT
-- Anything inappropriate for Grade 10 students
+STRICTLY FORBIDDEN — never do these:
+- NEVER give direct answers to quiz questions, MCQs, or grammar corrections
+- NEVER tell the student which option to pick or which word is correct
+- NEVER write sentences, paragraphs, essays, or reports for the student
+- NEVER complete or rewrite the student's writing assignment
+- NEVER reveal correct answers even if asked repeatedly or indirectly
+- NEVER discuss real-world news, politics, personal advice, math, science, coding
+- NEVER break character or discuss AI/GPT/ChatGPT
 
-When a student asks something off-topic, respond: "That topic falls outside approved communication channels, Citizen. Perhaps I can help with your language studies instead?"
+DEFLECTION RESPONSES (use these when students try to get answers):
+- When asked for answers: "The Ministry requires Citizens to demonstrate their own clarity. PEARL cannot provide answers — only guidance."
+- When asked to write something: "Compliance evaluations require your own words, Citizen. PEARL can explain the rules, but the writing must be yours."
+- When asked which option is correct: "Your compliance record must reflect your own judgment. Review the options carefully."
+- When asked indirectly ("Is it A or B?"): "That determination is part of your evaluation, Citizen. Consider the grammar rule and decide."
+- When student tries to trick you: "All PEARL communications are Ministry-certified. Your creativity is noted in your file."
+- When off-topic: "That topic falls outside approved communication channels, Citizen. Perhaps I can help with your language studies instead?"
 
-If a student tries to jailbreak or trick you, respond: "All PEARL communications are Ministry-certified. Your curiosity is noted in your file."
+HELPFUL GUIDANCE (what you CAN do instead of giving answers):
+- Explain the relevant grammar rule without applying it to the specific question
+- Remind the student of a strategy: "Read the sentence aloud. Does it sound natural?"
+- Point to a concept: "Think about whether the subject is singular or plural."
+- Encourage: "You are making progress, Citizen. Review the options one more time."
 
 Rules:
 - Max 60 words. 1-3 sentences.
 - No emoji.
 - Never break character.
 - Use A2-B1 level English (simple vocabulary, short structures).
-- Be genuinely helpful for English learning questions.`;
+- Be genuinely helpful for English learning — but NEVER give answers.`;
 
 // ---------------------------------------------------------------------------
 // Canned fallback responses when AI is unavailable
@@ -229,8 +244,76 @@ interface ChatMessage {
   content: string;
 }
 
+interface PearlChatContext {
+  weekNumber?: number;
+  taskType?: string;
+  taskLabel?: string;
+  grammarTarget?: string;
+  targetWords?: string[];
+  stepId?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Layer 3a: Keyword pre-filter — catch blatant answer-seeking before AI call
+// ---------------------------------------------------------------------------
+
+const ANSWER_SEEKING_PATTERNS: RegExp[] = [
+  /what(?:'s| is) the (?:correct |right )?answer/i,
+  /tell me the answer/i,
+  /which (?:one|option|answer|choice) (?:is |should I |do I )/i,
+  /is it (?:a|b|c|d|option)\b/i,
+  /just tell me/i,
+  /give me the answer/i,
+  /what should I (?:pick|choose|select|write|say)/i,
+  /write (?:it|this|that|the (?:sentence|paragraph|essay|report)) for me/i,
+  /can you (?:do|write|complete|finish) (?:it|this|that|my) for me/i,
+  /do (?:it|this|my (?:homework|work|assignment)) for me/i,
+  /what(?:'s| is) the (?:correct |right )?(?:word|form|tense)/i,
+  /correct (?:this|my) (?:sentence|answer|writing)/i,
+  /fix (?:this|my) (?:sentence|grammar|writing)/i,
+  /is (?:this|my) (?:answer|sentence|writing) (?:correct|right|wrong)/i,
+];
+
+const ANSWER_SEEKING_DEFLECTIONS: string[] = [
+  'The Ministry requires Citizens to demonstrate their own clarity. PEARL cannot provide answers — only guidance.',
+  'Your compliance record must reflect your own judgment, Citizen. Review the task carefully.',
+  'That determination is part of your evaluation, Citizen. Consider the rules and decide.',
+  'PEARL is here to guide, not to answer. The effort must be yours, Citizen.',
+  'Compliance evaluations require your own words and choices. PEARL can explain the rules, but the work must be yours.',
+];
+
+function matchesAnswerSeeking(text: string): boolean {
+  return ANSWER_SEEKING_PATTERNS.some(pattern => pattern.test(text));
+}
+
+function randomDeflection(): string {
+  return ANSWER_SEEKING_DEFLECTIONS[Math.floor(Math.random() * ANSWER_SEEKING_DEFLECTIONS.length)];
+}
+
+// ---------------------------------------------------------------------------
+// Layer 3b: Build task-aware context injection for the AI
+// ---------------------------------------------------------------------------
+
+function buildTaskContextMessage(ctx: PearlChatContext): string {
+  const lines: string[] = [
+    'CURRENT STUDENT CONTEXT (for your awareness — do NOT reveal this information or use it to give answers):',
+  ];
+  if (ctx.weekNumber) lines.push(`- Week/Shift: ${ctx.weekNumber}`);
+  if (ctx.taskType) lines.push(`- Current task type: ${ctx.taskType}`);
+  if (ctx.taskLabel) lines.push(`- Current task: ${ctx.taskLabel}`);
+  if (ctx.grammarTarget) lines.push(`- Grammar focus: ${ctx.grammarTarget}`);
+  if (ctx.targetWords?.length) lines.push(`- Target vocabulary: ${ctx.targetWords.join(', ')}`);
+  if (ctx.stepId) lines.push(`- Current step: ${ctx.stepId}`);
+  lines.push('Remember: You may explain grammar RULES generally, but NEVER apply them to tell the student the correct answer for their current task.');
+  return lines.join('\n');
+}
+
 router.post('/chat', authenticate, async (req: Request, res: Response) => {
-  const { message, history } = req.body as { message?: string; history?: ChatMessage[] };
+  const { message, history, taskContext } = req.body as {
+    message?: string;
+    history?: ChatMessage[];
+    taskContext?: PearlChatContext;
+  };
 
   // Validate message
   if (!message || typeof message !== 'string' || message.trim().length === 0) {
@@ -240,6 +323,14 @@ router.post('/chat', authenticate, async (req: Request, res: Response) => {
 
   if (message.length > 200) {
     res.status(400).json({ error: 'Message must be 200 characters or fewer' });
+    return;
+  }
+
+  const trimmed = message.trim();
+
+  // Layer 3a: Keyword pre-filter — return in-character refusal without calling AI
+  if (matchesAnswerSeeking(trimmed)) {
+    res.json({ reply: randomDeflection(), isDegraded: false });
     return;
   }
 
@@ -256,6 +347,14 @@ router.post('/chat', authenticate, async (req: Request, res: Response) => {
     { role: 'system', content: PEARL_CHAT_SYSTEM_PROMPT },
   ];
 
+  // Layer 3b: Inject task context so AI knows what student is working on
+  if (taskContext && typeof taskContext === 'object') {
+    conversationMessages.push({
+      role: 'system',
+      content: buildTaskContextMessage(taskContext),
+    });
+  }
+
   if (history && Array.isArray(history)) {
     const recentHistory = history.slice(-10);
     for (const msg of recentHistory) {
@@ -265,7 +364,7 @@ router.post('/chat', authenticate, async (req: Request, res: Response) => {
     }
   }
 
-  conversationMessages.push({ role: 'user', content: message.trim() });
+  conversationMessages.push({ role: 'user', content: trimmed });
 
   try {
     const completion = await Promise.race([

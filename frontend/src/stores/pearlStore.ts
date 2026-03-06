@@ -1,8 +1,10 @@
 import { create } from 'zustand';
-import type { PearlMessage, ChatMessage } from '../api/pearl';
+import type { PearlMessage, ChatMessage, PearlChatContext } from '../api/pearl';
 import { fetchPearlMessages, generateBark, sendPearlChat } from '../api/pearl';
 import type { BarkType, BarkEntry } from '../types/shifts';
 import type { BarkContext } from '../hooks/useBarkContext';
+import { useShiftQueueStore } from './shiftQueueStore';
+import { useShiftStore } from './shiftStore';
 
 // Per-type message pools for contextual barks
 // Canonical lines from Dplan ambient-text-bank.md
@@ -106,6 +108,31 @@ interface PearlState {
   dismissAnnouncement: () => void;
   sendChat: (message: string) => Promise<void>;
   clearChat: () => void;
+}
+
+/** Gather current task context for PEARL chat guardrails (no answers leak). */
+function getTaskContext(): PearlChatContext | undefined {
+  const queueState = useShiftQueueStore.getState();
+  const shiftState = useShiftStore.getState();
+  const weekConfig = queueState.weekConfig;
+
+  if (!weekConfig) {
+    // Phase runner mode — use shiftStore
+    const week = shiftState.currentWeek;
+    const stepId = shiftState.currentStepId;
+    if (!week) return undefined;
+    return { weekNumber: week.weekNumber, stepId: stepId || undefined };
+  }
+
+  // ShiftQueue mode — rich context available
+  const currentTask = weekConfig.tasks[queueState.currentTaskIndex];
+  return {
+    weekNumber: weekConfig.weekNumber,
+    taskType: currentTask?.type,
+    taskLabel: currentTask?.label,
+    grammarTarget: weekConfig.grammarTarget,
+    targetWords: weekConfig.targetWords,
+  };
 }
 
 export const usePearlStore = create<PearlState>((set, get) => ({
@@ -222,9 +249,10 @@ export const usePearlStore = create<PearlState>((set, get) => ({
     set({ chatMessages: updatedMessages, chatLoading: true, chatError: null, lastChatTime: now });
 
     try {
-      // Send history (without the just-appended user message — backend receives it as `message`)
+      // Send history + task context for guardrails
       const history = chatMessages.map(m => ({ role: m.role, content: m.content }));
-      const { reply } = await sendPearlChat(trimmed, history);
+      const taskContext = getTaskContext();
+      const { reply } = await sendPearlChat(trimmed, history, taskContext);
       const assistantMsg: ChatMessage = { role: 'assistant', content: reply };
       set({ chatMessages: [...get().chatMessages, assistantMsg], chatLoading: false });
     } catch {
