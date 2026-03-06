@@ -9,6 +9,7 @@ export interface HarmonyPost {
   replyCount: number;
   createdAt: string;
   isOwn: boolean;
+  weekNumber: number | null;
 }
 
 export interface HarmonyReply {
@@ -18,9 +19,16 @@ export interface HarmonyReply {
   createdAt: string;
 }
 
-export async function fetchHarmonyPosts(): Promise<HarmonyPost[]> {
+export interface HarmonyFeedResponse {
+  posts: HarmonyPost[];
+  currentWeekNumber: number;
+  focusWords: string[];
+  reviewWords: string[];
+}
+
+export async function fetchHarmonyPosts(): Promise<HarmonyFeedResponse> {
   const { data } = await client.get('/harmony/posts');
-  return data.posts;
+  return data;
 }
 
 export async function createHarmonyPost(content: string): Promise<{ id: string; status: string }> {

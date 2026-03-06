@@ -12,7 +12,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { id: 'mission', label: 'Current Shift', icon: '\u25B8', path: '/terminal' },
-  { id: 'harmony', label: 'Harmony Feed', icon: '\u266B', path: '/terminal', locked: true, lockWeek: 3 },
+  { id: 'harmony', label: 'Harmony Feed', icon: '\u266B', path: '/terminal' },
   { id: 'roster', label: 'Duty Roster', icon: '\u2630', path: '/season' },
   { id: 'file', label: 'My File', icon: '\u2302', path: '/terminal' },
 ];

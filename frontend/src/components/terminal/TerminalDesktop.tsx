@@ -31,9 +31,8 @@ const APPS: AppTile[] = [
   {
     id: 'harmony',
     name: 'Harmony',
-    description: 'Citizen social feed',
+    description: 'Weekly vocabulary review feed',
     emoji: '\u{1F4AC}',
-    lockWeek: 3,
   },
   {
     id: 'my-file',

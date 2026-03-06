@@ -15,7 +15,16 @@ function formatTimestamp(iso: string): string {
 
 export default function HarmonyApp() {
   const user = useStudentStore((s) => s.user);
-  const { posts, loading, error, loadPosts, submitPost } = useHarmonyStore();
+  const {
+    posts,
+    currentWeekNumber,
+    focusWords,
+    reviewWords,
+    loading,
+    error,
+    loadPosts,
+    submitPost,
+  } = useHarmonyStore();
   const [newPost, setNewPost] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -43,8 +52,57 @@ export default function HarmonyApp() {
           Harmony
         </h2>
         <p className="font-ibm-mono text-[10px] text-white/50 tracking-wider">
-          Citizen Social Feed - Ministry Monitored
+          Weekly Review Feed - Ministry Monitored
         </p>
+      </div>
+
+      <div className="border-b border-white/10 px-4 py-3 space-y-3 bg-white/[0.02]">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="font-ibm-mono text-[10px] text-neon-cyan/80 tracking-[0.28em] uppercase">
+              Shift {currentWeekNumber} Vocabulary
+            </p>
+            <p className="font-ibm-mono text-[11px] text-white/45 tracking-wider mt-1">
+              Current words stay visible here, and last shift&apos;s words return as review.
+            </p>
+          </div>
+        </div>
+
+        {focusWords.length > 0 && (
+          <div>
+            <p className="font-ibm-mono text-[10px] text-white/35 tracking-[0.2em] uppercase mb-2">
+              Focus Words
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {focusWords.map((word) => (
+                <span
+                  key={word}
+                  className="rounded-full border border-neon-cyan/25 bg-neon-cyan/10 px-2.5 py-1 font-ibm-mono text-[10px] uppercase tracking-wider text-neon-cyan"
+                >
+                  {word}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {reviewWords.length > 0 && (
+          <div>
+            <p className="font-ibm-mono text-[10px] text-white/35 tracking-[0.2em] uppercase mb-2">
+              Review Words
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {reviewWords.map((word) => (
+                <span
+                  key={word}
+                  className="rounded-full border border-terminal-amber/25 bg-terminal-amber/10 px-2.5 py-1 font-ibm-mono text-[10px] uppercase tracking-wider text-terminal-amber"
+                >
+                  {word}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="border-b border-white/10 px-4 py-3">
@@ -52,7 +110,7 @@ export default function HarmonyApp() {
           <textarea
             value={newPost}
             onChange={(e) => setNewPost(e.target.value)}
-            placeholder="Share your thoughts with the community..."
+            placeholder="Use this shift's focus words or review words in a monitored community post..."
             className="ios-glass-input w-full px-3 py-2 text-sm resize-none rounded-lg"
             rows={2}
             maxLength={280}
@@ -105,6 +163,11 @@ export default function HarmonyApp() {
                 <span className="font-ibm-mono text-xs tracking-wider text-white/90">
                   [{post.isOwn ? (user?.designation || 'YOU') : post.designation}]
                 </span>
+                {post.weekNumber != null && (
+                  <span className="rounded-full border border-white/10 px-2 py-0.5 font-ibm-mono text-[8px] uppercase tracking-[0.18em] text-white/45">
+                    Shift {post.weekNumber}
+                  </span>
+                )}
                 {post.status === 'pending_review' && (
                   <span className="font-ibm-mono text-[8px] text-neon-cyan/70 tracking-wider uppercase">
                     UNDER REVIEW

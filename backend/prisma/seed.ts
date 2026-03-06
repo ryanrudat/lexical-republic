@@ -3,6 +3,8 @@ import bcrypt from 'bcrypt';
 import dotenv from 'dotenv';
 import path from 'path';
 import { getWeekConfig } from '../src/data/week-configs';
+import { HARMONY_SEED_POSTS } from '../src/data/harmonyFeed';
+import { WEEK_STORY_PLANS } from '../src/data/storyPlans';
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
@@ -22,257 +24,6 @@ type MissionSeed = {
   description: string;
   missionType: string;
   config: Record<string, unknown>;
-};
-
-type WeekStoryPlan = {
-  episodeTitle: string;
-  episodeSubtitle: string;
-  speaker: string;
-  line: string;
-  objective: string;
-  grammarFocus: string;
-  knownWords: string[];
-  newWords: string[];
-  cliffhanger: string;
-  bridgeLine: string;
-  weekSlogan: string;
-};
-
-const WEEK_STORY_PLANS: Record<number, WeekStoryPlan> = {
-  1: {
-    episodeTitle: 'Episode 1: Party Onboarding Broadcast',
-    episodeSubtitle: 'Mandatory onboarding transmission for all new Clarity Associates.',
-    speaker: 'PEARL',
-    line: 'Before you correct others, we must calibrate you.',
-    objective: 'Understand your role and the core language rules of the Republic.',
-    grammarFocus: 'Present simple, be-verb, and basic modal forms.',
-    knownWords: ['work', 'rule', 'team', 'today'],
-    newWords: ['compliance', 'directive', 'protocol', 'clearance'],
-    cliffhanger: 'A memo arrives stamped HIDDEN LEXICON — and your supervisor says it never existed.',
-    bridgeLine: 'Your first compliance report will be reviewed. Accurate associates are valued associates.',
-    weekSlogan: 'Clarity is Comfort',
-  },
-  2: {
-    episodeTitle: 'Episode 2: The Memo That Wasn\'t There',
-    episodeSubtitle: 'Contradictory records appear in morning dispatch.',
-    speaker: 'BETTY',
-    line: 'If the memo is missing, then it was never needed. Correct?',
-    objective: 'Compare two sources and describe contradictions clearly.',
-    grammarFocus: 'Past simple vs present simple, there is/there are.',
-    knownWords: ['today', 'yesterday', 'record', 'check'],
-    newWords: ['contradiction', 'missing', 'notice', 'revision'],
-    cliffhanger: 'A corrected memo reappears with your own edits removed.',
-    bridgeLine: 'Associates who report contradictions calmly receive recognition. Begin your report.',
-    weekSlogan: 'Accuracy is Kindness',
-  },
-  3: {
-    episodeTitle: 'Episode 3: Clarity Bay Intake',
-    episodeSubtitle: 'Queue volume doubles; speed and precision are tested.',
-    speaker: 'IVAN',
-    line: 'Don\'t rush. Fast mistakes are still mistakes.',
-    objective: 'Process multiple entries while preserving grammar accuracy.',
-    grammarFocus: 'Imperatives, modal can/should, polite clarification requests.',
-    knownWords: ['help', 'question', 'line', 'message'],
-    newWords: ['clarify', 'queue', 'priority', 'dispatch'],
-    cliffhanger: 'A citizen post asks about someone "reassigned" without explanation.',
-    bridgeLine: 'The queue is watching. Demonstrate that speed and accuracy are not in conflict.',
-    weekSlogan: 'Calm is Compliance',
-  },
-  4: {
-    episodeTitle: 'Episode 4: Evidence Board',
-    episodeSubtitle: 'Associates must build a clean timeline from fragments.',
-    speaker: 'ARCHIVE NOTICE',
-    line: 'A timeline protects truth from noise.',
-    objective: 'Sequence events and cite evidence lines for each claim.',
-    grammarFocus: 'Sequencing words (first, then, finally) and simple past.',
-    knownWords: ['first', 'then', 'after', 'before'],
-    newWords: ['timeline', 'evidence', 'sequence', 'source'],
-    cliffhanger: 'One evidence clip is tagged CLASSIFIED after you view it.',
-    bridgeLine: 'Arrange events in proper order. A clean timeline earns trust from the Archive.',
-    weekSlogan: 'Order is Truth',
-  },
-  5: {
-    episodeTitle: 'Episode 5: Wellness Check',
-    episodeSubtitle: 'Language of emotion is reframed as public safety.',
-    speaker: 'PEARL',
-    line: 'Healthy language creates healthy minds.',
-    objective: 'Describe feelings and obligations without losing clarity.',
-    grammarFocus: 'Must/should, adjectives for emotion, because-clauses.',
-    knownWords: ['happy', 'sad', 'tired', 'safe'],
-    newWords: ['wellness', 'concern', 'observe', 'report'],
-    cliffhanger: 'Your own reflection answer is marked for supervisor review.',
-    bridgeLine: 'Your emotional clarity is being assessed. Respond with care and approved vocabulary.',
-    weekSlogan: 'Wellness is Loyalty',
-  },
-  6: {
-    episodeTitle: 'Episode 6: Act I Clock-Out',
-    episodeSubtitle: 'First compliance packet is audited by senior staff.',
-    speaker: 'M.K. CATSKIL',
-    line: 'Accuracy gets you through the door. Questions keep you awake.',
-    objective: 'Synthesize week evidence into one coherent record.',
-    grammarFocus: 'Review week 1-5 targets in mixed tasks.',
-    knownWords: ['review', 'write', 'speak', 'correct'],
-    newWords: ['audit', 'summary', 'classification', 'oversight'],
-    cliffhanger: 'A file in your queue flashes one word: RUN.',
-    bridgeLine: 'Your compliance packet is under audit. Demonstrate everything you have learned.',
-    weekSlogan: 'Review is Renewal',
-  },
-  7: {
-    episodeTitle: 'Episode 7: Hidden Lexicon',
-    episodeSubtitle: 'Unapproved words begin appearing in official channels.',
-    speaker: 'NOOR',
-    line: 'Words can hide people — and words can find them.',
-    objective: 'Identify the difference between approved and hidden vocabulary.',
-    grammarFocus: 'Relative clauses and descriptive noun phrases.',
-    knownWords: ['word', 'name', 'city', 'family'],
-    newWords: ['lexicon', 'forbidden', 'recover', 'trace'],
-    cliffhanger: 'A hidden note appears inside a "corrected" document.',
-    bridgeLine: 'Unapproved vocabulary detected. Identify and classify each term with precision.',
-    weekSlogan: 'Naming is Power',
-  },
-  8: {
-    episodeTitle: 'Episode 8: Contradiction Protocol',
-    episodeSubtitle: 'Students must reconcile two incompatible directives.',
-    speaker: 'IVAN',
-    line: 'If both are official, how can both be true?',
-    objective: 'Compare documents and explain conflict using evidence.',
-    grammarFocus: 'Comparatives, contrast linkers (however, although).',
-    knownWords: ['same', 'different', 'rule', 'change'],
-    newWords: ['conflict', 'exception', 'revision', 'inconsistency'],
-    cliffhanger: 'PEARL asks why you opened an archived contradiction twice.',
-    bridgeLine: 'Two directives conflict. Your task: compare, contrast, and report which is valid.',
-    weekSlogan: 'Doubt is Data',
-  },
-  9: {
-    episodeTitle: 'Episode 9: The Intercept',
-    episodeSubtitle: 'Audio snippets reveal tone beyond literal meaning.',
-    speaker: 'BETTY',
-    line: 'Say the right words, and no one asks the wrong questions.',
-    objective: 'Infer intent from tone, pauses, and word choice.',
-    grammarFocus: 'Reported speech and inference language (might, seems).',
-    knownWords: ['listen', 'voice', 'slow', 'fast'],
-    newWords: ['intercept', 'signal', 'intent', 'imply'],
-    cliffhanger: 'A voice in the intercept says your designation directly.',
-    bridgeLine: 'Listen carefully. The meaning is not always in the words themselves.',
-    weekSlogan: 'Listening is Seeing',
-  },
-  10: {
-    episodeTitle: 'Episode 10: Unit Transfer',
-    episodeSubtitle: 'Operational transfer orders introduce procedural language.',
-    speaker: 'DIRECTOR-7',
-    line: 'Adapt quickly. Delay is disloyalty.',
-    objective: 'Give step-by-step instructions and process descriptions.',
-    grammarFocus: 'Imperatives, process sequencing, conditionals (if).',
-    knownWords: ['open', 'move', 'check', 'send'],
-    newWords: ['transfer', 'authorization', 'terminal', 'override'],
-    cliffhanger: 'Your badge grants access to a room that should not exist.',
-    bridgeLine: 'New operational procedures require your immediate attention. Follow each step precisely.',
-    weekSlogan: 'Procedure is Safety',
-  },
-  11: {
-    episodeTitle: 'Episode 11: The Missing Index',
-    episodeSubtitle: 'Classification records lose key labels overnight.',
-    speaker: 'NOOR',
-    line: 'When labels disappear, people disappear with them.',
-    objective: 'Classify terms precisely and justify categorization choices.',
-    grammarFocus: 'Defining clauses and precise noun modifiers.',
-    knownWords: ['label', 'group', 'find', 'lost'],
-    newWords: ['index', 'catalog', 'designation', 'anomaly'],
-    cliffhanger: 'PEARL goes silent for exactly sixty seconds.',
-    bridgeLine: 'Records are incomplete. Restore proper classification using your best judgement.',
-    weekSlogan: 'Labels are Identity',
-  },
-  12: {
-    episodeTitle: 'Episode 12: Act II Clock-Out',
-    episodeSubtitle: 'Compiled evidence packet challenges official narrative.',
-    speaker: 'PEARL',
-    line: 'Your report has been accepted. Additional monitoring enabled.',
-    objective: 'Write an evidence-backed challenge using controlled language.',
-    grammarFocus: 'Cause/effect connectors (therefore, as a result).',
-    knownWords: ['because', 'result', 'show', 'prove'],
-    newWords: ['discrepancy', 'suppression', 'elevated', 'monitoring'],
-    cliffhanger: 'Your badge color changes from green to amber.',
-    bridgeLine: 'Your evidence compilation is under review. Present your findings clearly.',
-    weekSlogan: 'Evidence is Voice',
-  },
-  13: {
-    episodeTitle: 'Episode 13: Break in the Pattern',
-    episodeSubtitle: 'Students begin making publicly visible language choices.',
-    speaker: 'WILLIAM',
-    line: 'When everyone repeats the script, silence becomes a language too.',
-    objective: 'Persuade an audience while maintaining grammatical control.',
-    grammarFocus: 'Opinion markers and reason clauses.',
-    knownWords: ['think', 'believe', 'important', 'reason'],
-    newWords: ['pattern', 'public', 'choice', 'consequence'],
-    cliffhanger: 'A Harmony post quotes your own Case File back to you.',
-    bridgeLine: 'Your words will be public. Choose them with both conviction and control.',
-    weekSlogan: 'Silence is a Choice',
-  },
-  14: {
-    episodeTitle: 'Episode 14: Directive Override',
-    episodeSubtitle: 'Conflicting orders force conditional decision making.',
-    speaker: 'IVAN',
-    line: 'If we obey one order, we break another.',
-    objective: 'Use conditional language to justify operational decisions.',
-    grammarFocus: 'Conditionals (if, unless, even if).',
-    knownWords: ['if', 'or', 'stop', 'continue'],
-    newWords: ['override', 'fallback', 'risk', 'outcome'],
-    cliffhanger: 'PEARL flags your latest response as "strategically ambiguous."',
-    bridgeLine: 'Conflicting directives require conditional reasoning. State your logic clearly.',
-    weekSlogan: 'Logic is Protection',
-  },
-  15: {
-    episodeTitle: 'Episode 15: Public Statement',
-    episodeSubtitle: 'Students draft statements for monitored community channels.',
-    speaker: 'BETTY',
-    line: 'Confidence is easy. Accountability is harder.',
-    objective: 'Deliver a formal statement and defend it with evidence.',
-    grammarFocus: 'Formal register, modal certainty (must/might/could).',
-    knownWords: ['speak', 'explain', 'answer', 'clear'],
-    newWords: ['statement', 'audience', 'credibility', 'response'],
-    cliffhanger: 'A citizen asks who gave you permission to ask questions.',
-    bridgeLine: 'You are about to address the public channel. Formality and evidence are required.',
-    weekSlogan: 'Words are Witnesses',
-  },
-  16: {
-    episodeTitle: 'Episode 16: The Appeal',
-    episodeSubtitle: 'A high-stakes appeal must challenge Director-7 directives.',
-    speaker: 'DIRECTOR-7',
-    line: 'Appeals are permitted. Defiance is not.',
-    objective: 'Write a structured appeal with claims, reasons, and evidence.',
-    grammarFocus: 'Formal writing connectors (furthermore, however, respectfully).',
-    knownWords: ['request', 'reason', 'evidence', 'decision'],
-    newWords: ['appeal', 'petition', 'review', 'justification'],
-    cliffhanger: 'Your appeal is accepted, but the signature is not Director-7.',
-    bridgeLine: 'Your appeal is being drafted. Use formal connectors and cite evidence carefully.',
-    weekSlogan: 'Reason is Resistance',
-  },
-  17: {
-    episodeTitle: 'Episode 17: Final Evidence',
-    episodeSubtitle: 'All threads converge in one final archive build.',
-    speaker: 'M.K. CATSKIL',
-    line: 'This is where you decide what history remembers.',
-    objective: 'Synthesize multi-week evidence into a final narrative.',
-    grammarFocus: 'Complex sentences, cohesion, and source attribution.',
-    knownWords: ['before', 'after', 'between', 'together'],
-    newWords: ['synthesize', 'archive', 'corroborate', 'record'],
-    cliffhanger: 'PEARL begins repeating your first onboarding line back to you.',
-    bridgeLine: 'All evidence converges here. Build your final archive with cohesion and attribution.',
-    weekSlogan: 'Memory is Action',
-  },
-  18: {
-    episodeTitle: 'Episode 18: Final Clock-Out',
-    episodeSubtitle: 'Students deliver final speeches to close Season One.',
-    speaker: 'PEARL',
-    line: 'Communication Associate... thank you. For everything.',
-    objective: 'Deliver a final speech balancing clarity, evidence, and voice.',
-    grammarFocus: 'Integrated fluency: grammar + vocabulary + persuasion.',
-    knownWords: ['future', 'people', 'learn', 'change'],
-    newWords: ['witness', 'truthful', 'rebuild', 'republic'],
-    cliffhanger: 'The screen fades to amber. THE REPUBLIC IS LISTENING.',
-    bridgeLine: 'This is your final assessment. Speak with the full weight of what you have learned.',
-    weekSlogan: 'Truth is Legacy',
-  },
 };
 
 function createDefaultGrammarDocuments(weekNumber: number) {
@@ -804,53 +555,63 @@ async function createQueueWeekMissions(weekId: string, weekNumber: number) {
   console.log(`  Queue missions: ${config.tasks.length} tasks seeded for week ${weekNumber}`);
 }
 
-async function seedCitizen4488Posts() {
+async function seedHarmonyPosts() {
   const firstClass = await prisma.class.findFirst();
   if (!firstClass) {
-    console.warn('  Warning: No class found, skipping Citizen-4488 posts');
+    console.warn('  Warning: No class found, skipping Harmony posts');
     return;
   }
 
-  const posts = [
-    {
-      content:
-        'Has anyone seen my neighbor? She always arrive at the community center on Tuesday, but her chair was empty this week. I am sure she is fine. The Ministry takes care of everyone. I should not worry.',
-      weekLabel: 'Week 1',
-    },
-    {
-      content:
-        'I noticed the community center updated its schedule. Tuesday activities were removed. My neighbor used to attend on Tuesdays. I requested information but no one informed me of changes. Everything is fine. Change is normal.',
-      weekLabel: 'Week 2',
-    },
-    {
-      content:
-        'The community center schedule was updated again. All Tuesday and Thursday activities have been removed. I cannot identify who approved these changes. I should not delay my own schedule to ask questions. Delays cause problems for everyone.',
-      weekLabel: 'Week 3',
-    },
-  ];
-
   let created = 0;
-  for (const post of posts) {
-    // Content hash check — skip if post with same content + classId already exists
+  let updated = 0;
+  for (const post of HARMONY_SEED_POSTS) {
     const existing = await prisma.harmonyPost.findFirst({
-      where: { content: post.content, classId: firstClass.id },
+      where: {
+        OR: [
+          { id: post.id },
+          { content: post.content, classId: firstClass.id },
+        ],
+      },
+      select: { id: true },
     });
-    if (existing) continue;
+
+    if (existing) {
+      await prisma.harmonyPost.update({
+        where: { id: existing.id },
+        data: {
+          authorLabel: post.authorLabel,
+          content: post.content,
+          status: 'approved',
+          classId: firstClass.id,
+          weekNumber: post.weekNumber,
+          userId: null,
+          pairId: null,
+          pearlNote: post.pearlNote,
+        },
+      });
+      updated++;
+      continue;
+    }
 
     await prisma.harmonyPost.create({
       data: {
+        id: post.id,
+        authorLabel: post.authorLabel,
         content: post.content,
         status: 'approved',
         classId: firstClass.id,
+        weekNumber: post.weekNumber,
         userId: null,
         pairId: null,
-        pearlNote: 'Community post from Citizen-4488',
+        pearlNote: post.pearlNote,
       },
     });
     created++;
   }
 
-  console.log(`  Citizen-4488 posts: ${created} created (${posts.length - created} already existed)`);
+  console.log(
+    `  Harmony posts: ${created} created, ${updated} updated`,
+  );
 }
 
 async function main() {
@@ -3068,8 +2829,8 @@ async function main() {
     concernMessages.length;
   console.log(`  PEARL messages: ${totalPearlMessages} (across 5 categories)`);
 
-  // ─── Citizen-4488 Harmony Posts ───
-  await seedCitizen4488Posts();
+  // ─── Harmony Review Feed ───
+  await seedHarmonyPosts();
 
   console.log('Seed complete!');
 }

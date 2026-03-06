@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { authenticate, requirePair, requireRole, getPairId } from '../middleware/auth';
 import { isPairPayload } from '../utils/jwt';
 import prisma from '../utils/prisma';
+import { getCurrentWeekNumberForPair } from '../utils/progression';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -20,22 +21,7 @@ router.get('/', async (req: Request, res: Response) => {
     // Determine current week: pair uses their shift progress, teacher sees all
     let currentWeek = 18; // Teachers see everything
     if (pairId) {
-      // Find the highest week the student has engaged with (scored a mission)
-      const latestScore = await prisma.missionScore.findFirst({
-        where: { pairId },
-        include: { mission: { include: { week: { select: { weekNumber: true } } } } },
-        orderBy: { createdAt: 'desc' },
-      });
-      const latestResult = await prisma.shiftResult.findFirst({
-        where: { pairId },
-        orderBy: { weekNumber: 'desc' },
-        select: { weekNumber: true },
-      });
-      currentWeek = Math.max(
-        latestScore?.mission?.week?.weekNumber ?? 0,
-        latestResult?.weekNumber ?? 0,
-        1, // minimum: always show week 1 words
-      );
+      currentWeek = await getCurrentWeekNumberForPair(pairId);
     }
 
     // Fetch all words introduced up to current week

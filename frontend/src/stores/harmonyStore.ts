@@ -4,6 +4,9 @@ import { fetchHarmonyPosts, createHarmonyPost } from '../api/harmony';
 
 interface HarmonyState {
   posts: HarmonyPost[];
+  currentWeekNumber: number;
+  focusWords: string[];
+  reviewWords: string[];
   loading: boolean;
   error: string | null;
   loadPosts: () => Promise<void>;
@@ -12,14 +15,23 @@ interface HarmonyState {
 
 export const useHarmonyStore = create<HarmonyState>((set, get) => ({
   posts: [],
+  currentWeekNumber: 1,
+  focusWords: [],
+  reviewWords: [],
   loading: false,
   error: null,
 
   loadPosts: async () => {
     set({ loading: true, error: null });
     try {
-      const posts = await fetchHarmonyPosts();
-      set({ posts, loading: false });
+      const feed = await fetchHarmonyPosts();
+      set({
+        posts: feed.posts,
+        currentWeekNumber: feed.currentWeekNumber,
+        focusWords: feed.focusWords,
+        reviewWords: feed.reviewWords,
+        loading: false,
+      });
     } catch {
       set({ loading: false, error: 'Failed to load feed' });
     }
@@ -29,7 +41,7 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
     try {
       const result = await createHarmonyPost(content);
       // Optimistically add pending post
-      const { posts } = get();
+      const { posts, currentWeekNumber } = get();
       const pendingPost: HarmonyPost = {
         id: result.id,
         designation: 'YOU',
@@ -39,6 +51,7 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
         replyCount: 0,
         createdAt: new Date().toISOString(),
         isOwn: true,
+        weekNumber: currentWeekNumber,
       };
       set({ posts: [pendingPost, ...posts] });
 

@@ -378,9 +378,11 @@ model HarmonyPost {
   user      User?         @relation(fields: [userId], references: [id])
   pairId    String?
   pair      Pair?         @relation(fields: [pairId], references: [id])
+  authorLabel String?
   content   String
   status    HarmonyStatus @default(pending_review)
   pearlNote String?
+  weekNumber Int?
   parentId  String?
   parent    HarmonyPost?  @relation("Replies", fields: [parentId], references: [id])
   replies   HarmonyPost[] @relation("Replies")
