@@ -1,4 +1,5 @@
 import { getStoryPlan } from './storyPlans';
+import { getWeekConfig } from './week-configs';
 
 export type HarmonySeedPost = {
   id: string;
@@ -8,33 +9,43 @@ export type HarmonySeedPost = {
   pearlNote: string;
 };
 
+/**
+ * Returns the vocabulary words Harmony should display for a given week.
+ * Prefers WeekConfig targetWords (what students actually practice in shift tasks)
+ * over storyPlans newWords (narrative anchor words used in Harmony post copy).
+ */
 export function getHarmonyReviewContext(weekNumber: number) {
-  const current = getStoryPlan(weekNumber);
-  const previous = getStoryPlan(weekNumber - 1);
+  const currentConfig = getWeekConfig(weekNumber);
+  const previousConfig = getWeekConfig(weekNumber - 1);
+
+  // Fall back to storyPlans for weeks without a WeekConfig (4+)
+  const currentStory = getStoryPlan(weekNumber);
+  const previousStory = getStoryPlan(weekNumber - 1);
 
   return {
     currentWeekNumber: weekNumber,
-    focusWords: current?.newWords ?? [],
-    reviewWords: previous?.newWords ?? [],
+    focusWords: currentConfig?.targetWords ?? currentStory?.newWords ?? [],
+    reviewWords: previousConfig?.targetWords ?? previousStory?.newWords ?? [],
   };
 }
 
 export const HARMONY_SEED_POSTS: HarmonySeedPost[] = [
+  // ── Week 1: Target words — arrive, follow, check, report, submit, approve, describe, assign, standard, confirm
   {
     id: 'harmony-w1-briefing',
     weekNumber: 1,
     authorLabel: 'Citizen-2104',
     content:
-      'Today the onboarding directive was very clear. I copied each protocol step twice so my compliance record would stay clean.',
-    pearlNote: 'Shift 1 review feed: focus words in circulation.',
+      'I arrived early and followed every step on the checklist. My supervisor confirmed my assignment before I could submit anything. The standard is clear: check your work twice.',
+    pearlNote: 'Shift 1 review feed: target words (arrive, follow, check, confirm, submit, standard) in circulation.',
   },
   {
     id: 'harmony-w1-workflow',
     weekNumber: 1,
     authorLabel: 'CA-18',
     content:
-      'My supervisor confirmed my assignment and temporary clearance before intake. New associates should check every line before they submit.',
-    pearlNote: 'Shift 1 review feed: current lesson vocabulary plus support words.',
+      'New associates: always check each line before you submit. My mentor described the process and I followed it exactly. Once the supervisor approved my report, my assignment was confirmed.',
+    pearlNote: 'Shift 1 review feed: target words (check, submit, describe, follow, approve, report, confirm, assign) plus support words.',
   },
   {
     id: 'harmony-w1-c4488',
@@ -42,23 +53,25 @@ export const HARMONY_SEED_POSTS: HarmonySeedPost[] = [
     authorLabel: 'Citizen-4488',
     content:
       'Has anyone seen my neighbor? She always arrive at the community center on Tuesday, but her chair was empty this week. I am sure she is fine. The Ministry takes care of everyone. I should not worry.',
-    pearlNote: 'Community post from Citizen-4488',
+    pearlNote: 'Community post from Citizen-4488 — deliberate grammar error (arrive → arrives).',
   },
+  // ── Week 2: Target words — notice, compare, replace, update, request, remove, change, include, require, inform
+  // Review words — arrive, follow, check, report, submit, approve, describe, assign, standard, confirm
   {
     id: 'harmony-w2-revision',
     weekNumber: 2,
     authorLabel: 'Citizen-3319',
     content:
-      'The latest notice said the revision improved clarity, but the earlier directive included more detail. I noticed the change right away.',
-    pearlNote: 'Shift 2 review feed: current words plus Week 1 carryover.',
+      'I noticed the update immediately. The new version removed two lines and replaced them with shorter text. I compared both documents and requested clarification, but no one informed me who required the change.',
+    pearlNote: 'Shift 2 review feed: target words (notice, update, remove, replace, compare, request, inform, require, change).',
   },
   {
     id: 'harmony-w2-records',
     weekNumber: 2,
     authorLabel: 'CA-31',
     content:
-      'I compare every record against the updated protocol now. If a line is missing, I log the contradiction, note the compliance risk, and wait for clearance to report it.',
-    pearlNote: 'Shift 2 review feed: contradiction language recycled in context.',
+      'When I check updated records, I compare every line against the approved standard. If something was removed, I include the original text in my report and request a review before I submit.',
+    pearlNote: 'Shift 2 review feed: target words (update, compare, remove, include, report, request, review, submit) with Week 1 carryover (check, approved, standard).',
   },
   {
     id: 'harmony-w2-c4488',
@@ -66,23 +79,25 @@ export const HARMONY_SEED_POSTS: HarmonySeedPost[] = [
     authorLabel: 'Citizen-4488',
     content:
       'I noticed the community center updated its schedule. Tuesday activities were removed. My neighbor used to attend on Tuesdays. I requested information but no one informed me of changes. Everything is fine. Change is normal.',
-    pearlNote: 'Community post from Citizen-4488',
+    pearlNote: 'Community post from Citizen-4488 — target words (notice, update, remove, request, inform, change).',
   },
+  // ── Week 3: Target words — process, complete, review, delay, schedule, respond, identify, separate, maintain, forward
+  // Review words — notice, compare, replace, update, request, remove, change, include, require, inform
   {
     id: 'harmony-w3-queue',
     weekNumber: 3,
     authorLabel: 'Citizen-7291',
     content:
-      'The service queue moved faster today, but no one could clarify who changed the priority list. I remember last week\'s notice, and the revision still feels incomplete because one supporting record is missing.',
-    pearlNote: 'Shift 3 review feed: queue language with Week 2 review words.',
+      'I completed my review on schedule, but no one responded when I tried to identify who changed the process. The delay was short. I forwarded my report and maintained my position in the queue.',
+    pearlNote: 'Shift 3 review feed: target words (complete, review, schedule, respond, identify, change, process, delay, forward, maintain).',
   },
   {
     id: 'harmony-w3-dispatch',
     weekNumber: 3,
     authorLabel: 'CA-22',
     content:
-      'You should verify before dispatch, even when the queue is high. A fast report without clarification can create another contradiction.',
-    pearlNote: 'Shift 3 review feed: current focus plus carryover review.',
+      'You should review each case separately before you process it. If you notice a delay, respond quickly and forward the details. Do not include anything that requires a separate update.',
+    pearlNote: 'Shift 3 review feed: target words (review, separate, process, notice, delay, respond, forward, include, require, update) with Week 2 carryover.',
   },
   {
     id: 'harmony-w3-c4488',
@@ -90,6 +105,6 @@ export const HARMONY_SEED_POSTS: HarmonySeedPost[] = [
     authorLabel: 'Citizen-4488',
     content:
       'The community center schedule was updated again. All Tuesday and Thursday activities have been removed. I cannot identify who approved these changes. I should not delay my own schedule to ask questions. Delays cause problems for everyone.',
-    pearlNote: 'Community post from Citizen-4488',
+    pearlNote: 'Community post from Citizen-4488 — target words (schedule, update, remove, identify, approve, delay).',
   },
 ];

@@ -1,6 +1,6 @@
 # Script and Vocabulary Build Order (Canonical)
 
-Last updated: 2026-02-11
+Last updated: 2026-03-06
 
 ## Core Rule
 Write and approve in this exact order:
@@ -33,6 +33,15 @@ Optional blocks only if time remains.
 - Evidence Desk: source comparison / proof
 - Voice Booth: spoken output
 - Filing Desk: written output
+- Harmony: spaced review surface for current-week anchor words plus previous-week retrieval
+
+## Harmony Review Rule
+- Harmony is not only lore flavor. It must reinforce the approved weekly vocabulary spine.
+- Each week's Harmony feed should expose:
+  - current-week anchor words as the visible `focusWords`
+  - previous-week anchor words as periodic `reviewWords`
+- Seeded Harmony posts should include the week's primary words naturally in context and continue recycling earlier high-value words.
+- If Harmony copy does not reinforce the same vocabulary students are learning in class that week, it is out of spec.
 
 ## Week 1-3 Canon Package
 - Semester outcomes and alignment:

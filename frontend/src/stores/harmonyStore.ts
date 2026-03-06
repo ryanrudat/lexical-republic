@@ -1,6 +1,12 @@
 import { create } from 'zustand';
-import type { HarmonyPost } from '../api/harmony';
-import { fetchHarmonyPosts, createHarmonyPost } from '../api/harmony';
+import type { HarmonyPost, HarmonyReply } from '../api/harmony';
+import {
+  fetchHarmonyPosts,
+  createHarmonyPost,
+  fetchReplies,
+  createReply,
+  censurePost as censurePostApi,
+} from '../api/harmony';
 
 interface HarmonyState {
   posts: HarmonyPost[];
@@ -9,8 +15,18 @@ interface HarmonyState {
   reviewWords: string[];
   loading: boolean;
   error: string | null;
+
+  // Thread view
+  selectedPostId: string | null;
+  replies: HarmonyReply[];
+  repliesLoading: boolean;
+
   loadPosts: () => Promise<void>;
   submitPost: (content: string) => Promise<void>;
+  openThread: (postId: string) => Promise<void>;
+  closeThread: () => void;
+  submitReply: (content: string) => Promise<void>;
+  censurePost: (postId: string, action: 'approve' | 'correct' | 'flag', weekNumber: number) => Promise<void>;
 }
 
 export const useHarmonyStore = create<HarmonyState>((set, get) => ({
@@ -20,6 +36,10 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
   reviewWords: [],
   loading: false,
   error: null,
+
+  selectedPostId: null,
+  replies: [],
+  repliesLoading: false,
 
   loadPosts: async () => {
     set({ loading: true, error: null });
@@ -40,7 +60,6 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
   submitPost: async (content) => {
     try {
       const result = await createHarmonyPost(content);
-      // Optimistically add pending post
       const { posts, currentWeekNumber } = get();
       const pendingPost: HarmonyPost = {
         id: result.id,
@@ -55,12 +74,71 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
       };
       set({ posts: [pendingPost, ...posts] });
 
-      // Refresh after delay to get approved status
       setTimeout(() => {
         get().loadPosts();
       }, 5000);
     } catch {
       set({ error: 'Failed to submit post' });
+    }
+  },
+
+  openThread: async (postId) => {
+    set({ selectedPostId: postId, replies: [], repliesLoading: true });
+    try {
+      const replies = await fetchReplies(postId);
+      set({ replies, repliesLoading: false });
+    } catch {
+      set({ repliesLoading: false });
+    }
+  },
+
+  closeThread: () => {
+    set({ selectedPostId: null, replies: [], repliesLoading: false });
+  },
+
+  submitReply: async (content) => {
+    const { selectedPostId, replies, posts } = get();
+    if (!selectedPostId) return;
+
+    try {
+      const result = await createReply(selectedPostId, content);
+      const pendingReply: HarmonyReply = {
+        id: result.id,
+        designation: 'YOU',
+        content,
+        createdAt: new Date().toISOString(),
+      };
+      set({ replies: [...replies, pendingReply] });
+
+      // Update reply count on parent post
+      set({
+        posts: posts.map((p) =>
+          p.id === selectedPostId
+            ? { ...p, replyCount: p.replyCount + 1 }
+            : p,
+        ),
+      });
+    } catch {
+      set({ error: 'Failed to submit reply' });
+    }
+  },
+
+  censurePost: async (postId, action, weekNumber) => {
+    try {
+      await censurePostApi(postId, action, weekNumber);
+      // If flagged, update local state
+      if (action === 'flag') {
+        const { posts } = get();
+        set({
+          posts: posts.map((p) =>
+            p.id === postId
+              ? { ...p, status: 'flagged' as const, pearlNote: 'Flag received. Forwarded for Wellness Review.' }
+              : p,
+          ),
+        });
+      }
+    } catch {
+      set({ error: 'Failed to process action' });
     }
   },
 }));

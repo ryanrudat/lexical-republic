@@ -45,3 +45,12 @@ export async function createReply(postId: string, content: string): Promise<{ id
   const { data } = await client.post(`/harmony/posts/${postId}/replies`, { content });
   return data;
 }
+
+export async function censurePost(
+  postId: string,
+  action: 'approve' | 'correct' | 'flag',
+  weekNumber: number,
+): Promise<{ success: boolean; action: string }> {
+  const { data } = await client.post(`/harmony/posts/${postId}/censure`, { action, weekNumber });
+  return data;
+}

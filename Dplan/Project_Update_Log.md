@@ -2,6 +2,37 @@
 
 Last updated: 2026-03-06
 
+## 2026-03-06 — Harmony Weekly Review Feed + Story/Vocab Wiring
+
+### Harmony as Weekly Vocabulary Review Surface
+- Harmony feed now uses the student pair's current shift progression to decide what posts are visible.
+- Feed response now returns current-week `focusWords` and previous-week `reviewWords` so Harmony functions as retrieval practice, not just ambient flavor.
+- Harmony is unlocked from Shift 1 instead of waiting until Shift 3.
+
+### Seeded Story/Vocabulary Integration
+- Added shared `WEEK_STORY_PLANS` source so Harmony review context and seeded narrative posts use the same weekly story words.
+- Added week-tagged Harmony seed posts for Weeks 1-3 with visible author labels (`Citizen-2104`, `CA-18`, `Citizen-4488`, etc.) instead of anonymous NPC posts.
+- Seeded posts now deliberately recycle prior-week anchor vocabulary inside new-week Harmony content:
+  - Week 1 posts circulate `directive`, `protocol`, `compliance`, `clearance`
+  - Week 2 posts introduce `contradiction`, `missing`, `notice`, `revision` while carrying Week 1 terms
+  - Week 3 posts introduce `clarify`, `queue`, `priority`, `dispatch` while carrying Week 2 terms
+
+### Runtime/Backend Changes
+- Added Harmony post metadata fields for `authorLabel` and `weekNumber`.
+- New Harmony API behavior:
+  - filter seeded posts by current unlocked week
+  - preserve class scoping
+  - assign student-created posts to the student's current week
+  - inherit `weekNumber` on replies
+- Added shared progression helper so week-aware logic is not duplicated between Dictionary and Harmony routes.
+
+### Verification Notes
+- Backend build, frontend build, Prisma client generation, and database seed completed successfully after implementation.
+- Local Prisma migration engine returned a generic schema-engine error during `migrate deploy`; migration SQL was still added to the repo, and the two Harmony columns were applied directly to the local dev DB to verify seed/runtime behavior end to end.
+
+### Remaining Follow-Up
+- Align live Week 1-3 queue `targetWords` and `previousWords` with the canonical story-plan anchor vocabulary so shift tasks and Harmony review use the same primary language spine.
+
 ## 2026-03-06 — Student Work Persistence, Teacher Grades, Vocab Stemmer
 
 ### Student Data Persistence
