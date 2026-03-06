@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { connectSocket, disconnectSocket, getSocket } from '../utils/socket';
+import { connectSocket, disconnectSocket, getSocket, onSocketStatus } from '../utils/socket';
 import { useTeacherStore } from '../stores/teacherStore';
 import type { OnlineStudent } from '../stores/teacherStore';
 
@@ -7,6 +7,8 @@ export function useTeacherSocket() {
   const setClassSnapshot = useTeacherStore((s) => s.setClassSnapshot);
   const upsertStudent = useTeacherStore((s) => s.upsertStudent);
   const removeStudent = useTeacherStore((s) => s.removeStudent);
+  const setSocketStatus = useTeacherStore((s) => s.setSocketStatus);
+  const bumpRegistrationTick = useTeacherStore((s) => s.bumpRegistrationTick);
 
   useEffect(() => {
     const sock = connectSocket();
@@ -23,16 +25,20 @@ export function useTeacherSocket() {
     const onDisconnected = (data: { userId: string }) => {
       removeStudent(data.userId);
     };
-
-    const onError = (err: Error) => {
-      console.error('[TeacherSocket] connection error:', err.message);
+    const onRegistered = () => {
+      bumpRegistrationTick();
     };
 
     sock.on('teacher:class-snapshot', onSnapshot);
     sock.on('student:connected', onConnected);
     sock.on('student:status-updated', onUpdated);
     sock.on('student:disconnected', onDisconnected);
-    sock.on('connect_error', onError);
+    sock.on('student:registered', onRegistered);
+
+    // Track connection status
+    const unsubStatus = onSocketStatus((status, error) => {
+      setSocketStatus(status, error);
+    });
 
     return () => {
       const s = getSocket();
@@ -41,9 +47,10 @@ export function useTeacherSocket() {
         s.off('student:connected', onConnected);
         s.off('student:status-updated', onUpdated);
         s.off('student:disconnected', onDisconnected);
-        s.off('connect_error', onError);
+        s.off('student:registered', onRegistered);
       }
+      unsubStatus();
       disconnectSocket();
     };
-  }, [setClassSnapshot, upsertStudent, removeStudent]);
+  }, [setClassSnapshot, upsertStudent, removeStudent, setSocketStatus, bumpRegistrationTick]);
 }

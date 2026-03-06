@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react'
 import { useStudentStore } from '../stores/studentStore';
 
 export default function Login() {
-  const [mode, setMode] = useState<'student' | 'teacher' | 'register'>('student');
+  const [mode, setMode] = useState<'student' | 'teacher' | 'register' | 'teacher-register'>('student');
   const [designation, setDesignation] = useState('');
   const [pin, setPin] = useState('');
   const [username, setUsername] = useState('');
@@ -13,7 +13,13 @@ export default function Login() {
   const [regStudentAName, setRegStudentAName] = useState('');
   const [regStudentBName, setRegStudentBName] = useState('');
   const [regClassCode, setRegClassCode] = useState('');
-  const { login, loginTeacher, register, loading, error } = useStudentStore();
+  // Teacher registration fields
+  const [tRegUsername, setTRegUsername] = useState('');
+  const [tRegPassword, setTRegPassword] = useState('');
+  const [tRegPasswordConfirm, setTRegPasswordConfirm] = useState('');
+  const [tRegDisplayName, setTRegDisplayName] = useState('');
+  const [tRegCode, setTRegCode] = useState('');
+  const { login, loginTeacher, register, registerTeacher, loading, error } = useStudentStore();
 
   // Background music — autoplay blocked by browsers, so start on first interaction
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -63,6 +69,13 @@ export default function Login() {
         await login(designation.toUpperCase(), pin);
       } else if (mode === 'teacher') {
         await loginTeacher(username.trim(), password);
+      } else if (mode === 'teacher-register') {
+        await registerTeacher(
+          tRegUsername.trim(),
+          tRegPassword,
+          tRegDisplayName.trim(),
+          tRegCode.trim()
+        );
       } else {
         await register(
           regDesignation.trim(),
@@ -82,6 +95,13 @@ export default function Login() {
     ? Boolean(designation && pin)
     : mode === 'teacher'
     ? Boolean(username && password)
+    : mode === 'teacher-register'
+    ? Boolean(
+        tRegUsername.trim() &&
+        tRegPassword.length >= 6 &&
+        tRegPassword === tRegPasswordConfirm &&
+        tRegCode.trim()
+      )
     : Boolean(
         regDesignation.trim() &&
         regPin.length >= 4 &&
@@ -91,6 +111,7 @@ export default function Login() {
       );
 
   const pinMismatch = mode === 'register' && regPinConfirm.length > 0 && regPin !== regPinConfirm;
+  const tPasswordMismatch = mode === 'teacher-register' && tRegPasswordConfirm.length > 0 && tRegPassword !== tRegPasswordConfirm;
 
   // Translucent by default, solid on focus — pure CSS, no state needed
   // text-base (16px) minimum prevents iOS Safari auto-zoom on focus
@@ -169,7 +190,7 @@ export default function Login() {
           >
               <div className="text-center mb-6">
                 <p className="font-ibm-mono text-[#2D8A6E] text-sm tracking-[0.2em] font-medium">
-                  {mode === 'student' ? 'CITIZEN IDENTIFICATION' : mode === 'teacher' ? 'DIRECTOR ACCESS' : 'NEW PAIR REGISTRATION'}
+                  {mode === 'student' ? 'CITIZEN IDENTIFICATION' : mode === 'teacher' ? 'DIRECTOR ACCESS' : mode === 'teacher-register' ? 'DIRECTOR REGISTRATION' : 'NEW PAIR REGISTRATION'}
                 </p>
                 <p className="font-ibm-mono text-[#5a6a78]/40 text-[10px] mt-1 tracking-wider">
                   v4.7.1 // AUTHORIZED ACCESS ONLY
@@ -201,9 +222,9 @@ export default function Login() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setMode('teacher')}
+                  onClick={() => setMode(mode === 'teacher-register' ? 'teacher-register' : 'teacher')}
                   className={`flex-1 py-3 min-h-[44px] font-ibm-mono text-xs tracking-wider transition-all ${
-                    mode === 'teacher'
+                    mode === 'teacher' || mode === 'teacher-register'
                       ? 'bg-[#2D8A6E] text-white rounded-full shadow-sm'
                       : 'text-[#5a6a78]/50 hover:text-[#2D8A6E]/70'
                   }`}
@@ -338,7 +359,7 @@ export default function Login() {
                     )}
                   </div>
                 </>
-              ) : (
+              ) : mode === 'teacher' ? (
                 <>
                   <div className="mb-4">
                     <label className="block font-ibm-mono text-[11px] text-[#5a6a78]/60 uppercase tracking-[0.15em] mb-2">
@@ -355,7 +376,7 @@ export default function Login() {
                     />
                   </div>
 
-                  <div className="mb-6">
+                  <div className="mb-4">
                     <label className="block font-ibm-mono text-[11px] text-[#5a6a78]/60 uppercase tracking-[0.15em] mb-2">
                       Password
                     </label>
@@ -367,6 +388,106 @@ export default function Login() {
                       className={`${inputCls} text-lg`}
                       autoComplete="current-password"
                     />
+                  </div>
+
+                  <div className="mb-6 text-center">
+                    <button
+                      type="button"
+                      onClick={() => setMode('teacher-register')}
+                      className="font-ibm-mono text-[11px] text-[#2D8A6E]/60 hover:text-[#2D8A6E] tracking-wider transition-colors"
+                    >
+                      NEW DIRECTOR? REGISTER HERE
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="mb-4">
+                    <label className="block font-ibm-mono text-[11px] text-[#5a6a78]/60 uppercase tracking-[0.15em] mb-2">
+                      Registration Code
+                    </label>
+                    <input
+                      type="text"
+                      value={tRegCode}
+                      onChange={(e) => setTRegCode(e.target.value)}
+                      placeholder="Provided by administrator"
+                      className={`${inputCls} text-base tracking-wider`}
+                      autoComplete="off"
+                      autoFocus
+                    />
+                    <p className="font-ibm-mono text-[#5a6a78]/35 text-[10px] mt-1 tracking-wider">
+                      CONTACT YOUR ADMINISTRATOR FOR ACCESS
+                    </p>
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="block font-ibm-mono text-[11px] text-[#5a6a78]/60 uppercase tracking-[0.15em] mb-2">
+                      Display Name
+                    </label>
+                    <input
+                      type="text"
+                      value={tRegDisplayName}
+                      onChange={(e) => setTRegDisplayName(e.target.value)}
+                      placeholder="Director Wells"
+                      className={`${inputCls} text-base tracking-wider`}
+                    />
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="block font-ibm-mono text-[11px] text-[#5a6a78]/60 uppercase tracking-[0.15em] mb-2">
+                      Username
+                    </label>
+                    <input
+                      type="text"
+                      value={tRegUsername}
+                      onChange={(e) => setTRegUsername(e.target.value)}
+                      placeholder="Choose a username"
+                      className={`${inputCls} text-base tracking-wider`}
+                      autoComplete="off"
+                    />
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="block font-ibm-mono text-[11px] text-[#5a6a78]/60 uppercase tracking-[0.15em] mb-2">
+                      Password (min 6 chars)
+                    </label>
+                    <input
+                      type="password"
+                      value={tRegPassword}
+                      onChange={(e) => setTRegPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className={`${inputCls} text-lg`}
+                      autoComplete="new-password"
+                    />
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="block font-ibm-mono text-[11px] text-[#5a6a78]/60 uppercase tracking-[0.15em] mb-2">
+                      Confirm Password
+                    </label>
+                    <input
+                      type="password"
+                      value={tRegPasswordConfirm}
+                      onChange={(e) => setTRegPasswordConfirm(e.target.value)}
+                      placeholder="••••••••"
+                      className={`${inputCls} text-lg ${
+                        tPasswordMismatch ? '!border-neon-pink/40 focus:!border-neon-pink focus:!ring-neon-pink/20' : ''
+                      }`}
+                      autoComplete="new-password"
+                    />
+                    {tPasswordMismatch && (
+                      <p className="font-ibm-mono text-neon-pink text-xs mt-1">Passwords do not match</p>
+                    )}
+                  </div>
+
+                  <div className="mb-6 text-center">
+                    <button
+                      type="button"
+                      onClick={() => setMode('teacher')}
+                      className="font-ibm-mono text-[11px] text-[#2D8A6E]/60 hover:text-[#2D8A6E] tracking-wider transition-colors"
+                    >
+                      ALREADY REGISTERED? LOG IN
+                    </button>
                   </div>
                 </>
               )}
@@ -388,10 +509,12 @@ export default function Login() {
               >
                 {loading ? (
                   <span className="animate-pulse">
-                    {mode === 'register' ? 'REGISTERING...' : 'AUTHENTICATING...'}
+                    {mode === 'register' || mode === 'teacher-register' ? 'REGISTERING...' : 'AUTHENTICATING...'}
                   </span>
                 ) : mode === 'register' ? (
                   'REGISTER PAIR'
+                ) : mode === 'teacher-register' ? (
+                  'REGISTER DIRECTOR'
                 ) : (
                   'AUTHENTICATE'
                 )}

@@ -23,10 +23,19 @@ export default function App() {
   // Socket disconnects on logout (handled in studentStore).
   useEffect(() => {
     if (user && user.role === 'student') {
-      connectSocket({
+      const sock = connectSocket({
         designation: user.designation ?? undefined,
         displayName: user.displayName,
       });
+
+      const onError = (err: Error) => {
+        console.error('[StudentSocket] connection error:', err.message);
+      };
+      sock.on('connect_error', onError);
+
+      return () => {
+        sock.off('connect_error', onError);
+      };
     }
   }, [user?.id, user?.role, user?.designation, user?.displayName]);
 

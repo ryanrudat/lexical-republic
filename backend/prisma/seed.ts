@@ -675,26 +675,6 @@ async function main() {
     create: { pairId: testPair.id, classId: defaultClass.id },
   });
 
-  // ─── Clean up old test pairs (CA-2 through CA-5) ───
-  for (const oldDesignation of ['CA-2', 'CA-3', 'CA-4', 'CA-5']) {
-    const oldPair = await prisma.pair.findUnique({ where: { designation: oldDesignation } });
-    if (oldPair) {
-      // Remove all associated data
-      await prisma.missionScore.deleteMany({ where: { pairId: oldPair.id } });
-      await prisma.shiftResult.deleteMany({ where: { pairId: oldPair.id } });
-      await prisma.characterMessage.deleteMany({ where: { pairId: oldPair.id } });
-      await prisma.narrativeChoice.deleteMany({ where: { pairId: oldPair.id } });
-      await prisma.pairDictionaryProgress.deleteMany({ where: { pairId: oldPair.id } });
-      await prisma.pearlConversation.deleteMany({ where: { pairId: oldPair.id } });
-      await prisma.harmonyPost.deleteMany({ where: { pairId: oldPair.id } });
-      await prisma.recording.deleteMany({ where: { pairId: oldPair.id } });
-      await prisma.classEnrollment.deleteMany({ where: { pairId: oldPair.id } });
-      await prisma.citizen4488Interaction.deleteMany({ where: { pairId: oldPair.id } });
-      await prisma.pair.delete({ where: { id: oldPair.id } });
-      console.log(`  Removed old test pair: ${oldDesignation}`);
-    }
-  }
-
   // ─── Arcs (3 Acts) ───
   const arcData = [
     {

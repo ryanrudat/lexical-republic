@@ -26,6 +26,8 @@ export default function TeacherDashboard() {
   const selectedClassId = useTeacherStore((s) => s.selectedClassId);
   const setSelectedClassId = useTeacherStore((s) => s.setSelectedClassId);
 
+  const socketStatus = useTeacherStore((s) => s.socketStatus);
+
   const [classes, setClasses] = useState<ClassInfo[]>([]);
   const [showClassManager, setShowClassManager] = useState(false);
 
@@ -60,6 +62,40 @@ export default function TeacherDashboard() {
           <div className="flex items-center gap-4">
             <span className="text-xs text-indigo-300 tracking-wider uppercase hidden sm:inline">
               Director Oversight Panel
+            </span>
+            {/* Socket connection indicator */}
+            <span
+              className={`inline-flex items-center gap-1 text-xs ${
+                socketStatus === 'connected'
+                  ? 'text-emerald-300'
+                  : socketStatus === 'connecting'
+                  ? 'text-amber-300'
+                  : socketStatus === 'error'
+                  ? 'text-red-300'
+                  : 'text-indigo-400'
+              }`}
+              title={
+                socketStatus === 'connected'
+                  ? 'Connected to server'
+                  : socketStatus === 'connecting'
+                  ? 'Connecting...'
+                  : socketStatus === 'error'
+                  ? 'Connection error'
+                  : 'Disconnected'
+              }
+            >
+              <span
+                className={`inline-block w-1.5 h-1.5 rounded-full ${
+                  socketStatus === 'connected'
+                    ? 'bg-emerald-400'
+                    : socketStatus === 'connecting'
+                    ? 'bg-amber-400 animate-pulse'
+                    : socketStatus === 'error'
+                    ? 'bg-red-400'
+                    : 'bg-indigo-500'
+                }`}
+              />
+              {socketStatus === 'connected' ? 'Live' : socketStatus === 'connecting' ? 'Connecting' : socketStatus === 'error' ? 'Error' : 'Offline'}
             </span>
             <button
               onClick={logout}

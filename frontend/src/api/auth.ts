@@ -54,6 +54,22 @@ export async function registerStudent(
   return data.user as User;
 }
 
+export async function registerTeacher(
+  username: string,
+  password: string,
+  displayName: string,
+  registrationCode: string
+) {
+  const { data } = await client.post('/auth/register-teacher', {
+    username,
+    password,
+    displayName,
+    registrationCode,
+  });
+  if (data.token) setStoredToken(data.token);
+  return data.user as User;
+}
+
 export async function logout() {
   await client.post('/auth/logout');
   clearStoredToken();

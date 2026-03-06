@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { User } from '../api/auth';
-import { loginStudent, loginTeacher as apiLoginTeacher, registerStudent as apiRegister, logout as apiLogout, getMe } from '../api/auth';
+import { loginStudent, loginTeacher as apiLoginTeacher, registerStudent as apiRegister, registerTeacher as apiRegisterTeacher, logout as apiLogout, getMe } from '../api/auth';
 import { disconnectSocket } from '../utils/socket';
 import { useSessionStore } from './sessionStore';
 
@@ -27,6 +27,7 @@ interface StudentState {
   login: (designation: string, pin: string) => Promise<void>;
   loginTeacher: (username: string, password: string) => Promise<void>;
   register: (studentNumber: string, pin: string, displayName?: string, classCode?: string, studentAName?: string, studentBName?: string) => Promise<void>;
+  registerTeacher: (username: string, password: string, displayName: string, registrationCode: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -73,6 +74,18 @@ export const useStudentStore = create<StudentState>((set) => ({
       if (user.concernScore != null) {
         useSessionStore.getState().hydrateConcern(user.concernScore);
       }
+      set({ user, loading: false });
+    } catch (err: unknown) {
+      const message = getApiErrorMessage(err, 'Registration failed');
+      set({ error: message, loading: false });
+      throw err;
+    }
+  },
+
+  registerTeacher: async (username, password, displayName, registrationCode) => {
+    set({ loading: true, error: null });
+    try {
+      const user = await apiRegisterTeacher(username, password, displayName, registrationCode);
       set({ user, loading: false });
     } catch (err: unknown) {
       const message = getApiErrorMessage(err, 'Registration failed');

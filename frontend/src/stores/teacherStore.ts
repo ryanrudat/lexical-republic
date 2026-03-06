@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { SocketStatus } from '../utils/socket';
 
 export type TeacherTab = 'class' | 'grades' | 'shifts' | 'dictionary';
 
@@ -29,6 +30,14 @@ interface TeacherState {
 
   selectedCell: { studentId: string; weekId: string } | null;
   setSelectedCell: (cell: { studentId: string; weekId: string } | null) => void;
+
+  socketStatus: SocketStatus;
+  socketError: string | null;
+  setSocketStatus: (status: SocketStatus, error?: string) => void;
+
+  /** Incremented when a new student registers — triggers ClassMonitor refresh */
+  registrationTick: number;
+  bumpRegistrationTick: () => void;
 }
 
 export const useTeacherStore = create<TeacherState>((set) => ({
@@ -58,4 +67,11 @@ export const useTeacherStore = create<TeacherState>((set) => ({
 
   selectedCell: null,
   setSelectedCell: (cell) => set({ selectedCell: cell }),
+
+  socketStatus: 'disconnected',
+  socketError: null,
+  setSocketStatus: (status, error) => set({ socketStatus: status, socketError: error ?? null }),
+
+  registrationTick: 0,
+  bumpRegistrationTick: () => set((s) => ({ registrationTick: s.registrationTick + 1 })),
 }));

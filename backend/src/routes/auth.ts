@@ -4,6 +4,7 @@ import prisma from '../utils/prisma';
 import { signToken } from '../utils/jwt';
 import { authenticate, getPairId, getTeacherId } from '../middleware/auth';
 import { isTeacherPayload, isPairPayload } from '../utils/jwt';
+import { io } from '../socketServer';
 
 const router = Router();
 
@@ -290,6 +291,17 @@ router.post('/register', async (req: Request, res: Response) => {
     });
     setCookie(res, token);
 
+    // Notify teacher dashboard that a new student registered
+    if (io) {
+      io.to('teacher').emit('student:registered', {
+        id: pair.id,
+        designation: pair.designation,
+        displayName: `${pair.studentAName}${pair.studentBName ? ` & ${pair.studentBName}` : ''}`,
+        classId: cls.id,
+        className: cls.name,
+      });
+    }
+
     res.status(201).json({
       token,
       user: {
@@ -310,6 +322,102 @@ router.post('/register', async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error('Registration error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/auth/register-teacher — teacher self-registration with secret code
+router.post('/register-teacher', async (req: Request, res: Response) => {
+  const { username, password, displayName, registrationCode } = req.body as {
+    username?: string;
+    password?: string;
+    displayName?: string;
+    registrationCode?: string;
+  };
+
+  const expectedCode = process.env.TEACHER_REGISTRATION_CODE;
+  if (!expectedCode) {
+    res.status(403).json({ error: 'Teacher registration is not enabled' });
+    return;
+  }
+
+  if (!registrationCode || registrationCode !== expectedCode) {
+    res.status(403).json({ error: 'Invalid registration code' });
+    return;
+  }
+
+  if (!username || typeof username !== 'string' || !username.trim()) {
+    res.status(400).json({ error: 'Username is required' });
+    return;
+  }
+
+  if (!password || typeof password !== 'string' || password.length < 6) {
+    res.status(400).json({ error: 'Password must be at least 6 characters' });
+    return;
+  }
+
+  const cleanUsername = username.trim().toLowerCase();
+  const name = (displayName || '').trim() || `Director ${cleanUsername}`;
+
+  try {
+    const existing = await prisma.user.findUnique({ where: { username: cleanUsername } });
+    if (existing) {
+      res.status(409).json({ error: 'Username already taken' });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = await prisma.user.create({
+      data: {
+        username: cleanUsername,
+        passwordHash,
+        displayName: name,
+        role: 'teacher',
+      },
+    });
+
+    // Create a default class for the new teacher
+    const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let joinCode = '';
+    for (let i = 0; i < 6; i++) {
+      joinCode += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
+    }
+
+    const cls = await prisma.class.create({
+      data: {
+        name: 'My Class',
+        joinCode,
+        teacherId: user.id,
+      },
+    });
+
+    // Auto-unlock week 1
+    const week1 = await prisma.week.findFirst({ where: { weekNumber: 1 } });
+    if (week1) {
+      await prisma.classWeekUnlock.create({
+        data: { classId: cls.id, weekId: week1.id },
+      });
+    }
+
+    const token = signToken({ type: 'teacher', userId: user.id, role: 'teacher' });
+    setCookie(res, token);
+
+    res.status(201).json({
+      token,
+      user: {
+        id: user.id,
+        displayName: user.displayName,
+        designation: user.designation,
+        username: user.username,
+        role: user.role,
+        lane: user.lane,
+        xp: user.xp,
+        streak: user.streak,
+        classes: [{ id: cls.id, name: cls.name, joinCode: cls.joinCode }],
+      },
+    });
+  } catch (err) {
+    console.error('Teacher registration error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

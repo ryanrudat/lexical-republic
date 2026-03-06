@@ -7,8 +7,34 @@ const socketUrl = apiBaseUrl.replace(/\/api\/?$/, '');
 
 let socket: Socket | null = null;
 
+export type SocketStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
+type StatusListener = (status: SocketStatus, error?: string) => void;
+const statusListeners = new Set<StatusListener>();
+
+function notifyStatus(status: SocketStatus, error?: string) {
+  statusListeners.forEach((fn) => fn(status, error));
+}
+
+export function onSocketStatus(fn: StatusListener): () => void {
+  statusListeners.add(fn);
+  // Immediately notify current state
+  if (socket?.connected) fn('connected');
+  else if (socket) fn('connecting');
+  else fn('disconnected');
+  return () => { statusListeners.delete(fn); };
+}
+
 export function connectSocket(query?: { designation?: string; displayName?: string }): Socket {
   if (socket?.connected) return socket;
+
+  // If we have a stale disconnected socket, clean it up
+  if (socket) {
+    socket.removeAllListeners();
+    socket.disconnect();
+    socket = null;
+  }
+
+  notifyStatus('connecting');
 
   socket = io(socketUrl, {
     withCredentials: true,
@@ -20,14 +46,35 @@ export function connectSocket(query?: { designation?: string; displayName?: stri
     },
   });
 
+  socket.on('connect', () => {
+    notifyStatus('connected');
+  });
+
+  socket.on('disconnect', (reason) => {
+    // 'io server disconnect' means the server forced disconnect — don't auto-reconnect
+    if (reason === 'io server disconnect') {
+      notifyStatus('disconnected');
+    } else {
+      // Socket.IO will auto-reconnect for transport issues
+      notifyStatus('connecting');
+    }
+  });
+
+  socket.on('connect_error', (err) => {
+    console.error('[Socket] connection error:', err.message);
+    notifyStatus('error', err.message);
+  });
+
   socket.connect();
   return socket;
 }
 
 export function disconnectSocket() {
   if (socket) {
+    socket.removeAllListeners();
     socket.disconnect();
     socket = null;
+    notifyStatus('disconnected');
   }
 }
 

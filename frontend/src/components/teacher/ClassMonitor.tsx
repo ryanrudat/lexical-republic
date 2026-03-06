@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { fetchStudents } from '../../api/teacher';
 import { useTeacherStore } from '../../stores/teacherStore';
 import { STEP_ORDER } from '../../types/shifts';
@@ -11,15 +11,22 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
   const [students, setStudents] = useState<StudentSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const onlineStudents = useTeacherStore((s) => s.onlineStudents);
+  const socketStatus = useTeacherStore((s) => s.socketStatus);
+  const registrationTick = useTeacherStore((s) => s.registrationTick);
 
-  useEffect(() => {
+  const loadStudents = useCallback(() => {
     setLoading(true);
     void fetchStudents(classId || undefined)
       .then(setStudents)
       .finally(() => setLoading(false));
   }, [classId]);
 
-  if (loading) {
+  // Refresh on mount, classId change, or when a new student registers
+  useEffect(() => {
+    loadStudents();
+  }, [loadStudents, registrationTick]);
+
+  if (loading && students.length === 0) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="text-sm text-indigo-500 animate-pulse">Loading class data...</div>
@@ -44,13 +51,65 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-slate-800">
-          Live Class Monitor
-        </h2>
-        <span className="text-sm text-slate-500">
-          <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1.5" />
-          {onlineCount} online / {students.length} total
-        </span>
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold text-slate-800">
+            Live Class Monitor
+          </h2>
+          {/* Socket connection indicator */}
+          <span
+            className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full ${
+              socketStatus === 'connected'
+                ? 'bg-emerald-50 text-emerald-600'
+                : socketStatus === 'connecting'
+                ? 'bg-amber-50 text-amber-600'
+                : socketStatus === 'error'
+                ? 'bg-red-50 text-red-600'
+                : 'bg-slate-100 text-slate-400'
+            }`}
+            title={
+              socketStatus === 'connected'
+                ? 'Real-time updates active'
+                : socketStatus === 'connecting'
+                ? 'Connecting to server...'
+                : socketStatus === 'error'
+                ? 'Connection error — retrying...'
+                : 'Disconnected'
+            }
+          >
+            <span
+              className={`inline-block w-1.5 h-1.5 rounded-full ${
+                socketStatus === 'connected'
+                  ? 'bg-emerald-500'
+                  : socketStatus === 'connecting'
+                  ? 'bg-amber-500 animate-pulse'
+                  : socketStatus === 'error'
+                  ? 'bg-red-500'
+                  : 'bg-slate-400'
+              }`}
+            />
+            {socketStatus === 'connected'
+              ? 'Live'
+              : socketStatus === 'connecting'
+              ? 'Connecting'
+              : socketStatus === 'error'
+              ? 'Error'
+              : 'Offline'}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={loadStudents}
+            className="text-xs px-2.5 py-1 rounded-md bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition-colors"
+            title="Refresh student list"
+          >
+            Refresh
+          </button>
+          <span className="text-sm text-slate-500">
+            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1.5" />
+            {onlineCount} online / {students.length} total
+          </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
