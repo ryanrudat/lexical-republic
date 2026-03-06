@@ -41,7 +41,7 @@ Config-driven task queue replaces the 7-step PhaseRunner for Weeks 1-3. Each wee
 - `shift_report` — Lane-scaffolded writing with target word highlighting and 3-attempt evaluator
 
 **Shared components:**
-- `TargetWordHighlighter` — Textarea with target word status chips (green checkmark when used), DSEG7 word counter
+- `TargetWordHighlighter` — Textarea with target word status chips (green checkmark when used), DSEG7 word counter, Porter Stemmer matching (accepts inflected forms: "arrived" counts as "arrive")
 - `WritingEvaluator` — 3-attempt system: full eval → relaxed threshold → auto-pass. Calls `POST /api/submissions/evaluate`
 - `TaskCard` — Wraps tasks with stamp animation (idle → completing → stamped)
 
@@ -59,6 +59,8 @@ Config-driven task queue replaces the 7-step PhaseRunner for Weeks 1-3. Each wee
 - Frontend sends `content` (not `text`), `phaseId`, `activityType`, with `grammarTarget`/`targetVocab`/`lane` in `metadata`
 - Backend: `POST /api/submissions/evaluate` — Layer 1 auto-checks (word count, vocab usage) + Layer 2 AI rubric (OpenAI, fail-open)
 - Attempt counter only increments on non-pass results
+- **Vocabulary matching uses Porter Stemmer** (Porter, 1980) — both frontend chips and backend evaluator reduce words to morphological stems. "arrived", "arriving", "arrives" all match target word "arrive". Aligned with CEFR A2-B1 word family standards (Bauer & Nation, 1993 Level 2). Shared stemmer at `frontend/src/utils/stemmer.ts` and `backend/src/utils/stemmer.ts`.
+- Student writing text persisted in `MissionScore.details` JSON blob (writingSubmissions, justifications, writingText)
 
 **Dictionary word gating:**
 - Words gated by student progress (MissionScore/ShiftResult), not ClassWeekUnlock
@@ -131,10 +133,9 @@ Student-facing location labels map directly to learning purpose:
 - Mounted in `App.tsx` after boot sequence, before routes.
 
 ### Teacher Dictionary Manager (implemented)
-- Editable table in teacher dashboard "Dictionary" tab (indigo/slate palette).
+- Editable table in teacher dashboard "Dictionary" tab (light indigo/slate palette).
 - Columns: Word (ro), POS (ro), Definition (edit), 中文 (edit), Example (edit), Status (dropdown), Week (ro), Target (checkbox), TOEIC (dropdown).
 - Inline edit → blur/Enter → PATCH `/api/teacher/dictionary/:wordId` → "Saved" indicator.
-- Welcome video upload section at top (MP4/WebM/MOV).
 
 ### Voice Log Quality Gate (implemented)
 Voice log completion requires:
@@ -190,6 +191,10 @@ File: `backend/src/routes/teacher.ts`
 - `PATCH /api/teacher/weeks/:weekId/briefing` — updates briefing mission config fields:
   - `embedUrl`, `episodeTitle`, `episodeSubtitle`, `fallbackText`
 - `PATCH /api/teacher/dictionary/:wordId` — edits dictionary word fields (partyDefinition, trueDefinition, exampleSentence, translationZhTw, initialStatus, isWorldBuilding, toeicCategory)
+- `PATCH /api/teacher/scores/:scoreId` — edit individual score (score, details JSON)
+- `DELETE /api/teacher/scores/:scoreId` — delete individual score
+- `DELETE /api/teacher/students/:pairId/weeks/:weekId/progress` — reset week progress (cascading delete of scores + shift results + character messages)
+- `PATCH /api/teacher/students/:pairId/concern` — override pair concern score
 
 File: `backend/src/routes/dictionary.ts`
 - `GET /api/dictionary` — full word list with `translationZhTw`, `starred`, `chineseRevealed`
@@ -212,7 +217,9 @@ File: `frontend/src/pages/TeacherDashboard.tsx`
 - Clip-specific media inputs (Clip A / Clip B upload or embed URL)
 - Briefing video system supports both embed URL and true file upload (MP4/WebM/MOV)
 - Uploaded briefing videos play in a Three.js retro TV presentation
-- Dictionary tab: editable word table + welcome video upload (see Teacher Dictionary Manager above)
+- Shifts tab: welcome video upload (MP4/WebM/MOV) + Shift Storyboard
+- Dictionary tab: editable word table (see Teacher Dictionary Manager above)
+- Grades tab: per-student drill-down, inline score editing, writing viewer, week reset, concern override. Detects dual week types (ShiftQueue weeks 1-3, PhaseRunner weeks 4+).
 - Teacher is the only active operator in this phase — keep video upload open each week, use sequence control for class pacing
 
 ### 50-minute class structure
@@ -298,7 +305,7 @@ Dictionary-specific fields added:
 
 ## Development Credentials
 - Teacher: `teacher` / `teacher123`
-- Students: `CA-1` through `CA-5` with PIN `1234`
+- Test student: `CA-1` with PIN `1234` (only one seeded pair; CA-2 through CA-5 removed from seed)
 
 ## OfficeView PEARL 3D Sphere (implemented)
 - Self-contained R3F Canvas component: `frontend/src/components/office/PearlSphere3D.tsx`
@@ -427,10 +434,13 @@ External canon source: `/Users/ryanrudat/Desktop/Dplan/`
 11. Expand dictionary seed data beyond Weeks 1-3 (currently 49 words, target ~120+ across 18 weeks).
 12. ~~Week 3 task components: `PriorityBriefing` and `PrioritySort`~~ — DONE: implemented with click-to-assign sorting (no drag-and-drop), writing justification phase, and disappearing case mechanic.
 13. ShiftClosing component — stats grid, clearance upgrade animation, narrative hook card, Harmony access button.
-14. Concern score wiring — delta tracking per task, PATCH to Pair.concernScore at shift close.
+14. ~~Concern score wiring~~ — PARTIAL: DB concern score hydrated on login/refresh, teacher override endpoint live. Delta tracking per task and PATCH at shift close still pending.
 15. Lane adjustment system — auto-promote/demote evaluation after each shift (deferred to Phase B).
 
 ## Change Log
+- 2026-03-06: Porter Stemmer for vocabulary matching — replaced broken ad-hoc suffix regex with proper Porter Stemmer (1980) on both frontend (`TargetWordHighlighter` chips) and backend (`submissions/evaluate`). Inflected forms like "arrived", "submitted", "following" now correctly match target words. Aligned with CEFR A2-B1 word family standards (Bauer & Nation, 1993).
+- 2026-03-06: Teacher grade management — added 4 backend endpoints (PATCH/DELETE scores, reset week progress, override concern), Gradebook rewrite with dual queue/phase week support, inline score editing, per-task writing viewer, week reset. Student writing text now persisted in MissionScore.details. Concern score hydrated from DB on login/refresh. Fixed stale closure bugs in IntakeForm, PriorityBriefing, PrioritySort where writing submissions/justifications were lost.
+- 2026-03-06: Teacher dashboard cleanup — moved welcome video upload from Dictionary tab to Shifts tab, fixed Dictionary tab readability (dark theme → light palette), removed fake test pairs CA-2 through CA-5 from seed (cascade deletes all associated data).
 - 2026-03-06: Shifts 1-3 audit and fixes — fixed ContradictionReport crash (flat memo structure, not nested `header`), fixed classification scoring (dropdown values now match config snake_case), fixed ComprehensionDoc blank questions (`question` field accepted alongside `text`), fixed backend `/api/messages/unread-count` route ordering (was matching `/:id/read` first), relocated Dictionary + Messaging icons to grouped toolbar on right side of terminal header with thin divider before PEARL, fixed ShiftClosing stats to match actual task detail shapes (`correct`/`total` from VocabClearance, `correctClassifications` from ContradictionReport, `wordCount` from ShiftReport), responsive header hides Ministry text and PEARL label on mobile. Confirmed PriorityBriefing and PrioritySort are fully implemented (updated CLAUDE.md gap list).
 - 2026-03-05: Messaging panel redesign — inbox/thread navigation (InboxView with preview cards, ThreadView with full conversation), character response persistence fix (reconstructs selectedReply from DB on reload), enlarged header icons (messaging SVG 24×20, dictionary SVG 32×36), notification toast deep-links to thread, thread slide-in CSS animation.
 - 2026-03-05: ShiftQueue bug fixes — fixed duplicate character messages (sequenced loadMessages before triggers, inFlightKeys dedup, backend $transaction atomic create, GET response dedup), toast notification stays until student clicks (X dismiss or body opens panel), WritingEvaluator sends correct field names to backend (`content` not `text`, grammarTarget/targetVocab in `metadata`), attempt counter only increments on non-pass results, DSEG7 font only on numbers (not "words" label), acknowledgment card reads config's `blanks[0].text`/`blanks[0].answers` format, intake form readonly fields match config `type: "readonly"` format, target word highlighting replaced broken mirror-div overlay with status chips below textarea, dictionary words gated by student progress (MissionScore/ShiftResult) not ClassWeekUnlock.
