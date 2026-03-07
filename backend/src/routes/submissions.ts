@@ -104,28 +104,33 @@ router.post('/evaluate', requirePair, async (req: Request, res: Response) => {
         const raw = completion.choices[0]?.message?.content;
         if (raw) {
           const parsed = JSON.parse(raw);
+          const gs = clamp(parsed.grammarScore ?? 0.5, 0, 1);
+          const vs = clamp(parsed.vocabScore ?? 0.5, 0, 1);
+          const ts = clamp(parsed.taskScore ?? 0.5, 0, 1);
+          // Pass if average score >= 0.4 (lenient for A2-B1 learners)
+          const avg = (gs + vs + ts) / 3;
           aiResult = {
-            passed: true,
-            grammarScore: clamp(parsed.grammarScore ?? 0.5, 0, 1),
+            passed: avg >= 0.4,
+            grammarScore: gs,
             grammarNotes: Array.isArray(parsed.grammarNotes) ? parsed.grammarNotes : [],
-            vocabScore: clamp(parsed.vocabScore ?? 0.5, 0, 1),
+            vocabScore: vs,
             vocabUsed,
             vocabMissed,
-            taskScore: clamp(parsed.taskScore ?? 0.5, 0, 1),
+            taskScore: ts,
             taskNotes: parsed.taskNotes || '',
             pearlFeedback: parsed.pearlFeedback || 'Your submission has been received and filed.',
             concernScoreChange: 0,
             isDegraded: false,
           };
         } else {
-          aiResult = buildFallbackResult(vocabUsed, vocabMissed, targetVocab.length);
+          aiResult = buildFallbackResult(vocabUsed, vocabMissed, targetVocab.length, content);
         }
       } catch (err) {
         console.error('AI evaluation error (fail-open):', err);
-        aiResult = buildFallbackResult(vocabUsed, vocabMissed, targetVocab.length);
+        aiResult = buildFallbackResult(vocabUsed, vocabMissed, targetVocab.length, content);
       }
     } else {
-      aiResult = buildFallbackResult(vocabUsed, vocabMissed, targetVocab.length);
+      aiResult = buildFallbackResult(vocabUsed, vocabMissed, targetVocab.length, content);
     }
 
     // ─── Store results ───
@@ -209,20 +214,129 @@ function clamp(val: number, min: number, max: number): number {
 function buildFallbackResult(
   vocabUsed: string[],
   vocabMissed: string[],
-  totalVocab: number
+  totalVocab: number,
+  content: string,
 ): EvaluationResult {
+  const coherence = checkCoherence(content);
+  const vocabScore = totalVocab > 0 ? vocabUsed.length / totalVocab : 0.5;
+  const passed = coherence.passed && vocabScore >= 0.3;
+
   return {
-    passed: true,
-    grammarScore: 0.5,
-    grammarNotes: [],
-    vocabScore: totalVocab > 0 ? vocabUsed.length / totalVocab : 0.5,
+    passed,
+    grammarScore: coherence.score,
+    grammarNotes: coherence.notes,
+    vocabScore,
     vocabUsed,
     vocabMissed,
-    taskScore: 0.5,
+    taskScore: passed ? 0.5 : 0.2,
     taskNotes: '',
-    pearlFeedback: `Your submission has been received and filed. Vocabulary compliance: ${vocabUsed.length} of ${totalVocab} terms detected. Processing complete.`,
+    pearlFeedback: passed
+      ? `Your submission has been received and filed. Vocabulary compliance: ${vocabUsed.length} of ${totalVocab} terms detected. Processing complete.`
+      : coherence.feedback,
     concernScoreChange: 0,
     isDegraded: true,
+  };
+}
+
+/**
+ * Basic offline coherence check — catches word salad, gibberish, and
+ * repetitive filler without requiring an AI model.
+ */
+function checkCoherence(content: string): {
+  passed: boolean;
+  score: number;
+  notes: string[];
+  feedback: string;
+} {
+  const sentences = content
+    .split(/[.!?]+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 0);
+  const words = content.toLowerCase().split(/\s+/).filter(Boolean);
+  const notes: string[] = [];
+
+  // 1. Must have at least 2 sentences
+  if (sentences.length < 2) {
+    return {
+      passed: false,
+      score: 0.2,
+      notes: ['Submission contains fewer than 2 sentences.'],
+      feedback: 'The Ministry requires complete, multi-sentence responses. Rewrite your submission with proper sentence structure.',
+    };
+  }
+
+  // 2. Excessive word repetition — if any single word (excluding common ones) is >40% of total
+  const commonWords = new Set([
+    'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+    'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'shall',
+    'should', 'may', 'might', 'must', 'can', 'could', 'to', 'of', 'in',
+    'for', 'on', 'with', 'at', 'by', 'from', 'and', 'or', 'but', 'not',
+    'that', 'this', 'it', 'i', 'you', 'he', 'she', 'we', 'they', 'my',
+    'your', 'his', 'her', 'our', 'their', 'me', 'him', 'us', 'them',
+  ]);
+  const contentWords = words.filter(w => !commonWords.has(w) && w.length > 2);
+  if (contentWords.length > 0) {
+    const freq: Record<string, number> = {};
+    for (const w of contentWords) freq[w] = (freq[w] || 0) + 1;
+    const maxFreq = Math.max(...Object.values(freq));
+    if (maxFreq / contentWords.length > 0.4) {
+      const repeated = Object.entries(freq).find(([, c]) => c === maxFreq)?.[0];
+      notes.push(`Excessive repetition of "${repeated}".`);
+      return {
+        passed: false,
+        score: 0.15,
+        notes,
+        feedback: `Repetitive language detected. The Ministry does not accept filler text. Revise your submission with varied vocabulary.`,
+      };
+    }
+  }
+
+  // 3. Average word length sanity — gibberish tends to have very short or very long avg
+  const avgWordLen = words.reduce((sum, w) => sum + w.replace(/[^a-z]/gi, '').length, 0) / words.length;
+  if (avgWordLen < 2.5) {
+    notes.push('Average word length too short — possible gibberish.');
+    return {
+      passed: false,
+      score: 0.1,
+      notes,
+      feedback: 'Your submission does not meet Ministry language standards. Write complete English sentences.',
+    };
+  }
+
+  // 4. Unique word ratio — word salad with no repetition is fine, but
+  //    having <30% unique content words suggests copy-paste filler
+  if (contentWords.length >= 8) {
+    const uniqueRatio = new Set(contentWords).size / contentWords.length;
+    if (uniqueRatio < 0.3) {
+      notes.push('Too many repeated content words.');
+      return {
+        passed: false,
+        score: 0.2,
+        notes,
+        feedback: 'Language variation insufficient. Expand your vocabulary usage and avoid repetitive phrasing.',
+      };
+    }
+  }
+
+  // 5. Sentence structure — at least half of sentences should start with a capital letter
+  //    and contain a verb-like pattern (basic subject-verb check)
+  const properSentences = sentences.filter(s => /^[A-Z]/.test(s) && s.split(/\s+/).length >= 3);
+  if (properSentences.length < sentences.length * 0.5) {
+    notes.push('Many sentences lack proper structure.');
+    return {
+      passed: false,
+      score: 0.25,
+      notes,
+      feedback: 'Several sentences lack proper structure. Each sentence must begin with a capital letter and contain at least a subject and verb.',
+    };
+  }
+
+  // Passed basic coherence
+  return {
+    passed: true,
+    score: 0.5,
+    notes,
+    feedback: '',
   };
 }
 
@@ -240,9 +354,11 @@ CONTEXT:
 - Student lane (1=support, 2=standard, 3=challenge): ${metadata?.lane || 2}
 
 EVALUATION CRITERIA:
-1. Grammar (0.0-1.0): Focus on the week's grammar target. For A2-B1 learners, reward correct usage rather than penalizing minor errors.
-2. Vocabulary (0.0-1.0): Check target vocabulary usage in context (not just presence). Higher score for natural integration.
-3. Task completion (0.0-1.0): Did the student address the prompt requirements fully?
+1. Grammar (0.0-1.0): Focus on the week's grammar target. For A2-B1 learners, reward correct usage rather than penalizing minor errors. Score below 0.3 if sentences are grammatically broken or nonsensical.
+2. Vocabulary (0.0-1.0): Check target vocabulary usage IN MEANINGFUL CONTEXT (not just presence). Simply listing words or inserting them into nonsense sentences should score below 0.2. Higher score for natural integration.
+3. Task completion (0.0-1.0): Did the student address the prompt requirements? Score 0.0-0.2 if the text is off-topic, gibberish, or doesn't attempt to answer the prompt. Score 0.3-0.5 for partial attempts. Score 0.6+ for genuine attempts.
+
+IMPORTANT: Do NOT be lenient with nonsensical, random, or clearly non-effort submissions. A student who writes word salad or gibberish incorporating target words should receive scores below 0.3 across all criteria.
 
 RESPONSE FORMAT (JSON):
 {

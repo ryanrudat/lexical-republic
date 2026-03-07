@@ -89,14 +89,15 @@ export default function ClarityQueueApp() {
       }
     }
     const weekSummary = weeks.find((w) => w.weekNumber === weekNum);
-    if (weekSummary && (!currentWeek || currentWeek.weekNumber !== weekNum)) {
-      loadWeek(weekSummary.id);
-    }
-    // Try to load SessionConfig + WeekConfig
+    // Ensure week data (missions + scores) is loaded before building queue progress
+    const weekReady = weekSummary && (!currentWeek || currentWeek.weekNumber !== weekNum)
+      ? loadWeek(weekSummary.id)
+      : Promise.resolve();
+    // Try to load SessionConfig + WeekConfig (queue progress depends on missions being loaded)
     if (weekSummary && sessionLoadedForWeekRef.current !== weekSummary.id) {
       sessionLoadedForWeekRef.current = weekSummary.id;
       loadSession(weekSummary.id);
-      loadWeekConfig(weekSummary.id);
+      void weekReady.then(() => loadWeekConfig(weekSummary.id));
     }
     setEyeStateFromWeek(weekNum);
 

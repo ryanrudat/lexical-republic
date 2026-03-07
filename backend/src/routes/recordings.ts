@@ -14,18 +14,11 @@ let whisperClient: OpenAI | null = null;
 
 function getWhisperClient(): OpenAI | null {
   if (whisperClient) return whisperClient;
-  const apiKey = process.env.AZURE_WHISPER_API_KEY || process.env.AZURE_OPENAI_API_KEY;
-  const endpoint = process.env.AZURE_WHISPER_ENDPOINT || process.env.AZURE_OPENAI_ENDPOINT;
-  const deployment = process.env.AZURE_WHISPER_DEPLOYMENT || 'whisper';
+  const apiKey = process.env.OPENAI_API_KEY;
 
-  if (!apiKey || !endpoint) return null;
+  if (!apiKey) return null;
 
-  whisperClient = new OpenAI({
-    apiKey,
-    baseURL: `${endpoint}/openai/deployments/${deployment}`,
-    defaultQuery: { 'api-version': '2024-06-01' },
-    defaultHeaders: { 'api-key': apiKey },
-  });
+  whisperClient = new OpenAI({ apiKey });
   return whisperClient;
 }
 
@@ -96,7 +89,7 @@ router.post('/:id/transcribe', authenticate, uploadAudioMemory.single('audio'), 
 
     const transcription = await Promise.race([
       client.audio.transcriptions.create({
-        model: process.env.AZURE_WHISPER_DEPLOYMENT || 'whisper',
+        model: 'whisper-1',
         file,
         language: 'en',
       }),
