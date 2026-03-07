@@ -1,32 +1,49 @@
 import { create } from 'zustand';
-import type { HarmonyPost, HarmonyReply } from '../api/harmony';
+import type { HarmonyPost, HarmonyReply, CensureItem } from '../api/harmony';
 import {
   fetchHarmonyPosts,
   createHarmonyPost,
   fetchReplies,
   createReply,
   censurePost as censurePostApi,
+  fetchCensureQueue,
+  submitCensureResponse,
 } from '../api/harmony';
 
+type HarmonyTab = 'feed' | 'censure';
+
 interface HarmonyState {
+  // Feed
   posts: HarmonyPost[];
   currentWeekNumber: number;
   focusWords: string[];
   reviewWords: string[];
   loading: boolean;
   error: string | null;
+  locked: boolean;
+  lockMessage: string | null;
 
   // Thread view
   selectedPostId: string | null;
   replies: HarmonyReply[];
   repliesLoading: boolean;
 
+  // Censure queue
+  activeTab: HarmonyTab;
+  censureItems: CensureItem[];
+  censureStats: { total: number; completed: number };
+  censureLoading: boolean;
+
+  // Actions
+  setTab: (tab: HarmonyTab) => void;
   loadPosts: () => Promise<void>;
+  loadCensureQueue: () => Promise<void>;
   submitPost: (content: string) => Promise<void>;
   openThread: (postId: string) => Promise<void>;
   closeThread: () => void;
   submitReply: (content: string) => Promise<void>;
   censurePost: (postId: string, action: 'approve' | 'correct' | 'flag', weekNumber: number) => Promise<void>;
+  respondToCensure: (postId: string, action: string, selectedIndex: number) => Promise<{ isCorrect: boolean; correction: string | null; explanation: string | null } | null>;
 }
 
 export const useHarmonyStore = create<HarmonyState>((set, get) => ({
@@ -36,10 +53,19 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
   reviewWords: [],
   loading: false,
   error: null,
+  locked: false,
+  lockMessage: null,
 
   selectedPostId: null,
   replies: [],
   repliesLoading: false,
+
+  activeTab: 'feed',
+  censureItems: [],
+  censureStats: { total: 0, completed: 0 },
+  censureLoading: false,
+
+  setTab: (tab) => set({ activeTab: tab }),
 
   loadPosts: async () => {
     set({ loading: true, error: null });
@@ -50,10 +76,26 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
         currentWeekNumber: feed.currentWeekNumber,
         focusWords: feed.focusWords,
         reviewWords: feed.reviewWords,
+        locked: feed.locked,
+        lockMessage: feed.lockMessage ?? null,
         loading: false,
       });
     } catch {
       set({ loading: false, error: 'Failed to load feed' });
+    }
+  },
+
+  loadCensureQueue: async () => {
+    set({ censureLoading: true });
+    try {
+      const queue = await fetchCensureQueue();
+      set({
+        censureItems: queue.items,
+        censureStats: queue.stats,
+        censureLoading: false,
+      });
+    } catch {
+      set({ censureLoading: false, error: 'Failed to load censure queue' });
     }
   },
 
@@ -110,7 +152,6 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
       };
       set({ replies: [...replies, pendingReply] });
 
-      // Update reply count on parent post
       set({
         posts: posts.map((p) =>
           p.id === selectedPostId
@@ -126,7 +167,6 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
   censurePost: async (postId, action, weekNumber) => {
     try {
       await censurePostApi(postId, action, weekNumber);
-      // If flagged, update local state
       if (action === 'flag') {
         const { posts } = get();
         set({
@@ -139,6 +179,26 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
       }
     } catch {
       set({ error: 'Failed to process action' });
+    }
+  },
+
+  respondToCensure: async (postId, action, selectedIndex) => {
+    try {
+      const result = await submitCensureResponse(postId, action, selectedIndex);
+      // Update local state
+      const { censureItems, censureStats } = get();
+      set({
+        censureItems: censureItems.map((item) =>
+          item.id === postId
+            ? { ...item, reviewed: true, wasCorrect: result.isCorrect, studentAction: action }
+            : item,
+        ),
+        censureStats: { ...censureStats, completed: censureStats.completed + 1 },
+      });
+      return result;
+    } catch {
+      set({ error: 'Failed to submit response' });
+      return null;
     }
   },
 }));

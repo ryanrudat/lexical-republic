@@ -3,6 +3,7 @@ import { authenticate, getPairId, getTeacherId } from '../middleware/auth';
 import prisma from '../utils/prisma';
 import { getCurrentWeekNumberForPair } from '../utils/progression';
 import { getHarmonyReviewContext } from '../data/harmonyFeed';
+import { ensureHarmonyPostsExist } from '../utils/harmonyGenerator';
 
 const router = Router();
 
@@ -82,7 +83,7 @@ async function findVisiblePost(postId: string, viewer: HarmonyViewerContext) {
 // All harmony routes require authentication
 router.use(authenticate);
 
-// GET /api/harmony/posts — list approved posts (+ own pending), scoped by class/week
+// GET /api/harmony/posts — list approved feed posts (+ own pending), scoped by class/week
 router.get('/posts', async (req, res) => {
   try {
     const viewer = await getViewerContext(req);
@@ -91,13 +92,32 @@ router.get('/posts', async (req, res) => {
       return;
     }
 
+    // Week 1 lock — Harmony is not available during the first shift
+    if (viewer.pairId && viewer.currentWeekNumber <= 1) {
+      res.json({
+        locked: true,
+        lockMessage: 'Harmony access requires completion of your first shift. Return after Shift 1 clearance.',
+        posts: [],
+        currentWeekNumber: viewer.currentWeekNumber,
+        focusWords: [],
+        reviewWords: [],
+      });
+      return;
+    }
+
     const reviewContext = getHarmonyReviewContext(viewer.currentWeekNumber);
     if (viewer.accessibleClassIds.length === 0) {
       res.json({
+        locked: false,
         posts: [],
         ...reviewContext,
       });
       return;
+    }
+
+    // Ensure AI-generated posts exist for visible weeks
+    if (viewer.classId) {
+      await ensureHarmonyPostsExist(viewer.currentWeekNumber, viewer.classId);
     }
 
     const ownFilter = viewer.pairId
@@ -107,6 +127,7 @@ router.get('/posts', async (req, res) => {
     const posts = await prisma.harmonyPost.findMany({
       where: {
         parentId: null,
+        postType: 'feed',
         ...getClassFilter(viewer.accessibleClassIds),
         OR: [
           { status: 'approved' },
@@ -131,6 +152,7 @@ router.get('/posts', async (req, res) => {
     });
 
     res.json({
+      locked: false,
       posts: posts.map((post) => ({
         id: post.id,
         designation:
@@ -152,6 +174,138 @@ router.get('/posts', async (req, res) => {
   } catch (err) {
     console.error('Failed to fetch harmony posts:', err);
     res.status(500).json({ error: 'Failed to fetch posts' });
+  }
+});
+
+// GET /api/harmony/censure-queue — get censure items for review
+router.get('/censure-queue', async (req, res) => {
+  try {
+    const viewer = await getViewerContext(req);
+    if (!viewer?.pairId) {
+      res.status(403).json({ error: 'Pair auth required' });
+      return;
+    }
+
+    // Week 1 lock
+    if (viewer.currentWeekNumber <= 1) {
+      res.json({ locked: true, items: [], stats: { total: 0, completed: 0 } });
+      return;
+    }
+
+    if (!viewer.classId) {
+      res.json({ locked: false, items: [], stats: { total: 0, completed: 0 } });
+      return;
+    }
+
+    // Ensure posts exist
+    await ensureHarmonyPostsExist(viewer.currentWeekNumber, viewer.classId);
+
+    // Get censure posts the student hasn't reviewed yet
+    const censurePosts = await prisma.harmonyPost.findMany({
+      where: {
+        classId: viewer.classId,
+        postType: { not: 'feed' },
+        weekNumber: { lte: viewer.currentWeekNumber },
+        status: 'approved',
+      },
+      include: {
+        censureResponses: {
+          where: { pairId: viewer.pairId },
+          select: { action: true, isCorrect: true },
+        },
+      },
+      orderBy: [{ weekNumber: 'desc' }, { createdAt: 'asc' }],
+    });
+
+    const totalItems = censurePosts.length;
+    const completedItems = censurePosts.filter(p => p.censureResponses.length > 0).length;
+
+    res.json({
+      locked: false,
+      items: censurePosts.map((post) => ({
+        id: post.id,
+        designation: post.authorLabel || 'Unknown',
+        content: post.content,
+        postType: post.postType,
+        weekNumber: post.weekNumber,
+        censureData: post.censureData,
+        reviewed: post.censureResponses.length > 0,
+        wasCorrect: post.censureResponses[0]?.isCorrect ?? null,
+        studentAction: post.censureResponses[0]?.action ?? null,
+      })),
+      stats: { total: totalItems, completed: completedItems },
+    });
+  } catch (err) {
+    console.error('Failed to fetch censure queue:', err);
+    res.status(500).json({ error: 'Failed to fetch censure queue' });
+  }
+});
+
+// POST /api/harmony/censure-queue/:id/respond — submit censure review response
+router.post('/censure-queue/:id/respond', async (req, res) => {
+  try {
+    const pairId = getPairId(req);
+    if (!pairId) {
+      res.status(403).json({ error: 'Pair auth required' });
+      return;
+    }
+
+    const postId = req.params.id as string;
+    const { action, selectedIndex } = req.body;
+
+    const post = await prisma.harmonyPost.findUnique({
+      where: { id: postId },
+    });
+
+    if (!post || post.postType === 'feed') {
+      res.status(404).json({ error: 'Censure item not found' });
+      return;
+    }
+
+    // Determine correctness
+    const censureData = post.censureData as Record<string, unknown> | null;
+    const correctIndex = censureData?.correctIndex as number | undefined;
+    const isCorrect = correctIndex !== undefined && selectedIndex === correctIndex;
+
+    const response = await prisma.harmonyCensureResponse.upsert({
+      where: { pairId_postId: { pairId, postId } },
+      update: { action, isCorrect },
+      create: { pairId, postId, action, isCorrect },
+    });
+
+    // Track vocab encounters if the word was correctly identified
+    if (isCorrect && censureData) {
+      const word = (censureData.errorWord as string) || (censureData.correction as string);
+      if (word) {
+        const dictWord = await prisma.dictionaryWord.findFirst({
+          where: { word: word.toLowerCase() },
+          select: { id: true },
+        });
+        if (dictWord) {
+          const progress = await prisma.pairDictionaryProgress.upsert({
+            where: { pairId_wordId: { pairId, wordId: dictWord.id } },
+            update: { encounters: { increment: 1 }, lastSeenAt: new Date() },
+            create: { pairId, wordId: dictWord.id, encounters: 1, mastery: 0.1, lastSeenAt: new Date() },
+          });
+          if (progress.mastery < 1.0) {
+            await prisma.pairDictionaryProgress.update({
+              where: { id: progress.id },
+              data: { mastery: Math.min(1.0, progress.mastery + 0.05) },
+            });
+          }
+        }
+      }
+    }
+
+    res.json({
+      id: response.id,
+      isCorrect,
+      correction: censureData?.correction ?? null,
+      explanation: censureData?.explanation ?? null,
+    });
+  } catch (err) {
+    console.error('Censure response error:', err);
+    res.status(500).json({ error: 'Failed to submit response' });
   }
 });
 
@@ -187,6 +341,7 @@ router.post('/posts', async (req, res) => {
         pairId,
         content: content.trim(),
         status: 'pending_review',
+        postType: 'feed',
         classId: viewer.classId,
         weekNumber: viewer.currentWeekNumber,
       },
@@ -300,6 +455,7 @@ router.post('/posts/:id/replies', async (req, res) => {
         content: content.trim(),
         parentId: parent.id,
         status: 'pending_review',
+        postType: 'feed',
         classId: parent.classId,
         weekNumber: parent.weekNumber,
       },
