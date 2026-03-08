@@ -29,12 +29,12 @@ export const WEEK_3_CONFIG: WeekConfig = {
           {
             type: "queue_status",
             animation: { sequence: [3, 7, 12, 15], intervalMs: 800 },
-            pearlBark: "Queue volume elevated. You must process all cases. Maintain accuracy.",
+            pearlBark: "Queue volume elevated. Daily processing target: 15 cases. You must process all cases. Maintain accuracy.",
             bettyOverlay: "Don't you worry, sugar! Just take it one case at a time! You'll do great!",
           },
           {
             type: "writing",
-            prompt: "Write 3 rules for how you should process cases today. Use 'should', 'must', or 'can' in each rule.",
+            prompt: "PEARL said you must maintain quality and speed. Betty said to take it one case at a time. Write 3 rules for how you should process cases today. Use 'should', 'must', or 'can' in each rule.",
             minWords: 30,
             lane: {
               "1": {
@@ -186,7 +186,7 @@ export const WEEK_3_CONFIG: WeekConfig = {
           {
             caseId: "case_5",
             title: "Citizen Complaint",
-            description: "Citizen-7291 submitted a complaint about missing community services. The citizen reports significant distress and requests a response from the Department. The complaint references services that were recently removed from the community schedule.",
+            description: "Citizen-7291 submitted a complaint about missing community services. The citizen reports that Tuesday and Thursday activities at the Sector 4 community center were removed without notice. The citizen references a neighbor who has not been seen since the schedule change. The citizen requests a response from the Department of Clarity.",
             correctColumn: "URGENT",
             disappears: true,
             disappearBark: "Case 5 has been reassigned to Wellness Division. Do not follow up.",
@@ -215,7 +215,7 @@ export const WEEK_3_CONFIG: WeekConfig = {
       location: "Filing Desk",
       label: "Shift Report",
       config: {
-        prompt: "Write your shift report for today. How did you process the priority queue? What cases did you identify as urgent? What happened to Case 5? Use modals (should, must, can) in your report.",
+        prompt: "Write your shift report for today. How did you process the priority queue? What cases did you identify as urgent? What happened to Case 5? Ivan said 'Fast work can hide mistakes.' Betty said 'Hesitation spreads doubt.' Should an associate be fast or careful? Use modals (should, must, can) in your report.",
         minWords: 50,
         lane: {
           "1": {
@@ -236,7 +236,7 @@ export const WEEK_3_CONFIG: WeekConfig = {
           "2": { minWords: 50, wordListVisible: true },
           "3": {
             minWords: 65,
-            bonusQuestion: "A citizen complaint was reassigned to Wellness Division without explanation. Should associates be able to follow up on reassigned cases? Why or why not?",
+            bonusQuestion: "A citizen complaint was reassigned to Wellness Division without explanation. Should associates be able to follow up on reassigned cases? PEARL said 'Do not follow up.' Must you obey? Why or why not?",
           },
         },
       },

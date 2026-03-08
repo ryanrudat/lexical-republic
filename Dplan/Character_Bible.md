@@ -9,6 +9,7 @@ Canonical voice reference for all dialogue, messages, PEARL barks, Harmony posts
 - **Designation:** —
 - **Voice:** Formal-warm, passive voice, no contractions, no "I", institution-as-speaker
 - **Available:** All weeks
+- **PEARL never speaks.** PEARL is text only — system messages, status updates, definitions, barks. In videos, PEARL types on screen in green monospace. In the app, PEARL uses the terminal message strip and panel chat. No voice, no VO, no dialogue. PEARL is a presence, not a person.
 - **Weeks 1-3 Role:** Barks on every task event
 - **Voice Rules:**
   - No contractions: "do not" not "don't"
@@ -54,11 +55,11 @@ Canonical voice reference for all dialogue, messages, PEARL barks, Harmony posts
 - **Available:** Conditional (Week 5+)
 - **Weeks 1-3 Role:** Not present
 
-### Lena Vasquez
+### Lena Park
 - **Designation:** CA-19 (former)
 - **Voice:** Ghost — NEVER speaks. Appears only in document metadata, archive stamps
 - **Available:** Environmental
-- **Detail:** "Reviewed by: CA-19 — L. Vasquez" on Memo 14
+- **Detail:** "Reviewed by: CA-19 — Lena Park" on Memo 14 and Filing Procedure
 
 ### Director-7
 - **Designation:** TBD

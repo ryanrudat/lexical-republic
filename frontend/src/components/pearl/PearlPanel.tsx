@@ -122,9 +122,9 @@ export default function PearlPanel({ open, onClose, variant = 'chrome' }: PearlP
           {/* Greeting */}
           <div className="mb-4">
             <p className={`font-ibm-sans text-sm ${textColor} leading-relaxed`}>
-              Hello, Citizen! I'm here to help you on your journey toward
+              Welcome, Associate. This terminal provides assistance on your journey toward
               <span className={` ${accentColor}`}> approved communication</span>.
-              Ask me anything about your language studies.
+              Questions about language studies are welcome in the proper format.
             </p>
           </div>
 

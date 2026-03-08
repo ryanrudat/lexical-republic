@@ -177,7 +177,7 @@ export default function PriorityBriefing({ config, weekConfig, onComplete }: Tas
           text={writingText}
           onChange={setWritingText}
           targetWords={weekConfig.targetWords}
-          minWords={c.minWords ?? 30}
+          minWords={(c.lane as Record<string, Record<string, unknown>> | undefined)?.[String(lane)]?.minWords as number ?? c.minWords ?? 30}
           placeholder="Begin writing here..."
         />
 

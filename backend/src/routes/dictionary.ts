@@ -52,8 +52,7 @@ router.get('/', async (req: Request, res: Response) => {
         word: w.word,
         partOfSpeech: w.partOfSpeech,
         phonetic: w.phonetic,
-        partyDefinition: w.partyDefinition,
-        trueDefinition: currentWeek >= 7 ? w.trueDefinition : '', // Unlocked in Act II
+        definition: w.definition,
         exampleSentence: w.exampleSentence,
         translationZhTw: w.translationZhTw ?? null,
         toeicCategory: w.toeicCategory,

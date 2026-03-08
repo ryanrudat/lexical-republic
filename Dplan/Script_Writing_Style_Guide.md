@@ -73,25 +73,6 @@ Do not use unless explicitly taught that week:
 - dense phrasal-verb chains
 - long rhetorical paragraphs in dialogue
 
-## Lesson Script Blueprint (Required)
-Every weekly script pack must include:
-1. Weekly language outcomes
-2. Weekly story outcomes
-3. Clip A full script
-4. In-app trigger lines
-5. Clip B full script
-6. Activity checks aligned to script language
-7. One core practice block
-8. One production block (voice or writing)
-
-## Quality Checklist (Pre-Approval)
-Before locking a lesson, verify:
-- Every check question maps to a script line.
-- New words match the weekly vocabulary list.
-- Grammar target appears in both script and activity.
-- No line exceeds student readability target.
-- 50-minute schedule fits required tasks.
-
 ## Next-Step Application
 When writing new scripts (Weeks 4+):
 - Start from `Dplan/World_Canon.md`

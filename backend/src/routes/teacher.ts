@@ -1071,8 +1071,7 @@ router.patch('/dictionary/:wordId', async (req: Request, res: Response) => {
   try {
     const wordId = req.params.wordId as string;
     const {
-      partyDefinition,
-      trueDefinition,
+      definition,
       exampleSentence,
       translationZhTw,
       initialStatus,
@@ -1081,8 +1080,7 @@ router.patch('/dictionary/:wordId', async (req: Request, res: Response) => {
     } = req.body;
 
     const data: Record<string, unknown> = {};
-    if (partyDefinition !== undefined) data.partyDefinition = partyDefinition;
-    if (trueDefinition !== undefined) data.trueDefinition = trueDefinition;
+    if (definition !== undefined) data.definition = definition;
     if (exampleSentence !== undefined) data.exampleSentence = exampleSentence;
     if (translationZhTw !== undefined) data.translationZhTw = translationZhTw;
     if (initialStatus !== undefined) data.initialStatus = initialStatus;

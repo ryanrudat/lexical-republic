@@ -52,8 +52,10 @@ router.post('/evaluate', requirePair, async (req: Request, res: Response) => {
     const words = content.split(/\s+/).filter(Boolean);
     const wordCount = words.length;
 
-    // Minimum word count check
-    const minWordCount = activityType === 'd5_audio_log' ? 15 : 30;
+    // Minimum word count check — respect lane-specific minimums
+    const lane = metadata?.lane ?? 2;
+    const baseMin = activityType === 'd5_audio_log' ? 15 : 30;
+    const minWordCount = lane === 1 ? Math.min(baseMin, 20) : lane === 3 ? baseMin + 10 : baseMin;
     if (wordCount < minWordCount) {
       res.json({
         passed: false,

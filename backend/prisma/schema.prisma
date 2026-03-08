@@ -111,8 +111,7 @@ model DictionaryWord {
   word             String
   partOfSpeech     String     @default("noun")
   phonetic         String     @default("")
-  partyDefinition  String
-  trueDefinition   String     @default("")
+  definition       String
   exampleSentence  String     @default("")
   translationZhTw  String?
   toeicCategory    String     @default("")

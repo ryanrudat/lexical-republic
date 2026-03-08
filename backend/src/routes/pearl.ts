@@ -45,7 +45,7 @@ const BARK_POOLS: Record<BarkType, string[]> = {
     'Close. Check your pronoun case.',
     'Hmm. That creates confusion. Try again.',
     'Careful. That word does not mean what you think it means.',
-    "Let's slow down. Clarity requires patience.",
+    'Slowing down is recommended. Clarity requires patience.',
   ],
   hint: [
     "Ask yourself: can you replace it with 'it is'?",
@@ -55,11 +55,11 @@ const BARK_POOLS: Record<BarkType, string[]> = {
     'Singular or plural? The verb will tell the truth.',
   ],
   concern: [
-    "I've noticed some difficulty. That's normal. The Party helps those who struggle.",
+    'Some difficulty has been noted. This is normal. The Party helps those who struggle.',
     'This is a friendly reminder to focus on accuracy.',
-    'If you need support, simply ask. PEARL is always listening.',
+    'Support is available. P.E.A.R.L. is always listening.',
     'Consistent confusion can be corrected with care and time.',
-    'The Party wants you to succeed. Let me guide you.',
+    'The Party wants every associate to succeed. Guidance is available.',
   ],
   notice: [
     'Good morning, Citizen. Your clarity builds our harmony.',

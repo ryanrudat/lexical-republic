@@ -5,8 +5,7 @@ export interface DictionaryWord {
   word: string;
   partOfSpeech: string;
   phonetic: string;
-  partyDefinition: string;
-  trueDefinition: string;
+  definition: string;
   exampleSentence: string;
   translationZhTw: string | null;
   toeicCategory: string;

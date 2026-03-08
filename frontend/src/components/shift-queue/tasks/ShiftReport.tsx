@@ -13,8 +13,9 @@ export default function ShiftReport({ config, weekConfig, onComplete }: TaskProp
   const [passed, setPassed] = useState(false);
 
   const prompt = config.prompt as string;
-  const minWords = (config.minWords as number) || 40;
   const laneConfig = config.lane as Record<string, Record<string, unknown>> | undefined;
+  const laneMinWords = laneConfig?.[String(lane)]?.minWords as number | undefined;
+  const minWords = laneMinWords ?? (config.minWords as number) || 40;
   const guidedQuestions = (laneConfig?.['1']?.guidedQuestions as string[]) || [];
 
   // Lane 1 uses guided questions (individual textareas)
@@ -111,7 +112,7 @@ export default function ShiftReport({ config, weekConfig, onComplete }: TaskProp
           targetVocab={weekConfig.targetWords}
           lane={lane}
           onResult={handleResult}
-          disabled={fullText.split(/\s+/).filter(Boolean).length < (isGuided ? 15 : minWords * 0.5)}
+          disabled={fullText.split(/\s+/).filter(Boolean).length < Math.floor(minWords * 0.5)}
         />
       )}
 

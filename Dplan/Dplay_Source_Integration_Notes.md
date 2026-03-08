@@ -35,11 +35,6 @@ Last updated: 2026-02-11
 - Harm is framed as help by Party loyalists.
 - Disturbance comes from contradiction between tone and consequence.
 
-### Classroom implementation canon
-- Keep teacher-guided progression explicit.
-- Keep story and grammar linked directly.
-- Keep activity load realistic for 50 minutes.
-
 ## Canon Outputs Created in This Workspace
 - World canon:
   - `/Users/ryanrudat/Desktop/Lexical Republic/Dplan/World_Canon.md`

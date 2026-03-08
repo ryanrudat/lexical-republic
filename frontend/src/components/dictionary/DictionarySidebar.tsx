@@ -87,7 +87,7 @@ export default function DictionarySidebar() {
       result = result.filter(
         (w) =>
           w.word.toLowerCase().includes(q) ||
-          w.partyDefinition.toLowerCase().includes(q) ||
+          w.definition.toLowerCase().includes(q) ||
           w.toeicCategory.toLowerCase().includes(q) ||
           (w.translationZhTw && w.translationZhTw.includes(q))
       );

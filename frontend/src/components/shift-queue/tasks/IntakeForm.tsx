@@ -278,7 +278,7 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
           text={writingText}
           onChange={setWritingText}
           targetWords={weekConfig.targetWords}
-          minWords={c.minWords ?? 30}
+          minWords={(scaffolding as Record<string, unknown> | undefined)?.minWords as number ?? c.minWords ?? 30}
           placeholder="Begin writing here..."
         />
 

@@ -15,16 +15,26 @@ Write and approve in this exact order:
 
 If an activity is not tied to the approved script and weekly outcome, do not include it.
 
-## 50-Minute Class Rule (to prevent overload)
-Use this required structure each week:
+## 50-Minute Hybrid Class Rule (to prevent overload)
+Use this required 4-phase hybrid structure each week:
 
-1. `Shift Start` (3-5 min)
-2. `Broadcast` with teacher control: `clip_a -> activity -> clip_b` (12-15 min)
-3. One `Core Practice` block (12-15 min)
-4. One `Production` block: Voice Booth OR Filing Desk (10-12 min)
-5. `Clock-Out` and exit ticket (3-5 min)
+1. `Ministry Briefing` — teacher-led, screens down (12-15 min)
+   - Retrieval drill: last week's target words (2-3 min)
+   - New word introduction: this week's 10 targets (5-7 min)
+   - Broadcast Clip A + class discussion (5 min)
+2. `Field Assignment` — physical in-world activity (10-12 min)
+   - One rotating Ministry Procedure per week (Oral Compliance Review, Evidence Board, Citizen Debrief, Ministry Dictation, Priority Board, Public Address Drill)
+   - Uses printed in-world materials; pairs work together
+3. `Station Work` — digital app-driven (15-18 min)
+   - Vocab Clearance MCQ + core analysis task (document review / contradiction / priority sort)
+   - Teacher circulates and intervenes with struggling pairs
+4. `Debrief + Clock-Out` — hybrid (8-10 min)
+   - Broadcast Clip B reveal (teacher-led, shared reaction)
+   - Shift Report writing (digital) OR verbal exit discussion (physical)
+   - Optional: Harmony post if time remains
 
-Optional blocks only if time remains.
+Key principle: Teacher introduces → App drills → Physical activities produce spoken output.
+Clip A opens the session together; Clip B closes it together. App work fills the middle.
 
 ## Activity Roles by Area
 - Shift Start: objective + quick retrieval
@@ -45,15 +55,17 @@ Optional blocks only if time remains.
 
 ## Week 1-3 Canon Package
 - Semester outcomes and alignment:
-  - `/Users/ryanrudat/Desktop/Lexical Republic/Dplan/Semester_Outcomes_Framework.md`
+  - `/Users/ryanrudat/Desktop/Lexical Republic/curriculum/Semester_Outcomes_Framework.md`
 - World canon:
   - `/Users/ryanrudat/Desktop/Lexical Republic/Dplan/World_Canon.md`
 - Writing style and vocabulary controls:
   - `/Users/ryanrudat/Desktop/Lexical Republic/Dplan/Script_Writing_Style_Guide.md`
-- Lesson scripts and activities:
-  - `/Users/ryanrudat/Desktop/Lexical Republic/Dplan/Lesson_01_First_Shift_Orientation.md`
-  - `/Users/ryanrudat/Desktop/Lexical Republic/Dplan/Lesson_02_Memo_Contradiction.md`
-  - `/Users/ryanrudat/Desktop/Lexical Republic/Dplan/Lesson_03_Clarity_Bay_Intake.md`
+- Curriculum source (activities, prompts, vocab items):
+  - `backend/src/data/week-configs/week1.ts`
+  - `backend/src/data/week-configs/week2.ts`
+  - `backend/src/data/week-configs/week3.ts`
+- Video production scripts:
+  - `/Users/ryanrudat/Desktop/Lexical Republic/Dplan/Weeks_01_03_Script_Pack.md`
 - Source integration notes:
   - `/Users/ryanrudat/Desktop/Lexical Republic/Dplan/Dplay_Source_Integration_Notes.md`
 

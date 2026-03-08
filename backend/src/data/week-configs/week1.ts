@@ -32,7 +32,7 @@ export const WEEK_1_CONFIG: WeekConfig = {
           {
             type: "writing",
             prompt:
-              "In 3-5 sentences, describe your role as a new Clarity Associate. What do you expect to do each day? Use the target words in your response.",
+              "Betty welcomed you to the Department of Clarity. Ivan told you to read twice before you submit. In 3-5 sentences, describe what you learned during your orientation. What do associates do each day? What procedures do they follow? Use the target words in your response.",
             minWords: 30,
             lane: {
               "1": {
@@ -40,9 +40,9 @@ export const WEEK_1_CONFIG: WeekConfig = {
                 sentenceStarters: true,
                 wordBankChinese: true,
                 pearlHints: [
-                  "Start with: 'I arrive at...'",
-                  "Try: 'I follow the...'",
-                  "Use: 'I check the...'",
+                  "Start with: 'I arrive at the Ministry and...'",
+                  "Try: 'Betty assigns me to...'",
+                  "Use: 'I follow the standard...'",
                 ],
               },
               "2": { minWords: 30, wordListVisible: true },
@@ -94,7 +94,7 @@ export const WEEK_1_CONFIG: WeekConfig = {
             type: "toeic_p5",
             word: "check",
             question:
-              "All associates must _____ their documents before submission.",
+              "PEARL said: 'Review carefully, then continue to _____.'",
             options: ["check", "arrive", "describe", "assign"],
             correctIndex: 0,
           },
@@ -110,7 +110,7 @@ export const WEEK_1_CONFIG: WeekConfig = {
             type: "toeic_p5",
             word: "submit",
             question:
-              "Please _____ your completed form to the Department of Clarity.",
+              "Ivan said: 'Read twice before you _____.'",
             options: ["follow", "submit", "arrive", "check"],
             correctIndex: 1,
           },
@@ -156,7 +156,7 @@ export const WEEK_1_CONFIG: WeekConfig = {
             type: "toeic_p5",
             word: "confirm",
             question:
-              "The supervisor will _____ your assignment before you begin.",
+              "Betty said she will _____ your clearance level after orientation.",
             options: ["arrive", "confirm", "describe", "follow"],
             correctIndex: 1,
           },
@@ -182,7 +182,7 @@ export const WEEK_1_CONFIG: WeekConfig = {
             from: "Betty Lyle \u2014 WA-14",
             to: "All New Associates",
             re: "Welcome and Orientation Schedule",
-            body: "Welcome to the Department of Clarity. All new associates arrive at 08:00 for morning briefing. You will follow your assigned supervisor to your workstation. Please check your schedule each morning and report any changes to your supervisor. The Ministry values every associate who follows standard procedures.",
+            body: "Welcome to the Department of Clarity. All new associates arrive at 08:00 for morning briefing. You will follow your assigned supervisor to your workstation. Please check your schedule each morning and report any changes to your supervisor. Associate CA-31 will assist with your first week of filing. The Ministry values every associate who follows standard procedures.",
           },
           {
             id: "doc_schedule",
@@ -194,7 +194,7 @@ export const WEEK_1_CONFIG: WeekConfig = {
             from: "Scheduling Division",
             to: "Department of Clarity \u2014 All Associates",
             re: "Weekly Schedule Update",
-            body: "Each associate arrive at their assigned station by 08:00. Associates follows the daily checklist without exception. All report is submitted before 17:00. The supervisor confirm each document before filing. Associates does not leave until the shift report is approve. New associates is assigned a mentor for the first week.",
+            body: "Each associate arrive at their assigned station by 08:00. Morning briefing take place in Room B-7. Associates follows the daily checklist without exception. All report is submitted before 17:00. The supervisor confirm each document before filing. Associates does not leave until the shift report is approve. New associates is assigned a mentor for the first week.",
             errors: [
               {
                 sentenceIndex: 0,
@@ -204,30 +204,36 @@ export const WEEK_1_CONFIG: WeekConfig = {
               },
               {
                 sentenceIndex: 1,
+                errorWord: "take",
+                options: [{ text: "take" }, { text: "takes" }, { text: "taking" }],
+                correctIndex: 1,
+              },
+              {
+                sentenceIndex: 2,
                 errorWord: "follows",
                 options: [{ text: "follows" }, { text: "follow" }, { text: "following" }],
                 correctIndex: 1,
               },
               {
-                sentenceIndex: 2,
+                sentenceIndex: 3,
                 errorWord: "report",
                 options: [{ text: "report" }, { text: "reports" }, { text: "reporting" }],
                 correctIndex: 1,
               },
               {
-                sentenceIndex: 3,
+                sentenceIndex: 4,
                 errorWord: "confirm",
                 options: [{ text: "confirm" }, { text: "confirms" }, { text: "confirmed" }],
                 correctIndex: 1,
               },
               {
-                sentenceIndex: 4,
+                sentenceIndex: 5,
                 errorWord: "approve",
                 options: [{ text: "approve" }, { text: "approved" }, { text: "approves" }],
                 correctIndex: 1,
               },
               {
-                sentenceIndex: 5,
+                sentenceIndex: 6,
                 errorWord: "is",
                 options: [{ text: "is" }, { text: "are" }, { text: "was" }],
                 correctIndex: 1,
@@ -254,7 +260,7 @@ export const WEEK_1_CONFIG: WeekConfig = {
             from: "Records Division",
             to: "Department of Clarity \u2014 All Associates",
             re: "Updated Filing Procedure",
-            reviewedBy: "CA-19 \u2014 L. Vasquez",
+            reviewedBy: "CA-19 \u2014 Lena Park",
             body: "Effective immediately, all associates must submit completed documents to the central filing system before 16:00. Documents submitted after 16:00 will not be processed until the following day. Associates must check that all required fields are complete before submission. The supervisor will confirm receipt of each document. This procedure replaces the previous paper-based filing system. All associates are expected to follow the new standard without exception.",
             questions: [
               {
@@ -298,29 +304,29 @@ export const WEEK_1_CONFIG: WeekConfig = {
       label: "Shift Report",
       config: {
         prompt:
-          "Write your first shift report. Describe what you did today: what documents did you check? What procedures did you follow? What did you learn about the Department of Clarity?",
+          "Your first shift is complete. Write your shift report. Describe: What did Betty explain during your orientation? What documents did you check? What did M.K. Catskil tell you? Did you notice anything unusual on your screen at the end of the broadcast?",
         minWords: 40,
         lane: {
           "1": {
-            minWords: 25,
+            minWords: 20,
             sentenceStarters: true,
             wordBankChinese: true,
             pearlHints: [
-              "Start with: 'Today I arrive at...'",
-              "Then: 'I check the...'",
-              "End with: 'I follow the...'",
+              "Start with: 'I arrived at the Department of Clarity and...'",
+              "Then: 'At the Language Lab, I checked...'",
+              "End with: 'I followed the standard procedures and...'",
             ],
             guidedQuestions: [
-              "What time did you arrive?",
-              "What documents did you check?",
-              "What standard procedures did you follow?",
+              "Describe your arrival at the Department of Clarity. What did you do at Shift Intake?",
+              "What happened at the Language Lab during Vocabulary Clearance?",
+              "What did you find when you reviewed the documents at the Evidence Desk?",
             ],
           },
-          "2": { minWords: 40, wordListVisible: true },
+          "2": { minWords: 30, wordListVisible: true },
           "3": {
-            minWords: 55,
+            minWords: 45,
             bonusQuestion:
-              "Were there any documents that seemed unusual or inconsistent? Explain.",
+              "M.K. said 'Write what you can prove. Not more. Not less.' Why is that important advice for a Clarity Associate?",
           },
         },
       },

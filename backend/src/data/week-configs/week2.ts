@@ -48,7 +48,7 @@ export const WEEK_2_CONFIG: WeekConfig = {
           {
             type: "writing",
             prompt:
-              "Compare your first shift to today. What changed? What is the same? Use past simple for last shift and present simple for today.",
+              "Last shift, Betty welcomed you to the Department of Clarity. Today, PEARL dispatched two memos that do not match. Compare your first shift to today. What changed? What is the same? Use past simple for last shift and present simple for today.",
             minWords: 35,
             lane: {
               "1": {
@@ -91,7 +91,7 @@ export const WEEK_2_CONFIG: WeekConfig = {
           {
             type: "toeic_p5",
             word: "compare",
-            question: "Please _____ both versions of the document before filing.",
+            question: "PEARL dispatched Memo 14 and Memo 14-R. You must _____ both versions.",
             options: ["compare", "remove", "change", "update"],
             correctIndex: 0,
           },
@@ -119,8 +119,8 @@ export const WEEK_2_CONFIG: WeekConfig = {
           {
             type: "toeic_p5",
             word: "remove",
-            question: "The supervisor decided to _____ three items from the list.",
-            options: ["notice", "require", "remove", "compare"],
+            question: "The updated memo _____ Tuesday meetings from the community schedule.",
+            options: ["noticed", "required", "removed", "compared"],
             correctIndex: 2,
           },
           {
@@ -170,7 +170,7 @@ export const WEEK_2_CONFIG: WeekConfig = {
       location: "Evidence Desk",
       config: {
         memoA: {
-          title: "COMMUNITY GUIDELINES \u2014 VERSION 2.1",
+          title: "MEMO 14 \u2014 COMMUNITY GUIDELINES",
           department: "Public Communications",
           date: "March 15",
           from: "Director of Public Communications",
@@ -179,21 +179,21 @@ export const WEEK_2_CONFIG: WeekConfig = {
           body: "The following guidelines include updated language requirements for all public communications. Citizens are required to use approved vocabulary in all official correspondence. The weekly community meeting schedule includes sessions on Tuesday, Thursday, and Saturday. All citizens are informed of changes through the standard notification system. Requests for additional information should follow the standard process. The Ministry includes these guidelines to maintain clarity and safety for all citizens.",
         },
         memoB: {
-          title: "COMMUNITY GUIDELINES \u2014 VERSION 2.3",
+          title: "MEMO 14-R \u2014 COMMUNITY GUIDELINES (REVISED)",
           department: "Public Communications",
           date: "March 22",
           from: "Director of Public Communications",
           to: "All Department Heads",
           re: "Updated Community Guidelines",
-          reviewedBy: "CA-19 \u2014 L. Vasquez",
-          body: "The following guidelines include updated language requirements for all public communications. Citizens are required to use approved vocabulary in all official correspondence. The weekly community meeting schedule includes sessions on Thursday and Saturday. All citizens are informed of changes through approved channels. Requests for additional information require supervisor approval. The Ministry includes these guidelines to maintain clarity and safety for all citizens.",
+          reviewedBy: "CA-19 \u2014 Lena Park",
+          body: "The following guidelines include updated language requirements for all public communications. Citizens are required to use approved vocabulary in all official correspondence. The weekly community meeting schedule includes sessions on Thursday and Saturday. All citizens are informed of changes through approved channels. Requests for additional information require supervisor approval. The Ministry includes these guidelines to maintain clarity and safety for all citizens. This document supersedes all prior versions. No prior versions are to be retained in active files.",
         },
         differences: [
           {
             diffId: "diff_1",
-            label: "Version number",
-            memoAText: "Version 2.1",
-            memoBText: "Version 2.3",
+            label: "Document title",
+            memoAText: "MEMO 14",
+            memoBText: "MEMO 14-R (REVISED)",
             classification: "minor_correction",
           },
           {
@@ -226,7 +226,7 @@ export const WEEK_2_CONFIG: WeekConfig = {
           },
         ],
         writingPrompt:
-          "Write a brief report describing the differences between Version 2.1 and Version 2.3 of the Community Guidelines. What was removed? What was changed? Use target vocabulary in your report.",
+          "Write a brief report describing the differences between Memo 14 and Memo 14-R of the Community Guidelines. What was removed? What was changed? Use target vocabulary in your report.",
         writingMinWords: 40,
         writingLane: {
           "1": {
@@ -235,7 +235,7 @@ export const WEEK_2_CONFIG: WeekConfig = {
             wordBankChinese: true,
             pearlHints: [
               "Start with: 'I noticed that the updated version...'",
-              "Compare: 'Version 2.1 included... but Version 2.3 removed...'",
+              "Compare: 'Memo 14 included... but Memo 14-R removed...'",
               "Conclude: 'The changes require...'",
             ],
           },
@@ -296,7 +296,7 @@ export const WEEK_2_CONFIG: WeekConfig = {
       triggerType: "task_start",
       triggerConfig: { taskId: "contradiction_report" },
       messageText:
-        "Hey! You're the new associate right? CA-something? I'm Chad \u2014 CA-31. Well, technically I started three weeks before you but they fast-tracked my orientation because my uncle works in Administrative Division. Anyway, these contradiction reports? Super easy. I usually finish mine in like five minutes. Just compare the dates and you're done. Don't overthink it \ud83d\ude0e",
+        "Hey! You're the new associate right? CA-something? I'm Chad \u2014 CA-31. Well, technically I started three weeks before you but they fast-tracked my orientation because my uncle works in Administrative Division. Anyway, these contradiction reports? Super easy. I usually finish mine in like five minutes. Just compare the dates and you're done. Oh, and don't worry about the footer text on 14-R. Nobody reads that part. Don't overthink it \ud83d\ude0e",
       replyType: "canned",
       replyOptions: [
         {

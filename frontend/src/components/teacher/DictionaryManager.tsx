@@ -40,7 +40,7 @@ export default function DictionaryManager() {
     if (weekFilter !== 'all' && w.weekIntroduced !== weekFilter) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      return w.word.toLowerCase().includes(q) || w.partyDefinition.toLowerCase().includes(q);
+      return w.word.toLowerCase().includes(q) || w.definition.toLowerCase().includes(q);
     }
     return true;
   });
@@ -125,8 +125,8 @@ function WordRow({
       <td className="px-2 py-1.5 text-slate-500 text-xs">{word.partOfSpeech}</td>
       <td className="px-2 py-1.5">
         <EditableCell
-          value={word.partyDefinition}
-          onSave={(v) => onSave(word.id, 'partyDefinition', v)}
+          value={word.definition}
+          onSave={(v) => onSave(word.id, 'definition', v)}
         />
       </td>
       <td className="px-2 py-1.5">

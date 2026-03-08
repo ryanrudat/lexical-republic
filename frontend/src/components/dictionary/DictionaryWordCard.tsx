@@ -88,7 +88,7 @@ export default function DictionaryWordCard({ word, expanded, onToggle }: Props) 
         {expanded && (
           <div className="px-3 pb-3 space-y-2 border-t" style={{ borderColor: 'var(--dict-border)' }}>
             <p className="font-source-serif text-[13px] line-through pt-2" style={{ color: 'var(--dict-text-dim)' }}>
-              {word.partyDefinition}
+              {word.definition}
             </p>
             <p className="font-ibm-mono text-[10px] tracking-wider" style={{ color: 'var(--dict-red)' }}>
               REMOVED FOR COLLECTIVE SAFETY.
@@ -195,7 +195,7 @@ export default function DictionaryWordCard({ word, expanded, onToggle }: Props) 
               <span className="italic" style={{ color: 'var(--dict-text-dim)' }}>
                 ({word.partOfSpeech})
               </span>{' '}
-              {word.partyDefinition}
+              {word.definition}
             </p>
           </div>
 
