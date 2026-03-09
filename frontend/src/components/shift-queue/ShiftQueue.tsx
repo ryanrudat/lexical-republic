@@ -6,6 +6,9 @@ import { getSocket } from '../../utils/socket';
 import TaskCard from './TaskCard';
 import ShiftClosing from './ShiftClosing';
 import IntakeForm from './tasks/IntakeForm';
+import WordMatch from './tasks/WordMatch';
+import ClozeFill from './tasks/ClozeFill';
+import WordSort from './tasks/WordSort';
 import VocabClearance from './tasks/VocabClearance';
 import DocumentReview from './tasks/DocumentReview';
 import ContradictionReport from './tasks/ContradictionReport';
@@ -16,6 +19,9 @@ import type { TaskProps } from '../../types/shiftQueue';
 
 const TASK_REGISTRY: Record<string, React.ComponentType<TaskProps>> = {
   intake_form: IntakeForm,
+  word_match: WordMatch,
+  cloze_fill: ClozeFill,
+  word_sort: WordSort,
   vocab_clearance: VocabClearance,
   document_review: DocumentReview,
   shift_report: ShiftReport,
@@ -25,7 +31,7 @@ const TASK_REGISTRY: Record<string, React.ComponentType<TaskProps>> = {
 };
 
 export default function ShiftQueue() {
-  const { weekConfig, taskProgress, currentTaskIndex, shiftComplete, loading } =
+  const { weekConfig, taskProgress, currentTaskIndex, shiftComplete, loading, taskResetKey } =
     useShiftQueueStore();
   const { completeTask } = useShiftQueueStore();
   const { triggerMessage, loadMessages } = useMessagingStore();
@@ -44,6 +50,11 @@ export default function ShiftQueue() {
     loadMessages(weekNumber).then(() => {
       messagesReadyRef.current = true;
       triggerMessage('shift_start', { weekNumber }, weekConfig);
+      // Emit full task list for teacher controls
+      const sock = getSocket();
+      if (sock?.connected) {
+        sock.emit('student:shift-tasks', weekConfig.tasks.map(t => ({ id: t.id, label: t.label })));
+      }
       // Also fire initial task_start
       const task = weekConfig.tasks[currentTaskIndex];
       if (task) {
@@ -142,6 +153,7 @@ export default function ShiftQueue() {
           status="idle"
         >
           <TaskComponent
+            key={`${currentTask.id}-${taskResetKey}`}
             config={currentTask.config}
             weekConfig={weekConfig}
             onComplete={handleComplete}

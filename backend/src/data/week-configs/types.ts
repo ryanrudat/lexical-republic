@@ -9,6 +9,9 @@ export type TaskType =
   | "priority_briefing"
   | "priority_sort"
   | "evidence_assembly"
+  | "word_match"
+  | "cloze_fill"
+  | "word_sort"
   | "custom";
 
 export interface WeekConfig {
@@ -191,4 +194,48 @@ export interface PriorityCaseConfig {
   disappears?: boolean;
   disappearBark?: string;
   laneHint?: string;
+}
+
+// ─── Word Match Types ─────────────────────────────────────────
+
+export interface WordMatchPair {
+  word: string;
+  definition: string;
+}
+
+export interface WordMatchConfig {
+  pairs: WordMatchPair[];
+  pearlBarkOnComplete?: string;
+  timeLimit?: number;
+}
+
+// ─── Cloze Fill Types ─────────────────────────────────────────
+
+export interface ClozeBlank {
+  index: number;
+  correctWord: string;
+}
+
+export interface ClozeFillConfig {
+  passage: string;
+  blanks: ClozeBlank[];
+  wordBank: string[];
+  title?: string;
+  from?: string;
+  pearlBarkOnComplete?: string;
+}
+
+// ─── Word Sort Types ──────────────────────────────────────────
+
+export interface WordSortColumn {
+  id: string;
+  label: string;
+  correctWords: string[];
+}
+
+export interface WordSortConfig {
+  columns: WordSortColumn[];
+  words: string[];
+  instruction?: string;
+  pearlBarkOnComplete?: string;
 }

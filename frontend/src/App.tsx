@@ -8,6 +8,8 @@ import GameShell from './components/layout/GameShell';
 import { GUIDED_STUDENT_MODE } from './config/runtimeFlags';
 import { connectSocket } from './utils/socket';
 import { useSessionPauseStore } from './stores/sessionPauseStore';
+import { useShiftQueueStore } from './stores/shiftQueueStore';
+import { usePearlStore } from './stores/pearlStore';
 import WelcomeVideoModal from './components/welcome/WelcomeVideoModal';
 
 export default function App() {
@@ -38,14 +40,41 @@ export default function App() {
       const onResumed = () => {
         useSessionPauseStore.getState().setPaused(false);
       };
+      const onTaskCommand = (data: { action: string; taskId?: string }) => {
+        const store = useShiftQueueStore.getState();
+        const pearl = usePearlStore.getState();
+        switch (data.action) {
+          case 'send-to-task':
+            if (data.taskId) {
+              store.goToTask(data.taskId);
+              pearl.triggerBark('notice', 'SUPERVISOR OVERRIDE: Reassignment directive received. Redirecting to assigned station.');
+            }
+            break;
+          case 'skip-task':
+            store.skipCurrentTask();
+            pearl.triggerBark('notice', 'SUPERVISOR OVERRIDE: Current task has been waived. Proceed to next station.');
+            break;
+          case 'reset-task':
+            store.resetCurrentTask();
+            pearl.triggerBark('notice', 'SUPERVISOR OVERRIDE: Task requires re-evaluation. Please begin again.');
+            break;
+          case 'reset-shift':
+            store.resetShift();
+            pearl.triggerBark('notice', 'SUPERVISOR OVERRIDE: Full shift reassessment ordered. Return to Intake.');
+            break;
+        }
+      };
+
       sock.on('connect_error', onError);
       sock.on('session:paused', onPaused);
       sock.on('session:resumed', onResumed);
+      sock.on('session:task-command', onTaskCommand);
 
       return () => {
         sock.off('connect_error', onError);
         sock.off('session:paused', onPaused);
         sock.off('session:resumed', onResumed);
+        sock.off('session:task-command', onTaskCommand);
       };
     }
   }, [user?.id, user?.role, user?.designation, user?.displayName]);

@@ -18,6 +18,7 @@ export interface OnlineStudent {
   taskLabel: string | null;
   taskStartedAt: string | null;
   failCount: number;
+  tasks: { id: string; label: string }[];
 }
 
 interface TeacherState {

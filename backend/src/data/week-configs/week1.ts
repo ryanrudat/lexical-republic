@@ -30,28 +30,40 @@ export const WEEK_1_CONFIG: WeekConfig = {
             ],
           },
           {
-            type: "writing",
-            prompt:
-              "Betty welcomed you to the Department of Clarity. Ivan told you to read twice before you submit. In 3-5 sentences, describe what you learned during your orientation. What do associates do each day? What procedures do they follow? Use the target words in your response.",
-            minWords: 30,
-            lane: {
-              "1": {
-                minWords: 20,
-                sentenceStarters: true,
-                wordBankChinese: true,
-                pearlHints: [
-                  "Start with: 'I arrive at the Ministry and...'",
-                  "Try: 'Betty assigns me to...'",
-                  "Use: 'I follow the standard...'",
-                ],
+            type: "intake_questions",
+            title: "Orientation Comprehension",
+            questions: [
+              {
+                key: "arrive_time",
+                label: "What time do new associates arrive for morning briefing?",
+                options: ["07:00", "08:00", "09:00", "10:00"],
+                correctIndex: 1,
               },
-              "2": { minWords: 30, wordListVisible: true },
-              "3": {
-                minWords: 40,
-                bonusQuestion:
-                  "What happens if an associate does not follow standard protocol?",
+              {
+                key: "check_daily",
+                label: "What should you check each morning?",
+                options: ["Your email", "Your schedule", "The news", "Your phone"],
+                correctIndex: 1,
               },
-            },
+              {
+                key: "report_changes",
+                label: "Who should you report schedule changes to?",
+                options: ["Betty", "Your supervisor", "The Ministry", "CA-31"],
+                correctIndex: 1,
+              },
+              {
+                key: "standard_word",
+                label: "The Ministry values associates who follow _____ procedures.",
+                options: ["special", "normal", "standard", "different"],
+                correctIndex: 2,
+              },
+              {
+                key: "submit_time",
+                label: "When must all documents be submitted?",
+                options: ["Before 12:00", "Before 16:00", "Before 17:00", "Before 20:00"],
+                correctIndex: 1,
+              },
+            ],
           },
           {
             type: "acknowledgment",
@@ -68,7 +80,54 @@ export const WEEK_1_CONFIG: WeekConfig = {
       },
     },
 
-    // 2. Vocabulary Clearance
+    // 2. Word Match — match target words to approved definitions
+    {
+      id: "word_match",
+      type: "word_match",
+      location: "Language Lab",
+      label: "Language Authorization Check",
+      config: {
+        pairs: [
+          { word: "arrive", definition: "to reach a place after traveling" },
+          { word: "follow", definition: "to do what someone tells you to do" },
+          { word: "check", definition: "to look at something to make sure it is correct" },
+          { word: "report", definition: "to give information about something" },
+          { word: "submit", definition: "to give a document to someone in authority" },
+          { word: "approve", definition: "to officially agree that something is correct" },
+          { word: "describe", definition: "to say what something is like" },
+          { word: "assign", definition: "to give someone a job or task" },
+          { word: "standard", definition: "an expected level of quality or rules" },
+          { word: "confirm", definition: "to say that something is definitely true" },
+        ],
+        pearlBarkOnComplete: "Language authorization verified. Your vocabulary clearance has been updated.",
+      },
+    },
+
+    // 3. Cloze Fill — complete Betty's Welcome Notice
+    {
+      id: "cloze_fill",
+      type: "cloze_fill",
+      location: "Records Office",
+      label: "Document Completion",
+      config: {
+        title: "WELCOME NOTICE — NEW ASSOCIATE ORIENTATION",
+        from: "Betty Lyle — WA-14",
+        passage: "Welcome to the Department of Clarity. All new associates {0} at 08:00 for morning briefing. You will {1} your assigned supervisor to your workstation. Please {2} your schedule each morning and {3} any changes to your supervisor. The supervisor will {4} your documents before filing. In your report, {5} what you observed during the shift. The Ministry values every associate who follows {6} procedures.",
+        blanks: [
+          { index: 0, correctWord: "arrive" },
+          { index: 1, correctWord: "follow" },
+          { index: 2, correctWord: "check" },
+          { index: 3, correctWord: "report" },
+          { index: 4, correctWord: "confirm" },
+          { index: 5, correctWord: "describe" },
+          { index: 6, correctWord: "standard" },
+        ],
+        wordBank: ["arrive", "follow", "check", "report", "confirm", "describe", "standard", "submit", "approve", "assign"],
+        pearlBarkOnComplete: "Document verified. Filing clearance granted.",
+      },
+    },
+
+    // 4. Vocabulary Clearance
     {
       id: "vocab_clearance",
       type: "vocab_clearance",
@@ -164,7 +223,7 @@ export const WEEK_1_CONFIG: WeekConfig = {
       },
     },
 
-    // 3. Document Review
+    // 5. Document Review
     {
       id: "document_review",
       type: "document_review",
@@ -296,7 +355,7 @@ export const WEEK_1_CONFIG: WeekConfig = {
       },
     },
 
-    // 4. Shift Report
+    // 6. Shift Report — absorbs the old intake writing prompt
     {
       id: "shift_report",
       type: "shift_report",
@@ -304,7 +363,7 @@ export const WEEK_1_CONFIG: WeekConfig = {
       label: "Shift Report",
       config: {
         prompt:
-          "Your first shift is complete. Write your shift report. Describe: What did Betty explain during your orientation? What documents did you check? What did M.K. Catskil tell you? Did you notice anything unusual on your screen at the end of the broadcast?",
+          "Your first shift is complete. Write your shift report. Betty welcomed you to the Department of Clarity. Ivan told you to read twice before you submit. In 3-5 sentences, describe what you learned during your orientation. What do associates do each day? What procedures do they follow? Did you notice anything unusual? Use the target words in your response.",
         minWords: 40,
         lane: {
           "1": {
@@ -361,6 +420,31 @@ export const WEEK_1_CONFIG: WeekConfig = {
           text: "This seems like a lot of paperwork.",
           responseText:
             "Ha! You sound just like my first day! But trust me, honey \u2014 every form has a purpose. The Ministry wouldn't waste your time!",
+          isCompliant: false,
+        },
+      ],
+    },
+
+    // Betty introduces the cloze fill document
+    {
+      characterName: "Betty",
+      designation: "WA-14",
+      triggerType: "task_start",
+      triggerConfig: { taskId: "cloze_fill" },
+      messageText:
+        "Oh! This is my Welcome Notice, sugar! I wrote it myself — well, the Ministry approved the language, of course. Could you fill in the missing words for me? My computer had a little glitch and some words disappeared!",
+      replyType: "canned",
+      replyOptions: [
+        {
+          text: "Of course, Betty. I'll complete it right away.",
+          responseText:
+            "That's so sweet of you! You're already fitting in perfectly!",
+          isCompliant: true,
+        },
+        {
+          text: "Why are there words missing?",
+          responseText:
+            "Oh, you know how computers are! Sometimes things just... disappear. Nothing to worry about!",
           isCompliant: false,
         },
       ],

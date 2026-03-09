@@ -30,8 +30,15 @@ interface BlankConfig {
   answers: string[];
 }
 
+interface IntakeQuestion {
+  key: string;
+  label: string;
+  options: string[];
+  correctIndex: number;
+}
+
 interface CardConfig {
-  type: 'personal_info' | 'status_review' | 'writing' | 'acknowledgment';
+  type: 'personal_info' | 'status_review' | 'writing' | 'acknowledgment' | 'intake_questions';
   title?: string;
   fields?: FieldConfig[];
   prompt?: string;
@@ -39,6 +46,7 @@ interface CardConfig {
   lane?: LaneScaffold;
   blanks?: BlankConfig[];
   checkbox?: string;
+  questions?: IntakeQuestion[];
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────
@@ -73,6 +81,8 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
     () => cards.map(() => false),
   );
   const [writingPassed, setWritingPassed] = useState(false);
+  const [questionAnswers, setQuestionAnswers] = useState<Record<string, number>>({});
+  const [questionLocked, setQuestionLocked] = useState<Record<string, boolean>>({});
 
   const card = cards[currentCard];
   const total = cards.length;
@@ -113,6 +123,8 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
       setCheckboxChecked(false);
       setWritingText('');
       setWritingPassed(false);
+      setQuestionAnswers({});
+      setQuestionLocked({});
     } else {
       // All cards complete
       const score = 1;
@@ -194,6 +206,81 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
           <button
             className="ios-glass-pill-action px-6 py-2 font-ibm-mono text-xs tracking-wider"
             disabled={!isInfoCardReady()}
+            onClick={advanceCard}
+          >
+            CONTINUE
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  function renderIntakeQuestionsCard(c: CardConfig) {
+    const questions = c.questions ?? [];
+    const allCorrect = questions.length > 0 && questions.every(q => questionLocked[q.key]);
+
+    return (
+      <div className="space-y-3">
+        {c.title && (
+          <h3 className="font-ibm-mono text-xs tracking-wider uppercase text-white/50 mb-4">
+            {c.title}
+          </h3>
+        )}
+
+        {questions.map(q => {
+          const hasAnswer = Object.prototype.hasOwnProperty.call(questionAnswers, q.key);
+          const selected = questionAnswers[q.key];
+          const isLocked = questionLocked[q.key];
+          const isWrong = hasAnswer && selected !== q.correctIndex && !isLocked;
+
+          return (
+            <div key={q.key} className="ios-glass-card p-3">
+              <span className="font-ibm-mono text-[10px] text-white/40 tracking-wider uppercase block mb-1">
+                {q.label}
+              </span>
+              <select
+                className={`ios-glass-input font-ibm-mono text-sm w-full ${
+                  isLocked
+                    ? 'border-neon-mint/40 text-neon-mint'
+                    : isWrong
+                    ? 'border-neon-pink/40 text-neon-pink/80'
+                    : ''
+                }`}
+                value={hasAnswer ? selected : ''}
+                disabled={isLocked}
+                onChange={e => {
+                  const val = e.target.value;
+                  if (val === '') return;
+                  const idx = parseInt(val, 10);
+                  setQuestionAnswers(prev => ({ ...prev, [q.key]: idx }));
+                  if (idx === q.correctIndex) {
+                    setQuestionLocked(prev => ({ ...prev, [q.key]: true }));
+                  }
+                }}
+              >
+                <option value="">-- Select --</option>
+                {q.options.map((opt, i) => (
+                  <option key={i} value={i}>{opt}</option>
+                ))}
+              </select>
+              {isLocked && (
+                <span className="font-ibm-mono text-[10px] text-neon-mint mt-1 block">
+                  &#10003; Correct
+                </span>
+              )}
+              {isWrong && (
+                <span className="font-ibm-mono text-[10px] text-neon-pink/60 mt-1 block">
+                  Not quite — try again
+                </span>
+              )}
+            </div>
+          );
+        })}
+
+        <div className="pt-4">
+          <button
+            className="ios-glass-pill-action px-6 py-2 font-ibm-mono text-xs tracking-wider"
+            disabled={!allCorrect}
             onClick={advanceCard}
           >
             CONTINUE
@@ -403,6 +490,8 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
           renderInfoCard(card)}
         {card.type === 'writing' &&
           renderWritingCard(card)}
+        {card.type === 'intake_questions' &&
+          renderIntakeQuestionsCard(card)}
         {card.type === 'acknowledgment' &&
           renderAcknowledgmentCard(card)}
       </div>

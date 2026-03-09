@@ -25,6 +25,7 @@ export interface StudentStatus {
   taskLabel: string | null;
   taskStartedAt: string | null;
   failCount: number;
+  tasks: { id: string; label: string }[];
 }
 
 // Track multiple sockets per entityId (handles multi-tab)
@@ -130,6 +131,26 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
         }
         io.to('teacher').emit('teacher:pause-state', { paused: false });
       });
+
+      // ── Per-student task controls ──
+      socket.on('teacher:skip-task', (data: { studentId: string }) => {
+        io.to(`student:${data.studentId}`).emit('session:task-command', { action: 'skip-task' });
+      });
+
+      socket.on('teacher:reset-task', (data: { studentId: string }) => {
+        io.to(`student:${data.studentId}`).emit('session:task-command', { action: 'reset-task' });
+      });
+
+      socket.on('teacher:reset-shift', (data: { studentId: string }) => {
+        io.to(`student:${data.studentId}`).emit('session:task-command', { action: 'reset-shift' });
+      });
+
+      socket.on('teacher:send-to-task', (data: { studentId: string; taskId: string }) => {
+        io.to(`student:${data.studentId}`).emit('session:task-command', {
+          action: 'send-to-task',
+          taskId: data.taskId,
+        });
+      });
     }
 
     // ── Student tracking ──
@@ -184,10 +205,12 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
         taskLabel: existing?.taskLabel ?? null,
         taskStartedAt: existing?.taskStartedAt ?? null,
         failCount: existing?.failCount ?? 0,
+        tasks: existing?.tasks ?? [],
       };
       onlineStudents.set(entityId, status);
 
-      // Join class-specific room
+      // Join class-specific room + personal room for teacher commands
+      socket.join(`student:${entityId}`);
       if (classId) {
         socket.join(`class:${classId}`);
       }
@@ -211,6 +234,14 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
       if (existing) {
         existing.stepId = data.stepId;
         existing.lastActivityAt = new Date().toISOString();
+        io.to('teacher').emit('student:status-updated', existing);
+      }
+    });
+
+    socket.on('student:shift-tasks', (data: { id: string; label: string }[]) => {
+      const existing = onlineStudents.get(entityId);
+      if (existing) {
+        existing.tasks = Array.isArray(data) ? data : [];
         io.to('teacher').emit('student:status-updated', existing);
       }
     });

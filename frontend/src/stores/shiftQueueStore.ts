@@ -12,12 +12,17 @@ interface ShiftQueueState {
   shiftComplete: boolean;
   loading: boolean;
   error: string | null;
+  taskResetKey: number;
 
   loadWeekConfig: (weekId: string) => Promise<void>;
   completeTask: (taskId: string, score?: number, details?: Record<string, unknown>) => Promise<void>;
   addConcern: (delta: number) => void;
   nextTask: () => void;
   reset: () => void;
+  goToTask: (taskId: string) => void;
+  skipCurrentTask: () => void;
+  resetCurrentTask: () => void;
+  resetShift: () => void;
 }
 
 export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
@@ -29,6 +34,7 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
   shiftComplete: false,
   loading: false,
   error: null,
+  taskResetKey: 0,
 
   loadWeekConfig: async (weekId: string) => {
     set({ loading: true, error: null });
@@ -152,5 +158,76 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
     shiftComplete: false,
     loading: false,
     error: null,
+    taskResetKey: 0,
   }),
+
+  goToTask: (taskId: string) => {
+    const { weekConfig, taskProgress } = get();
+    if (!weekConfig) return;
+
+    const targetIdx = weekConfig.tasks.findIndex(t => t.id === taskId);
+    if (targetIdx < 0) return;
+
+    const updated = taskProgress.map((p, i) => {
+      if (i < targetIdx) return { ...p, status: 'complete' as TaskStatus };
+      if (i === targetIdx) return { ...p, status: 'current' as TaskStatus, score: undefined, details: undefined };
+      return { ...p, status: 'locked' as TaskStatus, score: undefined, details: undefined };
+    });
+
+    set({
+      taskProgress: updated,
+      currentTaskIndex: targetIdx,
+      shiftComplete: false,
+      taskResetKey: get().taskResetKey + 1,
+    });
+  },
+
+  skipCurrentTask: () => {
+    const { currentTaskIndex, taskProgress } = get();
+    if (currentTaskIndex >= taskProgress.length) return;
+
+    const updated = [...taskProgress];
+    updated[currentTaskIndex] = {
+      ...updated[currentTaskIndex],
+      status: 'complete' as TaskStatus,
+      score: 0,
+      details: { skipped: true },
+    };
+
+    const nextIdx = updated.findIndex((p, i) => i > currentTaskIndex && p.status !== 'complete');
+    if (nextIdx >= 0) {
+      updated[nextIdx] = { ...updated[nextIdx], status: 'current' as TaskStatus };
+    }
+
+    const allComplete = updated.every(p => p.status === 'complete');
+
+    set({
+      taskProgress: updated,
+      currentTaskIndex: nextIdx >= 0 ? nextIdx : updated.length,
+      shiftComplete: allComplete,
+    });
+  },
+
+  resetCurrentTask: () => {
+    set(state => ({ taskResetKey: state.taskResetKey + 1 }));
+  },
+
+  resetShift: () => {
+    const { weekConfig } = get();
+    if (!weekConfig) return;
+
+    const progress: TaskProgress[] = weekConfig.tasks.map((task, idx) => ({
+      taskId: task.id,
+      status: (idx === 0 ? 'current' : 'locked') as TaskStatus,
+      score: undefined,
+      details: undefined,
+    }));
+
+    set({
+      taskProgress: progress,
+      currentTaskIndex: 0,
+      shiftComplete: false,
+      taskResetKey: get().taskResetKey + 1,
+    });
+  },
 }));

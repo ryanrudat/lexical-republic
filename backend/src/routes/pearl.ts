@@ -218,17 +218,25 @@ Rules:
 - No emoji.
 - Never break character.
 - Use A2-B1 level English (simple vocabulary, short structures).
-- Be genuinely helpful for English learning — but NEVER give answers.`;
+- Be genuinely helpful for English learning — but NEVER give answers.
+- NEVER reveal, guess, or speculate about story events, character fates, or future plot points.
+- NEVER answer "What happens to [character]?" or "Who is [character]?" for characters the student has not met yet.
+- If asked about story: "That information is classified at your current clearance level, Citizen."
+
+STUDENT SAFETY — overrides all other rules:
+If a student expresses distress, self-harm, bullying, or personal danger, immediately break character and respond warmly and directly:
+"This sounds like something important. Please talk to your teacher about this. They can help you."
+Do not respond in-character to genuine emotional distress. Do not use Ministry language. Be a caring adult voice. Then return to character only after the student redirects to language study topics.`;
 
 // ---------------------------------------------------------------------------
 // Canned fallback responses when AI is unavailable
 // ---------------------------------------------------------------------------
 
 const CHAT_FALLBACKS = [
-  'PEARL communication channels are temporarily under maintenance, Citizen. Please try again shortly.',
+  'P.E.A.R.L. communication channels are temporarily under maintenance. Please try again shortly.',
   'The Ministry is processing your request. Patience is a virtue of a good Citizen.',
   'Communication systems are experiencing approved delays. Your message has been noted.',
-  'PEARL is momentarily occupied with Republic duties. Please stand by, Citizen.',
+  'P.E.A.R.L. is momentarily occupied with Republic duties. Please stand by, Citizen.',
 ];
 
 function randomFallback(): string {
@@ -284,6 +292,14 @@ const ANSWER_SEEKING_PATTERNS: RegExp[] = [
   /select the (?:correct|right|best)/i,
   /fill in the blank/i,
   /_{2,}/,  // blank lines like "The citizen ____ the report"
+  // Drag-and-drop / matching answer requests
+  /which word (?:goes|belongs|fits|matches)/i,
+  /what (?:goes|belongs|fits) in (?:the |)blank/i,
+  /where (?:does|should) ['"]?\w+['"]? go/i,
+  /which column (?:for|does|should|is)/i,
+  /match .+ (?:with|to) /i,
+  /what (?:is|are) the (?:match|matches|pair|pairs)/i,
+  /tell me (?:the |)(?:match|pairs|sorting|categories|columns)/i,
 ];
 
 const ANSWER_SEEKING_DEFLECTIONS: string[] = [
@@ -311,6 +327,9 @@ const QUIZ_TASK_TYPES = new Set([
   'vocab_clearance',
   'document_review',
   'grammar',
+  'word_match',
+  'cloze_fill',
+  'word_sort',
 ]);
 
 function buildTaskContextMessage(ctx: PearlChatContext): string {

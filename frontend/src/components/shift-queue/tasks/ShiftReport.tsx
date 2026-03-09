@@ -15,7 +15,7 @@ export default function ShiftReport({ config, weekConfig, onComplete }: TaskProp
   const prompt = config.prompt as string;
   const laneConfig = config.lane as Record<string, Record<string, unknown>> | undefined;
   const laneMinWords = laneConfig?.[String(lane)]?.minWords as number | undefined;
-  const minWords = laneMinWords ?? (config.minWords as number) || 40;
+  const minWords = laneMinWords ?? ((config.minWords as number) || 40);
   const guidedQuestions = (laneConfig?.['1']?.guidedQuestions as string[]) || [];
 
   // Lane 1 uses guided questions (individual textareas)
