@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { fetchWeekBriefings } from '../../api/teacher';
 import type { WeekBriefingSetting } from '../../api/teacher';
 import client from '../../api/client';
+import { resolveUploadUrl } from '../../api/client';
 import ShiftStoryboard from './ShiftStoryboard';
 
 export default function ShiftsTab() {
@@ -11,6 +12,18 @@ export default function ShiftsTab() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoUploading, setVideoUploading] = useState(false);
   const [videoUploadStatus, setVideoUploadStatus] = useState('');
+  const [videoExists, setVideoExists] = useState<boolean | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const checkVideoExists = useCallback(async () => {
+    try {
+      const url = resolveUploadUrl('/api/dictionary/welcome-video');
+      const resp = await fetch(url, { method: 'HEAD' });
+      setVideoExists(resp.ok);
+    } catch {
+      setVideoExists(false);
+    }
+  }, []);
 
   useEffect(() => {
     void fetchWeekBriefings()
@@ -19,7 +32,8 @@ export default function ShiftsTab() {
         if (weeks.length > 0) setSelectedWeekId(weeks[0].id);
       })
       .finally(() => setLoading(false));
-  }, []);
+    void checkVideoExists();
+  }, [checkVideoExists]);
 
   const handleWelcomeVideoUpload = async () => {
     if (!videoFile) return;
@@ -33,10 +47,23 @@ export default function ShiftsTab() {
       });
       setVideoUploadStatus('Uploaded successfully');
       setVideoFile(null);
+      setVideoExists(true);
     } catch {
       setVideoUploadStatus('Upload failed');
     }
     setVideoUploading(false);
+  };
+
+  const handleDeleteVideo = async () => {
+    setDeleting(true);
+    try {
+      await client.delete('/dictionary/welcome-video');
+      setVideoExists(false);
+      setVideoUploadStatus('Video deleted');
+    } catch {
+      setVideoUploadStatus('Delete failed');
+    }
+    setDeleting(false);
   };
 
   return (
@@ -47,7 +74,16 @@ export default function ShiftsTab() {
       <p className="text-xs text-slate-500 mb-3">
         Upload a welcome video that new students will see on their first login.
       </p>
-      <div className="flex items-center gap-3">
+
+      {/* Current status */}
+      {videoExists !== null && (
+        <div className={`text-xs mb-3 flex items-center gap-2 ${videoExists ? 'text-emerald-600' : 'text-slate-400'}`}>
+          <span className={`w-2 h-2 rounded-full ${videoExists ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+          {videoExists ? 'Video uploaded' : 'No video uploaded'}
+        </div>
+      )}
+
+      <div className="flex items-center gap-3 flex-wrap">
         <input
           type="file"
           accept="video/mp4,video/webm,video/quicktime"
@@ -61,6 +97,15 @@ export default function ShiftsTab() {
         >
           {videoUploading ? 'Uploading...' : 'Upload'}
         </button>
+        {videoExists && (
+          <button
+            onClick={handleDeleteVideo}
+            disabled={deleting}
+            className="px-3 py-1.5 text-xs font-medium bg-red-600 text-white rounded hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {deleting ? 'Deleting...' : 'Delete Video'}
+          </button>
+        )}
         {videoUploadStatus && (
           <span className={`text-xs ${videoUploadStatus.includes('fail') ? 'text-red-500' : 'text-emerald-600'}`}>
             {videoUploadStatus}

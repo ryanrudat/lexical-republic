@@ -13,6 +13,29 @@ const uploadPath = path.isAbsolute(rawUploadPath)
   : path.resolve(__dirname, '../../', rawUploadPath);
 
 const router = Router();
+
+// Welcome video serve — BEFORE authenticate so <video> tag can fetch without auth
+const welcomeDir = path.join(uploadPath, 'welcome');
+router.get('/welcome-video', (_req: Request, res: Response) => {
+  try {
+    if (!fs.existsSync(welcomeDir)) {
+      res.status(404).json({ error: 'No welcome video uploaded yet' });
+      return;
+    }
+    const files = fs.readdirSync(welcomeDir).filter(f => f.startsWith('welcome-video'));
+    if (files.length === 0) {
+      res.status(404).json({ error: 'No welcome video uploaded yet' });
+      return;
+    }
+    const filePath = path.join(welcomeDir, files[0]);
+    console.log(`[Welcome Video] Serving: ${filePath} (exists: ${fs.existsSync(filePath)})`);
+    res.sendFile(filePath);
+  } catch (err) {
+    console.error('Welcome video serve error:', err);
+    res.status(500).json({ error: 'Failed to serve welcome video' });
+  }
+});
+
 router.use(authenticate);
 
 // GET /api/dictionary — Words filtered by pair's current week, with progress
@@ -150,7 +173,6 @@ router.post('/welcome-watched', requirePair, async (req: Request, res: Response)
 });
 
 // POST /api/dictionary/welcome-video — Teacher uploads welcome video
-const welcomeDir = path.join(uploadPath, 'welcome');
 const welcomeStorage = multer.diskStorage({
   destination: (_req, _file, cb) => {
     fs.mkdirSync(welcomeDir, { recursive: true });
@@ -185,25 +207,22 @@ router.post('/welcome-video', requireRole('teacher'), welcomeUpload.single('vide
   }
 });
 
-// GET /api/dictionary/welcome-video — Serve the welcome video file
-router.get('/welcome-video', async (_req: Request, res: Response) => {
+// DELETE /api/dictionary/welcome-video — Teacher deletes welcome video
+router.delete('/welcome-video', requireRole('teacher'), async (_req: Request, res: Response) => {
   try {
-    // Find any welcome-video file (may have various extensions)
     if (!fs.existsSync(welcomeDir)) {
-      res.status(404).json({ error: 'No welcome video uploaded yet' });
+      res.json({ success: true });
       return;
     }
     const files = fs.readdirSync(welcomeDir).filter(f => f.startsWith('welcome-video'));
-    if (files.length === 0) {
-      res.status(404).json({ error: 'No welcome video uploaded yet' });
-      return;
+    for (const f of files) {
+      fs.unlinkSync(path.join(welcomeDir, f));
     }
-    const filePath = path.join(welcomeDir, files[0]);
-    console.log(`[Welcome Video] Serving: ${filePath} (exists: ${fs.existsSync(filePath)})`);
-    res.sendFile(filePath);
+    console.log(`[Welcome Video] Deleted ${files.length} file(s)`);
+    res.json({ success: true });
   } catch (err) {
-    console.error('Welcome video serve error:', err);
-    res.status(500).json({ error: 'Failed to serve welcome video' });
+    console.error('Welcome video delete error:', err);
+    res.status(500).json({ error: 'Failed to delete welcome video' });
   }
 });
 

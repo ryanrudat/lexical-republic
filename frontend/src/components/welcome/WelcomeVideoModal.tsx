@@ -10,7 +10,7 @@ interface Props {
 export default function WelcomeVideoModal({ designation, onComplete }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [progress, setProgress] = useState(0);
-  const [canProceed, setCanProceed] = useState(false);
+  const [videoEnded, setVideoEnded] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [proceeding, setProceeding] = useState(false);
 
@@ -22,15 +22,13 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
   const handleTimeUpdate = useCallback(() => {
     const v = videoRef.current;
     if (!v || !v.duration) return;
-    const pct = v.currentTime / v.duration;
-    setProgress(pct);
-    if (pct >= 0.9) setCanProceed(true);
+    setProgress(v.currentTime / v.duration);
   }, []);
 
   // Auto-proceed fallback: if no video, show placeholder and allow after 5s
   useEffect(() => {
     if (videoError) {
-      const t = setTimeout(() => setCanProceed(true), 5000);
+      const t = setTimeout(() => setVideoEnded(true), 5000);
       return () => clearTimeout(t);
     }
   }, [videoError]);
@@ -78,11 +76,10 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
               ref={videoRef}
               src={videoUrl}
               className="w-full h-full object-contain"
-              crossOrigin="use-credentials"
               autoPlay
               playsInline
               onTimeUpdate={handleTimeUpdate}
-              onEnded={() => setCanProceed(true)}
+              onEnded={() => setVideoEnded(true)}
               onError={() => setVideoError(true)}
             />
           </div>
@@ -93,15 +90,15 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
           <div
             className="h-full rounded-full transition-all duration-300"
             style={{
-              width: videoError ? `${Math.min(progress * 100, 100)}%` : `${Math.round(progress * 100)}%`,
+              width: `${Math.round(progress * 100)}%`,
               background: '#00ff88',
             }}
           />
         </div>
 
-        {/* Proceed button */}
+        {/* Proceed button — only after video ends */}
         <div className="h-12 flex items-center">
-          {canProceed && (
+          {videoEnded && (
             <button
               onClick={handleProceed}
               disabled={proceeding}
@@ -118,7 +115,7 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
         </div>
 
         {/* CA-1 test bypass */}
-        {isTestUser && !canProceed && (
+        {isTestUser && !videoEnded && (
           <button
             onClick={handleProceed}
             className="font-ibm-mono text-[10px] tracking-wider uppercase px-3 py-1 border rounded absolute top-4 right-4"
