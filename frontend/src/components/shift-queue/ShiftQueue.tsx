@@ -98,8 +98,8 @@ export default function ShiftQueue() {
   if (loading || !weekConfig) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="font-ibm-mono text-neon-cyan text-xs animate-pulse tracking-[0.2em]">
-          LOADING MODULE...
+        <div className="font-ibm-mono text-[#8B8578] text-xs animate-pulse tracking-[0.2em]">
+          Loading module...
         </div>
       </div>
     );
@@ -120,30 +120,21 @@ export default function ShiftQueue() {
   return (
     <div className="flex flex-col gap-4">
       {/* ─── Progress Bar ─── */}
-      <div className="flex gap-1.5 px-1">
+      <div className="flex gap-1.5 mb-1">
         {taskProgress.map((tp, idx) => (
           <div
             key={tp.taskId}
-            className={`h-1 flex-1 rounded-full transition-all duration-500 ${
+            className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
               tp.status === 'complete'
-                ? 'bg-neon-mint'
+                ? 'bg-emerald-400'
                 : tp.status === 'current'
-                  ? 'bg-neon-cyan stamp-glow-pulse'
-                  : 'bg-white/10'
+                  ? 'bg-sky-400 animate-pulse'
+                  : 'bg-[#D4CFC6]'
             }`}
             aria-label={`Task ${idx + 1}: ${tp.status}`}
           />
         ))}
       </div>
-
-      {/* ─── Location Label ─── */}
-      {currentTask && (
-        <div className="px-1">
-          <span className="font-ibm-mono text-[10px] text-white/30 tracking-[0.3em] uppercase">
-            {currentTask.location}
-          </span>
-        </div>
-      )}
 
       {/* ─── Current Task ─── */}
       {currentTask && TaskComponent && weekConfig && (

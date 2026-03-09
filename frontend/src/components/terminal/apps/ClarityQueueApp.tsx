@@ -193,19 +193,20 @@ export default function ClarityQueueApp() {
         </div>
       ) : currentWeek && weekConfig?.shiftType === 'queue' ? (
         // ── Queue-based runner (WeekConfig exists with shiftType=queue) ──
-        <>
-          <div className="text-center py-4 px-6 border-b border-white/10">
-            <div className="flex items-center justify-center gap-3 mb-1">
-              <span className="font-ibm-mono text-xs text-white/50 tracking-wider">
-                SHIFT {currentWeek.weekNumber}
-              </span>
-            </div>
-            <h1 className="font-special-elite text-xl text-white/90 tracking-wider ios-text-glow">
+        <div className="flex-1 flex flex-col bg-[#F5F1EB]">
+          <div className="text-center py-5 px-6 border-b border-[#D4CFC6]">
+            <span className="font-ibm-mono text-[10px] text-[#8B8578] tracking-[0.3em] uppercase">
+              Shift {currentWeek.weekNumber}
+            </span>
+            <h1 className="font-special-elite text-xl text-[#2C3340] tracking-wide mt-0.5">
               {currentWeek.title}
             </h1>
           </div>
-          <ShiftQueue />
-        </>
+          <div className="flex-1 overflow-auto px-4 py-4">
+            <ShiftQueue />
+          </div>
+        </div>
+      </>
       ) : currentWeek && sessionConfig ? (
         // ── Phase-based runner (SessionConfig exists) ──
         <>

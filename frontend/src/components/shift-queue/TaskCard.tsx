@@ -46,29 +46,29 @@ export default function TaskCard({
 
   return (
     <div
-      className={`ios-glass-card border transition-all duration-800 ${
+      className={`bg-white rounded-2xl border shadow-sm transition-all duration-800 relative overflow-hidden ${
         internalStatus === 'completing'
-          ? 'task-card-approved'
+          ? 'border-emerald-300 bg-emerald-50/50 shadow-emerald-100'
           : internalStatus === 'stamped'
-            ? 'border-neon-mint/40'
-            : 'border-white/10'
-      } relative overflow-hidden`}
+            ? 'border-emerald-200'
+            : 'border-[#D4CFC6]'
+      }`}
     >
       {/* Task label */}
-      <div className="px-4 py-2 border-b border-white/5">
-        <span className="font-ibm-mono text-[10px] text-white/40 tracking-[0.3em] uppercase">
+      <div className="px-5 py-2.5 border-b border-[#EDE8DE]">
+        <span className="font-ibm-mono text-[10px] text-[#8B8578] tracking-[0.25em] uppercase">
           {label}
         </span>
       </div>
 
       {/* Task content */}
-      <div className="p-4">
+      <div className="p-5">
         {children}
       </div>
 
       {/* Stamp watermark overlay */}
       {internalStatus === 'completing' && (
-        <div className="stamp-watermark">
+        <div className="stamp-watermark !text-emerald-300/20">
           APPROVED
         </div>
       )}
