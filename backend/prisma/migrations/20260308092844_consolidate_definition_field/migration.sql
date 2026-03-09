@@ -1,12 +1,13 @@
-/*
-  Warnings:
+-- Safe migration: consolidate partyDefinition + trueDefinition into definition
+-- Step 1: Add definition column as nullable
+ALTER TABLE "dictionary_words" ADD COLUMN "definition" TEXT;
 
-  - You are about to drop the column `partyDefinition` on the `dictionary_words` table. All the data in the column will be lost.
-  - You are about to drop the column `trueDefinition` on the `dictionary_words` table. All the data in the column will be lost.
-  - Added the required column `definition` to the `dictionary_words` table without a default value. This is not possible if the table is not empty.
+-- Step 2: Copy existing data (prefer trueDefinition, fall back to partyDefinition)
+UPDATE "dictionary_words" SET "definition" = COALESCE("trueDefinition", "partyDefinition", '');
 
-*/
--- AlterTable
-ALTER TABLE "dictionary_words" DROP COLUMN "partyDefinition",
-DROP COLUMN "trueDefinition",
-ADD COLUMN     "definition" TEXT NOT NULL;
+-- Step 3: Make definition NOT NULL
+ALTER TABLE "dictionary_words" ALTER COLUMN "definition" SET NOT NULL;
+
+-- Step 4: Drop old columns
+ALTER TABLE "dictionary_words" DROP COLUMN "partyDefinition";
+ALTER TABLE "dictionary_words" DROP COLUMN "trueDefinition";
