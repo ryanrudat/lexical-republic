@@ -249,6 +249,70 @@ router.patch('/:classId', async (req: Request, res: Response) => {
   }
 });
 
+// DELETE /api/classes/:classId — Delete a class and all associated data
+router.delete('/:classId', async (req: Request, res: Response) => {
+  try {
+    const classId = req.params.classId as string;
+    const teacherId = req.user!.userId;
+
+    // Verify ownership
+    const existing = await prisma.class.findUnique({ where: { id: classId } });
+    if (!existing || existing.teacherId !== teacherId) {
+      res.status(404).json({ error: 'Class not found' });
+      return;
+    }
+
+    // Cascade delete in transaction
+    await prisma.$transaction([
+      prisma.classWeekUnlock.deleteMany({ where: { classId } }),
+      prisma.harmonyPost.deleteMany({ where: { classId } }),
+      prisma.classEnrollment.deleteMany({ where: { classId } }),
+      prisma.class.delete({ where: { id: classId } }),
+    ]);
+
+    res.json({ deleted: true });
+  } catch (err) {
+    console.error('Delete class error:', err);
+    res.status(500).json({ error: 'Failed to delete class' });
+  }
+});
+
+// DELETE /api/classes/:classId/students/:studentId — Remove a student from a class
+router.delete('/:classId/students/:studentId', async (req: Request, res: Response) => {
+  try {
+    const classId = req.params.classId as string;
+    const studentId = req.params.studentId as string;
+    const teacherId = req.user!.userId;
+
+    // Verify ownership
+    const cls = await prisma.class.findUnique({ where: { id: classId } });
+    if (!cls || cls.teacherId !== teacherId) {
+      res.status(404).json({ error: 'Class not found' });
+      return;
+    }
+
+    // Find enrollment by pairId or userId
+    const enrollment = await prisma.classEnrollment.findFirst({
+      where: {
+        classId,
+        OR: [{ pairId: studentId }, { userId: studentId }],
+      },
+    });
+
+    if (!enrollment) {
+      res.status(404).json({ error: 'Student not found in this class' });
+      return;
+    }
+
+    await prisma.classEnrollment.delete({ where: { id: enrollment.id } });
+
+    res.json({ deleted: true });
+  } catch (err) {
+    console.error('Remove student error:', err);
+    res.status(500).json({ error: 'Failed to remove student' });
+  }
+});
+
 // POST /api/classes/:classId/regenerate-code — Generate new join code
 router.post('/:classId/regenerate-code', async (req: Request, res: Response) => {
   try {

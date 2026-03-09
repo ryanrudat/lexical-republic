@@ -227,6 +227,40 @@ export async function lockWeek(classId: string, weekId: string): Promise<void> {
   await client.delete(`/classes/${classId}/unlock-week/${weekId}`);
 }
 
+export async function deleteClass(classId: string): Promise<void> {
+  await client.delete(`/classes/${classId}`);
+}
+
+export async function removeStudentFromClass(classId: string, studentId: string): Promise<void> {
+  await client.delete(`/classes/${classId}/students/${studentId}`);
+}
+
+export interface ClassStudent {
+  id: string;
+  designation: string | null;
+  displayName: string;
+  lane: number;
+  xp: number;
+  lastLoginAt: string | null;
+  enrolledAt: string;
+  isPair: boolean;
+}
+
+export interface ClassDetail {
+  id: string;
+  name: string;
+  joinCode: string;
+  isActive: boolean;
+  createdAt: string;
+  students: ClassStudent[];
+  unlockedWeeks: { weekId: string; weekNumber: number; title: string; unlockedAt: string }[];
+}
+
+export async function fetchClassDetail(classId: string): Promise<ClassDetail> {
+  const { data } = await client.get(`/classes/${classId}`);
+  return data as ClassDetail;
+}
+
 // ── Storyboard API ──────────────────────────────────────────────
 
 export interface StoryboardAlternative {
