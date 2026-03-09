@@ -178,10 +178,9 @@ const welcomeStorage = multer.diskStorage({
     fs.mkdirSync(welcomeDir, { recursive: true });
     cb(null, welcomeDir);
   },
-  filename: (_req, file, cb) => {
-    // Preserve original extension for correct mime type detection
-    const ext = path.extname(file.originalname).toLowerCase() || '.mp4';
-    cb(null, `welcome-video${ext}`);
+  filename: (_req, _file, cb) => {
+    // Always save as .mp4 — frontend static URL expects this exact filename
+    cb(null, 'welcome-video.mp4');
   },
 });
 const welcomeUpload = multer({ storage: welcomeStorage, limits: { fileSize: 200 * 1024 * 1024 } });

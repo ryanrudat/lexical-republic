@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { fetchWeekBriefings } from '../../api/teacher';
 import type { WeekBriefingSetting } from '../../api/teacher';
 import client from '../../api/client';
+import { resolveUploadUrl } from '../../api/client';
 import ShiftStoryboard from './ShiftStoryboard';
 
 export default function ShiftsTab() {
@@ -16,7 +17,7 @@ export default function ShiftsTab() {
 
   const checkVideoExists = useCallback(async () => {
     try {
-      const url = `${client.defaults.baseURL}/dictionary/welcome-video`;
+      const url = resolveUploadUrl('/uploads/welcome/welcome-video.mp4');
       const resp = await fetch(url, { method: 'HEAD' });
       setVideoExists(resp.ok);
     } catch {

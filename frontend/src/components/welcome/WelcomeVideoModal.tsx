@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { markWelcomeWatched } from '../../api/dictionary';
-import client from '../../api/client';
+import { resolveUploadUrl } from '../../api/client';
 
 interface Props {
   designation?: string | null;
@@ -17,8 +17,8 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
 
   const isTestUser = designation?.toUpperCase() === 'CA-1';
 
-  // Build absolute URL from axios baseURL — resolveUploadUrl may not be deployed yet
-  const videoUrl = `${client.defaults.baseURL}/dictionary/welcome-video`;
+  // Use static file path — served by express.static('/uploads'), no auth needed
+  const videoUrl = resolveUploadUrl('/uploads/welcome/welcome-video.mp4');
 
   // Try to autoplay once video is ready — handle autoplay rejection
   useEffect(() => {
