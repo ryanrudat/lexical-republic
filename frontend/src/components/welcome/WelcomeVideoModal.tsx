@@ -91,10 +91,10 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
   };
 
   // Monitor screen area as percentage of the image (2744x1568)
-  // Inset to sit inside the beveled bezel, not over it
-  const screen = { top: 8, left: 23, width: 54, height: 55 };
+  // Tightly inset inside the beveled CRT bezel
+  const screen = { top: 12, left: 24.5, width: 51, height: 49 };
   // Green LED bar position on the monitor
-  const ledBar = { top: 71.5, left: 23, width: 54 };
+  const ledBar = { top: 71.5, left: 24.5, width: 51 };
 
   return (
     <div className="fixed inset-0 z-[70] flex flex-col items-center justify-center bg-[#0c0c0c]">
