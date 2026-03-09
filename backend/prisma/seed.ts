@@ -657,7 +657,15 @@ async function main() {
   const pinHash = await bcrypt.hash('1234', 10);
   const testPair = await prisma.pair.upsert({
     where: { designation: 'CA-1' },
-    update: {},
+    update: {
+      pin: pinHash,
+      studentAName: 'Test',
+      studentBName: 'Student',
+      lane: 2,
+      xp: 0,
+      concernScore: 0,
+      hasWatchedWelcome: false,
+    },
     create: {
       designation: 'CA-1',
       pin: pinHash,
