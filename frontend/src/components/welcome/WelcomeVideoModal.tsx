@@ -91,14 +91,15 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
   };
 
   // Monitor screen area as percentage of the image (2744x1568)
-  const screen = { top: 6, left: 20.5, width: 59, height: 59 };
+  // Inset to sit inside the beveled bezel, not over it
+  const screen = { top: 8, left: 23, width: 54, height: 55 };
   // Green LED bar position on the monitor
-  const ledBar = { top: 71.5, left: 20.5, width: 59 };
+  const ledBar = { top: 71.5, left: 23, width: 54 };
 
   return (
     <div className="fixed inset-0 z-[70] flex flex-col items-center justify-center bg-[#0c0c0c]">
       {/* Monitor + video container */}
-      <div className="relative w-full max-w-3xl px-4">
+      <div className="relative w-full max-w-5xl px-4">
         {/* Monitor image — sets the size for everything */}
         <div className="relative w-full" style={{ aspectRatio: '2744 / 1568' }}>
           <img
