@@ -206,7 +206,6 @@ export default function ClarityQueueApp() {
             <ShiftQueue />
           </div>
         </div>
-      </>
       ) : currentWeek && sessionConfig ? (
         // ── Phase-based runner (SessionConfig exists) ──
         <>
