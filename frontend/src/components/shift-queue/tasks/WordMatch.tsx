@@ -1,18 +1,10 @@
 import { useState, useCallback, useRef } from 'react';
 import { usePearlStore } from '../../../stores/pearlStore';
-import { useTapOrDrag } from './shared/useTapOrDrag';
 import type { TaskProps } from '../../../types/shiftQueue';
 
 interface Pair {
   word: string;
   definition: string;
-}
-
-interface MatchState {
-  matched: Set<string>;       // words that are correctly matched
-  wrongFlash: string | null;  // definition id currently flashing red
-  firstTryCorrect: Set<string>;
-  attempted: Set<string>;     // words that have been attempted at least once
 }
 
 export default function WordMatch({ config, onComplete }: TaskProps) {
@@ -24,143 +16,197 @@ export default function WordMatch({ config, onComplete }: TaskProps) {
     [...pairs].sort(() => Math.random() - 0.5),
   ).current;
 
-  const [state, setState] = useState<MatchState>({
-    matched: new Set(),
-    wrongFlash: null,
-    firstTryCorrect: new Set(),
-    attempted: new Set(),
-  });
+  const [selectedWord, setSelectedWord] = useState<string | null>(null);
+  const [matched, setMatched] = useState<Set<string>>(new Set());
+  const [wrongFlash, setWrongFlash] = useState<string | null>(null);
+  const [correctFlash, setCorrectFlash] = useState<string | null>(null);
+  const [firstTryCorrect, setFirstTryCorrect] = useState<Set<string>>(new Set());
+  const [attempted, setAttempted] = useState<Set<string>>(new Set());
 
-  const { selectedId, selectItem, clearSelection } = useTapOrDrag();
+  const hasCompleted = useRef(false);
 
-  const tryMatch = useCallback(
-    (word: string, defWord: string) => {
-      if (state.matched.has(word)) return;
-
-      const pair = pairs.find((p) => p.word === word);
-      if (!pair) return;
-
-      const isCorrect = pair.definition === pairs.find((p) => p.word === defWord)?.definition
-        ? false // this shouldn't happen
-        : defWord === word; // match by word key
-
-      if (isCorrect) {
-        setState((prev) => {
-          const matched = new Set(prev.matched);
-          matched.add(word);
-          const firstTryCorrect = new Set(prev.firstTryCorrect);
-          if (!prev.attempted.has(word)) firstTryCorrect.add(word);
-          return { ...prev, matched, firstTryCorrect };
-        });
-      } else {
-        setState((prev) => ({
-          ...prev,
-          wrongFlash: defWord,
-          attempted: new Set(prev.attempted).add(word),
-        }));
-        setTimeout(() => setState((prev) => ({ ...prev, wrongFlash: null })), 400);
+  const checkCompletion = useCallback(
+    (newMatched: Set<string>, newFirstTryCorrect: Set<string>) => {
+      if (newMatched.size === pairs.length && !hasCompleted.current) {
+        hasCompleted.current = true;
+        const score = newFirstTryCorrect.size / pairs.length;
+        if (pearlBark) {
+          usePearlStore.getState().triggerBark('success', pearlBark);
+        }
+        setTimeout(() => {
+          onComplete(score, {
+            type: 'word_match',
+            correct: newFirstTryCorrect.size,
+            total: pairs.length,
+          });
+        }, 1000);
       }
     },
-    [pairs, state.matched],
+    [pairs.length, pearlBark, onComplete],
+  );
+
+  const handleWordClick = useCallback(
+    (word: string) => {
+      if (matched.has(word)) return;
+      setSelectedWord((prev) => (prev === word ? null : word));
+    },
+    [matched],
   );
 
   const handleDefClick = useCallback(
     (defWord: string) => {
-      if (state.matched.has(defWord)) return;
-      if (selectedId) {
-        tryMatch(selectedId, defWord);
-        clearSelection();
+      if (matched.has(defWord) || !selectedWord) return;
+
+      // The definition belongs to the pair with word === defWord
+      // Check if selectedWord matches defWord
+      const isCorrect = selectedWord === defWord;
+
+      if (isCorrect) {
+        setCorrectFlash(defWord);
+        const newMatched = new Set(matched);
+        newMatched.add(defWord);
+        setMatched(newMatched);
+
+        const newFirstTryCorrect = new Set(firstTryCorrect);
+        if (!attempted.has(selectedWord)) {
+          newFirstTryCorrect.add(selectedWord);
+          setFirstTryCorrect(newFirstTryCorrect);
+        }
+
+        setSelectedWord(null);
+        setTimeout(() => setCorrectFlash(null), 500);
+        checkCompletion(newMatched, newFirstTryCorrect);
+      } else {
+        // Wrong — flash red
+        setWrongFlash(defWord);
+        setAttempted((prev) => new Set(prev).add(selectedWord));
+        usePearlStore.getState().triggerBark('incorrect', 'Incorrect match. Review the definition and try again.');
+        setTimeout(() => setWrongFlash(null), 500);
+        setSelectedWord(null);
       }
     },
-    [selectedId, tryMatch, clearSelection, state.matched],
+    [selectedWord, matched, firstTryCorrect, attempted, checkCompletion],
   );
 
+  // Drag and drop handlers
   const handleDrop = useCallback(
     (defWord: string, draggedWord: string) => {
-      tryMatch(draggedWord, defWord);
+      if (matched.has(defWord)) return;
+      // Temporarily set selectedWord for the handleDefClick logic
+      const isCorrect = draggedWord === defWord;
+
+      if (isCorrect) {
+        setCorrectFlash(defWord);
+        const newMatched = new Set(matched);
+        newMatched.add(defWord);
+        setMatched(newMatched);
+
+        const newFirstTryCorrect = new Set(firstTryCorrect);
+        if (!attempted.has(draggedWord)) {
+          newFirstTryCorrect.add(draggedWord);
+          setFirstTryCorrect(newFirstTryCorrect);
+        }
+
+        setTimeout(() => setCorrectFlash(null), 500);
+        checkCompletion(newMatched, newFirstTryCorrect);
+      } else {
+        setWrongFlash(defWord);
+        setAttempted((prev) => new Set(prev).add(draggedWord));
+        usePearlStore.getState().triggerBark('incorrect', 'Incorrect match. Review the definition and try again.');
+        setTimeout(() => setWrongFlash(null), 500);
+      }
     },
-    [tryMatch],
+    [matched, firstTryCorrect, attempted, checkCompletion],
   );
 
-  // Check completion
-  const allMatched = state.matched.size === pairs.length;
-  const hasCompleted = useRef(false);
-
-  if (allMatched && !hasCompleted.current) {
-    hasCompleted.current = true;
-    const score = state.firstTryCorrect.size / pairs.length;
-    if (pearlBark) {
-      usePearlStore.getState().triggerBark('success', pearlBark);
-    }
-    setTimeout(() => {
-      onComplete(score, {
-        type: 'word_match',
-        correct: state.firstTryCorrect.size,
-        total: pairs.length,
-      });
-    }, 800);
-  }
+  const allMatched = matched.size === pairs.length;
+  const progress = matched.size / pairs.length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-w-2xl mx-auto">
       {/* Header */}
-      <div className="text-center">
+      <div className="text-center space-y-1">
         <h3 className="font-ibm-mono text-[10px] text-white/30 tracking-[0.3em] uppercase">
           Language Authorization Check
         </h3>
-        <p className="font-ibm-mono text-[11px] text-white/50 mt-1">
-          Match each term to its approved definition to activate file access.
+        <p className="font-ibm-mono text-[11px] text-white/40">
+          {selectedWord
+            ? <>Tap the matching definition for <span className="text-neon-cyan">{selectedWord}</span></>
+            : 'Tap a term, then tap its definition'}
         </p>
       </div>
 
-      {/* Progress */}
-      <div className="flex justify-center">
-        <span className="font-ibm-mono text-[11px] text-neon-mint/70">
-          {state.matched.size} / {pairs.length} matched
-        </span>
+      {/* Progress bar */}
+      <div className="space-y-1">
+        <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-neon-mint/60 rounded-full transition-all duration-500 ease-out"
+            style={{ width: `${progress * 100}%` }}
+          />
+        </div>
+        <div className="flex justify-between font-ibm-mono text-[10px]">
+          <span className="text-white/30">{matched.size}/{pairs.length} verified</span>
+          {allMatched && (
+            <span className="text-neon-mint animate-pulse">COMPLETE</span>
+          )}
+        </div>
       </div>
 
-      {/* Match grid */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Two-column match area */}
+      <div className="grid grid-cols-[1fr_auto_1fr] gap-x-2 items-start">
         {/* Words column */}
-        <div className="space-y-2">
-          <div className="font-ibm-mono text-[9px] text-neon-cyan/50 tracking-[0.2em] uppercase mb-1">
-            Terms
-          </div>
+        <div className="space-y-1.5">
           {pairs.map((pair) => {
-            const isMatched = state.matched.has(pair.word);
-            const isSelected = selectedId === pair.word;
+            const isMatched = matched.has(pair.word);
+            const isSelected = selectedWord === pair.word;
             return (
-              <div
+              <button
                 key={pair.word}
                 draggable={!isMatched}
                 onDragStart={(e) => {
                   e.dataTransfer.setData('text/plain', pair.word);
                 }}
-                onClick={() => !isMatched && selectItem(pair.word)}
-                className={`px-3 py-2 rounded border font-ibm-mono text-sm transition-all duration-200 ${
+                onClick={() => handleWordClick(pair.word)}
+                disabled={isMatched}
+                className={`w-full text-left px-3 py-2 rounded-lg font-ibm-mono text-sm transition-all duration-200 border ${
                   isMatched
-                    ? 'border-neon-mint/40 bg-neon-mint/5 text-neon-mint cursor-default'
+                    ? 'border-neon-mint/30 bg-neon-mint/5 text-neon-mint/60'
                     : isSelected
-                    ? 'border-neon-cyan/60 bg-neon-cyan/10 text-neon-cyan cursor-pointer'
-                    : 'border-white/10 bg-white/5 text-neon-cyan/80 cursor-grab hover:border-white/20'
+                    ? 'border-neon-cyan bg-neon-cyan/15 text-neon-cyan shadow-[0_0_12px_rgba(0,255,255,0.15)] scale-[1.02]'
+                    : 'border-white/8 bg-white/[0.03] text-white/70 hover:border-white/20 hover:bg-white/[0.06] active:scale-[0.98] cursor-pointer'
                 }`}
               >
-                {isMatched && <span className="mr-1.5 text-neon-mint">&#10003;</span>}
-                {pair.word}
-              </div>
+                <span className="flex items-center gap-2">
+                  {isMatched ? (
+                    <span className="text-neon-mint text-xs shrink-0">&#10003;</span>
+                  ) : (
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                      isSelected ? 'bg-neon-cyan' : 'bg-white/15'
+                    }`} />
+                  )}
+                  {pair.word}
+                </span>
+              </button>
             );
           })}
         </div>
 
+        {/* Center connector */}
+        <div className="flex flex-col items-center justify-center pt-2 opacity-20">
+          {pairs.map((_, i) => (
+            <div key={i} className="h-[38px] flex items-center">
+              <span className="text-white/30 text-[10px]">&mdash;</span>
+            </div>
+          ))}
+        </div>
+
         {/* Definitions column */}
-        <div className="space-y-2">
-          <div className="font-ibm-mono text-[9px] text-white/30 tracking-[0.2em] uppercase mb-1">
-            Definitions
-          </div>
+        <div className="space-y-1.5">
           {shuffledDefs.map((pair) => {
-            const isMatched = state.matched.has(pair.word);
-            const isWrongFlash = state.wrongFlash === pair.word;
+            const isMatched = matched.has(pair.word);
+            const isWrong = wrongFlash === pair.word;
+            const isCorrectFlash = correctFlash === pair.word;
+            const isClickable = !isMatched && !!selectedWord;
             return (
               <div
                 key={`def-${pair.word}`}
@@ -173,34 +219,41 @@ export default function WordMatch({ config, onComplete }: TaskProps) {
                   handleDrop(pair.word, draggedWord);
                 }}
                 onClick={() => handleDefClick(pair.word)}
-                className={`px-3 py-2 rounded border text-[12px] leading-relaxed transition-all duration-200 ${
+                className={`px-3 py-2 rounded-lg border text-[11px] leading-snug transition-all duration-200 ${
                   isMatched
-                    ? 'border-neon-mint/40 bg-neon-mint/5 text-neon-mint/80 cursor-default'
-                    : isWrongFlash
-                    ? 'border-neon-pink/50 bg-neon-pink/10 text-white/70'
-                    : selectedId
-                    ? 'border-white/20 bg-white/5 text-white/70 cursor-pointer hover:border-neon-cyan/30'
-                    : 'border-white/10 bg-white/5 text-white/60'
+                    ? 'border-neon-mint/30 bg-neon-mint/5 text-neon-mint/50'
+                    : isCorrectFlash
+                    ? 'border-neon-mint bg-neon-mint/15 text-neon-mint shadow-[0_0_12px_rgba(0,255,200,0.2)]'
+                    : isWrong
+                    ? 'border-neon-pink bg-neon-pink/10 text-neon-pink animate-resist-shake'
+                    : isClickable
+                    ? 'border-white/15 bg-white/[0.03] text-white/60 cursor-pointer hover:border-neon-cyan/30 hover:bg-neon-cyan/5'
+                    : 'border-white/8 bg-white/[0.02] text-white/40'
                 }`}
               >
                 {isMatched && (
-                  <span className="font-ibm-mono text-[9px] text-neon-mint/60 block mb-0.5">
-                    {pair.word}
+                  <span className="font-ibm-mono text-[9px] text-neon-mint/50 tracking-wider">
+                    {pair.word} &#10003;
                   </span>
                 )}
-                {pair.definition}
+                <span className={isMatched ? 'block mt-0.5' : ''}>
+                  {pair.definition}
+                </span>
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* Completion */}
+      {/* Completion badge */}
       {allMatched && (
-        <div className="text-center py-3 animate-fade-in">
-          <span className="font-ibm-mono text-xs text-neon-mint tracking-wider">
-            AUTHORIZATION VERIFIED
-          </span>
+        <div className="text-center py-3">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-neon-mint/30 bg-neon-mint/5">
+            <span className="text-neon-mint">&#10003;</span>
+            <span className="font-ibm-mono text-xs text-neon-mint tracking-wider">
+              AUTHORIZATION VERIFIED
+            </span>
+          </div>
         </div>
       )}
     </div>
