@@ -2,6 +2,7 @@ import { useEffect, lazy, Suspense } from 'react';
 import { useViewStore } from '../../stores/viewStore';
 import ViewTransition from './ViewTransition';
 import PearlAnnouncement from '../pearl/PearlAnnouncement';
+import PauseOverlay from '../session/PauseOverlay';
 import type { ViewMode, TerminalApp } from '../../types/views';
 
 const OfficeView = lazy(() => import('../office/OfficeView'));
@@ -45,6 +46,7 @@ export default function GameShell({ initialView, initialApp }: GameShellProps) {
       </Suspense>
       <ViewTransition />
       <PearlAnnouncement />
+      <PauseOverlay />
     </div>
   );
 }

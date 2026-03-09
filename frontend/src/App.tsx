@@ -7,6 +7,7 @@ import BootSequence from './components/layout/BootSequence';
 import GameShell from './components/layout/GameShell';
 import { GUIDED_STUDENT_MODE } from './config/runtimeFlags';
 import { connectSocket } from './utils/socket';
+import { useSessionPauseStore } from './stores/sessionPauseStore';
 import WelcomeVideoModal from './components/welcome/WelcomeVideoModal';
 
 export default function App() {
@@ -31,10 +32,20 @@ export default function App() {
       const onError = (err: Error) => {
         console.error('[StudentSocket] connection error:', err.message);
       };
+      const onPaused = (data: { message?: string }) => {
+        useSessionPauseStore.getState().setPaused(true, data.message);
+      };
+      const onResumed = () => {
+        useSessionPauseStore.getState().setPaused(false);
+      };
       sock.on('connect_error', onError);
+      sock.on('session:paused', onPaused);
+      sock.on('session:resumed', onResumed);
 
       return () => {
         sock.off('connect_error', onError);
+        sock.off('session:paused', onPaused);
+        sock.off('session:resumed', onResumed);
       };
     }
   }, [user?.id, user?.role, user?.designation, user?.displayName]);

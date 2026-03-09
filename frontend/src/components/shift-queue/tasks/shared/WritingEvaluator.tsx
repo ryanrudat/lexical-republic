@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import client from '../../../../api/client';
+import { getSocket } from '../../../../utils/socket';
 
 export interface EvalResult {
   passed: boolean;
@@ -95,6 +96,11 @@ export default function WritingEvaluator({
       const currentAttempt = attempt;
       if (!result.passed) {
         setAttempt(prev => prev + 1);
+        // Notify teacher's class monitor of failure
+        const sock = getSocket();
+        if (sock?.connected) {
+          sock.emit('student:task-update', { taskId: missionId ?? 'writing', taskLabel: 'Writing', failCount: currentAttempt });
+        }
       }
       onResult(result, currentAttempt);
     } catch {

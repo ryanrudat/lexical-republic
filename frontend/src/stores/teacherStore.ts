@@ -14,6 +14,10 @@ export interface OnlineStudent {
   stepId: string | null;
   connectedAt: string;
   lastActivityAt: string;
+  taskId: string | null;
+  taskLabel: string | null;
+  taskStartedAt: string | null;
+  failCount: number;
 }
 
 interface TeacherState {
@@ -38,6 +42,9 @@ interface TeacherState {
   /** Incremented when a new student registers — triggers ClassMonitor refresh */
   registrationTick: number;
   bumpRegistrationTick: () => void;
+
+  classPaused: boolean;
+  setClassPaused: (paused: boolean) => void;
 }
 
 export const useTeacherStore = create<TeacherState>((set) => ({
@@ -74,4 +81,7 @@ export const useTeacherStore = create<TeacherState>((set) => ({
 
   registrationTick: 0,
   bumpRegistrationTick: () => set((s) => ({ registrationTick: s.registrationTick + 1 })),
+
+  classPaused: false,
+  setClassPaused: (paused) => set({ classPaused: paused }),
 }));

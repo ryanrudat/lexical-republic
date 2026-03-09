@@ -21,6 +21,10 @@ export interface StudentStatus {
   stepId: string | null;
   connectedAt: string;
   lastActivityAt: string;
+  taskId: string | null;
+  taskLabel: string | null;
+  taskStartedAt: string | null;
+  failCount: number;
 }
 
 // Track multiple sockets per entityId (handles multi-tab)
@@ -106,6 +110,28 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
       socket.emit('teacher:class-snapshot', getOnlineStudents());
     }
 
+    // ── Teacher pause/resume ──
+    if (role === 'teacher') {
+      socket.on('teacher:pause-all', (data?: { classId?: string }) => {
+        const msg = 'ATTENTION: SUPERVISOR BRIEFING IN PROGRESS. PLEASE LOOK UP.';
+        if (data?.classId) {
+          io.to(`class:${data.classId}`).emit('session:paused', { message: msg });
+        } else {
+          io.emit('session:paused', { message: msg });
+        }
+        io.to('teacher').emit('teacher:pause-state', { paused: true });
+      });
+
+      socket.on('teacher:resume-all', (data?: { classId?: string }) => {
+        if (data?.classId) {
+          io.to(`class:${data.classId}`).emit('session:resumed');
+        } else {
+          io.emit('session:resumed');
+        }
+        io.to('teacher').emit('teacher:pause-state', { paused: false });
+      });
+    }
+
     // ── Student tracking ──
     if (role === 'student') {
       // Cancel any pending disconnect grace timer
@@ -154,6 +180,10 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
         stepId: existing?.stepId ?? null,
         connectedAt: existing?.connectedAt ?? new Date().toISOString(),
         lastActivityAt: new Date().toISOString(),
+        taskId: existing?.taskId ?? null,
+        taskLabel: existing?.taskLabel ?? null,
+        taskStartedAt: existing?.taskStartedAt ?? null,
+        failCount: existing?.failCount ?? 0,
       };
       onlineStudents.set(entityId, status);
 
@@ -181,6 +211,25 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
       if (existing) {
         existing.stepId = data.stepId;
         existing.lastActivityAt = new Date().toISOString();
+        io.to('teacher').emit('student:status-updated', existing);
+      }
+    });
+
+    socket.on('student:task-update', (data: {
+      taskId: string;
+      taskLabel: string;
+      failCount?: number;
+    }) => {
+      const existing = onlineStudents.get(entityId);
+      if (existing) {
+        if (existing.taskId !== data.taskId) {
+          existing.taskStartedAt = new Date().toISOString();
+          existing.failCount = 0;
+        }
+        existing.taskId = data.taskId;
+        existing.taskLabel = data.taskLabel;
+        existing.lastActivityAt = new Date().toISOString();
+        if (data.failCount !== undefined) existing.failCount = data.failCount;
         io.to('teacher').emit('student:status-updated', existing);
       }
     });

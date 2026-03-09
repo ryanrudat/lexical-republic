@@ -4,6 +4,8 @@ import { useShiftQueueStore } from '../../stores/shiftQueueStore';
 import { useShiftStore } from '../../stores/shiftStore';
 import { useSeasonStore } from '../../stores/seasonStore';
 import { useViewStore } from '../../stores/viewStore';
+import { useHarmonyStore } from '../../stores/harmonyStore';
+import { getSocket } from '../../utils/socket';
 import { postShiftResult, patchClearance, patchConcern } from '../../api/shifts';
 
 interface StatItem {
@@ -162,6 +164,20 @@ export default function ShiftClosing() {
     openApp('harmony');
   };
 
+  const handleCensureOverflow = () => {
+    // Route to Harmony with censure tab active + notify teacher
+    useHarmonyStore.getState().setTab('censure');
+    openApp('harmony');
+    const sock = getSocket();
+    if (sock?.connected) {
+      sock.emit('student:task-update', {
+        taskId: 'censure_overflow',
+        taskLabel: 'Censure Queue (bonus)',
+        failCount: 0,
+      });
+    }
+  };
+
   const handleEndShift = () => {
     resetQueue();
     returnToDesktop();
@@ -232,11 +248,24 @@ export default function ShiftClosing() {
         </p>
       </div>
 
+      {/* Overflow prompt */}
+      <div className="ios-glass-card border border-neon-mint/20 p-3 text-center">
+        <p className="font-ibm-mono text-[11px] text-white/40 leading-relaxed mb-3">
+          All assigned cases processed. Citizen communication queue contains additional items requiring review.
+        </p>
+        <button
+          onClick={handleCensureOverflow}
+          className="ios-glass-pill-action px-6 py-2.5 font-ibm-mono text-xs tracking-wider"
+        >
+          CONTINUE TO CENSURE QUEUE
+        </button>
+      </div>
+
       {/* Action buttons */}
       <div className="flex gap-3 justify-center pt-2 pb-6">
         <button
           onClick={handleAccessHarmony}
-          className="ios-glass-pill-action px-6 py-2.5 font-ibm-mono text-xs tracking-wider"
+          className="ios-glass-pill px-6 py-2.5 font-ibm-mono text-xs tracking-wider text-white/60 hover:text-white"
         >
           ACCESS HARMONY
         </button>

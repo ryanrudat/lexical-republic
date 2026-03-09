@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useShiftQueueStore } from '../../stores/shiftQueueStore';
 import { useMessagingStore } from '../../stores/messagingStore';
 import { useShiftStore } from '../../stores/shiftStore';
+import { getSocket } from '../../utils/socket';
 import TaskCard from './TaskCard';
 import ShiftClosing from './ShiftClosing';
 import IntakeForm from './tasks/IntakeForm';
@@ -48,6 +49,11 @@ export default function ShiftQueue() {
       if (task) {
         lastTriggeredTaskRef.current = task.id;
         triggerMessage('task_start', { taskId: task.id, weekNumber }, weekConfig);
+        // Emit initial task to teacher's class monitor
+        const sock = getSocket();
+        if (sock?.connected) {
+          sock.emit('student:task-update', { taskId: task.id, taskLabel: task.label });
+        }
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -59,6 +65,15 @@ export default function ShiftQueue() {
     if (lastTriggeredTaskRef.current === currentTask.id) return;
     lastTriggeredTaskRef.current = currentTask.id;
     triggerMessage('task_start', { taskId: currentTask.id, weekNumber }, weekConfig);
+
+    // Emit task update to teacher's class monitor
+    const sock = getSocket();
+    if (sock?.connected) {
+      sock.emit('student:task-update', {
+        taskId: currentTask.id,
+        taskLabel: currentTask.label,
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTask?.id]);
 
@@ -79,8 +94,12 @@ export default function ShiftQueue() {
     );
   }
 
-  // Shift complete
+  // Shift complete — notify teacher
   if (shiftComplete) {
+    const sock = getSocket();
+    if (sock?.connected) {
+      sock.emit('student:task-update', { taskId: 'shift_complete', taskLabel: 'Shift Complete', failCount: 0 });
+    }
     return <ShiftClosing />;
   }
 

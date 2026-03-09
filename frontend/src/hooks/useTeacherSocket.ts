@@ -9,6 +9,7 @@ export function useTeacherSocket() {
   const removeStudent = useTeacherStore((s) => s.removeStudent);
   const setSocketStatus = useTeacherStore((s) => s.setSocketStatus);
   const bumpRegistrationTick = useTeacherStore((s) => s.bumpRegistrationTick);
+  const setClassPaused = useTeacherStore((s) => s.setClassPaused);
 
   useEffect(() => {
     const sock = connectSocket();
@@ -28,12 +29,16 @@ export function useTeacherSocket() {
     const onRegistered = () => {
       bumpRegistrationTick();
     };
+    const onPauseState = (data: { paused: boolean }) => {
+      setClassPaused(data.paused);
+    };
 
     sock.on('teacher:class-snapshot', onSnapshot);
     sock.on('student:connected', onConnected);
     sock.on('student:status-updated', onUpdated);
     sock.on('student:disconnected', onDisconnected);
     sock.on('student:registered', onRegistered);
+    sock.on('teacher:pause-state', onPauseState);
 
     // Track connection status
     const unsubStatus = onSocketStatus((status, error) => {
@@ -48,9 +53,10 @@ export function useTeacherSocket() {
         s.off('student:status-updated', onUpdated);
         s.off('student:disconnected', onDisconnected);
         s.off('student:registered', onRegistered);
+        s.off('teacher:pause-state', onPauseState);
       }
       unsubStatus();
       disconnectSocket();
     };
-  }, [setClassSnapshot, upsertStudent, removeStudent, setSocketStatus, bumpRegistrationTick]);
+  }, [setClassSnapshot, upsertStudent, removeStudent, setSocketStatus, bumpRegistrationTick, setClassPaused]);
 }

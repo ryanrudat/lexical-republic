@@ -110,6 +110,7 @@ export default {
         'glitch-tear': 'glitchTear 0.3s ease-out',
         'resist-shake': 'resistShake 0.4s ease-in-out',
         'queue-tick': 'queueTick 0.3s ease-out',
+        'scan-line': 'scanLine 2s ease-in-out infinite',
       },
       keyframes: {
         flicker: {
@@ -192,6 +193,10 @@ export default {
           '0%': { transform: 'scale(1)' },
           '50%': { transform: 'scale(1.15)' },
           '100%': { transform: 'scale(1)' },
+        },
+        scanLine: {
+          '0%': { left: '-15%' },
+          '100%': { left: '100%' },
         },
       },
     },
