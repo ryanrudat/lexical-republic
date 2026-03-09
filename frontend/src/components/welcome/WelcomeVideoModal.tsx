@@ -13,10 +13,44 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
   const [videoEnded, setVideoEnded] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [proceeding, setProceeding] = useState(false);
+  const [needsManualPlay, setNeedsManualPlay] = useState(false);
 
   const isTestUser = designation?.toUpperCase() === 'CA-1';
 
   const videoUrl = resolveUploadUrl('/api/dictionary/welcome-video');
+
+  // Try to autoplay once video is ready — handle autoplay rejection
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v || videoError) return;
+
+    const tryPlay = () => {
+      v.play().catch(() => {
+        // Autoplay blocked — show manual play button
+        setNeedsManualPlay(true);
+      });
+    };
+
+    // If video metadata is already loaded, try playing
+    if (v.readyState >= 1) {
+      tryPlay();
+    } else {
+      v.addEventListener('loadedmetadata', tryPlay, { once: true });
+      return () => v.removeEventListener('loadedmetadata', tryPlay);
+    }
+  }, [videoError]);
+
+  const handleManualPlay = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = false;
+    v.play().catch(() => {
+      // If still blocked, try muted
+      v.muted = true;
+      v.play().catch(() => {});
+    });
+    setNeedsManualPlay(false);
+  };
 
   // Update progress bar
   const handleTimeUpdate = useCallback(() => {
@@ -76,12 +110,36 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
               ref={videoRef}
               src={videoUrl}
               className="w-full h-full object-contain"
-              autoPlay
               playsInline
               onTimeUpdate={handleTimeUpdate}
               onEnded={() => setVideoEnded(true)}
               onError={() => setVideoError(true)}
             />
+
+            {/* Manual play overlay — shown when autoplay is blocked */}
+            {needsManualPlay && (
+              <button
+                onClick={handleManualPlay}
+                className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 cursor-pointer"
+              >
+                <div
+                  className="w-16 h-16 rounded-full flex items-center justify-center border-2 mb-3"
+                  style={{ borderColor: '#00ff88' }}
+                >
+                  <div
+                    className="w-0 h-0 ml-1"
+                    style={{
+                      borderTop: '12px solid transparent',
+                      borderBottom: '12px solid transparent',
+                      borderLeft: '20px solid #00ff88',
+                    }}
+                  />
+                </div>
+                <span className="font-ibm-mono text-xs tracking-[0.2em] uppercase" style={{ color: '#00ff88' }}>
+                  Begin Orientation
+                </span>
+              </button>
+            )}
           </div>
         )}
 
