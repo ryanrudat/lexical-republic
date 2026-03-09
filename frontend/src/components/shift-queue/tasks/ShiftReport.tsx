@@ -55,16 +55,16 @@ export default function ShiftReport({ config, weekConfig, onComplete }: TaskProp
   return (
     <div className="space-y-4">
       {/* Report header */}
-      <div className="ios-glass-card border border-white/10 p-4">
+      <div className="bg-[#FAFAF7] border border-[#E8E4DC] rounded-xl p-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="font-ibm-mono text-[10px] text-white/30 tracking-[0.3em] uppercase">
+          <span className="font-ibm-mono text-[10px] text-[#8B8578] tracking-[0.3em] uppercase">
             Ministry Shift Report
           </span>
-          <span className="font-ibm-mono text-[10px] text-white/20 tracking-wider">
+          <span className="font-ibm-mono text-[10px] text-[#B8B3AA] tracking-wider">
             {pair?.designation || 'Associate'}
           </span>
         </div>
-        <p className="font-ibm-mono text-sm text-white/70 leading-relaxed">{prompt}</p>
+        <p className="text-sm text-[#4B5563] leading-relaxed">{prompt}</p>
       </div>
 
       {/* Lane scaffolding */}
@@ -79,7 +79,7 @@ export default function ShiftReport({ config, weekConfig, onComplete }: TaskProp
         <div className="space-y-3">
           {guidedQuestions.map((q, idx) => (
             <div key={idx} className="space-y-1">
-              <p className="font-ibm-mono text-[10px] text-neon-cyan/60 tracking-wider">
+              <p className="font-ibm-mono text-[10px] text-sky-500 tracking-wider">
                 {idx + 1}. {q}
               </p>
               <TargetWordHighlighter
@@ -118,7 +118,7 @@ export default function ShiftReport({ config, weekConfig, onComplete }: TaskProp
 
       {passed && (
         <div className="text-center py-2">
-          <span className="font-ibm-mono text-xs text-neon-mint tracking-wider">
+          <span className="font-ibm-mono text-xs text-emerald-600 tracking-wider">
             Shift report submitted successfully.
           </span>
         </div>

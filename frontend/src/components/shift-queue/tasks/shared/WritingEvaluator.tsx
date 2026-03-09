@@ -45,7 +45,6 @@ export default function WritingEvaluator({
       let result: EvalResult;
 
       if (attempt >= 3) {
-        // Auto-pass on attempt 3+
         result = {
           passed: true,
           grammarScore: 0.3,
@@ -64,7 +63,6 @@ export default function WritingEvaluator({
         const data = response.data;
 
         if (attempt === 1) {
-          // Attempt 1: pass only if API says passed
           result = {
             passed: data.passed === true,
             grammarScore: data.grammarScore ?? 0,
@@ -76,7 +74,6 @@ export default function WritingEvaluator({
             isDegraded: data.isDegraded,
           };
         } else {
-          // Attempt 2: pass if grammarScore >= 0.3 OR vocabScore >= 0.3
           const gs = data.grammarScore ?? 0;
           const vs = data.vocabScore ?? 0;
           result = {
@@ -96,7 +93,6 @@ export default function WritingEvaluator({
       const currentAttempt = attempt;
       if (!result.passed) {
         setAttempt(prev => prev + 1);
-        // Notify teacher's class monitor of failure
         const sock = getSocket();
         if (sock?.connected) {
           sock.emit('student:task-update', { taskId: missionId ?? 'writing', taskLabel: 'Writing', failCount: currentAttempt });
@@ -104,7 +100,6 @@ export default function WritingEvaluator({
       }
       onResult(result, currentAttempt);
     } catch {
-      // On error, increment attempt so auto-pass kicks in at attempt 3
       const currentAttempt = attempt;
       setAttempt(prev => prev + 1);
       const result: EvalResult = {
@@ -124,18 +119,18 @@ export default function WritingEvaluator({
   return (
     <div className="flex flex-col items-start gap-2">
       <button
-        className="ios-glass-pill-action px-6 py-2 font-ibm-mono text-xs tracking-wider"
+        className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 disabled:opacity-40 transition-colors"
         disabled={disabled || evaluating}
         onClick={evaluate}
       >
         {evaluating ? (
-          <span className="animate-pulse">EVALUATING...</span>
+          <span className="animate-pulse">Evaluating...</span>
         ) : (
-          `SUBMIT (ATTEMPT ${attempt}/3)`
+          `Submit (Attempt ${attempt}/3)`
         )}
       </button>
       {lastResult && !lastResult.passed && lastResult.pearlFeedback && (
-        <p className="text-neon-pink/80 font-ibm-mono text-xs mt-1">
+        <p className="text-rose-500 text-xs mt-1">
           {lastResult.pearlFeedback}
         </p>
       )}

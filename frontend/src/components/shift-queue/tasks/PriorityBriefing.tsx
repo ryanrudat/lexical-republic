@@ -103,21 +103,21 @@ export default function PriorityBriefing({ config, weekConfig, onComplete }: Tas
       <div className="space-y-4">
         {/* Animated counter */}
         <div className="text-center py-6">
-          <span className="font-dseg7 text-4xl text-neon-cyan tabular-nums">
+          <span className="font-ibm-mono text-4xl text-sky-600 tabular-nums font-bold">
             {queueCount}
           </span>
-          <p className="font-ibm-mono text-[10px] text-white/40 tracking-widest uppercase mt-2">
+          <p className="font-ibm-mono text-[10px] text-[#9CA3AF] tracking-widest uppercase mt-2">
             ACTIVE CASES IN QUEUE
           </p>
         </div>
 
         {/* PEARL bark */}
         {c.pearlBark && (
-          <div className="ios-glass-card p-4 border border-neon-cyan/20">
-            <p className="font-ibm-mono text-[10px] text-neon-cyan/50 tracking-wider uppercase mb-2">
+          <div className="bg-[#FAFAF7] border border-sky-200 rounded-xl p-4">
+            <p className="font-ibm-mono text-[10px] text-sky-500 tracking-wider uppercase mb-2">
               P.E.A.R.L.
             </p>
-            <p className="font-ibm-mono text-sm text-white/70 leading-relaxed">
+            <p className="text-sm text-[#4B5563] leading-relaxed">
               {c.pearlBark}
             </p>
           </div>
@@ -125,11 +125,11 @@ export default function PriorityBriefing({ config, weekConfig, onComplete }: Tas
 
         {/* Betty overlay */}
         {c.bettyOverlay && (
-          <div className="ios-glass-card p-4 border border-neon-mint/20">
-            <p className="font-ibm-mono text-[10px] text-neon-mint/50 tracking-wider uppercase mb-2">
+          <div className="bg-[#FAFAF7] border border-emerald-200 rounded-xl p-4">
+            <p className="font-ibm-mono text-[10px] text-emerald-500 tracking-wider uppercase mb-2">
               Betty (Welcome Associate-14)
             </p>
-            <p className="font-ibm-mono text-sm text-white/70 leading-relaxed">
+            <p className="text-sm text-[#4B5563] leading-relaxed">
               {c.bettyOverlay}
             </p>
           </div>
@@ -138,10 +138,10 @@ export default function PriorityBriefing({ config, weekConfig, onComplete }: Tas
         {/* Acknowledge */}
         <div className="pt-2 text-center">
           <button
-            className="ios-glass-pill-action px-6 py-2 font-ibm-mono text-xs tracking-wider"
+            className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700"
             onClick={advanceCard}
           >
-            ACKNOWLEDGE
+            Acknowledge
           </button>
         </div>
       </div>
@@ -156,13 +156,13 @@ export default function PriorityBriefing({ config, weekConfig, onComplete }: Tas
     return (
       <div className="space-y-4">
         {c.title && (
-          <h3 className="font-ibm-mono text-xs tracking-wider uppercase text-white/50 mb-2">
+          <h3 className="font-ibm-mono text-xs tracking-wider uppercase text-[#8B8578] mb-2">
             {c.title}
           </h3>
         )}
 
         {c.prompt && (
-          <p className="font-ibm-mono text-sm text-white/70 leading-relaxed">
+          <p className="text-sm text-[#4B5563] leading-relaxed">
             {c.prompt}
           </p>
         )}
@@ -194,10 +194,10 @@ export default function PriorityBriefing({ config, weekConfig, onComplete }: Tas
         {writingPassed && (
           <div className="pt-2 text-center">
             <button
-              className="ios-glass-pill-action px-6 py-2 font-ibm-mono text-xs tracking-wider"
+              className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700"
               onClick={advanceCard}
             >
-              CONTINUE
+              Continue
             </button>
           </div>
         )}
@@ -213,7 +213,7 @@ export default function PriorityBriefing({ config, weekConfig, onComplete }: Tas
     <div className="space-y-4 max-w-lg mx-auto">
       {/* Card counter */}
       <div className="text-center">
-        <span className="font-ibm-mono text-[10px] text-white/30 tracking-widest">
+        <span className="font-ibm-mono text-[10px] text-[#B8B3AA] tracking-widest">
           STEP {currentCard + 1} OF {total}
         </span>
       </div>

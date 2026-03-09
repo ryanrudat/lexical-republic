@@ -10,9 +10,9 @@ interface Column {
 }
 
 const COLUMN_COLORS: Record<number, { text: string; border: string; bg: string }> = {
-  0: { text: 'text-neon-cyan', border: 'border-neon-cyan/30', bg: 'bg-neon-cyan/5' },
-  1: { text: 'text-terminal-amber', border: 'border-terminal-amber/30', bg: 'bg-terminal-amber/5' },
-  2: { text: 'text-neon-mint', border: 'border-neon-mint/30', bg: 'bg-neon-mint/5' },
+  0: { text: 'text-sky-600', border: 'border-sky-200', bg: 'bg-sky-50' },
+  1: { text: 'text-amber-600', border: 'border-amber-200', bg: 'bg-amber-50' },
+  2: { text: 'text-emerald-600', border: 'border-emerald-200', bg: 'bg-emerald-50' },
 };
 
 export default function WordSort({ config, onComplete }: TaskProps) {
@@ -98,24 +98,24 @@ export default function WordSort({ config, onComplete }: TaskProps) {
     <div className="space-y-4">
       {/* Header */}
       <div className="text-center">
-        <h3 className="font-ibm-mono text-[10px] text-white/30 tracking-[0.3em] uppercase">
+        <h3 className="font-ibm-mono text-[10px] text-[#8B8578] tracking-[0.3em] uppercase">
           Archive Classification
         </h3>
         {instruction && (
-          <p className="font-ibm-mono text-[11px] text-white/50 mt-1">{instruction}</p>
+          <p className="font-ibm-mono text-[11px] text-[#6B7280] mt-1">{instruction}</p>
         )}
       </div>
 
       {/* Progress */}
       <div className="flex justify-center">
-        <span className="font-ibm-mono text-[11px] text-neon-mint/70">
+        <span className="font-ibm-mono text-[11px] text-emerald-600">
           {Object.keys(sorted).length} / {allWords.length} classified
         </span>
       </div>
 
       {/* Unsorted word pool */}
       {unsortedWords.length > 0 && (
-        <div className="flex flex-wrap gap-2 justify-center p-3 rounded border border-white/10 bg-white/[0.02]">
+        <div className="flex flex-wrap gap-2 justify-center p-3 rounded-xl border border-[#E8E4DC] bg-[#FAFAF7]">
           {unsortedWords.map((word) => (
             <div
               key={word}
@@ -124,10 +124,10 @@ export default function WordSort({ config, onComplete }: TaskProps) {
                 e.dataTransfer.setData('text/plain', word);
               }}
               onClick={() => selectItem(word)}
-              className={`px-3 py-1.5 rounded border font-ibm-mono text-sm transition-all duration-200 ${
+              className={`px-3 py-1.5 rounded-xl border font-ibm-mono text-sm transition-all duration-200 ${
                 selectedId === word
-                  ? 'border-neon-cyan/60 bg-neon-cyan/10 text-neon-cyan cursor-pointer'
-                  : 'border-white/15 bg-white/5 text-white/70 cursor-grab hover:border-white/25'
+                  ? 'border-sky-400 bg-sky-50 text-sky-700 cursor-pointer'
+                  : 'border-[#D4CFC6] bg-white text-[#4B5563] cursor-grab hover:border-sky-300'
               }`}
             >
               {word}
@@ -153,8 +153,8 @@ export default function WordSort({ config, onComplete }: TaskProps) {
                 handleDrop(col.id, e.dataTransfer.getData('text/plain'));
               }}
               onClick={() => handleColClick(col.id)}
-              className={`rounded border p-3 min-h-[120px] transition-all duration-200 ${colors.border} ${colors.bg} ${
-                selectedId ? 'cursor-pointer hover:brightness-125' : ''
+              className={`rounded-xl border p-3 min-h-[120px] transition-all duration-200 ${colors.border} ${colors.bg} ${
+                selectedId ? 'cursor-pointer hover:brightness-105' : ''
               }`}
             >
               <div className={`font-ibm-mono text-[9px] tracking-[0.2em] uppercase mb-2 ${colors.text}`}>
@@ -164,14 +164,14 @@ export default function WordSort({ config, onComplete }: TaskProps) {
                 {wordsInCol.map((w) => (
                   <div
                     key={w}
-                    className={`px-2 py-1 rounded border text-[12px] font-ibm-mono ${colors.border} ${colors.text}/80`}
+                    className={`px-2 py-1 rounded-lg border text-[12px] font-ibm-mono bg-white ${colors.border} ${colors.text}`}
                   >
                     {w}
                   </div>
                 ))}
               </div>
               {wrongFlash?.colId === col.id && (
-                <div className="mt-1 text-[10px] text-neon-pink/60 font-ibm-mono animate-fade-in">
+                <div className="mt-1 text-[10px] text-rose-500 font-ibm-mono animate-fade-in">
                   {wrongFlash.word} does not belong here
                 </div>
               )}
@@ -183,8 +183,8 @@ export default function WordSort({ config, onComplete }: TaskProps) {
       {/* Completion */}
       {allSorted && (
         <div className="text-center py-3 animate-fade-in">
-          <span className="font-ibm-mono text-xs text-neon-mint tracking-wider">
-            CLASSIFICATION COMPLETE
+          <span className="font-ibm-mono text-xs text-emerald-600 tracking-wider">
+            Classification complete
           </span>
         </div>
       )}

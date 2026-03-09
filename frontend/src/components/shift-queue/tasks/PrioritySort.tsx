@@ -19,6 +19,12 @@ interface CaseConfig {
   disappearBark?: string;
 }
 
+const COLUMN_STYLES: Record<ColumnName, { text: string; border: string; bg: string; hoverBg: string }> = {
+  URGENT: { text: 'text-rose-600', border: 'border-rose-200', bg: 'bg-rose-50', hoverBg: 'hover:bg-rose-50' },
+  ROUTINE: { text: 'text-sky-600', border: 'border-sky-200', bg: 'bg-sky-50', hoverBg: 'hover:bg-sky-50' },
+  HOLD: { text: 'text-amber-600', border: 'border-amber-200', bg: 'bg-amber-50', hoverBg: 'hover:bg-amber-50' },
+};
+
 // ─── Component ───────────────────────────────────────────────────
 
 export default function PrioritySort({ config, weekConfig, onComplete }: TaskProps) {
@@ -166,12 +172,12 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
         }`}
       >
         <div
-          className={`ios-glass-card p-3 border transition-all ${
+          className={`bg-white border rounded-xl p-3 transition-all ${
             result === true
-              ? 'border-neon-mint/30'
+              ? 'border-emerald-300'
               : result === false
-                ? 'border-neon-pink/30'
-                : 'border-white/10 hover:border-neon-cyan/30'
+                ? 'border-rose-300'
+                : 'border-[#D4CFC6] hover:border-sky-300'
           } ${showPicker && !sortChecked ? 'cursor-pointer' : ''}`}
           onClick={() => {
             if (showPicker && !sortChecked) {
@@ -179,11 +185,11 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
             }
           }}
         >
-          <p className="font-special-elite text-sm text-white/90">{caseConfig.title}</p>
-          <p className="font-ibm-mono text-xs text-white/50 mt-1">{caseConfig.description}</p>
+          <p className="font-special-elite text-sm text-[#2C3340]">{caseConfig.title}</p>
+          <p className="font-ibm-mono text-xs text-[#6B7280] mt-1">{caseConfig.description}</p>
 
           {result === false && sortChecked && (
-            <p className="font-ibm-mono text-[10px] text-neon-pink/60 mt-1">
+            <p className="font-ibm-mono text-[10px] text-rose-500 mt-1">
               Incorrect classification
             </p>
           )}
@@ -192,24 +198,21 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
         {/* Column picker */}
         {showPicker && activePicker === caseId && !sortChecked && (
           <div className="flex gap-2 mt-2 justify-center">
-            {(['URGENT', 'ROUTINE', 'HOLD'] as ColumnName[]).map(col => (
-              <button
-                key={col}
-                className={`ios-glass-pill px-3 py-1 font-ibm-mono text-[10px] tracking-wider transition-colors ${
-                  col === 'URGENT'
-                    ? 'text-neon-pink/80 hover:bg-neon-pink/10 border border-neon-pink/20'
-                    : col === 'ROUTINE'
-                      ? 'text-neon-cyan/80 hover:bg-neon-cyan/10 border border-neon-cyan/20'
-                      : 'text-terminal-amber/80 hover:bg-terminal-amber/10 border border-terminal-amber/20'
-                }`}
-                onClick={e => {
-                  e.stopPropagation();
-                  assignToColumn(caseId, col);
-                }}
-              >
-                {col}
-              </button>
-            ))}
+            {(['URGENT', 'ROUTINE', 'HOLD'] as ColumnName[]).map(col => {
+              const styles = COLUMN_STYLES[col];
+              return (
+                <button
+                  key={col}
+                  className={`px-3 py-1 rounded-full font-ibm-mono text-[10px] tracking-wider transition-colors border ${styles.text} ${styles.border} ${styles.hoverBg}`}
+                  onClick={e => {
+                    e.stopPropagation();
+                    assignToColumn(caseId, col);
+                  }}
+                >
+                  {col}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
@@ -223,14 +226,14 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
 
     return (
       <div className="space-y-4">
-        <h3 className="font-ibm-mono text-xs tracking-wider uppercase text-white/50 text-center">
+        <h3 className="font-ibm-mono text-xs tracking-wider uppercase text-[#8B8578] text-center">
           Assign each case to its priority level
         </h3>
 
         {/* Unsorted cases */}
         {unsorted.length > 0 && (
           <div className="space-y-2">
-            <p className="font-ibm-mono text-[10px] text-white/30 tracking-wider uppercase">
+            <p className="font-ibm-mono text-[10px] text-[#B8B3AA] tracking-wider uppercase">
               Unsorted ({unsorted.length})
             </p>
             {unsorted.map(caseId => renderCaseCard(caseId, true))}
@@ -239,49 +242,40 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
 
         {/* Sorted columns */}
         <div className="grid grid-cols-3 gap-3">
-          {(['URGENT', 'ROUTINE', 'HOLD'] as ColumnName[]).map(col => (
-            <div key={col} className="space-y-2">
-              <p className={`font-ibm-mono text-[10px] tracking-wider uppercase text-center ${
-                col === 'URGENT'
-                  ? 'text-neon-pink/60'
-                  : col === 'ROUTINE'
-                    ? 'text-neon-cyan/60'
-                    : 'text-terminal-amber/60'
-              }`}>
-                {col} ({columns[col].length})
-              </p>
-              <div className={`min-h-[60px] rounded-lg border border-dashed p-2 space-y-2 ${
-                col === 'URGENT'
-                  ? 'border-neon-pink/20'
-                  : col === 'ROUTINE'
-                    ? 'border-neon-cyan/20'
-                    : 'border-terminal-amber/20'
-              }`}>
-                {columns[col].map(caseId => renderCaseCard(caseId, false))}
+          {(['URGENT', 'ROUTINE', 'HOLD'] as ColumnName[]).map(col => {
+            const styles = COLUMN_STYLES[col];
+            return (
+              <div key={col} className="space-y-2">
+                <p className={`font-ibm-mono text-[10px] tracking-wider uppercase text-center ${styles.text}`}>
+                  {col} ({columns[col].length})
+                </p>
+                <div className={`min-h-[60px] rounded-xl border border-dashed p-2 space-y-2 ${styles.border} ${styles.bg}`}>
+                  {columns[col].map(caseId => renderCaseCard(caseId, false))}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Check button */}
         {allSorted && !sortChecked && (
           <div className="pt-2 text-center">
             <button
-              className="ios-glass-pill-action px-6 py-2 font-ibm-mono text-xs tracking-wider"
+              className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700"
               onClick={checkSorting}
             >
-              CHECK SORTING
+              Check Sorting
             </button>
           </div>
         )}
 
         {/* Disappear bark */}
         {disappearBarkText && (
-          <div className="ios-glass-card p-4 border border-neon-cyan/20 animate-fadeIn">
-            <p className="font-ibm-mono text-[10px] text-neon-cyan/50 tracking-wider uppercase mb-2">
+          <div className="bg-[#FAFAF7] border border-sky-200 rounded-xl p-4 animate-fadeIn">
+            <p className="font-ibm-mono text-[10px] text-sky-500 tracking-wider uppercase mb-2">
               P.E.A.R.L.
             </p>
-            <p className="font-ibm-mono text-sm text-white/70 leading-relaxed">
+            <p className="text-sm text-[#4B5563] leading-relaxed">
               {disappearBarkText}
             </p>
           </div>
@@ -300,23 +294,23 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
     return (
       <div className="space-y-4">
         <div className="text-center">
-          <span className="font-ibm-mono text-[10px] text-white/30 tracking-widest">
+          <span className="font-ibm-mono text-[10px] text-[#B8B3AA] tracking-widest">
             CASE {currentJustifyIdx + 1} OF {justifyCases.length}
           </span>
         </div>
 
         {/* Case context */}
-        <div className="ios-glass-card p-4 border border-white/10">
-          <p className="font-special-elite text-sm text-white/90">
+        <div className="bg-white border border-[#E8E4DC] rounded-xl p-4">
+          <p className="font-special-elite text-sm text-[#2C3340]">
             {currentJustifyCase.title}
           </p>
-          <p className="font-ibm-mono text-xs text-white/50 mt-1">
+          <p className="font-ibm-mono text-xs text-[#6B7280] mt-1">
             {currentJustifyCase.description}
           </p>
         </div>
 
         {/* Prompt */}
-        <p className="font-ibm-mono text-sm text-white/70 leading-relaxed">
+        <p className="text-sm text-[#4B5563] leading-relaxed">
           {modalPrompt}
         </p>
 
@@ -343,10 +337,10 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
         {writingPassed && (
           <div className="pt-2 text-center">
             <button
-              className="ios-glass-pill-action px-6 py-2 font-ibm-mono text-xs tracking-wider"
+              className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700"
               onClick={advanceJustify}
             >
-              {currentJustifyIdx < justifyCases.length - 1 ? 'NEXT CASE' : 'COMPLETE'}
+              {currentJustifyIdx < justifyCases.length - 1 ? 'Next Case' : 'Complete'}
             </button>
           </div>
         )}
@@ -360,10 +354,10 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
     <div className="space-y-4 max-w-2xl mx-auto">
       {/* Phase indicator */}
       <div className="text-center">
-        <span className="font-ibm-mono text-[10px] text-white/30 tracking-widest">
-          {phase === 'sort' && 'PRIORITY SORTING'}
-          {phase === 'justify' && 'JUSTIFICATION'}
-          {phase === 'done' && 'SORTING COMPLETE'}
+        <span className="font-ibm-mono text-[10px] text-[#B8B3AA] tracking-widest uppercase">
+          {phase === 'sort' && 'Priority Sorting'}
+          {phase === 'justify' && 'Justification'}
+          {phase === 'done' && 'Sorting Complete'}
         </span>
       </div>
 

@@ -125,7 +125,7 @@ export default function DocumentReview({
   if (!currentDoc) {
     return (
       <div className="flex items-center justify-center py-8">
-        <span className="font-ibm-mono text-xs text-white/30 tracking-wider">
+        <span className="font-ibm-mono text-xs text-[#B8B3AA] tracking-wider">
           No documents in queue
         </span>
       </div>
@@ -136,11 +136,11 @@ export default function DocumentReview({
     <div className="flex flex-col gap-4 relative">
       {/* Queue counter */}
       <div className="flex items-center justify-between px-1">
-        <span className="font-ibm-mono text-[10px] text-white/30 tracking-[0.3em] uppercase">
+        <span className="font-ibm-mono text-[10px] text-[#8B8578] tracking-[0.3em] uppercase">
           Document {currentDocIndex + 1} of {documents.length}
         </span>
-        <span className="font-dseg7 text-xl text-neon-cyan">
-          QUEUE: {String(remainingCount).padStart(3, '0')}
+        <span className="font-ibm-mono text-sm text-sky-600 tracking-wider">
+          Queue: {String(remainingCount).padStart(3, '0')}
         </span>
       </div>
 
@@ -160,7 +160,7 @@ export default function DocumentReview({
               reviewedBy={currentDoc.reviewedBy}
             >
               <button
-                className={`ios-glass-pill-action w-full px-4 py-2.5 font-ibm-mono text-xs tracking-[0.2em] uppercase transition-opacity duration-300 ${
+                className={`w-full px-4 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-[0.2em] uppercase transition-opacity duration-300 hover:bg-sky-700 ${
                   stampStatus !== 'idle'
                     ? 'opacity-30 cursor-not-allowed'
                     : 'opacity-100 cursor-pointer'

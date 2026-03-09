@@ -35,9 +35,6 @@ interface ErrorCorrectionDocProps {
   onComplete: (score: number) => void;
 }
 
-// Normalize errors from either config format:
-//   { errorText, options: string[] }  →  { errorWord, options: { text }[] }
-//   { errorWord, options: { text }[] }  →  unchanged
 function normalizeErrors(errors: DocError[]): DocError[] {
   return errors.map(err => {
     const raw = err as unknown as Record<string, unknown>;
@@ -55,24 +52,16 @@ export default function ErrorCorrectionDoc({
   onComplete,
 }: ErrorCorrectionDocProps) {
   const addConcern = useShiftQueueStore(s => s.addConcern);
-
-  // Normalize errors once on mount / doc change
   const normalizedDoc = { ...doc, errors: normalizeErrors(doc.errors) };
 
-  // Track which error is currently showing options
   const [activeError, setActiveError] = useState<number | null>(null);
-  // Track corrections: error index -> selected option index
   const [corrections, setCorrections] = useState<Record<number, number | null>>({});
-  // Track which errors have been locked (answered)
   const [lockedErrors, setLockedErrors] = useState<Set<number>>(new Set());
-  // Track result flash state per error
   const [showResults, setShowResults] = useState<Record<number, boolean>>({});
-  // All done state
   const [allDone, setAllDone] = useState(false);
 
   const timerRefs = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 
-  // Clean up timers on unmount
   useEffect(() => {
     return () => {
       timerRefs.current.forEach(timer => clearTimeout(timer));
@@ -96,13 +85,11 @@ export default function ErrorCorrectionDoc({
         addConcern(0.1);
       }
 
-      // Lock after showing result for 1s
       const timer = setTimeout(() => {
         setLockedErrors(prev => {
           const next = new Set(prev);
           next.add(errorIndex);
 
-          // Check if all errors are now locked
           if (next.size === normalizedDoc.errors.length) {
             const correctCount = normalizedDoc.errors.filter((err, idx) => {
               const selected = idx === errorIndex ? optionIndex : corrections[idx];
@@ -111,7 +98,6 @@ export default function ErrorCorrectionDoc({
             const score = correctCount / normalizedDoc.errors.length;
 
             setAllDone(true);
-            // Slight delay before calling onComplete
             setTimeout(() => onComplete(score), 800);
           }
 
@@ -135,15 +121,12 @@ export default function ErrorCorrectionDoc({
     [lockedErrors],
   );
 
-  // Build the lane hints lookup
   const laneHints =
     lane === 1 && normalizedDoc.laneHints?.['1']
       ? (normalizedDoc.laneHints['1'] as string[])
       : null;
 
-  // Render body with interactive error spans
   const renderBody = () => {
-    // Build a map of sentence index -> error entries for quick lookup
     const errorsBySentence = new Map<number, { error: DocError; errorIndex: number }[]>();
     normalizedDoc.errors.forEach((error, idx) => {
       const list = errorsBySentence.get(error.sentenceIndex) ?? [];
@@ -158,52 +141,45 @@ export default function ErrorCorrectionDoc({
 
           if (!errorsInSentence) {
             return (
-              <p key={sIdx} className="font-ibm-mono text-sm text-white/70 leading-relaxed inline">
+              <p key={sIdx} className="text-sm text-[#4B5563] leading-relaxed inline">
                 {sentence}{' '}
               </p>
             );
           }
 
-          // Replace error words with interactive spans
           let remaining = sentence;
           const parts: React.ReactNode[] = [];
 
           errorsInSentence.forEach(({ error, errorIndex }, eIdx) => {
             const wordIdx = remaining.indexOf(error.errorWord);
-            if (wordIdx === -1) {
-              // If error word not found in remaining text, just render it
-              return;
-            }
+            if (wordIdx === -1) return;
 
-            // Text before error word
             if (wordIdx > 0) {
               parts.push(
-                <span key={`${sIdx}-pre-${eIdx}`} className="font-ibm-mono text-sm text-white/70">
+                <span key={`${sIdx}-pre-${eIdx}`} className="text-sm text-[#4B5563]">
                   {remaining.slice(0, wordIdx)}
                 </span>,
               );
             }
 
-            // Determine styling state
             const isLocked = lockedErrors.has(errorIndex);
             const selected = corrections[errorIndex];
             const isCorrect = selected === error.correctIndex;
             const isShowingResult = showResults[errorIndex];
 
-            let underlineClass = 'border-b-2 border-dashed border-terminal-amber/60 cursor-pointer hover:border-neon-cyan/80';
+            let underlineClass = 'border-b-2 border-dashed border-amber-400 cursor-pointer hover:border-sky-500';
             if (isLocked || isShowingResult) {
               if (isCorrect) {
-                underlineClass = 'border-b-2 border-solid border-neon-mint text-neon-mint';
+                underlineClass = 'border-b-2 border-solid border-emerald-500 text-emerald-700';
               } else {
-                underlineClass = 'border-b-2 border-solid border-rose-400 text-rose-400';
+                underlineClass = 'border-b-2 border-solid border-rose-400 text-rose-600';
               }
             }
 
-            // The error word
             parts.push(
               <span key={`${sIdx}-err-${eIdx}`} className="relative inline-block">
                 <span
-                  className={`font-ibm-mono text-sm ${underlineClass} transition-colors duration-300 ${
+                  className={`text-sm ${underlineClass} transition-colors duration-300 ${
                     isLocked ? 'cursor-default' : ''
                   }`}
                   onClick={() => handleClickError(errorIndex)}
@@ -213,20 +189,18 @@ export default function ErrorCorrectionDoc({
                     : error.errorWord}
                 </span>
 
-                {/* Lane 1 hints */}
                 {laneHints && laneHints[errorIndex] && !isLocked && (
-                  <span className="block font-ibm-mono text-[9px] text-neon-cyan/50 mt-0.5">
+                  <span className="block text-[9px] text-sky-500 mt-0.5">
                     {laneHints[errorIndex]}
                   </span>
                 )}
 
-                {/* Options popup */}
                 {activeError === errorIndex && !isLocked && (
-                  <div className="absolute left-0 top-full mt-1 z-10 bg-gray-900 border border-neon-cyan/30 rounded-lg p-1.5 min-w-[140px] shadow-lg shadow-black/50">
+                  <div className="absolute left-0 top-full mt-1 z-10 bg-white border border-[#D4CFC6] rounded-xl p-1.5 min-w-[140px] shadow-lg">
                     {error.options.map((option, oIdx) => (
                       <button
                         key={oIdx}
-                        className="block w-full text-left px-3 py-1.5 font-ibm-mono text-xs text-white rounded hover:bg-neon-cyan/20 transition-colors"
+                        className="block w-full text-left px-3 py-1.5 text-xs text-[#4B5563] rounded-lg hover:bg-sky-50 hover:text-sky-700 transition-colors"
                         onClick={() => handleSelectOption(errorIndex, oIdx)}
                       >
                         {option.text}
@@ -240,10 +214,9 @@ export default function ErrorCorrectionDoc({
             remaining = remaining.slice(wordIdx + error.errorWord.length);
           });
 
-          // Remaining text after last error
           if (remaining) {
             parts.push(
-              <span key={`${sIdx}-tail`} className="font-ibm-mono text-sm text-white/70">
+              <span key={`${sIdx}-tail`} className="text-sm text-[#4B5563]">
                 {remaining}
               </span>,
             );
@@ -273,13 +246,12 @@ export default function ErrorCorrectionDoc({
         reviewedBy={normalizedDoc.reviewedBy}
       />
 
-      {/* Status line */}
       <div className="flex items-center justify-between px-1">
-        <span className="font-ibm-mono text-[10px] text-white/30 tracking-wider">
-          ERRORS: {lockedErrors.size} / {normalizedDoc.errors.length} CORRECTED
+        <span className="font-ibm-mono text-[10px] text-[#9CA3AF] tracking-wider">
+          Errors: {lockedErrors.size} / {normalizedDoc.errors.length} corrected
         </span>
         {allDone && (
-          <span className="font-ibm-mono text-[10px] text-neon-mint tracking-wider animate-pulse">
+          <span className="text-[10px] text-emerald-600 font-medium tracking-wider animate-pulse">
             All corrections applied
           </span>
         )}

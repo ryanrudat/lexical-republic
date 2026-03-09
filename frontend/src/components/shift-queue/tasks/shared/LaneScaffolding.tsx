@@ -22,13 +22,13 @@ export default function LaneScaffolding({
     return (
       <div className="flex flex-col gap-3">
         {showStarters && hints.length > 0 && (
-          <div className="ios-glass-card p-3 rounded-lg">
-            <p className="font-ibm-mono text-[10px] text-white/40 uppercase tracking-wider mb-2">
+          <div className="bg-[#FAFAF7] border border-[#E8E4DC] rounded-xl p-3">
+            <p className="font-ibm-mono text-[10px] text-[#9CA3AF] uppercase tracking-wider mb-2">
               Sentence Starters
             </p>
             <ol className="list-decimal list-inside space-y-1">
               {hints.map((hint, i) => (
-                <li key={i} className="font-ibm-mono text-xs text-white/70">
+                <li key={i} className="text-xs text-[#4B5563]">
                   {hint}
                 </li>
               ))}
@@ -36,15 +36,15 @@ export default function LaneScaffolding({
           </div>
         )}
         {showWordBank && targetWords.length > 0 && (
-          <div className="ios-glass-card p-3 rounded-lg">
-            <p className="font-ibm-mono text-[10px] text-white/40 uppercase tracking-wider mb-2">
+          <div className="bg-[#FAFAF7] border border-[#E8E4DC] rounded-xl p-3">
+            <p className="font-ibm-mono text-[10px] text-[#9CA3AF] uppercase tracking-wider mb-2">
               Word Bank
             </p>
-            <div className="flex flex-wrap">
+            <div className="flex flex-wrap gap-1">
               {targetWords.map(word => (
                 <span
                   key={word}
-                  className="ios-glass-pill px-2 py-0.5 font-ibm-mono text-[10px] text-white/70 inline-block m-0.5"
+                  className="px-2 py-0.5 bg-white border border-[#D4CFC6] rounded-full text-[10px] text-[#4B5563]"
                 >
                   {word}
                 </span>
@@ -63,15 +63,15 @@ export default function LaneScaffolding({
     if (!showWordList || targetWords.length === 0) return null;
 
     return (
-      <div className="ios-glass-card p-3 rounded-lg">
-        <p className="font-ibm-mono text-[10px] text-white/40 uppercase tracking-wider mb-2">
+      <div className="bg-[#FAFAF7] border border-[#E8E4DC] rounded-xl p-3">
+        <p className="font-ibm-mono text-[10px] text-[#9CA3AF] uppercase tracking-wider mb-2">
           Target Words
         </p>
-        <div className="flex flex-wrap">
+        <div className="flex flex-wrap gap-1">
           {targetWords.map(word => (
             <span
               key={word}
-              className="ios-glass-pill px-2 py-0.5 font-ibm-mono text-[10px] text-white/70 inline-block m-0.5"
+              className="px-2 py-0.5 bg-white border border-[#D4CFC6] rounded-full text-[10px] text-[#4B5563]"
             >
               {word}
             </span>
@@ -88,11 +88,11 @@ export default function LaneScaffolding({
     if (!bonusQuestion) return null;
 
     return (
-      <div className="ios-glass-card p-3 rounded-lg border-terminal-amber/30">
-        <p className="font-ibm-mono text-[10px] text-terminal-amber/60 uppercase tracking-wider mb-1">
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+        <p className="font-ibm-mono text-[10px] text-amber-600 uppercase tracking-wider mb-1">
           Bonus
         </p>
-        <p className="font-ibm-mono text-xs text-white/70">
+        <p className="text-xs text-amber-800">
           {bonusQuestion}
         </p>
       </div>

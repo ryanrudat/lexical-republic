@@ -117,7 +117,6 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
 
     if (currentCard < total - 1) {
       setCurrentCard(currentCard + 1);
-      // Reset per-card state
       setDropdownValues({});
       setBlanksValues([]);
       setCheckboxChecked(false);
@@ -126,7 +125,6 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
       setQuestionAnswers({});
       setQuestionLocked({});
     } else {
-      // All cards complete
       const score = 1;
       const details: Record<string, unknown> = {
         cardsCompleted: total,
@@ -156,18 +154,18 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
     return (
       <div className="space-y-3">
         {c.title && (
-          <h3 className="font-ibm-mono text-xs tracking-wider uppercase text-white/50 mb-4">
+          <h3 className="font-ibm-mono text-[10px] tracking-[0.15em] uppercase text-[#8B8578] mb-4">
             {c.title}
           </h3>
         )}
         {fields.map(field => {
           if (field.type === 'readonly') {
             return (
-              <div key={field.key} className="ios-glass-card p-3">
-                <span className="font-ibm-mono text-[10px] text-white/40 tracking-wider uppercase">
+              <div key={field.key} className="bg-[#FAFAF7] border border-[#E8E4DC] rounded-xl p-3">
+                <span className="font-ibm-mono text-[10px] text-[#9CA3AF] tracking-wider uppercase">
                   {field.label}
                 </span>
-                <p className="font-ibm-mono text-sm text-white/80 mt-1">
+                <p className="text-sm text-[#2C3340] mt-1">
                   {resolveFieldValue(field.value, designation)}
                 </p>
               </div>
@@ -176,12 +174,12 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
 
           if (field.type === 'dropdown') {
             return (
-              <div key={field.key} className="ios-glass-card p-3">
-                <span className="font-ibm-mono text-[10px] text-white/40 tracking-wider uppercase">
+              <div key={field.key} className="bg-[#FAFAF7] border border-[#E8E4DC] rounded-xl p-3">
+                <span className="font-ibm-mono text-[10px] text-[#9CA3AF] tracking-wider uppercase">
                   {field.label}
                 </span>
                 <select
-                  className="ios-glass-input font-ibm-mono text-sm w-full mt-1"
+                  className="w-full mt-1 text-sm bg-white border border-[#D4CFC6] rounded-lg px-3 py-2 text-[#2C3340] focus:outline-none focus:ring-1 focus:ring-sky-400"
                   value={dropdownValues[field.key] ?? ''}
                   onChange={e => {
                     setDropdownValues(prev => ({
@@ -204,11 +202,11 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
 
         <div className="pt-4">
           <button
-            className="ios-glass-pill-action px-6 py-2 font-ibm-mono text-xs tracking-wider"
+            className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 disabled:opacity-40 transition-colors"
             disabled={!isInfoCardReady()}
             onClick={advanceCard}
           >
-            CONTINUE
+            Continue
           </button>
         </div>
       </div>
@@ -222,7 +220,7 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
     return (
       <div className="space-y-3">
         {c.title && (
-          <h3 className="font-ibm-mono text-xs tracking-wider uppercase text-white/50 mb-4">
+          <h3 className="font-ibm-mono text-[10px] tracking-[0.15em] uppercase text-[#8B8578] mb-4">
             {c.title}
           </h3>
         )}
@@ -234,17 +232,17 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
           const isWrong = hasAnswer && selected !== q.correctIndex && !isLocked;
 
           return (
-            <div key={q.key} className="ios-glass-card p-3">
-              <span className="font-ibm-mono text-[10px] text-white/40 tracking-wider uppercase block mb-1">
+            <div key={q.key} className="bg-[#FAFAF7] border border-[#E8E4DC] rounded-xl p-3">
+              <span className="font-ibm-mono text-[10px] text-[#9CA3AF] tracking-wider uppercase block mb-1">
                 {q.label}
               </span>
               <select
-                className={`ios-glass-input font-ibm-mono text-sm w-full ${
+                className={`w-full text-sm bg-white border rounded-lg px-3 py-2 focus:outline-none focus:ring-1 transition-colors ${
                   isLocked
-                    ? 'border-neon-mint/40 text-neon-mint'
+                    ? 'border-emerald-300 text-emerald-700 bg-emerald-50'
                     : isWrong
-                    ? 'border-neon-pink/40 text-neon-pink/80'
-                    : ''
+                    ? 'border-rose-300 text-rose-600 bg-rose-50'
+                    : 'border-[#D4CFC6] text-[#2C3340] focus:ring-sky-400'
                 }`}
                 value={hasAnswer ? selected : ''}
                 disabled={isLocked}
@@ -264,12 +262,12 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
                 ))}
               </select>
               {isLocked && (
-                <span className="font-ibm-mono text-[10px] text-neon-mint mt-1 block">
+                <span className="text-[10px] text-emerald-600 mt-1 block font-medium">
                   &#10003; Correct
                 </span>
               )}
               {isWrong && (
-                <span className="font-ibm-mono text-[10px] text-neon-pink/60 mt-1 block">
+                <span className="text-[10px] text-rose-500 mt-1 block">
                   Not quite — try again
                 </span>
               )}
@@ -279,11 +277,11 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
 
         <div className="pt-4">
           <button
-            className="ios-glass-pill-action px-6 py-2 font-ibm-mono text-xs tracking-wider"
+            className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 disabled:opacity-40 transition-colors"
             disabled={!allCorrect}
             onClick={advanceCard}
           >
-            CONTINUE
+            Continue
           </button>
         </div>
       </div>
@@ -296,28 +294,27 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
     return (
       <div className="space-y-4">
         {c.title && (
-          <h3 className="font-ibm-mono text-xs tracking-wider uppercase text-white/50 mb-2">
+          <h3 className="font-ibm-mono text-[10px] tracking-[0.15em] uppercase text-[#8B8578] mb-2">
             {c.title}
           </h3>
         )}
 
         {c.prompt && (
-          <p className="font-ibm-mono text-sm text-white/70 leading-relaxed">
+          <p className="text-sm text-[#4B5563] leading-relaxed">
             {c.prompt}
           </p>
         )}
 
-        {/* Target words — always shown so students know which words to use */}
         {weekConfig.targetWords.length > 0 && (
-          <div className="ios-glass-card p-3 rounded-lg">
-            <p className="font-ibm-mono text-[10px] text-white/40 uppercase tracking-wider mb-2">
+          <div className="bg-[#FAFAF7] border border-[#E8E4DC] rounded-xl p-3">
+            <p className="font-ibm-mono text-[10px] text-[#9CA3AF] uppercase tracking-wider mb-2">
               Target Words — use these in your response
             </p>
-            <div className="flex flex-wrap">
+            <div className="flex flex-wrap gap-1">
               {weekConfig.targetWords.map(word => (
                 <span
                   key={word}
-                  className="ios-glass-pill px-2 py-0.5 font-ibm-mono text-[10px] text-white/70 inline-block m-0.5"
+                  className="px-2 py-0.5 bg-white border border-[#D4CFC6] rounded-full text-[10px] text-[#4B5563]"
                 >
                   {word}
                 </span>
@@ -326,16 +323,15 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
           </div>
         )}
 
-        {/* Lane scaffolding — additional hints per lane */}
         {scaffolding && (
-          <div className="ios-glass-card p-3 border-l-2 border-neon-cyan/30 space-y-2">
+          <div className="bg-sky-50 border border-sky-200 rounded-xl p-3 border-l-2 border-l-sky-400 space-y-2">
             {scaffolding.prompt && (
-              <p className="font-ibm-mono text-xs text-white/60">{scaffolding.prompt}</p>
+              <p className="text-xs text-sky-800">{scaffolding.prompt}</p>
             )}
             {scaffolding.hints && scaffolding.hints.length > 0 && (
               <ul className="list-disc list-inside space-y-0.5">
                 {scaffolding.hints.map((h, i) => (
-                  <li key={i} className="font-ibm-mono text-[10px] text-white/40">{h}</li>
+                  <li key={i} className="text-[10px] text-sky-600">{h}</li>
                 ))}
               </ul>
             )}
@@ -344,7 +340,7 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
                 {scaffolding.sentenceStarters.map((s, i) => (
                   <button
                     key={i}
-                    className="ios-glass-pill px-2 py-0.5 font-ibm-mono text-[10px] text-neon-cyan/70 hover:text-neon-cyan transition-colors"
+                    className="px-2 py-0.5 bg-white border border-sky-200 rounded-full text-[10px] text-sky-600 hover:bg-sky-50 transition-colors"
                     onClick={() => {
                       if (!writingText.endsWith(' ') && writingText.length > 0) {
                         setWritingText(writingText + ' ' + s);
@@ -382,10 +378,10 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
         {writingPassed && (
           <div className="pt-2">
             <button
-              className="ios-glass-pill-action px-6 py-2 font-ibm-mono text-xs tracking-wider"
+              className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 transition-colors"
               onClick={advanceCard}
             >
-              CONTINUE
+              Continue
             </button>
           </div>
         )}
@@ -395,18 +391,12 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
 
   function renderAcknowledgmentCard(c: CardConfig) {
     const blankConfigs = c.blanks ?? [];
-    // Use the first blank config (the template with text + answers)
     const blankDef = blankConfigs[0];
     const rawText = blankDef?.text ?? '';
     const answers = blankDef?.answers ?? [];
-
-    // Replace {designation} in the text
     const resolvedText = rawText.replace('{designation}', designation);
-
-    // Split text on _____ placeholders
     const segments = resolvedText.split('_____');
 
-    // Initialize blanksValues if needed
     if (blanksValues.length === 0 && answers.length > 0) {
       setBlanksValues(answers.map(() => ''));
     }
@@ -414,19 +404,19 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
     return (
       <div className="space-y-4">
         {c.title && (
-          <h3 className="font-ibm-mono text-xs tracking-wider uppercase text-white/50 mb-2">
+          <h3 className="font-ibm-mono text-[10px] tracking-[0.15em] uppercase text-[#8B8578] mb-2">
             {c.title}
           </h3>
         )}
 
-        <div className="ios-glass-card p-4 font-ibm-mono text-sm text-white/80 leading-relaxed">
+        <div className="bg-[#FAFAF7] border border-[#E8E4DC] rounded-xl p-4 text-sm text-[#4B5563] leading-relaxed">
           {segments.map((segment, idx) => (
             <span key={idx}>
               {segment}
               {idx < segments.length - 1 && idx < answers.length && (
                 <input
                   type="text"
-                  className="ios-glass-input font-ibm-mono text-sm w-28 inline-block mx-1 text-center"
+                  className="w-28 inline-block mx-1 text-center text-sm bg-white border border-[#D4CFC6] rounded-lg px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-sky-400"
                   placeholder={answers[idx]}
                   value={blanksValues[idx] ?? ''}
                   onChange={e => {
@@ -442,12 +432,12 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
         </div>
 
         {c.checkbox && (
-          <label className="flex items-center gap-2 font-ibm-mono text-xs text-white/60">
+          <label className="flex items-center gap-2 text-xs text-[#6B7280]">
             <input
               type="checkbox"
               checked={checkboxChecked}
               onChange={e => setCheckboxChecked(e.target.checked)}
-              className="accent-neon-cyan"
+              className="accent-sky-600"
             />
             {c.checkbox}
           </label>
@@ -455,11 +445,11 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
 
         <div className="pt-2">
           <button
-            className="ios-glass-pill-action px-6 py-2 font-ibm-mono text-xs tracking-wider"
+            className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 disabled:opacity-40 transition-colors"
             disabled={!isAcknowledgmentReady()}
             onClick={advanceCard}
           >
-            CONTINUE
+            Continue
           </button>
         </div>
       </div>
@@ -476,8 +466,8 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
     <div className="space-y-4 max-w-lg mx-auto">
       {/* Card counter */}
       <div className="text-center">
-        <span className="font-ibm-mono text-[10px] text-white/30 tracking-widest">
-          STEP {currentCard + 1} OF {total}
+        <span className="font-ibm-mono text-[10px] text-[#B8B3AA] tracking-widest">
+          Step {currentCard + 1} of {total}
         </span>
       </div>
 

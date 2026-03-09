@@ -16,7 +16,6 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
   const from = config.from as string | undefined;
   const pearlBark = config.pearlBarkOnComplete as string | undefined;
 
-  // Track placed words: blankIndex → word placed
   const [placements, setPlacements] = useState<Record<number, string>>({});
   const [locked, setLocked] = useState<Set<number>>(new Set());
   const [wrongFlash, setWrongFlash] = useState<number | null>(null);
@@ -25,7 +24,6 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
 
   const { selectedId, selectItem, clearSelection } = useTapOrDrag();
 
-  // Words currently placed (used to dim them in the bank)
   const placedWords = useMemo(() => {
     const s = new Set<string>();
     for (const idx of locked) {
@@ -35,7 +33,6 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
     return s;
   }, [locked, blanks]);
 
-  // Split passage into segments around {0}, {1}, etc.
   const segments = useMemo(() => {
     const parts: Array<{ type: 'text'; text: string } | { type: 'blank'; index: number }> = [];
     const regex = /\{(\d+)\}/g;
@@ -91,7 +88,6 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
     [tryPlace],
   );
 
-  // Check completion
   const allFilled = locked.size === blanks.length;
   const hasCompleted = useRef(false);
 
@@ -114,12 +110,12 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
     <div className="space-y-4">
       {/* Document header */}
       {title && (
-        <div className="border border-white/10 rounded p-3 bg-white/[0.02]">
-          <div className="font-ibm-mono text-[10px] text-neon-cyan/60 tracking-[0.2em] uppercase">
+        <div className="border border-[#E8E4DC] rounded-xl p-3 bg-[#FAFAF7]">
+          <div className="font-ibm-mono text-[10px] text-sky-600 tracking-[0.15em] uppercase">
             {title}
           </div>
           {from && (
-            <div className="font-ibm-mono text-[10px] text-white/30 mt-0.5">
+            <div className="text-[10px] text-[#9CA3AF] mt-0.5">
               From: {from}
             </div>
           )}
@@ -128,13 +124,13 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
 
       {/* Progress */}
       <div className="flex justify-center">
-        <span className="font-ibm-mono text-[11px] text-neon-mint/70">
+        <span className="font-ibm-mono text-[11px] text-[#8B8578]">
           {locked.size} / {blanks.length} completed
         </span>
       </div>
 
       {/* Passage with blanks */}
-      <div className="border border-white/10 rounded p-4 bg-white/[0.02] leading-relaxed text-[13px] text-white/70">
+      <div className="border border-[#E8E4DC] rounded-xl p-4 bg-[#FAFAF7] leading-relaxed text-[13px] text-[#4B5563]">
         {segments.map((seg, i) => {
           if (seg.type === 'text') {
             return <span key={i}>{seg.text}</span>;
@@ -151,14 +147,14 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
                 handleDrop(seg.index, e.dataTransfer.getData('text/plain'));
               }}
               onClick={() => handleBlankClick(seg.index)}
-              className={`inline-block min-w-[80px] mx-1 px-2 py-0.5 rounded border text-center font-ibm-mono text-sm transition-all duration-200 align-baseline ${
+              className={`inline-block min-w-[80px] mx-1 px-2 py-0.5 rounded-lg border text-center text-sm font-medium transition-all duration-200 align-baseline ${
                 isLocked
-                  ? 'border-neon-mint/40 bg-neon-mint/10 text-neon-mint'
+                  ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
                   : isWrong
-                  ? 'border-neon-pink/50 bg-neon-pink/10 text-neon-pink'
+                  ? 'border-rose-300 bg-rose-50 text-rose-600 animate-resist-shake'
                   : selectedId
-                  ? 'border-neon-cyan/40 bg-neon-cyan/5 text-white/40 cursor-pointer hover:border-neon-cyan/60'
-                  : 'border-dashed border-neon-cyan/30 bg-neon-cyan/5 text-white/30'
+                  ? 'border-sky-300 bg-sky-50 text-[#6B7280] cursor-pointer hover:border-sky-400'
+                  : 'border-dashed border-[#D4CFC6] bg-white text-[#B8B3AA]'
               }`}
             >
               {isLocked ? placement : '___'}
@@ -168,8 +164,10 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
       </div>
 
       {/* Instruction */}
-      <p className="font-ibm-mono text-[10px] text-white/30 text-center tracking-wider">
-        Complete this document using approved vocabulary.
+      <p className="text-[10px] text-[#9CA3AF] text-center tracking-wider">
+        {selectedId
+          ? <>Tap a blank to place <span className="font-semibold text-sky-600">{selectedId}</span></>
+          : 'Tap a word below, then tap a blank to fill it in.'}
       </p>
 
       {/* Word bank */}
@@ -184,12 +182,12 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
                 e.dataTransfer.setData('text/plain', word);
               }}
               onClick={() => !isUsed && selectItem(word)}
-              className={`px-3 py-1.5 rounded border font-ibm-mono text-sm transition-all duration-200 ${
+              className={`px-3 py-1.5 rounded-xl border text-sm font-medium transition-all duration-200 ${
                 isUsed
-                  ? 'border-white/5 bg-white/[0.02] text-white/15 cursor-default'
+                  ? 'border-[#E8E4DC] bg-[#FAFAF7] text-[#D4CFC6] cursor-default'
                   : selectedId === word
-                  ? 'border-neon-cyan/60 bg-neon-cyan/10 text-neon-cyan cursor-pointer'
-                  : 'border-white/15 bg-white/5 text-neon-cyan/70 cursor-grab hover:border-white/25'
+                  ? 'border-sky-400 bg-sky-50 text-sky-700 shadow-sm'
+                  : 'border-[#D4CFC6] bg-white text-[#4B5563] cursor-pointer hover:border-sky-300 hover:shadow-sm'
               }`}
             >
               {word}
@@ -198,12 +196,15 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
         })}
       </div>
 
-      {/* Completion stamp */}
+      {/* Completion */}
       {allFilled && (
-        <div className="text-center py-3 animate-fade-in">
-          <span className="font-ibm-mono text-xs text-neon-mint tracking-wider">
-            DOCUMENT VERIFIED
-          </span>
+        <div className="text-center py-3">
+          <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50">
+            <span className="text-emerald-500">&#10003;</span>
+            <span className="font-ibm-mono text-xs text-emerald-700 tracking-wider font-medium">
+              Document Verified
+            </span>
+          </div>
         </div>
       )}
     </div>

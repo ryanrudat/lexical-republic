@@ -24,12 +24,11 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
   const [showResult, setShowResult] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
   const [eliminatedOptions, setEliminatedOptions] = useState<Set<number>>(new Set());
-  const [attempt, setAttempt] = useState(1); // 1 = first try, 2 = second try
+  const [attempt, setAttempt] = useState(1);
 
   const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Cleanup timers on unmount
   useEffect(() => {
     return () => {
       if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
@@ -39,6 +38,7 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
 
   const total = items.length;
   const item = items[currentItem];
+  const progress = (currentItem + (showResult ? 1 : 0)) / total;
 
   const advanceToNext = useCallback((finalCorrectCount: number) => {
     if (currentItem < total - 1) {
@@ -48,7 +48,6 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
       setEliminatedOptions(new Set());
       setAttempt(1);
     } else {
-      // Quiz complete
       const score = total > 0 ? finalCorrectCount / total : 1;
       onComplete(score, {
         correct: finalCorrectCount,
@@ -67,13 +66,11 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
       const isCorrect = optionIndex === item.correctIndex;
 
       if (isCorrect) {
-        // Correct — show mint highlight, advance
         setShowResult(true);
         const newCount = correctCount + 1;
         setCorrectCount(newCount);
         advanceTimerRef.current = setTimeout(() => advanceToNext(newCount), 1200);
       } else if (attempt === 1) {
-        // First wrong — cross out, let them try again
         setShowResult(true);
         addConcern(0.05);
         advanceTimerRef.current = setTimeout(() => {
@@ -83,7 +80,6 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
           setAttempt(2);
         }, 800);
       } else {
-        // Second wrong — show correct answer, then advance
         setShowResult(true);
         addConcern(0.05);
         advanceTimerRef.current = setTimeout(() => advanceToNext(correctCount), 1500);
@@ -91,19 +87,24 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
     }, 300);
   }, [showResult, selectedOption, eliminatedOptions, item, attempt, correctCount, addConcern, advanceToNext]);
 
-  // ── Render ───────────────────────────────────────────────────
-
   if (!item) {
     return null;
   }
 
   return (
     <div className="space-y-4 max-w-lg mx-auto">
-      {/* Progress counter */}
-      <div className="text-center">
-        <span className="font-dseg7 text-sm text-neon-cyan">
-          {currentItem + 1} / {total}
-        </span>
+      {/* Progress bar */}
+      <div className="space-y-1">
+        <div className="h-2 bg-[#E8E4DC] rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-emerald-400 to-emerald-300 rounded-full transition-all duration-500 ease-out"
+            style={{ width: `${progress * 100}%` }}
+          />
+        </div>
+        <div className="flex justify-between text-[10px] font-ibm-mono text-[#9CA3AF]">
+          <span>{currentItem + 1} / {total}</span>
+          <span>{correctCount} correct</span>
+        </div>
       </div>
 
       {/* Item card */}
@@ -111,10 +112,10 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
         key={currentItem}
         className="animate-fadeIn space-y-4"
       >
-        {/* Context block (optional) */}
+        {/* Context block */}
         {item.context && (
-          <div className="ios-glass-card p-3 border-l-2 border-neon-cyan/30">
-            <p className="font-ibm-mono text-xs text-white/60 leading-relaxed">
+          <div className="bg-sky-50 border border-sky-200 rounded-xl p-3 border-l-2 border-l-sky-400">
+            <p className="text-xs text-sky-800 leading-relaxed">
               {item.context}
             </p>
           </div>
@@ -123,14 +124,14 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
         {/* Word label */}
         {item.word && (
           <div className="text-center">
-            <span className="font-ibm-mono text-lg text-neon-cyan tracking-wide">
+            <span className="text-lg font-semibold text-sky-700 tracking-wide">
               {item.word}
             </span>
           </div>
         )}
 
         {/* Question */}
-        <p className="font-ibm-mono text-sm text-white/80 leading-relaxed">
+        <p className="text-sm text-[#2C3340] leading-relaxed">
           {item.question}
         </p>
 
@@ -141,27 +142,24 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
             const isCorrectAnswer = i === item.correctIndex;
             const isSelected = i === selectedOption;
 
-            let borderClass = '';
-            let extraClass = '';
+            let classes = 'w-full text-left px-4 py-3 rounded-xl text-sm border transition-all duration-200 ';
 
             if (isEliminated) {
-              // Previously wrong — crossed out, dimmed
-              borderClass = 'border-white/5 opacity-30';
-              extraClass = 'line-through';
+              classes += 'border-[#E8E4DC] bg-[#FAFAF7] text-[#D4CFC6] line-through opacity-50';
             } else if (showResult && isCorrectAnswer && (isSelected || attempt === 2)) {
-              // Correct answer revealed
-              borderClass = 'border-neon-mint text-neon-mint';
+              classes += 'border-emerald-300 bg-emerald-50 text-emerald-700 font-medium';
             } else if (showResult && isSelected && !isCorrectAnswer) {
-              // Wrong selection this attempt
-              borderClass = 'border-neon-pink text-neon-pink';
+              classes += 'border-rose-300 bg-rose-50 text-rose-600';
             } else if (isSelected && !showResult) {
-              borderClass = 'border-neon-cyan';
+              classes += 'border-sky-400 bg-sky-50 text-sky-700';
+            } else {
+              classes += 'border-[#D4CFC6] bg-white text-[#4B5563] hover:border-sky-300 hover:bg-sky-50/50 cursor-pointer';
             }
 
             return (
               <button
                 key={i}
-                className={`ios-glass-pill w-full text-left px-4 py-3 font-ibm-mono text-sm transition-all ${borderClass} ${extraClass}`}
+                className={classes}
                 onClick={() => handleSelect(i)}
                 disabled={showResult || isEliminated}
               >
@@ -175,27 +173,20 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
         {showResult && (
           <div className="text-center animate-fadeIn">
             {selectedOption === item.correctIndex ? (
-              <span className="font-ibm-mono text-xs text-neon-mint/80 tracking-wider">
-                CORRECT
+              <span className="text-xs text-emerald-600 font-medium tracking-wider">
+                Correct
               </span>
             ) : attempt === 1 ? (
-              <span className="font-ibm-mono text-xs text-neon-pink/60 tracking-wider">
-                TRY AGAIN
+              <span className="text-xs text-amber-600 tracking-wider">
+                Try again
               </span>
             ) : (
-              <span className="font-ibm-mono text-xs text-neon-pink/80 tracking-wider">
-                INCORRECT
+              <span className="text-xs text-rose-500 tracking-wider">
+                Incorrect
               </span>
             )}
           </div>
         )}
-      </div>
-
-      {/* Running score (subtle) */}
-      <div className="text-center pt-2">
-        <span className="font-ibm-mono text-[10px] text-white/20 tracking-widest">
-          {correctCount} CORRECT
-        </span>
       </div>
     </div>
   );

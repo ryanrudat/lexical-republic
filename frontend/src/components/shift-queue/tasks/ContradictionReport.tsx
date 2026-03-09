@@ -153,31 +153,31 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
     }
 
     return (
-      <div className="ios-glass-card border border-white/10 border-l-2 border-l-neon-cyan/30 flex-1">
+      <div className="bg-white border border-[#D4CFC6] rounded-xl border-l-2 border-l-sky-400 flex-1">
         {/* Header */}
-        <div className="px-4 py-3 border-b border-white/5 space-y-1">
-          <span className="font-special-elite text-sm text-white/90 tracking-wider">
+        <div className="px-4 py-3 border-b border-[#EDE8DE] space-y-1">
+          <span className="font-special-elite text-sm text-[#2C3340] tracking-wider">
             {memo.title}
           </span>
-          <p className="font-ibm-mono text-[10px] text-white/30 tracking-wider">
+          <p className="font-ibm-mono text-[10px] text-[#9CA3AF] tracking-wider">
             {memo.department}
           </p>
-          <p className="font-ibm-mono text-[10px] text-white/30">
+          <p className="font-ibm-mono text-[10px] text-[#9CA3AF]">
             {memo.date}
           </p>
           <div className="space-y-0.5 pt-1">
-            <p className="font-ibm-mono text-[10px] text-white/40">
-              <span className="text-white/20 mr-2">FROM:</span>{memo.from}
+            <p className="font-ibm-mono text-[10px] text-[#6B7280]">
+              <span className="text-[#B8B3AA] mr-2">FROM:</span>{memo.from}
             </p>
-            <p className="font-ibm-mono text-[10px] text-white/40">
-              <span className="text-white/20 mr-2">TO:</span>{memo.to}
+            <p className="font-ibm-mono text-[10px] text-[#6B7280]">
+              <span className="text-[#B8B3AA] mr-2">TO:</span>{memo.to}
             </p>
-            <p className="font-ibm-mono text-[10px] text-white/40">
-              <span className="text-white/20 mr-2">RE:</span>{memo.re}
+            <p className="font-ibm-mono text-[10px] text-[#6B7280]">
+              <span className="text-[#B8B3AA] mr-2">RE:</span>{memo.re}
             </p>
           </div>
           <div className="pt-1">
-            <span className="ios-glass-pill px-2 py-0.5 font-ibm-mono text-[8px] text-white/40 tracking-widest">
+            <span className="px-2 py-0.5 bg-[#FAFAF7] border border-[#E8E4DC] rounded-full font-ibm-mono text-[8px] text-[#9CA3AF] tracking-widest">
               {label}
             </span>
           </div>
@@ -185,7 +185,7 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
 
         {/* Body with tappable diff zones */}
         <div className="px-4 py-3">
-          <p className="font-ibm-mono text-sm text-white/70 leading-relaxed">
+          <p className="text-sm text-[#4B5563] leading-relaxed">
             {bodySegments.map((seg, i) => {
               if (!seg.diffId) {
                 return <span key={i}>{seg.text}</span>;
@@ -197,8 +197,8 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
                   tabIndex={0}
                   className={`cursor-pointer rounded px-0.5 transition-colors ${
                     seg.isHighlighted
-                      ? 'bg-neon-mint/20 text-neon-mint'
-                      : 'hover:bg-white/10 underline decoration-dotted decoration-white/20'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'hover:bg-sky-50 underline decoration-dotted decoration-[#D4CFC6]'
                   }`}
                   onClick={() => toggleDiff(seg.diffId!)}
                   onKeyDown={e => {
@@ -214,8 +214,8 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
 
         {/* Reviewed stamp */}
         {memo.reviewedBy && (
-          <div className="px-4 py-2 border-t border-white/5">
-            <p className="font-ibm-mono text-[9px] text-white/20 tracking-wider">
+          <div className="px-4 py-2 border-t border-[#EDE8DE]">
+            <p className="font-ibm-mono text-[9px] text-[#B8B3AA] tracking-wider">
               Reviewed by: {memo.reviewedBy}
             </p>
           </div>
@@ -229,7 +229,7 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
   function renderComparePhase() {
     return (
       <div className="space-y-4">
-        <h3 className="font-ibm-mono text-xs tracking-wider uppercase text-white/50 text-center">
+        <h3 className="font-ibm-mono text-xs tracking-wider uppercase text-[#8B8578] text-center">
           Identify all differences between the two memos
         </h3>
 
@@ -239,7 +239,7 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
         </div>
 
         <div className="text-center">
-          <span className="font-ibm-mono text-[10px] text-white/40">
+          <span className="font-ibm-mono text-[10px] text-[#9CA3AF]">
             {foundDiffs.size} / {differences.length} differences identified
           </span>
         </div>
@@ -258,33 +258,33 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
 
     return (
       <div className="space-y-4">
-        <h3 className="font-ibm-mono text-xs tracking-wider uppercase text-white/50 text-center">
+        <h3 className="font-ibm-mono text-xs tracking-wider uppercase text-[#8B8578] text-center">
           Classify each difference
         </h3>
 
         {differences.filter(d => foundDiffs.has(d.diffId)).map(diff => (
-          <div key={diff.diffId} className="ios-glass-card p-4 space-y-3">
+          <div key={diff.diffId} className="bg-white border border-[#E8E4DC] rounded-xl p-4 space-y-3">
             <div className="flex flex-col md:flex-row gap-3">
               <div className="flex-1">
-                <span className="font-ibm-mono text-[10px] text-white/30 tracking-wider uppercase">
+                <span className="font-ibm-mono text-[10px] text-[#B8B3AA] tracking-wider uppercase">
                   Original
                 </span>
-                <p className="font-ibm-mono text-sm text-white/60 mt-1 line-through decoration-white/20">
+                <p className="text-sm text-[#6B7280] mt-1 line-through decoration-[#D4CFC6]">
                   {diff.memoAText}
                 </p>
               </div>
               <div className="flex-1">
-                <span className="font-ibm-mono text-[10px] text-white/30 tracking-wider uppercase">
+                <span className="font-ibm-mono text-[10px] text-[#B8B3AA] tracking-wider uppercase">
                   Revised
                 </span>
-                <p className="font-ibm-mono text-sm text-neon-mint/80 mt-1">
+                <p className="text-sm text-emerald-700 mt-1">
                   {diff.memoBText}
                 </p>
               </div>
             </div>
 
             <select
-              className="ios-glass-input font-ibm-mono text-sm w-full"
+              className="w-full bg-white border border-[#D4CFC6] rounded-lg px-3 py-2 text-sm text-[#4B5563] focus:outline-none focus:ring-2 focus:ring-sky-400"
               value={classifications[diff.diffId] ?? ''}
               onChange={e => setClassification(diff.diffId, e.target.value)}
             >
@@ -298,11 +298,11 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
 
         <div className="pt-2 text-center">
           <button
-            className="ios-glass-pill-action px-6 py-2 font-ibm-mono text-xs tracking-wider"
+            className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 disabled:opacity-40"
             disabled={!allClassified}
             onClick={submitClassifications}
           >
-            SUBMIT CLASSIFICATIONS
+            Submit Classifications
           </button>
         </div>
       </div>
@@ -314,12 +314,12 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
   function renderWritePhase() {
     return (
       <div className="space-y-4">
-        <h3 className="font-ibm-mono text-xs tracking-wider uppercase text-white/50 text-center">
+        <h3 className="font-ibm-mono text-xs tracking-wider uppercase text-[#8B8578] text-center">
           Written Analysis
         </h3>
 
         {writingPrompt && (
-          <p className="font-ibm-mono text-sm text-white/70 leading-relaxed">
+          <p className="text-sm text-[#4B5563] leading-relaxed">
             {writingPrompt}
           </p>
         )}
@@ -351,10 +351,10 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
         {writingPassed && (
           <div className="pt-2 text-center">
             <button
-              className="ios-glass-pill-action px-6 py-2 font-ibm-mono text-xs tracking-wider"
+              className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700"
               onClick={finishTask}
             >
-              COMPLETE REPORT
+              Complete Report
             </button>
           </div>
         )}
@@ -368,11 +368,11 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
     <div className="space-y-4 max-w-2xl mx-auto">
       {/* Phase indicator */}
       <div className="text-center">
-        <span className="font-ibm-mono text-[10px] text-white/30 tracking-widest">
-          {phase === 'compare' && 'PHASE 1: COMPARISON'}
-          {phase === 'classify' && 'PHASE 2: CLASSIFICATION'}
-          {phase === 'write' && 'PHASE 3: ANALYSIS'}
-          {phase === 'done' && 'REPORT COMPLETE'}
+        <span className="font-ibm-mono text-[10px] text-[#B8B3AA] tracking-widest uppercase">
+          {phase === 'compare' && 'Phase 1: Comparison'}
+          {phase === 'classify' && 'Phase 2: Classification'}
+          {phase === 'write' && 'Phase 3: Analysis'}
+          {phase === 'done' && 'Report Complete'}
         </span>
       </div>
 

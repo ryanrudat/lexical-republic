@@ -190,20 +190,20 @@ export default function ShiftClosing() {
     <div className="flex-1 overflow-y-auto p-6 max-w-2xl mx-auto w-full space-y-6">
       {/* Shift Complete header */}
       <div className="text-center py-4">
-        <h2 className="font-special-elite text-2xl text-white/90 tracking-wider ios-text-glow">
+        <h2 className="font-special-elite text-2xl text-[#2C3340] tracking-wider">
           Shift Complete
         </h2>
-        <p className="font-ibm-mono text-xs text-white/40 tracking-wider mt-2">
+        <p className="font-ibm-mono text-xs text-[#9CA3AF] tracking-wider mt-2">
           SHIFT {weekConfig.weekNumber} — PROCESSING SUMMARY
         </p>
       </div>
 
-      {/* Stats grid: 2x3 frosted glass cards */}
+      {/* Stats grid: 2x3 cards */}
       <div className="grid grid-cols-2 gap-3">
         {stats.map(stat => (
-          <div key={stat.label} className="ios-glass-card p-3 text-center">
-            <span className="font-dseg7 text-lg text-neon-cyan">{stat.value}</span>
-            <p className="font-ibm-mono text-[9px] text-white/30 tracking-wider mt-1 uppercase">
+          <div key={stat.label} className="bg-white border border-[#E8E4DC] rounded-xl p-3 text-center">
+            <span className="font-ibm-mono text-lg text-sky-600 font-bold">{stat.value}</span>
+            <p className="font-ibm-mono text-[9px] text-[#B8B3AA] tracking-wider mt-1 uppercase">
               {stat.label}
             </p>
           </div>
@@ -212,16 +212,16 @@ export default function ShiftClosing() {
 
       {/* Clearance upgrade animation */}
       {showUpgrade && weekConfig.shiftClosing.clearanceFrom !== weekConfig.shiftClosing.clearanceTo && (
-        <div className="ios-glass-card border border-neon-mint/30 p-4 text-center animate-fade-in">
-          <p className="font-ibm-mono text-[10px] text-white/30 tracking-wider uppercase mb-2">
+        <div className="bg-white border border-emerald-200 rounded-xl p-4 text-center animate-fade-in">
+          <p className="font-ibm-mono text-[10px] text-[#B8B3AA] tracking-wider uppercase mb-2">
             Clearance Level
           </p>
           <div className="flex items-center justify-center gap-3">
-            <span className="font-ibm-mono text-sm text-white/40">
+            <span className="font-ibm-mono text-sm text-[#9CA3AF]">
               {weekConfig.shiftClosing.clearanceFrom}
             </span>
-            <span className="text-neon-mint">→</span>
-            <span className="font-ibm-mono text-sm text-neon-mint tracking-wider ios-text-glow">
+            <span className="text-emerald-500">→</span>
+            <span className="font-ibm-mono text-sm text-emerald-600 tracking-wider font-bold">
               {weekConfig.shiftClosing.clearanceTo}
             </span>
           </div>
@@ -230,34 +230,34 @@ export default function ShiftClosing() {
 
       {/* PEARL quote */}
       <div className="text-center py-2">
-        <p className="font-ibm-mono text-xs text-white/60 italic max-w-md mx-auto leading-relaxed">
+        <p className="text-sm text-[#4B5563] italic max-w-md mx-auto leading-relaxed">
           &ldquo;{weekConfig.shiftClosing.pearlQuote}&rdquo;
         </p>
-        <p className="font-ibm-mono text-[9px] text-white/20 tracking-wider mt-1">
+        <p className="font-ibm-mono text-[9px] text-[#B8B3AA] tracking-wider mt-1">
           — P.E.A.R.L.
         </p>
       </div>
 
       {/* Narrative hook card */}
-      <div className="ios-glass-card border border-terminal-amber/30 p-4">
-        <h3 className="font-special-elite text-sm text-terminal-amber tracking-wider mb-2">
+      <div className="bg-white border border-amber-200 rounded-xl p-4">
+        <h3 className="font-special-elite text-sm text-amber-700 tracking-wider mb-2">
           {weekConfig.shiftClosing.narrativeHook.title}
         </h3>
-        <p className="font-ibm-mono text-xs text-white/50 leading-relaxed">
+        <p className="text-xs text-[#6B7280] leading-relaxed">
           {weekConfig.shiftClosing.narrativeHook.body}
         </p>
       </div>
 
       {/* Overflow prompt */}
-      <div className="ios-glass-card border border-neon-mint/20 p-3 text-center">
-        <p className="font-ibm-mono text-[11px] text-white/40 leading-relaxed mb-3">
+      <div className="bg-[#FAFAF7] border border-emerald-200 rounded-xl p-3 text-center">
+        <p className="text-[11px] text-[#6B7280] leading-relaxed mb-3">
           All assigned cases processed. Citizen communication queue contains additional items requiring review.
         </p>
         <button
           onClick={handleCensureOverflow}
-          className="ios-glass-pill-action px-6 py-2.5 font-ibm-mono text-xs tracking-wider"
+          className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700"
         >
-          CONTINUE TO CENSURE QUEUE
+          Continue to Censure Queue
         </button>
       </div>
 
@@ -265,15 +265,15 @@ export default function ShiftClosing() {
       <div className="flex gap-3 justify-center pt-2 pb-6">
         <button
           onClick={handleAccessHarmony}
-          className="ios-glass-pill px-6 py-2.5 font-ibm-mono text-xs tracking-wider text-white/60 hover:text-white"
+          className="px-6 py-2.5 rounded-xl border border-[#D4CFC6] bg-white text-xs font-medium tracking-wider text-[#6B7280] hover:text-[#2C3340] hover:border-sky-300 transition-colors"
         >
-          ACCESS HARMONY
+          Access Harmony
         </button>
         <button
           onClick={handleEndShift}
-          className="ios-glass-pill px-6 py-2.5 font-ibm-mono text-xs tracking-wider text-white/60 hover:text-white"
+          className="px-6 py-2.5 rounded-xl border border-[#D4CFC6] bg-white text-xs font-medium tracking-wider text-[#6B7280] hover:text-[#2C3340] hover:border-sky-300 transition-colors"
         >
-          END SHIFT
+          End Shift
         </button>
       </div>
     </div>
