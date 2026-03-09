@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { fetchStudents } from '../../api/teacher';
+import { fetchStudents, deleteStudent, deleteAllStudents } from '../../api/teacher';
 import { useTeacherStore } from '../../stores/teacherStore';
 import { getSocket } from '../../utils/socket';
 import { STEP_ORDER } from '../../types/shifts';
@@ -36,10 +36,11 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
   const [confirmAction, setConfirmAction] = useState<{
     studentId: string;
     designation: string;
-    action: 'skip-task' | 'reset-task' | 'reset-shift' | 'send-to-task';
+    action: 'skip-task' | 'reset-task' | 'reset-shift' | 'send-to-task' | 'delete-student' | 'delete-all';
     taskId?: string;
     taskLabel?: string;
   } | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const onlineStudents = useTeacherStore((s) => s.onlineStudents);
   const socketStatus = useTeacherStore((s) => s.socketStatus);
   const registrationTick = useTeacherStore((s) => s.registrationTick);
@@ -87,12 +88,42 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
     sock.emit('teacher:resume-all', { classId: selectedClassId ?? undefined });
   };
 
-  const executeAction = useCallback(() => {
+  const executeAction = useCallback(async () => {
     if (!confirmAction) return;
-    const sock = getSocket();
-    if (!sock) return;
 
     const { studentId, action, taskId } = confirmAction;
+
+    // Handle delete actions
+    if (action === 'delete-student') {
+      setDeleteLoading(true);
+      try {
+        await deleteStudent(studentId);
+        loadStudents();
+      } catch (err) {
+        console.error('Failed to delete student:', err);
+      } finally {
+        setDeleteLoading(false);
+        setConfirmAction(null);
+      }
+      return;
+    }
+    if (action === 'delete-all') {
+      setDeleteLoading(true);
+      try {
+        await deleteAllStudents();
+        loadStudents();
+      } catch (err) {
+        console.error('Failed to delete all students:', err);
+      } finally {
+        setDeleteLoading(false);
+        setConfirmAction(null);
+      }
+      return;
+    }
+
+    // Socket-based task controls
+    const sock = getSocket();
+    if (!sock) return;
     switch (action) {
       case 'skip-task':
         sock.emit('teacher:skip-task', { studentId });
@@ -108,13 +139,15 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
         break;
     }
     setConfirmAction(null);
-  }, [confirmAction]);
+  }, [confirmAction, loadStudents]);
 
   const actionLabels: Record<string, string> = {
     'skip-task': 'Skip Current Task',
     'reset-task': 'Reset Current Task',
     'reset-shift': 'Reset Entire Shift',
     'send-to-task': 'Send to Task',
+    'delete-student': 'Permanently Delete Student',
+    'delete-all': 'Delete ALL Students',
   };
 
   if (loading && students.length === 0) {
@@ -232,6 +265,19 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
           >
             Refresh
           </button>
+          {students.length > 0 && (
+            <button
+              onClick={() => setConfirmAction({
+                studentId: '',
+                designation: '',
+                action: 'delete-all',
+              })}
+              className="text-xs px-2.5 py-1 rounded-md bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-700 transition-colors"
+              title="Delete all students permanently"
+            >
+              Delete All
+            </button>
+          )}
           <span className="text-sm text-slate-500">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1.5" />
             {onlineCount} online / {students.length} total
@@ -362,6 +408,20 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
                         Last: {new Date(student.lastLoginAt).toLocaleDateString()}
                       </span>
                     )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfirmAction({
+                          studentId: student.id,
+                          designation: student.designation ?? student.displayName,
+                          action: 'delete-student',
+                        });
+                      }}
+                      className="ml-auto text-[10px] text-red-400 hover:text-red-600 transition-colors"
+                      title="Delete student permanently"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
               </div>
@@ -454,30 +514,52 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
           <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4 space-y-4">
             <h3 className="text-base font-semibold text-slate-800">
-              Confirm Action
+              {confirmAction.action === 'delete-student' || confirmAction.action === 'delete-all'
+                ? 'Confirm Deletion'
+                : 'Confirm Action'}
             </h3>
             <p className="text-sm text-slate-600">
-              {actionLabels[confirmAction.action]} for <span className="font-semibold">{confirmAction.designation}</span>
-              {confirmAction.taskLabel && (
-                <> — <span className="text-indigo-600">{confirmAction.taskLabel}</span></>
+              {confirmAction.action === 'delete-all' ? (
+                <>
+                  Delete <span className="font-semibold text-red-600">ALL {students.length} students</span> and their data permanently? This cannot be undone.
+                </>
+              ) : confirmAction.action === 'delete-student' ? (
+                <>
+                  Permanently delete <span className="font-semibold text-red-600">{confirmAction.designation}</span> and all their scores, recordings, and progress? This cannot be undone.
+                </>
+              ) : (
+                <>
+                  {actionLabels[confirmAction.action]} for <span className="font-semibold">{confirmAction.designation}</span>
+                  {confirmAction.taskLabel && (
+                    <> — <span className="text-indigo-600">{confirmAction.taskLabel}</span></>
+                  )}
+                  ?
+                </>
               )}
-              ?
             </p>
-            <p className="text-xs text-slate-400">
-              The student will see a PEARL notification about this action.
-            </p>
+            {confirmAction.action !== 'delete-student' && confirmAction.action !== 'delete-all' && (
+              <p className="text-xs text-slate-400">
+                The student will see a PEARL notification about this action.
+              </p>
+            )}
             <div className="flex gap-2 justify-end pt-2">
               <button
                 className="px-4 py-2 text-sm rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
                 onClick={() => setConfirmAction(null)}
+                disabled={deleteLoading}
               >
                 Cancel
               </button>
               <button
-                className="px-4 py-2 text-sm rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors font-medium"
+                className={`px-4 py-2 text-sm rounded-lg font-medium transition-colors disabled:opacity-50 ${
+                  confirmAction.action === 'delete-student' || confirmAction.action === 'delete-all'
+                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                }`}
                 onClick={executeAction}
+                disabled={deleteLoading}
               >
-                Confirm
+                {deleteLoading ? 'Deleting...' : confirmAction.action === 'delete-student' || confirmAction.action === 'delete-all' ? 'Delete' : 'Confirm'}
               </button>
             </div>
           </div>

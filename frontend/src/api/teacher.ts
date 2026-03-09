@@ -188,6 +188,15 @@ export async function overrideConcern(pairId: string, concernScore: number): Pro
   await client.patch(`/teacher/students/${pairId}/concern`, { concernScore });
 }
 
+export async function deleteStudent(studentId: string): Promise<void> {
+  await client.delete(`/teacher/students/${studentId}`);
+}
+
+export async function deleteAllStudents(): Promise<{ pairsDeleted: number; usersDeleted: number }> {
+  const { data } = await client.delete('/teacher/students');
+  return data as { pairsDeleted: number; usersDeleted: number };
+}
+
 // ── Class Management ───────────────────────────────────────────
 
 export interface ClassInfo {

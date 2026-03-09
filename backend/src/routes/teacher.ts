@@ -797,6 +797,109 @@ router.patch('/students/:pairId/concern', async (req: Request, res: Response) =>
   }
 });
 
+// DELETE /api/teacher/students/:studentId — Permanently delete a student (Pair or User) and all data
+router.delete('/students/:studentId', async (req: Request, res: Response) => {
+  try {
+    const teacherId = getTeacherId(req)!;
+    const studentId = req.params.studentId as string;
+
+    // Try Pair first, then legacy User
+    const pair = await prisma.pair.findUnique({ where: { id: studentId } });
+    if (pair) {
+      // Cascade delete all Pair-related records
+      await prisma.$transaction([
+        prisma.pairDictionaryProgress.deleteMany({ where: { pairId: studentId } }),
+        prisma.missionScore.deleteMany({ where: { pairId: studentId } }),
+        prisma.recording.deleteMany({ where: { pairId: studentId } }),
+        prisma.pearlConversation.deleteMany({ where: { pairId: studentId } }),
+        prisma.narrativeChoice.deleteMany({ where: { pairId: studentId } }),
+        prisma.harmonyPost.deleteMany({ where: { pairId: studentId } }),
+        prisma.harmonyCensureResponse.deleteMany({ where: { pairId: studentId } }),
+        prisma.classEnrollment.deleteMany({ where: { pairId: studentId } }),
+        prisma.characterMessage.deleteMany({ where: { pairId: studentId } }),
+        prisma.citizen4488Interaction.deleteMany({ where: { pairId: studentId } }),
+        prisma.shiftResult.deleteMany({ where: { pairId: studentId } }),
+        prisma.pair.delete({ where: { id: studentId } }),
+      ]);
+      res.json({ deleted: true, type: 'pair' });
+      return;
+    }
+
+    // Legacy User-based student
+    const user = await prisma.user.findUnique({ where: { id: studentId } });
+    if (user && user.role === 'student') {
+      await prisma.$transaction([
+        prisma.studentVocabulary.deleteMany({ where: { userId: studentId } }),
+        prisma.missionScore.deleteMany({ where: { userId: studentId } }),
+        prisma.recording.deleteMany({ where: { userId: studentId } }),
+        prisma.pearlConversation.deleteMany({ where: { userId: studentId } }),
+        prisma.narrativeChoice.deleteMany({ where: { userId: studentId } }),
+        prisma.harmonyPost.deleteMany({ where: { userId: studentId } }),
+        prisma.classEnrollment.deleteMany({ where: { userId: studentId } }),
+        prisma.user.delete({ where: { id: studentId } }),
+      ]);
+      res.json({ deleted: true, type: 'user' });
+      return;
+    }
+
+    res.status(404).json({ error: 'Student not found' });
+  } catch (err) {
+    console.error('Delete student error:', err);
+    res.status(500).json({ error: 'Failed to delete student' });
+  }
+});
+
+// DELETE /api/teacher/students — Bulk delete ALL students in teacher's classes (or orphans)
+router.delete('/students', async (req: Request, res: Response) => {
+  try {
+    const teacherId = getTeacherId(req)!;
+
+    // Get all pairs and legacy students
+    const allPairs = await prisma.pair.findMany({ select: { id: true } });
+    const allLegacyStudents = await prisma.user.findMany({
+      where: { role: 'student' },
+      select: { id: true },
+    });
+
+    // Delete all pairs with cascade
+    for (const pair of allPairs) {
+      await prisma.$transaction([
+        prisma.pairDictionaryProgress.deleteMany({ where: { pairId: pair.id } }),
+        prisma.missionScore.deleteMany({ where: { pairId: pair.id } }),
+        prisma.recording.deleteMany({ where: { pairId: pair.id } }),
+        prisma.pearlConversation.deleteMany({ where: { pairId: pair.id } }),
+        prisma.narrativeChoice.deleteMany({ where: { pairId: pair.id } }),
+        prisma.harmonyPost.deleteMany({ where: { pairId: pair.id } }),
+        prisma.harmonyCensureResponse.deleteMany({ where: { pairId: pair.id } }),
+        prisma.classEnrollment.deleteMany({ where: { pairId: pair.id } }),
+        prisma.characterMessage.deleteMany({ where: { pairId: pair.id } }),
+        prisma.citizen4488Interaction.deleteMany({ where: { pairId: pair.id } }),
+        prisma.shiftResult.deleteMany({ where: { pairId: pair.id } }),
+        prisma.pair.delete({ where: { id: pair.id } }),
+      ]);
+    }
+
+    // Delete all legacy students with cascade
+    for (const stu of allLegacyStudents) {
+      await prisma.$transaction([
+        prisma.studentVocabulary.deleteMany({ where: { userId: stu.id } }),
+        prisma.missionScore.deleteMany({ where: { userId: stu.id } }),
+        prisma.recording.deleteMany({ where: { userId: stu.id } }),
+        prisma.pearlConversation.deleteMany({ where: { userId: stu.id } }),
+        prisma.narrativeChoice.deleteMany({ where: { userId: stu.id } }),
+        prisma.harmonyPost.deleteMany({ where: { userId: stu.id } }),
+        prisma.classEnrollment.deleteMany({ where: { userId: stu.id } }),
+        prisma.user.delete({ where: { id: stu.id } }),
+      ]);
+    }
+
+    res.json({ deleted: true, pairsDeleted: allPairs.length, usersDeleted: allLegacyStudents.length });
+  } catch (err) {
+    console.error('Bulk delete students error:', err);
+    res.status(500).json({ error: 'Failed to delete students' });
+  }
+});
+
 // ── Storyboard Routes ──────────────────────────────────────────────
 
 const STEP_ORDER = [
