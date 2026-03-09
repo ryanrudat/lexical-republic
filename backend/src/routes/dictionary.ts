@@ -7,7 +7,10 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 
-const uploadPath = process.env.UPLOAD_DIR || path.join(__dirname, '../../uploads');
+const rawUploadPath = process.env.UPLOAD_DIR || 'uploads';
+const uploadPath = path.isAbsolute(rawUploadPath)
+  ? rawUploadPath
+  : path.resolve(__dirname, '../../', rawUploadPath);
 
 const router = Router();
 router.use(authenticate);
@@ -147,16 +150,16 @@ router.post('/welcome-watched', requirePair, async (req: Request, res: Response)
 });
 
 // POST /api/dictionary/welcome-video — Teacher uploads welcome video
+const welcomeDir = path.join(uploadPath, 'welcome');
 const welcomeStorage = multer.diskStorage({
   destination: (_req, _file, cb) => {
-    const dir = path.isAbsolute(uploadPath)
-      ? path.join(uploadPath, 'welcome')
-      : path.join(__dirname, '../../', uploadPath, 'welcome');
-    fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
+    fs.mkdirSync(welcomeDir, { recursive: true });
+    cb(null, welcomeDir);
   },
-  filename: (_req, _file, cb) => {
-    cb(null, 'welcome-video.mp4');
+  filename: (_req, file, cb) => {
+    // Preserve original extension for correct mime type detection
+    const ext = path.extname(file.originalname).toLowerCase() || '.mp4';
+    cb(null, `welcome-video${ext}`);
   },
 });
 const welcomeUpload = multer({ storage: welcomeStorage, limits: { fileSize: 200 * 1024 * 1024 } });
@@ -167,6 +170,14 @@ router.post('/welcome-video', requireRole('teacher'), welcomeUpload.single('vide
       res.status(400).json({ error: 'No video file provided' });
       return;
     }
+    // Remove any previous welcome video with a different extension
+    const files = fs.readdirSync(welcomeDir).filter(f => f.startsWith('welcome-video'));
+    for (const f of files) {
+      if (f !== req.file.filename) {
+        fs.unlinkSync(path.join(welcomeDir, f));
+      }
+    }
+    console.log(`[Welcome Video] Saved to: ${path.join(welcomeDir, req.file.filename)} (${req.file.size} bytes, ${req.file.mimetype})`);
     res.json({ success: true, filename: req.file.filename });
   } catch (err) {
     console.error('Welcome video upload error:', err);
@@ -177,14 +188,18 @@ router.post('/welcome-video', requireRole('teacher'), welcomeUpload.single('vide
 // GET /api/dictionary/welcome-video — Serve the welcome video file
 router.get('/welcome-video', async (_req: Request, res: Response) => {
   try {
-    const dir = path.isAbsolute(uploadPath)
-      ? path.join(uploadPath, 'welcome')
-      : path.join(__dirname, '../../', uploadPath, 'welcome');
-    const filePath = path.join(dir, 'welcome-video.mp4');
-    if (!fs.existsSync(filePath)) {
+    // Find any welcome-video file (may have various extensions)
+    if (!fs.existsSync(welcomeDir)) {
       res.status(404).json({ error: 'No welcome video uploaded yet' });
       return;
     }
+    const files = fs.readdirSync(welcomeDir).filter(f => f.startsWith('welcome-video'));
+    if (files.length === 0) {
+      res.status(404).json({ error: 'No welcome video uploaded yet' });
+      return;
+    }
+    const filePath = path.join(welcomeDir, files[0]);
+    console.log(`[Welcome Video] Serving: ${filePath} (exists: ${fs.existsSync(filePath)})`);
     res.sendFile(filePath);
   } catch (err) {
     console.error('Welcome video serve error:', err);

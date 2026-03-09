@@ -78,6 +78,7 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
               ref={videoRef}
               src={videoUrl}
               className="w-full h-full object-contain"
+              crossOrigin="use-credentials"
               autoPlay
               playsInline
               onTimeUpdate={handleTimeUpdate}
