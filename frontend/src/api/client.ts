@@ -32,6 +32,8 @@ export function resolveUploadUrl(path: string): string {
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
   // Relative /uploads path — prepend backend origin
   if (path.startsWith('/uploads')) return `${backendOrigin}${path}`;
+  // API path (e.g. /api/dictionary/welcome-video) — prepend backend origin
+  if (path.startsWith('/api/')) return `${backendOrigin}${path}`;
   return path;
 }
 
