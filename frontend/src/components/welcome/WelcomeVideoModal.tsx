@@ -319,16 +319,16 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
             </div>
           )}
 
-          {/* Volume knob — vintage brass style, positioned on the bezel near rightmost knob */}
+          {/* Volume knob — vintage brass style, centered in the knob row on the bezel */}
           {!videoError && (
             <button
               onClick={toggleMute}
               className="absolute flex items-center justify-center transition-all hover:scale-105 active:scale-95"
               style={{
                 top: '82%',
-                right: '26%',
-                width: '3%',
-                height: '5.4%',
+                left: '48%',
+                width: '4%',
+                height: '7%',
                 borderRadius: '50%',
                 background: 'radial-gradient(ellipse at 40% 35%, #d4c4a0 0%, #a89060 40%, #7a6840 80%, #5a4e30 100%)',
                 boxShadow: muted
