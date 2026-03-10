@@ -174,7 +174,7 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
             } else if (isSelected && !showResult) {
               classes += 'border-sky-400 bg-sky-50 text-sky-700';
             } else {
-              classes += 'border-[#D4CFC6] bg-white text-[#4B5563] hover:border-sky-300 hover:bg-sky-50/50 cursor-pointer';
+              classes += 'border-[#D4CFC6] bg-white text-[#4B5563] hover:border-sky-300 hover:bg-sky-50/50 active:bg-sky-100 active:scale-[0.98] cursor-pointer';
             }
 
             return (

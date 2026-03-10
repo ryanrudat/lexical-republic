@@ -127,7 +127,7 @@ export default function WordSort({ config, onComplete }: TaskProps) {
               className={`px-3 py-1.5 rounded-xl border font-ibm-mono text-sm transition-all duration-200 ${
                 selectedId === word
                   ? 'border-sky-400 bg-sky-50 text-sky-700 cursor-pointer'
-                  : 'border-[#D4CFC6] bg-white text-[#4B5563] cursor-grab hover:border-sky-300'
+                  : 'border-[#D4CFC6] bg-white text-[#4B5563] cursor-grab hover:border-sky-300 active:scale-[0.98]'
               }`}
             >
               {word}
@@ -154,7 +154,7 @@ export default function WordSort({ config, onComplete }: TaskProps) {
               }}
               onClick={() => handleColClick(col.id)}
               className={`rounded-xl border p-3 min-h-[120px] transition-all duration-200 ${colors.border} ${colors.bg} ${
-                selectedId ? 'cursor-pointer hover:brightness-105' : ''
+                selectedId ? 'cursor-pointer hover:brightness-105 active:scale-[0.98]' : ''
               }`}
             >
               <div className={`font-ibm-mono text-[9px] tracking-[0.2em] uppercase mb-2 ${colors.text}`}>

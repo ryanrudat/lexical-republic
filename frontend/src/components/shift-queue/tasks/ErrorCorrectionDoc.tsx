@@ -180,7 +180,7 @@ export default function ErrorCorrectionDoc({
             const isCorrect = selected === error.correctIndex;
             const isShowingResult = showResults[errorIndex];
 
-            let underlineClass = 'border-b-2 border-dashed border-amber-400 cursor-pointer hover:border-sky-500';
+            let underlineClass = 'border-b-2 border-dashed border-amber-400 cursor-pointer hover:border-sky-500 active:border-sky-600';
             if (isLocked || isShowingResult) {
               if (isCorrect) {
                 underlineClass = 'border-b-2 border-solid border-emerald-500 text-emerald-700';
@@ -213,7 +213,7 @@ export default function ErrorCorrectionDoc({
                     {error.options.map((option, oIdx) => (
                       <button
                         key={oIdx}
-                        className="block w-full text-left px-3 py-1.5 text-xs text-[#4B5563] rounded-lg hover:bg-sky-50 hover:text-sky-700 transition-colors"
+                        className="block w-full text-left px-3 py-1.5 text-xs text-[#4B5563] rounded-lg hover:bg-sky-50 hover:text-sky-700 active:bg-sky-100 transition-colors"
                         onClick={() => handleSelectOption(errorIndex, oIdx)}
                       >
                         {option.text}

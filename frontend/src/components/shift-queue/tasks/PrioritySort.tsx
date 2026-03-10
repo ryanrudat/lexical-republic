@@ -177,8 +177,8 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
               ? 'border-emerald-300'
               : result === false
                 ? 'border-rose-300'
-                : 'border-[#D4CFC6] hover:border-sky-300'
-          } ${showPicker && !sortChecked ? 'cursor-pointer' : ''}`}
+                : 'border-[#D4CFC6] hover:border-sky-300 active:bg-sky-50'
+          } ${showPicker && !sortChecked ? 'cursor-pointer active:scale-[0.98]' : ''}`}
           onClick={() => {
             if (showPicker && !sortChecked) {
               setActivePicker(activePicker === caseId ? null : caseId);
@@ -203,7 +203,7 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
               return (
                 <button
                   key={col}
-                  className={`px-3 py-1 rounded-full font-ibm-mono text-[10px] tracking-wider transition-colors border ${styles.text} ${styles.border} ${styles.hoverBg}`}
+                  className={`px-3 py-1 rounded-full font-ibm-mono text-[10px] tracking-wider transition-colors border ${styles.text} ${styles.border} ${styles.hoverBg} active:scale-[0.95] active:brightness-95`}
                   onClick={e => {
                     e.stopPropagation();
                     assignToColumn(caseId, col);
@@ -261,7 +261,7 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
         {allSorted && !sortChecked && (
           <div className="pt-2 text-center">
             <button
-              className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700"
+              className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 active:bg-sky-800 active:scale-[0.98] transition-colors"
               onClick={checkSorting}
             >
               Check Sorting
@@ -337,7 +337,7 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
         {writingPassed && (
           <div className="pt-2 text-center">
             <button
-              className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700"
+              className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 active:bg-sky-800 active:scale-[0.98] transition-colors"
               onClick={advanceJustify}
             >
               {currentJustifyIdx < justifyCases.length - 1 ? 'Next Case' : 'Complete'}

@@ -153,7 +153,7 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
                   : isWrong
                   ? 'border-rose-300 bg-rose-50 text-rose-600 animate-resist-shake'
                   : selectedId
-                  ? 'border-sky-300 bg-sky-50 text-[#6B7280] cursor-pointer hover:border-sky-400'
+                  ? 'border-sky-300 bg-sky-50 text-[#6B7280] cursor-pointer hover:border-sky-400 active:bg-sky-100'
                   : 'border-dashed border-[#D4CFC6] bg-white text-[#B8B3AA]'
               }`}
             >
@@ -187,7 +187,7 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
                   ? 'border-[#E8E4DC] bg-[#FAFAF7] text-[#D4CFC6] cursor-default'
                   : selectedId === word
                   ? 'border-sky-400 bg-sky-50 text-sky-700 shadow-sm'
-                  : 'border-[#D4CFC6] bg-white text-[#4B5563] cursor-pointer hover:border-sky-300 hover:shadow-sm'
+                  : 'border-[#D4CFC6] bg-white text-[#4B5563] cursor-pointer hover:border-sky-300 hover:shadow-sm active:bg-sky-100 active:scale-[0.98]'
               }`}
             >
               {word}

@@ -138,7 +138,7 @@ export default function PriorityBriefing({ config, weekConfig, onComplete }: Tas
         {/* Acknowledge */}
         <div className="pt-2 text-center">
           <button
-            className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700"
+            className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 active:bg-sky-800 active:scale-[0.98] transition-colors"
             onClick={advanceCard}
           >
             Acknowledge
@@ -194,7 +194,7 @@ export default function PriorityBriefing({ config, weekConfig, onComplete }: Tas
         {writingPassed && (
           <div className="pt-2 text-center">
             <button
-              className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700"
+              className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 active:bg-sky-800 active:scale-[0.98] transition-colors"
               onClick={advanceCard}
             >
               Continue

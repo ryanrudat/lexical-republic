@@ -209,7 +209,7 @@ export default function WordMatch({ config, onComplete }: TaskProps) {
                     : isWrong
                     ? 'bg-red-50 border-red-300 text-red-700 animate-resist-shake'
                     : isClickable
-                    ? 'bg-white border-[#D4CFC6] text-[#4B5563] cursor-pointer hover:border-sky-300 hover:bg-sky-50/50 hover:shadow-sm'
+                    ? 'bg-white border-[#D4CFC6] text-[#4B5563] cursor-pointer hover:border-sky-300 hover:bg-sky-50/50 hover:shadow-sm active:bg-sky-100 active:scale-[0.98]'
                     : 'bg-[#FAFAF7] border-[#E8E4DC] text-[#9CA3AF]'
                 }`}
               >

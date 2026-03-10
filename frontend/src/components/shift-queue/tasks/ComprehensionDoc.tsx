@@ -116,7 +116,7 @@ export default function ComprehensionDoc({
                   } else if (isSelected) {
                     optionClasses += 'bg-sky-50 border-sky-400 text-sky-700';
                   } else {
-                    optionClasses += 'bg-white border-[#D4CFC6] text-[#4B5563] hover:border-sky-300 hover:bg-sky-50/50';
+                    optionClasses += 'bg-white border-[#D4CFC6] text-[#4B5563] hover:border-sky-300 hover:bg-sky-50/50 active:bg-sky-100 active:scale-[0.98]';
                   }
 
                   return (
@@ -150,7 +150,7 @@ export default function ComprehensionDoc({
         <button
           className={`px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider transition-opacity duration-300 ${
             allAnswered
-              ? 'opacity-100 cursor-pointer hover:bg-sky-700'
+              ? 'opacity-100 cursor-pointer hover:bg-sky-700 active:bg-sky-800'
               : 'opacity-40 cursor-not-allowed'
           }`}
           onClick={handleSubmit}

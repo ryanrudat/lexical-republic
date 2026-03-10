@@ -101,9 +101,9 @@ export default function TerminalDesktop() {
         {/* Office tile — return to office view */}
         <button
           onClick={() => { exitTerminal(); navigate('/', { replace: true }); }}
-          className="text-left p-4 ios-glass-card transition-all group hover:scale-[1.03] hover:border-neon-cyan/30 hover:shadow-[0_0_20px_rgba(0,229,255,0.1)]"
+          className="text-left p-4 ios-glass-card transition-all group hover:scale-[1.03] active:scale-[0.97] hover:border-neon-cyan/30 hover:shadow-[0_0_20px_rgba(0,229,255,0.1)]"
         >
-          <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">
+          <div className="text-2xl mb-2 group-hover:scale-110 group-active:scale-95 transition-transform">
             {'\uD83C\uDFE2'}
           </div>
           <h3 className="font-ibm-mono text-sm tracking-wider mb-1 text-white/90">
@@ -117,9 +117,9 @@ export default function TerminalDesktop() {
         {/* Dictionary tile — opens sidebar overlay */}
         <button
           onClick={toggleDictionary}
-          className="text-left p-4 ios-glass-card transition-all group hover:scale-[1.03] hover:border-neon-cyan/30 hover:shadow-[0_0_20px_rgba(0,229,255,0.1)]"
+          className="text-left p-4 ios-glass-card transition-all group hover:scale-[1.03] active:scale-[0.97] hover:border-neon-cyan/30 hover:shadow-[0_0_20px_rgba(0,229,255,0.1)]"
         >
-          <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">
+          <div className="text-2xl mb-2 group-hover:scale-110 group-active:scale-95 transition-transform">
             {'\uD83D\uDCD6'}
           </div>
           <h3 className="font-ibm-mono text-sm tracking-wider mb-1 text-white/90">
@@ -140,11 +140,11 @@ export default function TerminalDesktop() {
               className={`text-left p-4 ios-glass-card transition-all group ${
                 isLocked
                   ? 'opacity-40 cursor-not-allowed'
-                  : 'hover:scale-[1.03] hover:border-neon-cyan/30 hover:shadow-[0_0_20px_rgba(0,229,255,0.1)]'
+                  : 'hover:scale-[1.03] active:scale-[0.97] hover:border-neon-cyan/30 hover:shadow-[0_0_20px_rgba(0,229,255,0.1)]'
               }`}
             >
               {/* Emoji icon */}
-              <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">
+              <div className="text-2xl mb-2 group-hover:scale-110 group-active:scale-95 transition-transform">
                 {isLocked ? '\uD83D\uDD12' : app.emoji}
               </div>
               <h3 className={`font-ibm-mono text-sm tracking-wider mb-1 ${

@@ -299,7 +299,7 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
               {/* Rewind 10s */}
               <button
                 onClick={skipBack}
-                className="opacity-0 hover:opacity-80 transition-opacity"
+                className="opacity-40 hover:opacity-80 active:opacity-90 transition-opacity"
                 title="Rewind 10s"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c0b8a8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -310,7 +310,7 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
               {/* Pause / Play */}
               <button
                 onClick={togglePlayPause}
-                className="opacity-0 hover:opacity-80 transition-opacity"
+                className="opacity-40 hover:opacity-80 active:opacity-90 transition-opacity"
                 title={paused ? 'Play' : 'Pause'}
               >
                 {paused ? (

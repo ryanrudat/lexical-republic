@@ -441,7 +441,7 @@ export default function OfficeView() {
         aria-label="Begin your shift"
       >
         {/* Subtle hover glow */}
-        <div className="absolute inset-0 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        <div className="absolute inset-0 rounded-sm opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity duration-300"
           style={{
             background: 'radial-gradient(ellipse at center, rgba(0, 229, 255, 0.08) 0%, transparent 60%)',
           }}
@@ -449,7 +449,7 @@ export default function OfficeView() {
         {/* BEGIN SHIFT — frosted glass pill centered on screen */}
         <div className="absolute inset-0 flex items-center justify-center">
           <div
-            className="rounded-full flex items-center justify-center group-hover:scale-105 transition-transform duration-200"
+            className="rounded-full flex items-center justify-center group-hover:scale-105 group-active:scale-95 transition-transform duration-200"
             style={{
               width: rects.monitor.width * 0.55,
               height: Math.max(24, rects.monitor.height * 0.16),

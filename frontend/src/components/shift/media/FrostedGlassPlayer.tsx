@@ -101,6 +101,7 @@ export default function FrostedGlassPlayer({ src, title }: FrostedGlassPlayerPro
       onMouseMove={handleMouseMove}
       onMouseEnter={() => setShowControls(true)}
       onTouchStart={scheduleHide}
+      onTouchMove={scheduleHide}
       style={{
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
@@ -207,7 +208,7 @@ export default function FrostedGlassPlayer({ src, title }: FrostedGlassPlayerPro
           className="absolute inset-0 flex items-center justify-center transition-colors"
         >
           <div
-            className="w-14 h-14 rounded-full flex items-center justify-center hover:scale-105 transition-transform"
+            className="w-14 h-14 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
             style={{
               backdropFilter: 'blur(12px)',
               WebkitBackdropFilter: 'blur(12px)',

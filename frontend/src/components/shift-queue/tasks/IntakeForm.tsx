@@ -202,7 +202,7 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
 
         <div className="pt-4">
           <button
-            className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 disabled:opacity-40 transition-colors"
+            className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 active:bg-sky-800 active:scale-[0.98] disabled:opacity-40 transition-colors"
             disabled={!isInfoCardReady()}
             onClick={advanceCard}
           >
@@ -277,7 +277,7 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
 
         <div className="pt-4">
           <button
-            className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 disabled:opacity-40 transition-colors"
+            className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 active:bg-sky-800 active:scale-[0.98] disabled:opacity-40 transition-colors"
             disabled={!allCorrect}
             onClick={advanceCard}
           >
@@ -340,7 +340,7 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
                 {scaffolding.sentenceStarters.map((s, i) => (
                   <button
                     key={i}
-                    className="px-2 py-0.5 bg-white border border-sky-200 rounded-full text-[10px] text-sky-600 hover:bg-sky-50 transition-colors"
+                    className="px-2 py-0.5 bg-white border border-sky-200 rounded-full text-[10px] text-sky-600 hover:bg-sky-50 active:bg-sky-100 active:scale-[0.95] transition-colors"
                     onClick={() => {
                       if (!writingText.endsWith(' ') && writingText.length > 0) {
                         setWritingText(writingText + ' ' + s);
@@ -378,7 +378,7 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
         {writingPassed && (
           <div className="pt-2">
             <button
-              className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 transition-colors"
+              className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 active:bg-sky-800 active:scale-[0.98] transition-colors"
               onClick={advanceCard}
             >
               Continue
@@ -445,7 +445,7 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
 
         <div className="pt-2">
           <button
-            className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 disabled:opacity-40 transition-colors"
+            className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 active:bg-sky-800 active:scale-[0.98] disabled:opacity-40 transition-colors"
             disabled={!isAcknowledgmentReady()}
             onClick={advanceCard}
           >
