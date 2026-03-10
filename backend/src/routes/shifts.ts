@@ -402,4 +402,32 @@ router.patch('/concern', async (req: Request, res: Response) => {
   }
 });
 
+// DELETE /api/shifts/weeks/:weekId/scores — Reset all mission scores for a week (used by teacher task controls)
+router.delete('/weeks/:weekId/scores', async (req: Request, res: Response) => {
+  try {
+    const ctx = getAuthContext(req);
+    const weekId = req.params.weekId as string;
+
+    // Find all missions for this week
+    const missions = await prisma.mission.findMany({
+      where: { weekId },
+      select: { id: true },
+    });
+    const missionIds = missions.map(m => m.id);
+
+    // Delete all scores for this student's missions in this week
+    await prisma.missionScore.deleteMany({
+      where: {
+        missionId: { in: missionIds },
+        ...ctx.scoreFilter,
+      },
+    });
+
+    res.json({ success: true, deleted: missionIds.length });
+  } catch (err) {
+    console.error('Reset shift scores error:', err);
+    res.status(500).json({ error: 'Failed to reset shift scores' });
+  }
+});
+
 export default router;

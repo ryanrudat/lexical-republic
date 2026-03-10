@@ -57,3 +57,7 @@ export async function patchConcern(delta: number): Promise<{ concernScore: numbe
   const { data } = await client.patch('/shifts/concern', { delta });
   return data;
 }
+
+export async function resetWeekScores(weekId: string): Promise<void> {
+  await client.delete(`/shifts/weeks/${weekId}/scores`);
+}

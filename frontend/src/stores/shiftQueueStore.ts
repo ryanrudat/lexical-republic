@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { WeekConfig, TaskProgress, TaskStatus } from '../types/shiftQueue';
-import { fetchWeekConfig, patchConcern } from '../api/shifts';
+import { fetchWeekConfig, patchConcern, resetWeekScores } from '../api/shifts';
 import { useShiftStore } from './shiftStore';
 
 interface ShiftQueueState {
@@ -19,10 +19,11 @@ interface ShiftQueueState {
   addConcern: (delta: number) => void;
   nextTask: () => void;
   reset: () => void;
-  goToTask: (taskId: string) => void;
-  skipCurrentTask: () => void;
+  goToTask: (taskId: string) => Promise<void>;
+  skipCurrentTask: () => Promise<void>;
   resetCurrentTask: () => void;
-  resetShift: () => void;
+  resetShift: () => Promise<void>;
+  reloadFromServer: () => Promise<void>;
 }
 
 export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
@@ -161,12 +162,23 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
     taskResetKey: 0,
   }),
 
-  goToTask: (taskId: string) => {
+  goToTask: async (taskId: string) => {
     const { weekConfig, taskProgress } = get();
     if (!weekConfig) return;
 
     const targetIdx = weekConfig.tasks.findIndex(t => t.id === taskId);
     if (targetIdx < 0) return;
+
+    // Persist: mark all tasks before target as complete (skipped)
+    const shiftState = useShiftStore.getState();
+    for (let i = 0; i < targetIdx; i++) {
+      if (taskProgress[i].status === 'complete') continue;
+      const taskConfig = weekConfig.tasks[i];
+      const mission = shiftState.missions.find(m => m.missionType === taskConfig.type);
+      if (mission) {
+        shiftState.submitMissionScore(mission.id, 0, { status: 'complete', skipped: true }).catch(() => {});
+      }
+    }
 
     const updated = taskProgress.map((p, i) => {
       if (i < targetIdx) return { ...p, status: 'complete' as TaskStatus };
@@ -182,9 +194,17 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
     });
   },
 
-  skipCurrentTask: () => {
-    const { currentTaskIndex, taskProgress } = get();
-    if (currentTaskIndex >= taskProgress.length) return;
+  skipCurrentTask: async () => {
+    const { currentTaskIndex, taskProgress, weekConfig } = get();
+    if (!weekConfig || currentTaskIndex >= taskProgress.length) return;
+
+    // Persist: mark current task as complete (skipped) on server
+    const taskConfig = weekConfig.tasks[currentTaskIndex];
+    const shiftState = useShiftStore.getState();
+    const mission = shiftState.missions.find(m => m.missionType === taskConfig.type);
+    if (mission) {
+      shiftState.submitMissionScore(mission.id, 0, { status: 'complete', skipped: true }).catch(() => {});
+    }
 
     const updated = [...taskProgress];
     updated[currentTaskIndex] = {
@@ -212,9 +232,16 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
     set(state => ({ taskResetKey: state.taskResetKey + 1 }));
   },
 
-  resetShift: () => {
+  resetShift: async () => {
     const { weekConfig } = get();
     if (!weekConfig) return;
+
+    // Persist: delete all mission scores for this week on server
+    const shiftState = useShiftStore.getState();
+    const weekId = shiftState.currentWeek?.id;
+    if (weekId) {
+      resetWeekScores(weekId).catch(() => {});
+    }
 
     const progress: TaskProgress[] = weekConfig.tasks.map((task, idx) => ({
       taskId: task.id,
@@ -229,5 +256,19 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
       shiftComplete: false,
       taskResetKey: get().taskResetKey + 1,
     });
+  },
+
+  // Reload shift data from server — used after receiving teacher commands
+  reloadFromServer: async () => {
+    const { weekConfig } = get();
+    if (!weekConfig) return;
+    const shiftState = useShiftStore.getState();
+    const weekId = shiftState.currentWeek?.id;
+    if (weekId) {
+      // Re-fetch the shift data from server to get updated mission scores
+      await shiftState.loadWeek(weekId);
+      // Then reload the queue config using the fresh mission data
+      await get().loadWeekConfig(weekId);
+    }
   },
 }));

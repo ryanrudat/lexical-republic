@@ -40,18 +40,25 @@ export default function App() {
       const onResumed = () => {
         useSessionPauseStore.getState().setPaused(false);
       };
-      const onTaskCommand = (data: { action: string; taskId?: string }) => {
+      const onTaskCommand = async (data: { action: string; taskId?: string }) => {
         const store = useShiftQueueStore.getState();
         const pearl = usePearlStore.getState();
+
+        // If shift queue isn't loaded, try reloading first
+        if (!store.weekConfig) {
+          pearl.triggerBark('notice', 'SUPERVISOR OVERRIDE: Awaiting shift assignment.');
+          return;
+        }
+
         switch (data.action) {
           case 'send-to-task':
             if (data.taskId) {
-              store.goToTask(data.taskId);
+              await store.goToTask(data.taskId);
               pearl.triggerBark('notice', 'SUPERVISOR OVERRIDE: Reassignment directive received. Redirecting to assigned station.');
             }
             break;
           case 'skip-task':
-            store.skipCurrentTask();
+            await store.skipCurrentTask();
             pearl.triggerBark('notice', 'SUPERVISOR OVERRIDE: Current task has been waived. Proceed to next station.');
             break;
           case 'reset-task':
@@ -59,7 +66,7 @@ export default function App() {
             pearl.triggerBark('notice', 'SUPERVISOR OVERRIDE: Task requires re-evaluation. Please begin again.');
             break;
           case 'reset-shift':
-            store.resetShift();
+            await store.resetShift();
             pearl.triggerBark('notice', 'SUPERVISOR OVERRIDE: Full shift reassessment ordered. Return to Intake.');
             break;
         }
