@@ -90,9 +90,24 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
     }
   };
 
-  // Monitor screen area as percentage of the image (2744x1568)
-  // Covers the full dark glass area of the CRT — clipped by border-radius to match bezel
-  const screen = { top: 8, left: 21, width: 58, height: 55 };
+  // CRT screen shape traced as clip-path polygon (% of full image: 2744x1568)
+  // Traces the inner edge of the bezel where glossy black glass meets metal frame
+  const screenClip = [
+    '22% 8%',      // top-left after corner rounding
+    '78% 8%',      // top-right before corner rounding
+    '79.5% 10%',   // top-right corner
+    '79.5% 54%',   // right edge straight down
+    '78.5% 58%',   // bottom-right curve start
+    '75% 61.5%',   // bottom-right mid
+    '70% 63%',     // bottom-right quarter
+    '50% 64%',     // bottom center (lowest point)
+    '30% 63%',     // bottom-left quarter
+    '25% 61.5%',   // bottom-left mid
+    '21.5% 58%',   // bottom-left curve start
+    '20.5% 54%',   // left edge straight
+    '20.5% 10%',   // top-left corner
+  ].join(', ');
+
   // Green LED bar position on the monitor
   const ledBar = { top: 71, left: 21, width: 58 };
 
@@ -109,17 +124,10 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
             draggable={false}
           />
 
-          {/* Video / placeholder — positioned inside the screen area */}
+          {/* Video / placeholder — clipped to exact CRT screen shape */}
           <div
-            className="absolute overflow-hidden"
-            style={{
-              top: `${screen.top}%`,
-              left: `${screen.left}%`,
-              width: `${screen.width}%`,
-              height: `${screen.height}%`,
-              // Matches CRT screen shape: gentle top corners, heavily curved bottom
-              borderRadius: '3% 3% 28% 28% / 2% 2% 38% 38%',
-            }}
+            className="absolute inset-0"
+            style={{ clipPath: `polygon(${screenClip})` }}
           >
             {videoError ? (
               // No video uploaded — CRT standby screen
