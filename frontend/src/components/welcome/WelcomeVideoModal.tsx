@@ -146,11 +146,11 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
   const ledBar = { top: 74.2, left: 22.1, width: 55.2 };
 
   return (
-    <div className="fixed inset-0 z-[70] flex flex-col items-center justify-center bg-[#0c0c0c]">
+    <div className="fixed inset-0 z-[70] flex flex-col items-center justify-center overflow-y-auto bg-[#0c0c0c] py-4">
       {/* Monitor + video container */}
-      <div className="relative w-full max-w-5xl px-4">
-        {/* Monitor image — sets the size for everything */}
-        <div className="relative w-full" style={{ aspectRatio: '2744 / 1568' }}>
+      <div className="relative w-full max-w-5xl px-4 shrink-0">
+        {/* Monitor image — sets the size for everything, max height leaves room for button */}
+        <div className="relative w-full mx-auto max-h-[calc(100vh-120px)]" style={{ aspectRatio: '2744 / 1568' }}>
           <img
             src="/images/welcome-monitor.jpg"
             alt=""
@@ -370,7 +370,7 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
               <button
                 onClick={handleProceed}
                 disabled={proceeding}
-                className="font-ibm-mono text-xs sm:text-sm tracking-[0.2em] uppercase px-8 py-3 border rounded transition-all"
+                className="font-ibm-mono text-xs sm:text-sm tracking-[0.2em] uppercase px-8 py-3 border rounded transition-all active:scale-95"
                 style={{
                   borderColor: '#00cc6a',
                   color: proceeding ? '#5a8a6a' : '#00ff88',
