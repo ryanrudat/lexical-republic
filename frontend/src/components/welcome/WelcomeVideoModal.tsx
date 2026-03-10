@@ -93,19 +93,19 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
   // CRT screen shape traced as clip-path polygon (% of full image: 2744x1568)
   // Only the glossy black glass area — inside the raised metal bezel
   const screenClip = [
-    '25.5% 10.5%',  // top-left
-    '74.5% 10.5%',  // top-right
-    '76% 12%',      // top-right corner
-    '76% 53%',      // right edge down
-    '75% 56%',      // bottom-right curve start
-    '72% 58%',      // bottom-right mid
-    '67% 59.5%',    // bottom-right quarter
-    '50% 60%',      // bottom center (lowest)
-    '33% 59.5%',    // bottom-left quarter
-    '28% 58%',      // bottom-left mid
-    '25% 56%',      // bottom-left curve start
-    '24% 53%',      // left edge
-    '24% 12%',      // top-left corner
+    '28% 13.5%',    // top-left
+    '72% 13.5%',    // top-right
+    '73% 15%',      // top-right corner round
+    '73% 49%',      // right edge straight down
+    '72% 51%',      // bottom-right curve start
+    '69% 52.5%',    // bottom-right mid
+    '64% 53.5%',    // bottom-right quarter
+    '50% 54%',      // bottom center (lowest)
+    '36% 53.5%',    // bottom-left quarter
+    '31% 52.5%',    // bottom-left mid
+    '28% 51%',      // bottom-left curve start
+    '27% 49%',      // left edge
+    '27% 15%',      // top-left corner round
   ].join(', ');
 
   // Green LED bar position on the monitor
