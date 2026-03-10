@@ -357,8 +357,8 @@ CONTEXT:
 
 EVALUATION CRITERIA:
 1. Grammar (0.0-1.0): Focus on the week's grammar target. For A2-B1 learners, reward correct usage rather than penalizing minor errors. Score below 0.3 if sentences are grammatically broken or nonsensical.
-2. Vocabulary (0.0-1.0): Check target vocabulary usage IN MEANINGFUL CONTEXT (not just presence). Simply listing words or inserting them into nonsense sentences should score below 0.2. Higher score for natural integration.
-3. Task completion (0.0-1.0): Did the student address the prompt requirements? Score 0.0-0.2 if the text is off-topic, gibberish, or doesn't attempt to answer the prompt. Score 0.3-0.5 for partial attempts. Score 0.6+ for genuine attempts.
+2. Vocabulary (0.0-1.0): Check target vocabulary usage IN MEANINGFUL CONTEXT (not just presence). Simply listing words or inserting them into nonsense sentences should score below 0.2. Higher score for natural, varied integration of more target words.
+3. Task completion (0.0-1.0): The student is asked to write 3-5 sentences using as many target words as possible. Score based on: (a) sentence count — at least 3 sentences required, (b) number of distinct target words used naturally in sentences, (c) coherent English writing (not word salad). Score 0.0-0.2 for gibberish or fewer than 2 sentences. Score 0.3-0.5 for 2-3 sentences with few target words. Score 0.6+ for 3-5 coherent sentences with good target word coverage.
 
 IMPORTANT: Do NOT be lenient with nonsensical, random, or clearly non-effort submissions. A student who writes word salad or gibberish incorporating target words should receive scores below 0.3 across all criteria.
 
