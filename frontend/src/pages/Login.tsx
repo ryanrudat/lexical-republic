@@ -27,7 +27,7 @@ export default function Login() {
   const [muted, setMuted] = useState(false);
 
   useEffect(() => {
-    const audio = new Audio('/audio/The_Iron_Grip_Overture.mp3');
+    const audio = new Audio('/audio/Synthetic_Serenity.mp3');
     audio.loop = true;
     audio.volume = 0.35;
     audioRef.current = audio;
