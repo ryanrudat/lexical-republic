@@ -90,22 +90,26 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
     }
   };
 
-  // CRT screen shape traced as clip-path polygon (% of full image: 2744x1568)
-  // Only the glossy black glass area — inside the raised metal bezel
+  // Screen bounding box as % of full monitor image (2744x1568)
+  // Positioned to sit inside the glass, not on the bezel
+  const screen = { top: 12, left: 27, width: 46, height: 42 };
+
+  // Clip-path for CRT screen shape — coordinates relative to the screen container
+  // Rounded top corners + concave curved bottom edge
   const screenClip = [
-    '28% 13.5%',    // top-left
-    '72% 13.5%',    // top-right
-    '73% 15%',      // top-right corner round
-    '73% 49%',      // right edge straight down
-    '72% 51%',      // bottom-right curve start
-    '69% 52.5%',    // bottom-right mid
-    '64% 53.5%',    // bottom-right quarter
-    '50% 54%',      // bottom center (lowest)
-    '36% 53.5%',    // bottom-left quarter
-    '31% 52.5%',    // bottom-left mid
-    '28% 51%',      // bottom-left curve start
-    '27% 49%',      // left edge
-    '27% 15%',      // top-left corner round
+    '2% 2.5%',     // top-left
+    '98% 2.5%',    // top-right
+    '100% 6%',     // top-right corner
+    '100% 88%',    // right edge
+    '98% 93%',     // bottom-right curve start
+    '91% 96.5%',   // bottom-right mid
+    '80% 99%',     // bottom-right quarter
+    '50% 100%',    // bottom center (lowest)
+    '20% 99%',     // bottom-left quarter
+    '9% 96.5%',    // bottom-left mid
+    '2% 93%',      // bottom-left curve start
+    '0% 88%',      // left edge
+    '0% 6%',       // top-left corner
   ].join(', ');
 
   // Green LED bar position on the monitor
@@ -124,10 +128,16 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
             draggable={false}
           />
 
-          {/* Video / placeholder — clipped to exact CRT screen shape */}
+          {/* Video / placeholder — positioned at screen area, video-first (no cropping) */}
           <div
-            className="absolute inset-0"
-            style={{ clipPath: `polygon(${screenClip})` }}
+            className="absolute overflow-hidden bg-black"
+            style={{
+              top: `${screen.top}%`,
+              left: `${screen.left}%`,
+              width: `${screen.width}%`,
+              height: `${screen.height}%`,
+              clipPath: `polygon(${screenClip})`,
+            }}
           >
             {videoError ? (
               // No video uploaded — CRT standby screen
@@ -150,7 +160,7 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
                 <video
                   ref={videoRef}
                   src={videoUrl}
-                  className="w-full h-full object-cover bg-black"
+                  className="w-full h-full object-contain bg-black"
                   playsInline
                   onTimeUpdate={handleTimeUpdate}
                   onEnded={() => setVideoEnded(true)}
