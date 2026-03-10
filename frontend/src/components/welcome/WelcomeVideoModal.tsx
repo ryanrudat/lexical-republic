@@ -15,6 +15,8 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
   const [proceeding, setProceeding] = useState(false);
   const [needsManualPlay, setNeedsManualPlay] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const progressBarRef = useRef<HTMLDivElement>(null);
 
   const isTestUser = designation?.toUpperCase() === 'CA-1';
 
@@ -61,6 +63,34 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
     if (!v) return;
     v.muted = !v.muted;
     setMuted(v.muted);
+  };
+
+  const togglePlayPause = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) {
+      v.play().catch(() => {});
+      setPaused(false);
+    } else {
+      v.pause();
+      setPaused(true);
+    }
+  };
+
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    const v = videoRef.current;
+    const bar = progressBarRef.current;
+    if (!v || !bar || !v.duration) return;
+    const rect = bar.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    v.currentTime = pct * v.duration;
+    setProgress(pct);
+  };
+
+  const skipBack = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.currentTime = Math.max(0, v.currentTime - 10);
   };
 
   // Update progress bar
@@ -112,8 +142,8 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
     '0% 3%',       // top-left corner
   ].join(', ');
 
-  // Green LED bar position on the monitor
-  const ledBar = { top: 71, left: 21, width: 58 };
+  // Green LED bar position — pixel-measured from welcome-monitor.jpg
+  const ledBar = { top: 74.2, left: 22.1, width: 55.2 };
 
   return (
     <div className="fixed inset-0 z-[70] flex flex-col items-center justify-center bg-[#0c0c0c]">
@@ -160,8 +190,9 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
                 <video
                   ref={videoRef}
                   src={videoUrl}
-                  className="w-full h-full object-cover bg-black"
+                  className="w-full h-full object-cover bg-black cursor-pointer"
                   playsInline
+                  onClick={togglePlayPause}
                   onTimeUpdate={handleTimeUpdate}
                   onEnded={() => setVideoEnded(true)}
                   onError={() => setVideoError(true)}
@@ -241,25 +272,76 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
             )}
           </div>
 
-          {/* Progress bar — overlaid on the monitor's green LED strip */}
+          {/* Seekable progress bar — aligned to the monitor's green LED strip */}
           <div
-            className="absolute overflow-hidden"
+            ref={progressBarRef}
+            className="absolute cursor-pointer"
             style={{
               top: `${ledBar.top}%`,
               left: `${ledBar.left}%`,
               width: `${ledBar.width}%`,
-              height: '0.45%',
+              height: '1.4%',
+              marginTop: '-0.35%',
             }}
+            onClick={handleSeek}
           >
+            {/* Visible bar — centered within click target */}
             <div
-              className="h-full transition-all duration-300"
-              style={{
-                width: `${Math.round(progress * 100)}%`,
-                background: '#00ff88',
-                boxShadow: '0 0 8px rgba(0, 255, 136, 0.6)',
-              }}
-            />
+              className="absolute overflow-hidden"
+              style={{ top: '30%', left: 0, right: 0, height: '40%' }}
+            >
+              <div
+                className="h-full transition-all duration-200"
+                style={{
+                  width: `${Math.round(progress * 100)}%`,
+                  background: 'linear-gradient(90deg, #00ff88, #44ffaa)',
+                  boxShadow: '0 0 12px rgba(0, 255, 136, 0.8), 0 0 4px rgba(0, 255, 136, 1)',
+                }}
+              />
+            </div>
           </div>
+
+          {/* Playback controls — rewind & pause/play between knobs */}
+          {!videoError && !needsManualPlay && (
+            <div
+              className="absolute flex items-center justify-center gap-3"
+              style={{
+                top: '79%',
+                left: '30%',
+                width: '40%',
+                height: '5%',
+              }}
+            >
+              {/* Rewind 10s */}
+              <button
+                onClick={skipBack}
+                className="opacity-0 hover:opacity-80 transition-opacity"
+                title="Rewind 10s"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c0b8a8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 4v6h6" />
+                  <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                </svg>
+              </button>
+              {/* Pause / Play */}
+              <button
+                onClick={togglePlayPause}
+                className="opacity-0 hover:opacity-80 transition-opacity"
+                title={paused ? 'Play' : 'Pause'}
+              >
+                {paused ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="#c0b8a8" stroke="none">
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="#c0b8a8" stroke="none">
+                    <rect x="6" y="4" width="4" height="16" />
+                    <rect x="14" y="4" width="4" height="16" />
+                  </svg>
+                )}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Controls below the monitor */}
