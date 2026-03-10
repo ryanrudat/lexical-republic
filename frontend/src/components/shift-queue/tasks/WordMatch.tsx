@@ -7,14 +7,22 @@ interface Pair {
   definition: string;
 }
 
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 export default function WordMatch({ config, onComplete }: TaskProps) {
   const pairs = (config.pairs as Pair[]) || [];
   const pearlBark = config.pearlBarkOnComplete as string | undefined;
 
-  // Shuffle definitions once on mount
-  const shuffledDefs = useRef(
-    [...pairs].sort(() => Math.random() - 0.5),
-  ).current;
+  // Shuffle both columns independently on mount
+  const shuffledWords = useRef(shuffle(pairs)).current;
+  const shuffledDefs = useRef(shuffle(pairs)).current;
 
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [matched, setMatched] = useState<Set<string>>(new Set());
@@ -136,7 +144,7 @@ export default function WordMatch({ config, onComplete }: TaskProps) {
           <div className="text-[10px] text-[#8B8578] font-ibm-mono tracking-[0.15em] uppercase font-medium px-1">
             Terms
           </div>
-          {pairs.map((pair) => {
+          {shuffledWords.map((pair) => {
             const isMatched = matched.has(pair.word);
             const isSelected = selectedWord === pair.word;
             return (

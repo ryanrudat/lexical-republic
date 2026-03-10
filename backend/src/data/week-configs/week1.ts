@@ -363,7 +363,7 @@ export const WEEK_1_CONFIG: WeekConfig = {
       label: "Shift Report",
       config: {
         prompt:
-          "Your first shift is complete. Write your shift report. Betty welcomed you to the Department of Clarity. Ivan told you to read twice before you submit. In 3-5 sentences, describe what you learned during your orientation. What do associates do each day? What procedures do they follow? Did you notice anything unusual? Use the target words in your response.",
+          "Your first shift is complete. Write your shift report using 3 to 5 sentences. Try to use as many of the target words as possible.",
         minWords: 40,
         lane: {
           "1": {
@@ -371,14 +371,14 @@ export const WEEK_1_CONFIG: WeekConfig = {
             sentenceStarters: true,
             wordBankChinese: true,
             pearlHints: [
-              "Start with: 'I arrived at the Department of Clarity and...'",
-              "Then: 'At the Language Lab, I checked...'",
-              "End with: 'I followed the standard procedures and...'",
+              "Start with: 'Today I arrived at...'",
+              "Then: 'I had to follow...'",
+              "End with: 'I submitted my report and...'",
             ],
             guidedQuestions: [
-              "Describe your arrival at the Department of Clarity. What did you do at Shift Intake?",
-              "What happened at the Language Lab during Vocabulary Clearance?",
-              "What did you find when you reviewed the documents at the Evidence Desk?",
+              "Write a sentence using 'arrive' and 'check'.",
+              "Write a sentence using 'follow' and 'report'.",
+              "Write a sentence using 'submit' and 'approve'.",
             ],
           },
           "2": { minWords: 30, wordListVisible: true },

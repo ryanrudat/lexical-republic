@@ -46,7 +46,7 @@ export default function TaskCard({
 
   return (
     <div
-      className={`bg-white rounded-2xl border shadow-sm transition-all duration-800 relative overflow-hidden ${
+      className={`bg-white rounded-2xl border shadow-sm transition-all duration-800 relative ${
         internalStatus === 'completing'
           ? 'border-emerald-300 bg-emerald-50/50 shadow-emerald-100'
           : internalStatus === 'stamped'
@@ -68,8 +68,10 @@ export default function TaskCard({
 
       {/* Stamp watermark overlay */}
       {internalStatus === 'completing' && (
-        <div className="stamp-watermark !text-emerald-300/20">
-          APPROVED
+        <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+          <div className="stamp-watermark !text-emerald-300/20">
+            APPROVED
+          </div>
         </div>
       )}
     </div>

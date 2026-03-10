@@ -15,9 +15,30 @@ interface VocabItem {
 
 // ─── Component ───────────────────────────────────────────────────
 
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 export default function VocabClearance({ config, onComplete }: TaskProps) {
-  const items = (config.items ?? []) as VocabItem[];
+  const rawItems = (config.items ?? []) as VocabItem[];
   const addConcern = useShiftQueueStore(s => s.addConcern);
+
+  // Shuffle item order and option order within each item on mount
+  const items = useRef(
+    shuffle(rawItems).map(item => {
+      const indices = shuffle(item.options.map((_, i) => i));
+      return {
+        ...item,
+        options: indices.map(i => item.options[i]),
+        correctIndex: indices.indexOf(item.correctIndex),
+      };
+    }),
+  ).current;
 
   const [currentItem, setCurrentItem] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);

@@ -257,7 +257,7 @@ export const WEEK_2_CONFIG: WeekConfig = {
       location: "Filing Desk",
       config: {
         prompt:
-          "Write your shift report for today. Describe the contradiction you found in the Community Guidelines. What was changed? What was removed? What questions do you have about these changes?",
+          "Write your shift report for today using 3 to 5 sentences. Try to use as many of the target words as possible.",
         minWords: 45,
         lane: {
           "1": {
@@ -266,13 +266,13 @@ export const WEEK_2_CONFIG: WeekConfig = {
             wordBankChinese: true,
             pearlHints: [
               "Start with: 'Today I noticed that...'",
-              "Then: 'The memo was updated to...'",
-              "End with: 'I request information about...'",
+              "Then: 'The document was updated to...'",
+              "End with: 'I need to request...'",
             ],
             guidedQuestions: [
-              "What documents did you compare today?",
-              "What changes did you notice?",
-              "What information was removed?",
+              "Write a sentence using 'notice' and 'compare'.",
+              "Write a sentence using 'update' and 'remove'.",
+              "Write a sentence using 'request' and 'information'.",
             ],
           },
           "2": { minWords: 45, wordListVisible: true },

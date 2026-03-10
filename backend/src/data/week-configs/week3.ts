@@ -215,7 +215,7 @@ export const WEEK_3_CONFIG: WeekConfig = {
       location: "Filing Desk",
       label: "Shift Report",
       config: {
-        prompt: "Write your shift report for today. How did you process the priority queue? What cases did you identify as urgent? What happened to Case 5? Ivan said 'Fast work can hide mistakes.' Betty said 'Hesitation spreads doubt.' Should an associate be fast or careful? Use modals (should, must, can) in your report.",
+        prompt: "Write your shift report for today using 3 to 5 sentences. Try to use as many of the target words as possible.",
         minWords: 50,
         lane: {
           "1": {
@@ -223,14 +223,14 @@ export const WEEK_3_CONFIG: WeekConfig = {
             sentenceStarters: true,
             wordBankChinese: true,
             pearlHints: [
-              "Start with: 'Today I must process...'",
-              "Then: 'I should separate urgent cases...'",
-              "End with: 'I cannot identify why Case 5...'",
+              "Start with: 'Today I must...'",
+              "Then: 'I should...'",
+              "End with: 'I can...'",
             ],
             guidedQuestions: [
-              "How many cases did you process today?",
-              "Which cases did you identify as urgent?",
-              "What happened to Case 5?",
+              "Write a sentence using 'must' and 'process'.",
+              "Write a sentence using 'should' and 'separate'.",
+              "Write a sentence using 'can' and 'identify'.",
             ],
           },
           "2": { minWords: 50, wordListVisible: true },
