@@ -91,25 +91,25 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
   };
 
   // Screen bounding box as % of full monitor image (2744x1568)
-  // Positioned to sit inside the glass, not on the bezel
-  const screen = { top: 12, left: 27, width: 46, height: 42 };
+  // Glass starts below the thick top bezel at ~16%, bottom curve ends ~54%
+  const screen = { top: 16, left: 27, width: 46, height: 38 };
 
   // Clip-path for CRT screen shape — coordinates relative to the screen container
   // Rounded top corners + concave curved bottom edge
   const screenClip = [
-    '2% 2.5%',     // top-left
-    '98% 2.5%',    // top-right
-    '100% 6%',     // top-right corner
-    '100% 88%',    // right edge
-    '98% 93%',     // bottom-right curve start
-    '91% 96.5%',   // bottom-right mid
+    '2% 3%',       // top-left
+    '98% 3%',      // top-right
+    '100% 5%',     // top-right corner
+    '100% 87%',    // right edge
+    '98% 92%',     // bottom-right curve start
+    '91% 96%',     // bottom-right mid
     '80% 99%',     // bottom-right quarter
     '50% 100%',    // bottom center (lowest)
     '20% 99%',     // bottom-left quarter
-    '9% 96.5%',    // bottom-left mid
-    '2% 93%',      // bottom-left curve start
-    '0% 88%',      // left edge
-    '0% 6%',       // top-left corner
+    '9% 96%',      // bottom-left mid
+    '2% 92%',      // bottom-left curve start
+    '0% 87%',      // left edge
+    '0% 5%',       // top-left corner
   ].join(', ');
 
   // Green LED bar position on the monitor
