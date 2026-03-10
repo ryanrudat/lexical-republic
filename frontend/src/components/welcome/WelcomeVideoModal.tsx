@@ -208,6 +208,14 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
                   }}
                 />
 
+                {/* Vignette — edges fade to black to blend with monitor */}
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    boxShadow: 'inset 0 0 60px 30px rgba(0,0,0,0.95), inset 0 0 120px 60px rgba(0,0,0,0.5)',
+                  }}
+                />
+
                 {/* Subtle screen glare */}
                 <div
                   className="absolute inset-0 pointer-events-none"
@@ -325,7 +333,7 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
               onClick={toggleMute}
               className="absolute flex items-center justify-center transition-all hover:scale-105 active:scale-95"
               style={{
-                top: '82%',
+                top: '79.5%',
                 left: '48%',
                 width: '4%',
                 height: '7%',
