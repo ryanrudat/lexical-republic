@@ -146,11 +146,11 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
   const ledBar = { top: 74.2, left: 22.1, width: 55.2 };
 
   return (
-    <div className="fixed inset-0 z-[70] flex flex-col items-center justify-center overflow-y-auto bg-[#0c0c0c] py-4">
+    <div className="fixed inset-0 z-[70] flex flex-col items-center justify-center bg-[#0c0c0c]">
       {/* Monitor + video container */}
-      <div className="relative w-full max-w-5xl px-4 shrink-0">
-        {/* Monitor image — sets the size for everything, max height leaves room for button */}
-        <div className="relative w-full mx-auto max-h-[calc(100vh-120px)]" style={{ aspectRatio: '2744 / 1568' }}>
+      <div className="relative w-full max-w-5xl px-4">
+        {/* Monitor image — sets the size for everything */}
+        <div className="relative w-full" style={{ aspectRatio: '2744 / 1568' }}>
           <img
             src="/images/welcome-monitor.jpg"
             alt=""
@@ -224,6 +224,34 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
                       'radial-gradient(ellipse 80% 60% at 35% 30%, rgba(255,255,255,0.06) 0%, transparent 70%)',
                   }}
                 />
+
+                {/* Proceed button — overlaid at bottom of screen after video ends */}
+                {videoEnded && (
+                  <button
+                    onClick={handleProceed}
+                    disabled={proceeding}
+                    className="absolute bottom-[8%] left-1/2 -translate-x-1/2 z-20 font-ibm-mono text-[10px] sm:text-xs tracking-[0.2em] uppercase px-6 py-2 sm:px-8 sm:py-3 border rounded transition-all active:scale-95"
+                    style={{
+                      borderColor: '#00cc6a',
+                      color: proceeding ? '#5a8a6a' : '#00ff88',
+                      background: 'rgba(0, 40, 0, 0.6)',
+                      backdropFilter: 'blur(4px)',
+                    }}
+                  >
+                    {proceeding ? 'PROCESSING...' : 'PROCEED TO YOUR STATION'}
+                  </button>
+                )}
+
+                {/* CA-1 test bypass */}
+                {isTestUser && !videoEnded && (
+                  <button
+                    onClick={handleProceed}
+                    className="absolute bottom-[8%] left-1/2 -translate-x-1/2 z-20 font-ibm-mono text-[10px] tracking-wider uppercase px-3 py-1 border rounded"
+                    style={{ borderColor: '#1a3d1a', color: '#5a8a6a', background: 'rgba(0, 20, 0, 0.5)' }}
+                  >
+                    SKIP (TEST)
+                  </button>
+                )}
 
                 {/* Manual play overlay */}
                 {needsManualPlay && (
@@ -362,37 +390,6 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
           )}
         </div>
 
-        {/* Controls below the monitor */}
-        <div className="flex flex-col items-center gap-3 mt-4">
-          {/* Proceed button — only after video ends */}
-          <div className="h-12 flex items-center">
-            {videoEnded && (
-              <button
-                onClick={handleProceed}
-                disabled={proceeding}
-                className="font-ibm-mono text-xs sm:text-sm tracking-[0.2em] uppercase px-8 py-3 border rounded transition-all active:scale-95"
-                style={{
-                  borderColor: '#00cc6a',
-                  color: proceeding ? '#5a8a6a' : '#00ff88',
-                  background: 'rgba(0, 40, 0, 0.4)',
-                }}
-              >
-                {proceeding ? 'PROCESSING...' : 'PROCEED TO YOUR STATION'}
-              </button>
-            )}
-          </div>
-
-          {/* CA-1 test bypass */}
-          {isTestUser && !videoEnded && (
-            <button
-              onClick={handleProceed}
-              className="font-ibm-mono text-[10px] tracking-wider uppercase px-3 py-1 border rounded"
-              style={{ borderColor: '#1a3d1a', color: '#5a8a6a' }}
-            >
-              SKIP (TEST)
-            </button>
-          )}
-        </div>
       </div>
     </div>
   );

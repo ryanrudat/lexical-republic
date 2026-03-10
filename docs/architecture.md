@@ -60,12 +60,19 @@ Deprecated: `Vocabulary`, `StudentVocabulary`
 - `DELETE /api/teacher/scores/:scoreId` — delete individual score
 - `DELETE /api/teacher/students/:pairId/weeks/:weekId/progress` — reset week progress (cascading delete)
 - `PATCH /api/teacher/students/:pairId/concern` — override pair concern score
+- `DELETE /api/teacher/students/:studentId` — cascade delete single student (Pair or User, 11+ related tables)
+- `DELETE /api/teacher/students` — bulk delete ALL students (iterates all pairs + legacy users)
+
+### Class routes (`backend/src/routes/classes.ts`)
+- `DELETE /api/classes/:classId` — cascade delete class (enrollments, week unlocks, harmony posts)
+- `DELETE /api/classes/:classId/students/:studentId` — remove student enrollment from class
 
 ### Dictionary routes (`backend/src/routes/dictionary.ts`)
 - `GET /api/dictionary` — full word list with `translationZhTw`, `starred`, `chineseRevealed`
 - `GET /api/dictionary/:wordId` — single word detail
 - `POST /api/dictionary/welcome-watched` — marks pair's welcome video as watched
-- `POST /api/dictionary/welcome-video` — teacher upload (multer, MP4/WebM/MOV)
-- `GET /api/dictionary/welcome-video` — serves uploaded welcome video
+- `POST /api/dictionary/welcome-video` — teacher upload (multer, MP4/WebM/MOV, 200MB limit)
+- `GET /api/dictionary/welcome-video` — serves uploaded welcome video (BEFORE auth middleware — `<video>` tags can't send auth headers)
+- `DELETE /api/dictionary/welcome-video` — teacher deletes welcome video
 - `PATCH /api/dictionary/:wordId/starred` — toggle starred
 - `PATCH /api/dictionary/:wordId/chinese-revealed` — set chineseRevealed=true (one-way)

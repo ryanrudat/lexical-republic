@@ -1,6 +1,6 @@
 # The Lexical Republic — Project Instructions
 
-Last updated: 2026-03-06
+Last updated: 2026-03-10
 
 ## Vision
 The Lexical Republic is a dystopian ESL learning game where Taiwanese Grade 10 students (A2-B1) learn English through 18 weekly "Shifts" inside an authoritarian language-control world.
@@ -47,8 +47,6 @@ Story and learning are coupled: grammar, listening, speaking, and writing tasks 
 - Full scripted dialogue pass for all character beats (especially Weeks 4-18).
 - Custom domain setup for student-friendly URLs (optional).
 - Expand dictionary seed data beyond Weeks 1-3 (currently 49 words, target ~120+ across 18 weeks).
-- ShiftClosing component — stats grid, clearance upgrade animation, narrative hook card, Harmony access button.
-- Concern delta tracking per task and PATCH at shift close.
 - Lane adjustment system — auto-promote/demote evaluation after each shift (deferred to Phase B).
 - Hybrid class model app changes — compact intake_form mode, `teacherLed` task gating flag, teacher "advance to Station Work" signal in dashboard.
 - Printable Ministry materials — Vocabulary Cards, Evidence Board memos, Priority Board case cards, Conversation Frame cards.

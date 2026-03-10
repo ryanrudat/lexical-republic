@@ -18,12 +18,13 @@ Config-driven task queue. Each week has 4 tasks driven by static `WeekConfig` Ty
 - Branching: `ClarityQueueApp.tsx` checks `weekConfig?.shiftType === 'queue'` before falling through to PhaseRunner
 - Stores: `shiftQueueStore` (task progress, concern delta), `messagingStore` (character messages, notifications)
 
-**Task types:** `intake_form`, `vocab_clearance`, `document_review`, `contradiction_report`, `shift_report`
+**Task types:** `intake_form`, `vocab_clearance`, `document_review`, `contradiction_report`, `shift_report`, `word_match`, `word_sort`, `priority_briefing`, `priority_sort`, `cloze_fill`
 
 **Shared components:**
-- `TargetWordHighlighter` — word status chips, DSEG7 counter, Porter Stemmer matching (inflected forms accepted)
+- `TargetWordHighlighter` — word status chips (emerald=used, neutral=unused), progress bar, Porter Stemmer matching (inflected forms accepted)
 - `WritingEvaluator` — 3-attempt system: full eval → relaxed threshold → auto-pass. Calls `POST /api/submissions/evaluate`
-- `TaskCard` — stamp animation wrapper (idle → completing → stamped)
+- `TaskCard` — stamp animation wrapper (idle → completing → stamped), light theme with emerald completion state
+- `LaneScaffolding` — lane-aware scaffolding (L1: sentence starters + word bank, L2: word list, L3: bonus question)
 
 **Writing evaluation:**
 - Frontend sends `content`, `phaseId`, `activityType`, with `grammarTarget`/`targetVocab`/`lane` in `metadata`
@@ -82,9 +83,16 @@ Step navigation gated by completion. All steps support optional video via `StepV
 
 ## Welcome Video Gate
 - One-time modal for pairs with `hasWatchedWelcome === false`
-- Teacher-uploadable video via `/api/dictionary/welcome-video`
-- Static fallback: "WELCOME TO THE MINISTRY" text, auto-proceeds after 5s
-- CA-1 test pair gets instant "SKIP (TEST)" button
+- **Retro CRT monitor frame**: Video plays inside a vintage monitor image (`public/images/welcome-monitor.jpg`), positioned with `clip-path: polygon()` tracing the exact glossy black screen shape
+- CRT visual effects: scanline overlay + radial glare gradient
+- Progress bar overlaid on the monitor's green LED strip position
+- Volume mute/unmute toggle inside the screen area
+- Autoplay rejection handling: "Begin Orientation" manual play button overlay
+- Teacher-uploadable video via `/api/dictionary/welcome-video` (multer, 200MB limit)
+- Teacher delete video via `DELETE /api/dictionary/welcome-video`
+- Video served via static `/uploads/welcome/welcome-video.mp4` (no auth needed for `<video>` tags)
+- Static fallback: green CRT "WELCOME TO THE MINISTRY" text inside screen, auto-proceeds after 5s
+- CA-1 test pair gets "SKIP (TEST)" button below monitor
 - Mounted in `App.tsx` after boot sequence, before routes
 
 ## Teacher Dashboard (`frontend/src/pages/TeacherDashboard.tsx`)
@@ -95,6 +103,9 @@ Step navigation gated by completion. All steps support optional video via `StepV
 - Grades: per-student drill-down, inline score editing, writing viewer, week reset, concern override (dual ShiftQueue/PhaseRunner support)
 - Dictionary: editable word table (inline edit → PATCH save)
 - Shifts: welcome video upload + Shift Storyboard
+- **ClassManager**: expandable students/weeks panels per class, delete class (cascade), remove individual students with confirmation dialogs
+- **ClassMonitor**: per-student delete button, bulk "Delete All Students" in header, both with destructive confirmation dialogs
+- **Student deletion cascade**: Pair → pairDictionaryProgress, missionScore, recording, pearlConversation, narrativeChoice, harmonyPost, harmonyCensureResponse, classEnrollment, characterMessage, citizen4488Interaction, shiftResult (11 related tables)
 
 ## OfficeView
 - PEARL 3D Sphere: R3F Canvas (`frontend/src/components/office/PearlSphere3D.tsx`)
@@ -113,8 +124,13 @@ Step navigation gated by completion. All steps support optional video via `StepV
 
 ## UI Design System — Dystopian Happy iOS
 - Design bible: `Dplan/UI_Design_System.md`
-- Frosted glass pills (`backdrop-blur`, `rounded-full`, semi-transparent gradients, soft shadows)
-- Color roles: Cyan = primary action, Mint = status/safe, Pink = exit/danger (subtle), White = text
+- **Shift queue uses "forced happy" light pastel aesthetic** — NOT dark CRT terminal:
+  - Cream backgrounds (#F5F1EB), white cards, sky-600 action accents, emerald success, rose errors, warm gray borders (#D4CFC6)
+  - TerminalAppFrame stays dark (device chrome), content area is cream/white (government app content)
+  - No ios-glass-card, no neon-* colors, no dseg7 font, no text-white/* in shift queue
+  - All 16 shift queue components rethemed: ShiftClosing, ShiftQueue, TaskCard, ClarityQueueApp, IntakeForm, ClozeFill, VocabClearance, WordMatch, DocumentCard, ErrorCorrectionDoc, ComprehensionDoc, DocumentReview, ShiftReport, PriorityBriefing, PrioritySort, ContradictionReport, WordSort, LaneScaffolding, TargetWordHighlighter, WritingEvaluator
+- Office/HUD: Frosted glass pills (`backdrop-blur`, `rounded-full`, semi-transparent gradients, soft shadows)
+- Color roles: Sky = primary action, Emerald = success/safe, Rose = error/danger, Amber = warning/narrative
 - All on-screen elements scale with monitor rect — no fixed pixel sizes
 - HUD elements use warm `retro-card` style, not frosted glass
 

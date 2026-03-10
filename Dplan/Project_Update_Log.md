@@ -1,6 +1,59 @@
 # Project Update Log
 
-Last updated: 2026-03-06
+Last updated: 2026-03-10
+
+## 2026-03-10 — Frontend Build Fix, Welcome Video System, Retro Monitor Frame
+
+### Critical Frontend Build Fix
+- **Root cause found**: `ClarityQueueApp.tsx` had a mismatched JSX tag — retheme changed `<>` to `<div className="...">` but left closing as `</>`. This TypeScript build error **silently blocked ALL Railway frontend deploys** since the retheme commit. Railway kept serving the old pre-retheme bundle.
+- **Impact**: All prior session fixes (video playback, delete button, full pastel retheme, autoplay handling) were invisible to users because the frontend never rebuilt.
+- **Fix**: Single line change — `</>` → `</div>` in ClarityQueueApp.tsx.
+
+### Welcome Video — Retro Monitor Frame
+- **Design**: Welcome video now plays inside a retro CRT monitor image (`public/images/welcome-monitor.jpg`).
+- **Technique**: `clip-path: polygon()` with 13 coordinate points traces the exact shape of the glossy black CRT screen opening. Video fills the full image area, polygon clips to screen shape.
+- **CRT effects**: Scanline overlay (repeating-linear-gradient, opacity 4%) + radial glare gradient for retro tube feel.
+- **Progress bar**: Overlaid on the monitor's green LED strip position — fills left-to-right as video plays with green glow.
+- **Volume toggle**: Mute/unmute button inside the screen area (bottom-right).
+- **Autoplay handling**: Detects browser autoplay rejection, shows "Begin Orientation" play button overlay.
+- **Fallback**: If no video uploaded, shows green CRT text "WELCOME TO THE MINISTRY" inside screen.
+- **Proceed button**: Only appears after video ends, below the monitor image.
+- **CA-1 test bypass**: "SKIP (TEST)" button below monitor for test user.
+- **Files**: `frontend/src/components/welcome/WelcomeVideoModal.tsx`, `frontend/public/images/welcome-monitor.jpg`
+
+### Welcome Video Backend Fixes (from prior session, now deployed)
+- `GET /api/dictionary/welcome-video` route moved BEFORE `router.use(authenticate)` — `<video>` tags can't send auth headers.
+- `DELETE /api/dictionary/welcome-video` endpoint added for teachers.
+- Upload path resolution fixed with `path.isAbsolute()` check for Railway's `/data/uploads`.
+- Frontend `resolveUploadUrl()` extended to handle `/api/` paths.
+- Video served via static `/uploads/welcome/welcome-video.mp4` path (express.static, no auth needed).
+- Teacher ShiftsTab: video existence check (HEAD), upload, delete button with status indicator.
+
+## 2026-03-09 — Full Shift Queue Retheme, Teacher Class/Student Management, WordMatch Fix
+
+### Shift Queue "Forced Happy" Retheme (16 components)
+- **Problem**: All shift queue task components used dark CRT terminal styling (ios-glass-card, neon-cyan/mint/pink colors, dseg7 font, text-white/* opacity) which contradicted the "forced happy" totalitarian government iOS aesthetic.
+- **Solution**: Systematic retheme of ALL 16 shift queue components to light pastel palette:
+  - Cream backgrounds (#F5F1EB, #FAFAF7), white cards, warm gray borders (#D4CFC6, #E8E4DC)
+  - Sky-600 primary actions, emerald success states, rose error states, amber warnings
+  - TerminalAppFrame stays dark (device chrome), content area is cream/white (government app content)
+- **Files rethemed**: ShiftClosing, ClarityQueueApp, ShiftQueue, TaskCard, IntakeForm, ClozeFill, VocabClearance, WordMatch, DocumentCard, ErrorCorrectionDoc, ComprehensionDoc, DocumentReview, ShiftReport, PriorityBriefing, PrioritySort, ContradictionReport, WordSort, LaneScaffolding, TargetWordHighlighter, WritingEvaluator
+- Removed all references to: `ios-glass-card`, `ios-glass-pill`, `ios-glass-pill-action`, `ios-glass-input`, `font-dseg7`, `text-neon-*`, `text-white/*`, `border-neon-*`, `bg-neon-*`, `text-terminal-*`, `ios-text-glow`
+- Removed "LANGUAGE LAB" location label from shift queue header
+
+### WordMatch Task Fix + Redesign
+- **Bug**: Matching interaction completely broken due to inverted ternary logic — `pair.definition === pairs.find(p => p.word === defWord)?.definition ? false : defWord === word` — correct matches returned false.
+- **Fix**: Simplified to `const isCorrect = selectedWord === defWord` with clean direct state management.
+- **Redesign**: Rewrote from scratch with light pastel theme, proper tap-to-match interaction, visual feedback for correct/wrong matches.
+
+### Teacher Class & Student Management
+- **Class deletion**: `DELETE /api/classes/:classId` — cascade deletes enrollments, week unlocks, harmony posts.
+- **Student removal from class**: `DELETE /api/classes/:classId/students/:studentId` — removes enrollment only.
+- **Permanent student deletion**: `DELETE /api/teacher/students/:studentId` — cascade deletes Pair record + 11 related tables (pairDictionaryProgress, missionScore, recording, pearlConversation, narrativeChoice, harmonyPost, harmonyCensureResponse, classEnrollment, characterMessage, citizen4488Interaction, shiftResult).
+- **Bulk student deletion**: `DELETE /api/teacher/students` — iterates all pairs + legacy users for full wipe.
+- **ClassManager.tsx**: Full rewrite — expandable Students panel per class (individual Remove buttons), expandable Weeks panel, Delete class button with red confirmation dialog.
+- **ClassMonitor.tsx**: Added per-student "Delete" link + "Delete All" button in header, both with destructive confirmation dialogs.
+- **Key insight**: Class deletion only removes ClassEnrollment (the link), NOT User/Pair account records. Separate student deletion endpoints were needed for permanent removal.
 
 ## 2026-03-06 — Harmony UI Redesign, PEARL Guardrails Hardening, Data Fixes, Hybrid Class Design
 
@@ -126,7 +179,7 @@ Last updated: 2026-03-06
   - `/Users/ryanrudat/Desktop/Lexical Republic/Dplan/Semester_Outcomes_Framework.md`
 
 ## Next Confirmed Step
-- Write/lock the next script set using:
-  1. `World_Canon.md`
-  2. `Script_Writing_Style_Guide.md`
-  3. weekly known/new vocabulary list
+- Write Weeks 4-6 full script packs using fixed media timeline
+- Define per-week vocabulary ladders (known vs new words) for all 18 shifts
+- Hybrid class model app changes (compact intake_form, teacherLed gating, teacher "advance" signal)
+- Printable Ministry materials (Vocabulary Cards, Evidence Board memos, etc.)
