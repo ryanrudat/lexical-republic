@@ -160,7 +160,7 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
                 <video
                   ref={videoRef}
                   src={videoUrl}
-                  className="w-full h-full object-contain bg-black"
+                  className="w-full h-full object-cover bg-black"
                   playsInline
                   onTimeUpdate={handleTimeUpdate}
                   onEnded={() => setVideoEnded(true)}
