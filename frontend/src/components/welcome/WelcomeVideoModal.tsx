@@ -190,7 +190,7 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
                 <video
                   ref={videoRef}
                   src={videoUrl}
-                  className="w-full h-full object-cover bg-black cursor-pointer"
+                  className="w-full h-full object-contain bg-black cursor-pointer"
                   playsInline
                   onClick={togglePlayPause}
                   onTimeUpdate={handleTimeUpdate}
@@ -216,30 +216,6 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
                       'radial-gradient(ellipse 80% 60% at 35% 30%, rgba(255,255,255,0.06) 0%, transparent 70%)',
                   }}
                 />
-
-                {/* Volume toggle */}
-                {!needsManualPlay && (
-                  <button
-                    onClick={toggleMute}
-                    className="absolute bottom-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-opacity hover:opacity-100 opacity-60"
-                    style={{ background: 'rgba(0, 0, 0, 0.5)' }}
-                    title={muted ? 'Unmute' : 'Mute'}
-                  >
-                    {muted ? (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00ff88" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                        <line x1="23" y1="9" x2="17" y2="15" />
-                        <line x1="17" y1="9" x2="23" y2="15" />
-                      </svg>
-                    ) : (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00ff88" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                      </svg>
-                    )}
-                  </button>
-                )}
 
                 {/* Manual play overlay */}
                 {needsManualPlay && (
@@ -341,6 +317,40 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
                 )}
               </button>
             </div>
+          )}
+
+          {/* Volume knob — vintage brass style, positioned on the bezel near rightmost knob */}
+          {!videoError && (
+            <button
+              onClick={toggleMute}
+              className="absolute flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+              style={{
+                top: '82%',
+                right: '26%',
+                width: '3%',
+                height: '5.4%',
+                borderRadius: '50%',
+                background: 'radial-gradient(ellipse at 40% 35%, #d4c4a0 0%, #a89060 40%, #7a6840 80%, #5a4e30 100%)',
+                boxShadow: muted
+                  ? 'inset 0 1px 2px rgba(255,255,255,0.3), 0 2px 4px rgba(0,0,0,0.5)'
+                  : 'inset 0 1px 2px rgba(255,255,255,0.3), 0 2px 4px rgba(0,0,0,0.5), 0 0 8px rgba(0,255,136,0.3)',
+                border: '1px solid #5a4e30',
+              }}
+              title={muted ? 'Unmute' : 'Mute'}
+            >
+              {muted ? (
+                <svg width="45%" height="45%" viewBox="0 0 24 24" fill="none" stroke="#3a3520" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                  <line x1="23" y1="9" x2="17" y2="15" />
+                  <line x1="17" y1="9" x2="23" y2="15" />
+                </svg>
+              ) : (
+                <svg width="45%" height="45%" viewBox="0 0 24 24" fill="none" stroke="#3a3520" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                </svg>
+              )}
+            </button>
           )}
         </div>
 
