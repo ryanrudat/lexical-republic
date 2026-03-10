@@ -91,10 +91,10 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
   };
 
   // Monitor screen area as percentage of the image (2744x1568)
-  // Positioned precisely inside the inner glass of the CRT bezel
-  const screen = { top: 14, left: 25, width: 50, height: 44 };
+  // Covers the full dark glass area of the CRT — clipped by border-radius to match bezel
+  const screen = { top: 8, left: 21, width: 58, height: 55 };
   // Green LED bar position on the monitor
-  const ledBar = { top: 71, left: 25, width: 50 };
+  const ledBar = { top: 71, left: 21, width: 58 };
 
   return (
     <div className="fixed inset-0 z-[70] flex flex-col items-center justify-center bg-[#0c0c0c]">
@@ -117,8 +117,8 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
               left: `${screen.left}%`,
               width: `${screen.width}%`,
               height: `${screen.height}%`,
-              // Top corners: gentle curve. Bottom corners: aggressive curve matching CRT bezel
-              borderRadius: '5% 5% 18% 18% / 4% 4% 22% 22%',
+              // Matches CRT screen shape: gentle top corners, heavily curved bottom
+              borderRadius: '3% 3% 28% 28% / 2% 2% 38% 38%',
             }}
           >
             {videoError ? (
