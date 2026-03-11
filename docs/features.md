@@ -4,8 +4,8 @@
 - Login and boot sequence are live.
 - Terminal view is the primary learning interface.
 - Active terminal apps in guided mode: `clarity-queue`, `harmony`, `my-file`
-- `duty-roster` hidden in guided mode; visible in free-roam mode.
-- Harmony locked until Shift 3.
+- `duty-roster` hidden in guided mode; visible in free-roam mode. Shows instruction text ("Choose an unlocked shift to start. Complete each shift in order to unlock the next one.").
+- Harmony locked until Shift 1 is completed (checks `ShiftResult` record, not `currentWeekNumber`).
 - Terminal header `HOME` button returns to terminal desktop and navigates to `/`.
 - Terminal desktop tiles (in order): Office, Lexicon, Current Shift, Duty Roster, Harmony, My File.
 - Students are guided (not free-roam) in the current phase.
@@ -20,10 +20,16 @@ Config-driven task queue. Each week has 4 tasks driven by static `WeekConfig` Ty
 
 **Task types:** `intake_form`, `vocab_clearance`, `document_review`, `contradiction_report`, `shift_report`, `word_match`, `word_sort`, `priority_briefing`, `priority_sort`, `cloze_fill`
 
+**IntakeForm card types:** `personal_info`, `briefing`, `intake_questions`, `status_review`, `writing`, `acknowledgment`
+- `briefing` card: read-only orientation memo with paragraphs + "I have read this document" button. Provides input before comprehension questions (correct SLA sequencing).
+
+**VocabClearance:** Answer word no longer displayed at top of each question — students must select from options without seeing the correct answer.
+
 **Option randomization:** All quiz/match tasks shuffle options on mount using Fisher-Yates:
 - `WordMatch`: Both word and definition columns independently shuffled
 - `VocabClearance`: Item order + option order within each item shuffled, `correctIndex` remapped
 - `ErrorCorrectionDoc`: Dropdown options shuffled per error, `correctIndex` remapped
+- `ClozeFill`: Word bank shuffled via `useMemo` so correct answers don't appear in blank order
 
 **Touch support:** All interactive elements have `active:` Tailwind states for touchscreen Chromebooks (active:scale-95, active:bg-*, etc.)
 
