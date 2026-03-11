@@ -543,7 +543,25 @@ function CensureCard({ item }: { item: CensureItem }) {
   const [showOverlay, setShowOverlay] = useState(false);
 
   const data = item.censureData;
+
+  // Shuffle options once per item (Fisher-Yates), stored in ref for stability
+  const shuffleRef = useRef<{ options: string[]; mapping: number[] } | null>(null);
+  if (!shuffleRef.current && data) {
+    const indices = data.options.map((_, i) => i);
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+    shuffleRef.current = {
+      options: indices.map(i => data.options[i]),
+      mapping: indices, // mapping[displayIdx] = originalIdx
+    };
+  }
+
   if (!data) return null;
+
+  const shuffledOptions = shuffleRef.current!.options;
+  const indexMapping = shuffleRef.current!.mapping;
 
   const typeLabel =
     item.postType === 'censure_grammar' ? 'GRAMMAR CHECK'
@@ -558,7 +576,9 @@ function CensureCard({ item }: { item: CensureItem }) {
   const handleSubmit = async () => {
     if (selectedIdx === null || submitting) return;
     setSubmitting(true);
-    const res = await respondToCensure(item.id, item.postType, selectedIdx);
+    // Map shuffled display index back to original index for backend validation
+    const originalIdx = indexMapping[selectedIdx];
+    const res = await respondToCensure(item.id, item.postType, originalIdx);
     if (res) {
       setResult(res);
       setShowOverlay(true);
@@ -626,27 +646,25 @@ function CensureCard({ item }: { item: CensureItem }) {
           )}
         </p>
         <div className="grid grid-cols-2 gap-1.5">
-          {data.options.map((opt, idx) => {
-            const isCorrectOption = idx === data.correctIndex;
-            const isSelected = selectedIdx === idx;
+          {shuffledOptions.map((opt, displayIdx) => {
+            const originalIdx = indexMapping[displayIdx];
+            const isCorrectOption = originalIdx === data.correctIndex;
+            const isSelected = selectedIdx === displayIdx;
 
             // After review: show correct/incorrect markings
             if (isReviewed) {
               const wasRight = result?.isCorrect || item.wasCorrect;
               let optionStyle: string;
               if (isCorrectOption) {
-                // Always highlight the correct answer in green
                 optionStyle = 'border-green-500/40 bg-green-500/10 text-green-400';
               } else if (isSelected && !wasRight) {
-                // Student's wrong pick in red
                 optionStyle = 'border-neon-pink/40 bg-neon-pink/10 text-neon-pink';
               } else {
-                // Other options dimmed
                 optionStyle = 'border-white/[0.04] bg-white/[0.01] text-white/25';
               }
               return (
                 <div
-                  key={idx}
+                  key={displayIdx}
                   className={`text-left px-3 py-2 rounded-lg text-[12px] border ${optionStyle} flex items-center gap-1.5`}
                 >
                   {isCorrectOption && (
@@ -667,8 +685,8 @@ function CensureCard({ item }: { item: CensureItem }) {
             // Before review: interactive buttons
             return (
               <button
-                key={idx}
-                onClick={() => setSelectedIdx(idx)}
+                key={displayIdx}
+                onClick={() => setSelectedIdx(displayIdx)}
                 className={`text-left px-3 py-2 rounded-lg text-[12px] border transition-all active:scale-[0.98] ${
                   isSelected
                     ? 'border-neon-cyan/40 bg-neon-cyan/10 text-neon-cyan'
