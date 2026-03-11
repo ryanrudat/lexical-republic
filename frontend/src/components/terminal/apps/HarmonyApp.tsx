@@ -570,34 +570,76 @@ function CensureCard({ item }: { item: CensureItem }) {
       </div>
 
       {/* Question / options */}
-      {!isReviewed && (
-        <div className="px-4 pb-3 space-y-2">
-          <p className="text-[11px] text-white/40 tracking-wider uppercase">
-            {item.postType === 'censure_grammar' && (
-              <>Find the correct form of "<span className="text-neon-pink font-medium normal-case">{data.errorWord}</span>":</>
-            )}
-            {item.postType === 'censure_vocab' && (
-              <>What does "<span className="text-neon-cyan font-medium normal-case">{data.errorWord}</span>" actually mean?</>
-            )}
-            {item.postType === 'censure_replace' && (
-              <>Replace "<span className="text-terminal-amber font-medium normal-case">{data.blankWord || '...'}</span>" with the correct word:</>
-            )}
-          </p>
-          <div className="grid grid-cols-2 gap-1.5">
-            {data.options.map((opt, idx) => (
+      <div className="px-4 pb-3 space-y-2">
+        <p className="text-[11px] text-white/40 tracking-wider uppercase">
+          {item.postType === 'censure_grammar' && (
+            <>Find the correct form of "<span className="text-neon-pink font-medium normal-case">{data.errorWord}</span>":</>
+          )}
+          {item.postType === 'censure_vocab' && (
+            <>What does "<span className="text-neon-cyan font-medium normal-case">{data.errorWord}</span>" actually mean?</>
+          )}
+          {item.postType === 'censure_replace' && (
+            <>Replace "<span className="text-terminal-amber font-medium normal-case">{data.blankWord || '...'}</span>" with the correct word:</>
+          )}
+        </p>
+        <div className="grid grid-cols-2 gap-1.5">
+          {data.options.map((opt, idx) => {
+            const isCorrectOption = idx === data.correctIndex;
+            const isSelected = selectedIdx === idx;
+
+            // After review: show correct/incorrect markings
+            if (isReviewed) {
+              const wasRight = result?.isCorrect || item.wasCorrect;
+              let optionStyle: string;
+              if (isCorrectOption) {
+                // Always highlight the correct answer in green
+                optionStyle = 'border-green-500/40 bg-green-500/10 text-green-400';
+              } else if (isSelected && !wasRight) {
+                // Student's wrong pick in red
+                optionStyle = 'border-neon-pink/40 bg-neon-pink/10 text-neon-pink';
+              } else {
+                // Other options dimmed
+                optionStyle = 'border-white/[0.04] bg-white/[0.01] text-white/25';
+              }
+              return (
+                <div
+                  key={idx}
+                  className={`text-left px-3 py-2 rounded-lg text-[12px] border ${optionStyle} flex items-center gap-1.5`}
+                >
+                  {isCorrectOption && (
+                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                    </svg>
+                  )}
+                  {isSelected && !wasRight && !isCorrectOption && (
+                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                    </svg>
+                  )}
+                  {opt}
+                </div>
+              );
+            }
+
+            // Before review: interactive buttons
+            return (
               <button
                 key={idx}
                 onClick={() => setSelectedIdx(idx)}
-                className={`text-left px-3 py-2 rounded-lg text-[12px] border transition-all ${
-                  selectedIdx === idx
+                className={`text-left px-3 py-2 rounded-lg text-[12px] border transition-all active:scale-[0.98] ${
+                  isSelected
                     ? 'border-neon-cyan/40 bg-neon-cyan/10 text-neon-cyan'
                     : 'border-white/[0.08] bg-white/[0.02] text-white/60 hover:border-white/20'
                 }`}
               >
                 {opt}
               </button>
-            ))}
-          </div>
+            );
+          })}
+        </div>
+
+        {/* Submit button — only before review */}
+        {!isReviewed && (
           <button
             onClick={handleSubmit}
             disabled={selectedIdx === null || submitting}
@@ -605,22 +647,18 @@ function CensureCard({ item }: { item: CensureItem }) {
           >
             {submitting ? 'CHECKING...' : 'SUBMIT REVIEW'}
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Result feedback */}
-      {isReviewed && (result || item.wasCorrect !== null) && (
+      {/* Explanation — only after review */}
+      {isReviewed && (
         <div className="px-4 pb-3">
           <div className={`rounded-lg px-3 py-2 border ${
             result?.isCorrect || item.wasCorrect
               ? 'border-green-500/15 bg-green-500/[0.05]'
               : 'border-neon-pink/15 bg-neon-pink/[0.05]'
           }`}>
-            <p className="text-[11px] text-white/50">
-              <span className="font-medium text-white/70">Correction: </span>
-              {result?.correction || data.correction}
-            </p>
-            <p className="text-[11px] text-white/40 mt-0.5">
+            <p className="text-[11px] text-white/60">
               {result?.explanation || data.explanation}
             </p>
           </div>
