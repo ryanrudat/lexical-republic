@@ -139,11 +139,11 @@ export async function generateHarmonyPosts(
   weekNumber: number,
   classId: string,
 ): Promise<void> {
-  // Check if posts already exist for this week + class
+  // Check if posts already exist for this week + class (seed or generated)
   const existing = await prisma.harmonyPost.count({
-    where: { weekNumber, classId, isGenerated: true },
+    where: { weekNumber, classId },
   });
-  if (existing >= 5) return; // Already generated
+  if (existing >= 5) return; // Already populated
 
   const openai = getOpenAI();
   let posts: GeneratedPost[];
@@ -293,8 +293,7 @@ export async function ensureHarmonyPostsExist(
   currentWeekNumber: number,
   classId: string,
 ): Promise<void> {
-  // Generate posts for weeks 2 through current (Week 1 is locked)
-  for (let w = 2; w <= currentWeekNumber; w++) {
+  for (let w = 1; w <= currentWeekNumber; w++) {
     await generateHarmonyPosts(w, classId);
   }
 }

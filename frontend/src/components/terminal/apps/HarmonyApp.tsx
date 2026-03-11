@@ -217,16 +217,6 @@ function PostCard({
             </div>
           )}
 
-          {/* 4488 warning */}
-          {is4488 && post.status !== 'flagged' && (
-            <div className="mt-2 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-terminal-amber/50 animate-pulse" />
-              <span className="text-[9px] text-terminal-amber/50 tracking-[0.15em] uppercase">
-                Community Post — Review for Compliance
-              </span>
-            </div>
-          )}
-
           {/* Footer */}
           <div className="mt-2 flex items-center gap-4">
             <button
@@ -553,6 +543,52 @@ function CensureQueue() {
   );
 }
 
+/* ─── Onboarding Briefing ──────────────────────────────────────── */
+
+const HARMONY_BRIEFING_KEY = 'harmony_briefing_dismissed';
+
+function HarmonyOnboarding({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <div className="mx-4 mt-3 rounded-xl border border-neon-cyan/15 bg-neon-cyan/[0.04] overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-neon-cyan/10">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-medium tracking-[0.15em] uppercase text-neon-cyan/70">
+            Ministry Orientation — Harmony Protocol
+          </span>
+          <button
+            onClick={onDismiss}
+            className="text-[9px] text-white/25 hover:text-white/50 transition-colors tracking-wider"
+          >
+            DISMISS
+          </button>
+        </div>
+      </div>
+      <div className="px-4 py-3 space-y-2.5">
+        <p className="text-[12px] text-white/70 leading-relaxed">
+          Welcome to <span className="text-neon-cyan font-medium">Harmony</span>, the Ministry-monitored community network. As a Clarity Associate, you have two duties here:
+        </p>
+        <div className="space-y-1.5 pl-2 border-l border-neon-cyan/15">
+          <div>
+            <span className="text-[11px] text-neon-cyan/80 font-medium">Feed</span>
+            <p className="text-[11px] text-white/50 leading-relaxed">
+              Read citizen posts and practice your target vocabulary. You may write your own posts for Ministry review. Words from your current shift are highlighted.
+            </p>
+          </div>
+          <div>
+            <span className="text-[11px] text-terminal-amber/80 font-medium">Censure Queue</span>
+            <p className="text-[11px] text-white/50 leading-relaxed">
+              Review flagged citizen posts for language errors — grammar mistakes, vocabulary misuse, and incorrect word choices. Select the correct answer to clear each item.
+            </p>
+          </div>
+        </div>
+        <p className="text-[10px] text-white/30 italic">
+          P.E.A.R.L. monitors all community activity. Proceed with clarity.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Locked State ──────────────────────────────────────────────── */
 
 function HarmonyLocked({ message }: { message: string | null }) {
@@ -594,6 +630,15 @@ export default function HarmonyApp() {
     censurePost: _censurePost,
   } = useHarmonyStore();
 
+  const [showOnboarding, setShowOnboarding] = useState(
+    () => !localStorage.getItem(HARMONY_BRIEFING_KEY),
+  );
+
+  const dismissOnboarding = useCallback(() => {
+    localStorage.setItem(HARMONY_BRIEFING_KEY, '1');
+    setShowOnboarding(false);
+  }, []);
+
   useEffect(() => {
     void loadPosts();
   }, [loadPosts]);
@@ -626,6 +671,9 @@ export default function HarmonyApp() {
     <div className="flex flex-col h-full">
       {/* Header */}
       <HarmonyHeader currentWeekNumber={currentWeekNumber} />
+
+      {/* First-time onboarding */}
+      {showOnboarding && <HarmonyOnboarding onDismiss={dismissOnboarding} />}
 
       {/* Tabs */}
       <div className="flex border-b border-white/[0.06]">
