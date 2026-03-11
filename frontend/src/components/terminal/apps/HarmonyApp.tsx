@@ -432,6 +432,68 @@ function ThreadView({
   );
 }
 
+/* ─── Censure Content with Error Highlight ─────────────────────── */
+
+function CensureContentHighlight({
+  content,
+  errorWord,
+  postType,
+}: {
+  content: string;
+  errorWord: string;
+  postType: string;
+}) {
+  if (!errorWord) {
+    return <p className="text-[13px] text-white/75 leading-relaxed">{content}</p>;
+  }
+
+  // For replace items, look for [word] brackets
+  if (postType === 'censure_replace') {
+    const bracketPattern = new RegExp(`\\[${errorWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]`, 'i');
+    const match = content.match(bracketPattern);
+    if (match) {
+      const idx = content.indexOf(match[0]);
+      return (
+        <p className="text-[13px] text-white/75 leading-relaxed">
+          {content.slice(0, idx)}
+          <span className="px-1.5 py-0.5 rounded bg-terminal-amber/15 text-terminal-amber font-medium border border-terminal-amber/25">
+            {match[0]}
+          </span>
+          {content.slice(idx + match[0].length)}
+        </p>
+      );
+    }
+  }
+
+  // For grammar/vocab, highlight the error word in the sentence
+  const escapedWord = errorWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const wordPattern = new RegExp(`(\\b${escapedWord}\\b)`, 'i');
+  const parts = content.split(wordPattern);
+
+  if (parts.length === 1) {
+    // Word not found as whole word — show content as-is
+    return <p className="text-[13px] text-white/75 leading-relaxed">{content}</p>;
+  }
+
+  const highlightColor = postType === 'censure_grammar'
+    ? 'bg-neon-pink/15 text-neon-pink border-neon-pink/25'
+    : 'bg-neon-cyan/15 text-neon-cyan border-neon-cyan/25';
+
+  return (
+    <p className="text-[13px] text-white/75 leading-relaxed">
+      {parts.map((part, i) =>
+        wordPattern.test(part) ? (
+          <span key={i} className={`px-1 py-0.5 rounded font-medium border ${highlightColor}`}>
+            {part}
+          </span>
+        ) : (
+          <span key={i}>{part}</span>
+        ),
+      )}
+    </p>
+  );
+}
+
 /* ─── Censure Queue Item ────────────────────────────────────────── */
 
 function CensureCard({ item }: { item: CensureItem }) {
@@ -490,7 +552,7 @@ function CensureCard({ item }: { item: CensureItem }) {
         )}
       </div>
 
-      {/* Post content */}
+      {/* Post content — highlight the error word */}
       <div className="px-4 py-3">
         <div className="flex items-center gap-2 mb-1.5">
           <div className="w-6 h-6 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center">
@@ -500,16 +562,26 @@ function CensureCard({ item }: { item: CensureItem }) {
           </div>
           <span className="text-[12px] text-white/60">{item.designation}</span>
         </div>
-        <p className="text-[13px] text-white/75 leading-relaxed">{item.content}</p>
+        <CensureContentHighlight
+          content={item.content}
+          errorWord={data.errorWord || data.blankWord || ''}
+          postType={item.postType}
+        />
       </div>
 
       {/* Question / options */}
       {!isReviewed && (
         <div className="px-4 pb-3 space-y-2">
           <p className="text-[11px] text-white/40 tracking-wider uppercase">
-            {item.postType === 'censure_grammar' && 'Identify the correct form:'}
-            {item.postType === 'censure_vocab' && 'What does this word actually mean?'}
-            {item.postType === 'censure_replace' && 'Select the correct word:'}
+            {item.postType === 'censure_grammar' && (
+              <>Find the correct form of "<span className="text-neon-pink font-medium normal-case">{data.errorWord}</span>":</>
+            )}
+            {item.postType === 'censure_vocab' && (
+              <>What does "<span className="text-neon-cyan font-medium normal-case">{data.errorWord}</span>" actually mean?</>
+            )}
+            {item.postType === 'censure_replace' && (
+              <>Replace "<span className="text-terminal-amber font-medium normal-case">{data.blankWord || '...'}</span>" with the correct word:</>
+            )}
           </p>
           <div className="grid grid-cols-2 gap-1.5">
             {data.options.map((opt, idx) => (
