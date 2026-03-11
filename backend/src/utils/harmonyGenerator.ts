@@ -353,6 +353,278 @@ const STATIC_CENSURE_ITEMS: Record<number, GeneratedPost[]> = {
       },
     },
   ],
+
+  // ═══ Week 2: past-simple-vs-present ═══════════════════════════════
+  2: [
+    // ── Grammar: past-simple-vs-present errors ──────────────────────
+    {
+      authorLabel: 'Citizen-2780',
+      content: 'Yesterday the supervisor notice a mistake in my report. She asked me to fix it immediately.',
+      postType: 'censure_grammar',
+      pearlNote: null,
+      censureData: {
+        errorType: 'grammar',
+        errorWord: 'notice',
+        correction: 'noticed',
+        explanation: '"Yesterday" signals past tense. The verb must be "noticed" (past simple), not "notice" (present).',
+        options: ['noticed', 'notice', 'notices', 'noticing'],
+        correctIndex: 0,
+      },
+    },
+    {
+      authorLabel: 'CA-27',
+      content: 'Last week the Ministry remove three citizens from our department. We were not informed why.',
+      postType: 'censure_grammar',
+      pearlNote: null,
+      censureData: {
+        errorType: 'grammar',
+        errorWord: 'remove',
+        correction: 'removed',
+        explanation: '"Last week" requires past simple. The correct form is "removed", not "remove".',
+        options: ['removed', 'remove', 'removes', 'removing'],
+        correctIndex: 0,
+      },
+    },
+    {
+      authorLabel: 'WA-19',
+      content: 'I update all the records this morning before my break. Everything is now in order.',
+      postType: 'censure_grammar',
+      pearlNote: null,
+      censureData: {
+        errorType: 'grammar',
+        errorWord: 'update',
+        correction: 'updated',
+        explanation: '"This morning" (completed action) requires past simple: "updated", not "update".',
+        options: ['updated', 'update', 'updates', 'updating'],
+        correctIndex: 0,
+      },
+    },
+
+    // ── Vocab: target word misuse ───────────────────────────────────
+    {
+      authorLabel: 'Citizen-3344',
+      content: 'Please compare this box to the storage room. It is too heavy for one person.',
+      postType: 'censure_vocab',
+      pearlNote: null,
+      censureData: {
+        errorType: 'vocab',
+        errorWord: 'compare',
+        correction: '"Compare" means to examine differences between two things, not to move or carry.',
+        explanation: 'The word "compare" is used incorrectly. It means to look at similarities and differences.',
+        options: [
+          'To examine differences or similarities between two things',
+          'To carry or move something to a new place',
+          'To open or unlock a container',
+          'To break something into pieces',
+        ],
+        correctIndex: 0,
+      },
+    },
+    {
+      authorLabel: 'Citizen-4510',
+      content: 'I will require my lunch at 12:30 today. The cafeteria has a new menu this week.',
+      postType: 'censure_vocab',
+      pearlNote: null,
+      censureData: {
+        errorType: 'vocab',
+        errorWord: 'require',
+        correction: '"Require" means to need something or make it necessary, not to eat or have a meal.',
+        explanation: 'The word "require" is used incorrectly. It means to need or demand, not to consume.',
+        options: [
+          'To need something or make it necessary',
+          'To eat or have a meal',
+          'To cook or prepare food',
+          'To order or purchase something',
+        ],
+        correctIndex: 0,
+      },
+    },
+    {
+      authorLabel: 'Citizen-5890',
+      content: 'She informed the entire room with beautiful flowers. It looked wonderful for the ceremony.',
+      postType: 'censure_vocab',
+      pearlNote: null,
+      censureData: {
+        errorType: 'vocab',
+        errorWord: 'informed',
+        correction: '"Inform" means to tell someone about something, not to decorate.',
+        explanation: 'The word "inform" is used incorrectly. It means to give information, not to decorate a space.',
+        options: [
+          'To tell someone about something or give information',
+          'To decorate or fill a space with items',
+          'To clean or tidy a room',
+          'To paint or color a surface',
+        ],
+        correctIndex: 0,
+      },
+    },
+
+    // ── Replace: fill in the blank ──────────────────────────────────
+    {
+      authorLabel: 'Citizen-6200',
+      content: 'The old machine was broken, so we had to [put in] a new one. The technician finished by noon.',
+      postType: 'censure_replace',
+      pearlNote: null,
+      censureData: {
+        errorType: 'replace',
+        blankWord: 'put in',
+        correction: 'replace',
+        explanation: '"Replace" means to put something new in the place of something old — more precise than "put in".',
+        options: ['replace', 'notice', 'include', 'inform'],
+        correctIndex: 0,
+      },
+    },
+    {
+      authorLabel: 'Citizen-7310',
+      content: 'Citizens must [ask for] permission before leaving the building. This is a strict rule.',
+      postType: 'censure_replace',
+      pearlNote: null,
+      censureData: {
+        errorType: 'replace',
+        blankWord: 'ask for',
+        correction: 'request',
+        explanation: '"Request" means to formally ask for something — more appropriate in official contexts than "ask for".',
+        options: ['request', 'change', 'remove', 'update'],
+        correctIndex: 0,
+      },
+    },
+  ],
+
+  // ═══ Week 3: modals ═══════════════════════════════════════════════
+  3: [
+    // ── Grammar: modal errors ───────────────────────────────────────
+    {
+      authorLabel: 'Citizen-3820',
+      content: 'Citizens should maintains a clean workspace at all times. The Ministry expects order.',
+      postType: 'censure_grammar',
+      pearlNote: null,
+      censureData: {
+        errorType: 'grammar',
+        errorWord: 'maintains',
+        correction: 'maintain',
+        explanation: 'After a modal verb like "should", use the base form: "should maintain", not "should maintains".',
+        options: ['maintain', 'maintains', 'maintained', 'maintaining'],
+        correctIndex: 0,
+      },
+    },
+    {
+      authorLabel: 'WA-42',
+      content: 'You must to complete all forms before your shift ends. There are no exceptions.',
+      postType: 'censure_grammar',
+      pearlNote: null,
+      censureData: {
+        errorType: 'grammar',
+        errorWord: 'to complete',
+        correction: 'complete',
+        explanation: '"Must" is followed directly by the base verb: "must complete", not "must to complete".',
+        options: ['complete', 'to complete', 'completing', 'completed'],
+        correctIndex: 0,
+      },
+    },
+    {
+      authorLabel: 'CA-38',
+      content: 'We can identifies errors faster with the new system. It was installed last week.',
+      postType: 'censure_grammar',
+      pearlNote: null,
+      censureData: {
+        errorType: 'grammar',
+        errorWord: 'identifies',
+        correction: 'identify',
+        explanation: 'After "can", use the base form of the verb: "can identify", not "can identifies".',
+        options: ['identify', 'identifies', 'identified', 'identifying'],
+        correctIndex: 0,
+      },
+    },
+
+    // ── Vocab: target word misuse ───────────────────────────────────
+    {
+      authorLabel: 'Citizen-4920',
+      content: 'I will delay my co-worker to the supervisor for her excellent work. She deserves recognition.',
+      postType: 'censure_vocab',
+      pearlNote: null,
+      censureData: {
+        errorType: 'vocab',
+        errorWord: 'delay',
+        correction: '"Delay" means to make something happen later than planned, not to recommend someone.',
+        explanation: 'The word "delay" is used incorrectly. It means to postpone, not to recommend or praise.',
+        options: [
+          'To make something happen later than planned',
+          'To recommend or introduce someone',
+          'To praise or congratulate someone',
+          'To replace someone in a role',
+        ],
+        correctIndex: 0,
+      },
+    },
+    {
+      authorLabel: 'Citizen-5630',
+      content: 'Please separate the meeting to 3 PM. We need more time to prepare the documents.',
+      postType: 'censure_vocab',
+      pearlNote: null,
+      censureData: {
+        errorType: 'vocab',
+        errorWord: 'separate',
+        correction: '"Separate" means to divide or keep things apart, not to move an event to a different time.',
+        explanation: 'The word "separate" is used incorrectly. It means to divide, not to reschedule.',
+        options: [
+          'To divide or keep things apart from each other',
+          'To move an event to a different time',
+          'To cancel or end something',
+          'To begin or start something new',
+        ],
+        correctIndex: 0,
+      },
+    },
+    {
+      authorLabel: 'Citizen-6740',
+      content: 'He forwarded the broken chair by adding glue and new screws. It looks good now.',
+      postType: 'censure_vocab',
+      pearlNote: null,
+      censureData: {
+        errorType: 'vocab',
+        errorWord: 'forwarded',
+        correction: '"Forward" means to send something on to another person or place, not to repair.',
+        explanation: 'The word "forward" is used incorrectly. It means to send onward, not to fix or repair.',
+        options: [
+          'To send something on to another person or destination',
+          'To fix or repair something that is broken',
+          'To build or construct something new',
+          'To destroy or take apart something',
+        ],
+        correctIndex: 0,
+      },
+    },
+
+    // ── Replace: fill in the blank ──────────────────────────────────
+    {
+      authorLabel: 'Citizen-7850',
+      content: 'All associates must [answer] to messages from the Ministry within 24 hours. Silence is not acceptable.',
+      postType: 'censure_replace',
+      pearlNote: null,
+      censureData: {
+        errorType: 'replace',
+        blankWord: 'answer',
+        correction: 'respond',
+        explanation: '"Respond" means to reply or react to something formally — more precise than "answer" in official contexts.',
+        options: ['respond', 'forward', 'delay', 'separate'],
+        correctIndex: 0,
+      },
+    },
+    {
+      authorLabel: 'Citizen-8440',
+      content: 'The team should [look over] each document before sending it to the Ministry. Errors must not pass.',
+      postType: 'censure_replace',
+      pearlNote: null,
+      censureData: {
+        errorType: 'replace',
+        blankWord: 'look over',
+        correction: 'review',
+        explanation: '"Review" means to examine something carefully and formally — more precise than "look over".',
+        options: ['review', 'process', 'schedule', 'complete'],
+        correctIndex: 0,
+      },
+    },
+  ],
 };
 
 /**
@@ -390,12 +662,22 @@ function buildFallbackPosts(weekNumber: number): GeneratedPost[] {
     });
   }
 
-  // Citizen-4488 post
+  // Citizen-4488 post — escalating unease across weeks
+  const citizen4488Posts: Record<number, string> = {
+    1: `My neighbor used to ${w[0] ?? 'arrive'} at the center every Tuesday. Last week her desk was empty. I should not worry. The Ministry always ${w[2] ?? 'check'}s these things. Everything is fine.`,
+    2: `I ${w[0] ?? 'notice'}d something strange today. The list of names on the board ${w[5] ?? 'change'}d overnight. Three citizens I used to ${w[4] ?? 'request'} help from are gone. I ${w[9] ?? 'inform'}ed no one. It is probably nothing. Everything is fine.`,
+    3: `They ${w[0] ?? 'process'}ed my friend's transfer papers last night. She did not ${w[5] ?? 'respond'} to messages this morning. I should not ${w[3] ?? 'delay'} my work thinking about it. The Ministry will ${w[1] ?? 'complete'} whatever needs completing. I must ${w[8] ?? 'maintain'} focus. Everything is fine.`,
+  };
+  const c4488Content = citizen4488Posts[weekNumber] ?? citizen4488Posts[1]!;
   posts.push({
     authorLabel: 'Citizen-4488',
-    content: `My neighbor used to ${w[0] ?? 'work'} at the center every Tuesday. Last week her desk was empty. I should not worry. The Ministry always ${w[2] ?? 'handle'}s these things. Everything is fine.`,
+    content: c4488Content,
     postType: 'feed',
-    pearlNote: `Community post from Citizen-4488 — contains deliberate language anomalies.`,
+    pearlNote: weekNumber === 1
+      ? 'Community post from Citizen-4488 — contains deliberate language anomalies.'
+      : weekNumber === 2
+        ? 'Citizen-4488 activity logged. Wellness check scheduled.'
+        : 'Citizen-4488 flagged for Pattern-7 monitoring. Compliance within parameters.',
     censureData: null,
   });
 

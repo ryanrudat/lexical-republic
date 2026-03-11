@@ -34,6 +34,7 @@ export interface ChatMessage {
 export interface PearlChatResponse {
   reply: string;
   isDegraded: boolean;
+  rateLimited?: boolean;
 }
 
 export interface PearlChatContext {

@@ -96,6 +96,7 @@ interface PearlState {
   chatMessages: ChatMessage[];
   chatLoading: boolean;
   chatError: string | null;
+  chatRateLimited: boolean;
   lastChatTime: number;
   loadMessages: () => Promise<void>;
   nextMessage: () => void;
@@ -146,6 +147,7 @@ export const usePearlStore = create<PearlState>((set, get) => ({
   chatMessages: [],
   chatLoading: false,
   chatError: null,
+  chatRateLimited: false,
   lastChatTime: 0,
 
   loadMessages: async () => {
@@ -227,7 +229,13 @@ export const usePearlStore = create<PearlState>((set, get) => ({
   dismissAnnouncement: () => set({ activeAnnouncement: null }),
 
   sendChat: async (message: string) => {
-    const { chatMessages, lastChatTime, chatLoading } = get();
+    const { chatMessages, lastChatTime, chatLoading, chatRateLimited } = get();
+
+    // Already rate-limited for this shift
+    if (chatRateLimited) {
+      set({ chatError: 'Communication allocation exhausted for this shift.' });
+      return;
+    }
 
     // Rate limit: 5s cooldown
     const now = Date.now();
@@ -252,9 +260,13 @@ export const usePearlStore = create<PearlState>((set, get) => ({
       // Send history + task context for guardrails
       const history = chatMessages.map(m => ({ role: m.role, content: m.content }));
       const taskContext = getTaskContext();
-      const { reply } = await sendPearlChat(trimmed, history, taskContext);
-      const assistantMsg: ChatMessage = { role: 'assistant', content: reply };
-      set({ chatMessages: [...get().chatMessages, assistantMsg], chatLoading: false });
+      const result = await sendPearlChat(trimmed, history, taskContext);
+      const assistantMsg: ChatMessage = { role: 'assistant', content: result.reply };
+      set({
+        chatMessages: [...get().chatMessages, assistantMsg],
+        chatLoading: false,
+        chatRateLimited: result.rateLimited ?? false,
+      });
     } catch {
       const fallback: ChatMessage = {
         role: 'assistant',
@@ -264,5 +276,5 @@ export const usePearlStore = create<PearlState>((set, get) => ({
     }
   },
 
-  clearChat: () => set({ chatMessages: [], chatError: null }),
+  clearChat: () => set({ chatMessages: [], chatError: null, chatRateLimited: false }),
 }));

@@ -8,7 +8,7 @@ interface PearlPanelProps {
 }
 
 export default function PearlPanel({ open, onClose, variant = 'chrome' }: PearlPanelProps) {
-  const { barkHistory, chatMessages, chatLoading, chatError, sendChat, clearChat } = usePearlStore();
+  const { barkHistory, chatMessages, chatLoading, chatError, chatRateLimited, sendChat, clearChat } = usePearlStore();
   const [input, setInput] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -236,16 +236,16 @@ export default function PearlPanel({ open, onClose, variant = 'chrome' }: PearlP
               value={input}
               onChange={(e) => setInput(e.target.value.slice(0, 200))}
               onKeyDown={handleKeyDown}
-              placeholder="Ask PEARL a question..."
+              placeholder={chatRateLimited ? 'Communication allocation exhausted' : 'Ask PEARL a question...'}
               maxLength={200}
-              disabled={chatLoading}
-              className={`flex-1 font-ibm-sans text-[12px] px-2.5 py-1.5 rounded border outline-none transition-colors ${inputBg}`}
+              disabled={chatLoading || chatRateLimited}
+              className={`flex-1 font-ibm-sans text-[12px] px-2.5 py-1.5 rounded border outline-none transition-colors ${inputBg} ${chatRateLimited ? 'opacity-50' : ''}`}
             />
             <button
               onClick={handleSend}
-              disabled={chatLoading || !input.trim()}
+              disabled={chatLoading || chatRateLimited || !input.trim()}
               className={`font-ibm-mono text-[10px] tracking-wider px-2.5 py-1.5 rounded transition-colors ${
-                input.trim() && !chatLoading ? sendBtnActive : sendBtnDisabled
+                input.trim() && !chatLoading && !chatRateLimited ? sendBtnActive : sendBtnDisabled
               }`}
             >
               SEND

@@ -395,6 +395,30 @@ function randomLeakedReplacement(): string {
   return LEAKED_ANSWER_REPLACEMENTS[Math.floor(Math.random() * LEAKED_ANSWER_REPLACEMENTS.length)];
 }
 
+// ---------------------------------------------------------------------------
+// Per-shift chat rate limiter — prevents unlimited OpenAI calls
+// ---------------------------------------------------------------------------
+
+const CHAT_LIMIT_PER_SHIFT = 20;
+
+/** In-memory counter: key = "pairId-weekN", value = message count */
+const chatUsageMap = new Map<string, number>();
+
+const CHAT_LIMIT_RESPONSES = [
+  'Your communication allocation for this shift has been reached. Additional dialogue requires Ministry authorization.',
+  'Communication credits exhausted, Citizen. Your dedication is noted. Please resume contact during your next shift.',
+  'This channel has reached its approved message limit. The Ministry values brevity and efficiency.',
+  'P.E.A.R.L. availability for this shift has concluded. Your compliance record has been updated accordingly.',
+];
+
+function randomLimitResponse(): string {
+  return CHAT_LIMIT_RESPONSES[Math.floor(Math.random() * CHAT_LIMIT_RESPONSES.length)];
+}
+
+function getChatUsageKey(pairId: string, weekNumber?: number): string {
+  return `${pairId}-week${weekNumber ?? 0}`;
+}
+
 router.post('/chat', authenticate, async (req: Request, res: Response) => {
   const { message, history, taskContext } = req.body as {
     message?: string;
@@ -414,6 +438,19 @@ router.post('/chat', authenticate, async (req: Request, res: Response) => {
   }
 
   const trimmed = message.trim();
+
+  // Per-shift rate limit — check before any AI call
+  const pairId = (req as any).pairId as string | undefined;
+  const usageKey = getChatUsageKey(pairId ?? 'anon', taskContext?.weekNumber);
+  const currentUsage = chatUsageMap.get(usageKey) ?? 0;
+
+  if (currentUsage >= CHAT_LIMIT_PER_SHIFT) {
+    res.json({ reply: randomLimitResponse(), isDegraded: false, rateLimited: true });
+    return;
+  }
+
+  // Increment usage count
+  chatUsageMap.set(usageKey, currentUsage + 1);
 
   // Layer 3a: Keyword pre-filter — return in-character refusal without calling AI
   if (matchesAnswerSeeking(trimmed)) {
