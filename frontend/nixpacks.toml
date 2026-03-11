@@ -1,0 +1,9 @@
+[variables]
+# Prevent deprecated --production flag warning from npm
+NPM_CONFIG_PRODUCTION = ""
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "npx serve dist -s -l 3000"
