@@ -518,6 +518,60 @@ router.post('/posts/:id/replies', async (req, res) => {
   }
 });
 
+// DELETE /api/harmony/posts/:id — delete own post
+router.delete('/posts/:id', async (req, res) => {
+  try {
+    const pairId = getPairId(req);
+    const teacherId = getTeacherId(req);
+    if (!pairId && !teacherId) {
+      res.status(403).json({ error: 'Auth required' });
+      return;
+    }
+
+    const postId = req.params.id as string;
+    const post = await prisma.harmonyPost.findUnique({
+      where: { id: postId },
+      select: { id: true, pairId: true, userId: true },
+    });
+
+    if (!post) {
+      res.status(404).json({ error: 'Post not found' });
+      return;
+    }
+
+    // Students can only delete their own posts; teachers can delete any
+    if (pairId && post.pairId !== pairId) {
+      res.status(403).json({ error: 'You can only delete your own posts' });
+      return;
+    }
+
+    // Cascade: delete censure responses on replies, replies, censure responses on post, then post
+    const replyIds = (await prisma.harmonyPost.findMany({
+      where: { parentId: postId },
+      select: { id: true },
+    })).map(r => r.id);
+
+    if (replyIds.length > 0) {
+      await prisma.harmonyCensureResponse.deleteMany({
+        where: { postId: { in: replyIds } },
+      });
+      await prisma.harmonyPost.deleteMany({
+        where: { parentId: postId },
+      });
+    }
+
+    await prisma.harmonyCensureResponse.deleteMany({
+      where: { postId },
+    });
+    await prisma.harmonyPost.delete({ where: { id: postId } });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Failed to delete harmony post:', err);
+    res.status(500).json({ error: 'Failed to delete post' });
+  }
+});
+
 // POST /api/harmony/posts/:id/censure — APPROVE/CORRECT/FLAG action on NPC post
 router.post('/posts/:id/censure', async (req, res) => {
   try {

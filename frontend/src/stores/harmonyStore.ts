@@ -3,6 +3,7 @@ import type { HarmonyPost, HarmonyReply, CensureItem } from '../api/harmony';
 import {
   fetchHarmonyPosts,
   createHarmonyPost,
+  deleteHarmonyPost,
   fetchReplies,
   createReply,
   censurePost as censurePostApi,
@@ -42,6 +43,7 @@ interface HarmonyState {
   openThread: (postId: string) => Promise<void>;
   closeThread: () => void;
   submitReply: (content: string) => Promise<void>;
+  deletePost: (postId: string) => Promise<void>;
   censurePost: (postId: string, action: 'approve' | 'correct' | 'flag', weekNumber: number) => Promise<void>;
   respondToCensure: (postId: string, action: string, selectedIndex: number) => Promise<{ isCorrect: boolean; correction: string | null; explanation: string | null } | null>;
 }
@@ -161,6 +163,16 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
       });
     } catch {
       set({ error: 'Failed to submit reply' });
+    }
+  },
+
+  deletePost: async (postId) => {
+    try {
+      await deleteHarmonyPost(postId);
+      const { posts } = get();
+      set({ posts: posts.filter((p) => p.id !== postId) });
+    } catch {
+      set({ error: 'Failed to delete post' });
     }
   },
 

@@ -98,6 +98,10 @@ export async function createReply(postId: string, content: string): Promise<{ id
   return data;
 }
 
+export async function deleteHarmonyPost(postId: string): Promise<void> {
+  await client.delete(`/harmony/posts/${postId}`);
+}
+
 export async function censurePost(
   postId: string,
   action: 'approve' | 'correct' | 'flag',
