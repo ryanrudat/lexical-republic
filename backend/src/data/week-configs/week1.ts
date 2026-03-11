@@ -392,7 +392,7 @@ export const WEEK_1_CONFIG: WeekConfig = {
               "Write a sentence using 'submit' and 'approve'.",
             ],
           },
-          "2": { minWords: 30, wordListVisible: true },
+          "2": { minWords: 25, wordListVisible: true },
           "3": {
             minWords: 45,
             bonusQuestion:

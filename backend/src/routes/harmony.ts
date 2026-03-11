@@ -108,8 +108,8 @@ router.get('/posts', async (req, res) => {
       return;
     }
 
-    // Week 1 lock — Harmony is not available until the first shift is completed
-    if (viewer.pairId && viewer.currentWeekNumber <= 1) {
+    // Week 1 lock — unless teacher has opened Harmony for this class
+    if (viewer.pairId && !viewer.harmonyOpen && viewer.currentWeekNumber <= 1) {
       const shift1Complete = await prisma.shiftResult.findFirst({
         where: { pairId: viewer.pairId, weekNumber: 1 },
         select: { id: true },
@@ -214,8 +214,8 @@ router.get('/censure-queue', async (req, res) => {
       return;
     }
 
-    // Week 1 lock — unlock after completing Shift 1
-    if (viewer.currentWeekNumber <= 1) {
+    // Week 1 lock — unless teacher has opened Harmony
+    if (!viewer.harmonyOpen && viewer.currentWeekNumber <= 1) {
       const shift1Complete = await prisma.shiftResult.findFirst({
         where: { pairId: viewer.pairId, weekNumber: 1 },
         select: { id: true },
