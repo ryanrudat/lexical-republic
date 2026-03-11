@@ -102,7 +102,7 @@ RESPOND WITH VALID JSON:
         "errorWord": "the misused word",
         "correction": "what it should be or how it should be used",
         "explanation": "why the usage is wrong",
-        "options": ["correct meaning", "wrong meaning A", "wrong meaning B", "wrong meaning C"],
+        "options": ["To formally hand in work (correct definition sentence)", "To carry something to a place (wrong definition sentence)", "To eat at a restaurant (wrong definition sentence)", "To clean a surface (wrong definition sentence)"],
         "correctIndex": 0
       }
     },
@@ -128,7 +128,10 @@ IMPORTANT:
 - Use A2-B1 English appropriate for Taiwanese Grade 10 students
 - Target words must appear naturally, not forced
 - Censure items need clear, unambiguous errors students can identify
-- Each post should have a unique citizen designation`;
+- Each post should have a unique citizen designation
+- censure_vocab options MUST be full definition sentences (e.g. "To reach or come to a place"), NOT single words
+- censure_grammar options MUST be single words/phrases showing different forms (e.g. "arrives", "arrive", "arriving", "arrived")
+- censure_replace options MUST be single target vocabulary words (e.g. "submit", "arrive", "check", "report")`;
 }
 
 /**

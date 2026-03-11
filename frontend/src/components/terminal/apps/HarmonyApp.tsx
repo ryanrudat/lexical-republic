@@ -1,6 +1,45 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useHarmonyStore } from '../../../stores/harmonyStore';
 import type { HarmonyPost, CensureItem } from '../../../api/harmony';
+
+/* ─── Result Overlay (neon check / X) ──────────────────────────── */
+
+function ResultOverlay({ isCorrect, onDone }: { isCorrect: boolean; onDone: () => void }) {
+  const [phase, setPhase] = useState<'enter' | 'hold' | 'exit'>('enter');
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useEffect(() => {
+    // Enter → hold
+    const t1 = setTimeout(() => setPhase('hold'), 50);
+    // Hold → exit after 3s
+    const t2 = setTimeout(() => setPhase('exit'), 3000);
+    // Remove after exit animation
+    const t3 = setTimeout(() => onDone(), 3500);
+    timerRef.current = t3;
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, [onDone]);
+
+  const opacity = phase === 'enter' ? 'opacity-0 scale-50' : phase === 'hold' ? 'opacity-100 scale-100' : 'opacity-0 scale-75';
+  const glowColor = isCorrect ? 'shadow-[0_0_60px_rgba(74,222,128,0.5)]' : 'shadow-[0_0_60px_rgba(244,63,94,0.5)]';
+  const borderColor = isCorrect ? 'border-green-400' : 'border-rose-500';
+  const iconColor = isCorrect ? 'text-green-400' : 'text-rose-500';
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none">
+      <div className={`w-32 h-32 rounded-2xl border-2 ${borderColor} bg-black/80 ${glowColor} flex items-center justify-center transition-all duration-500 ease-out ${opacity}`}>
+        {isCorrect ? (
+          <svg className={`w-20 h-20 ${iconColor} drop-shadow-[0_0_12px_rgba(74,222,128,0.8)]`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+          </svg>
+        ) : (
+          <svg className={`w-20 h-20 ${iconColor} drop-shadow-[0_0_12px_rgba(244,63,94,0.8)]`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+          </svg>
+        )}
+      </div>
+    </div>
+  );
+}
 
 /* ─── Helpers ───────────────────────────────────────────────────── */
 
@@ -501,6 +540,7 @@ function CensureCard({ item }: { item: CensureItem }) {
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [result, setResult] = useState<{ isCorrect: boolean; correction: string | null; explanation: string | null } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showOverlay, setShowOverlay] = useState(false);
 
   const data = item.censureData;
   if (!data) return null;
@@ -519,7 +559,10 @@ function CensureCard({ item }: { item: CensureItem }) {
     if (selectedIdx === null || submitting) return;
     setSubmitting(true);
     const res = await respondToCensure(item.id, item.postType, selectedIdx);
-    if (res) setResult(res);
+    if (res) {
+      setResult(res);
+      setShowOverlay(true);
+    }
     setSubmitting(false);
   };
 
@@ -663,6 +706,14 @@ function CensureCard({ item }: { item: CensureItem }) {
             </p>
           </div>
         </div>
+      )}
+
+      {/* Neon result overlay */}
+      {showOverlay && result && (
+        <ResultOverlay
+          isCorrect={result.isCorrect}
+          onDone={() => setShowOverlay(false)}
+        />
       )}
     </div>
   );
