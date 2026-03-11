@@ -33,14 +33,21 @@ const STEP_COMPONENTS: Record<StepId, React.LazyExoticComponent<React.ComponentT
   clock_out: ClockOutStep,
 };
 
-function getFirstUnlockedWeekNumber(weeks: Array<{ weekNumber: number; clockedOut: boolean }>): number | null {
+function getFirstUnlockedWeekNumber(weeks: Array<{ weekNumber: number; clockedOut: boolean; isUnlocked?: boolean }>): number | null {
   if (weeks.length === 0) return null;
   const sorted = [...weeks].sort((a, b) => a.weekNumber - b.weekNumber);
+
+  // Find the latest non-clocked-out week the student can access.
+  // A week is accessible if the teacher has unlocked it (isUnlocked !== false)
+  // AND the previous week is clocked out (sequential gate), OR it's the first week.
   let unlocked = sorted[0].weekNumber;
 
   for (let i = 1; i < sorted.length; i++) {
-    if (sorted[i - 1].clockedOut) {
-      unlocked = sorted[i].weekNumber;
+    const prev = sorted[i - 1];
+    const week = sorted[i];
+    // Teacher must have unlocked the week AND the previous shift must be done
+    if (prev.clockedOut && week.isUnlocked !== false) {
+      unlocked = week.weekNumber;
     } else {
       break;
     }
@@ -82,10 +89,14 @@ export default function ClarityQueueApp() {
     if (!weekNumber || weeks.length === 0) return;
     const weekNum = parseInt(weekNumber, 10);
     if (GUIDED_STUDENT_MODE) {
-      const unlockedWeek = getFirstUnlockedWeekNumber(weeks);
-      if (unlockedWeek && weekNum > unlockedWeek) {
-        navigate(`/shift/${unlockedWeek}`, { replace: true });
-        return;
+      const targetWeek = weeks.find((w) => w.weekNumber === weekNum);
+      // Allow if teacher explicitly unlocked this week, otherwise enforce sequential gate
+      if (targetWeek?.isUnlocked !== true) {
+        const unlockedWeek = getFirstUnlockedWeekNumber(weeks);
+        if (unlockedWeek && weekNum > unlockedWeek) {
+          navigate(`/shift/${unlockedWeek}`, { replace: true });
+          return;
+        }
       }
     }
     const weekSummary = weeks.find((w) => w.weekNumber === weekNum);

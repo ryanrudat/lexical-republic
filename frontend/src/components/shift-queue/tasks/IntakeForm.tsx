@@ -230,6 +230,10 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
           </p>
         )}
 
+        <p className="font-ibm-mono text-[10px] text-[#B8B3AA] italic">
+          Read carefully. You will be asked about this information.
+        </p>
+
         <div className="bg-[#FAFAF7] border border-[#E8E4DC] rounded-xl p-4 space-y-3">
           {(c.paragraphs ?? []).map((para, i) => (
             <p key={i} className="text-sm text-[#4B5563] leading-relaxed">
@@ -237,10 +241,6 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
             </p>
           ))}
         </div>
-
-        <p className="font-ibm-mono text-[10px] text-[#B8B3AA] italic">
-          Read carefully. You will be asked about this information.
-        </p>
 
         <div className="pt-4">
           <button

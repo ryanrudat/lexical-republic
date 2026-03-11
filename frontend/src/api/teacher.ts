@@ -204,6 +204,7 @@ export interface ClassInfo {
   name: string;
   joinCode: string;
   isActive: boolean;
+  harmonyOpen: boolean;
   studentCount: number;
   unlockedWeekIds: string[];
   createdAt: string;
@@ -234,6 +235,10 @@ export async function unlockWeek(classId: string, weekId: string): Promise<void>
 
 export async function lockWeek(classId: string, weekId: string): Promise<void> {
   await client.delete(`/classes/${classId}/unlock-week/${weekId}`);
+}
+
+export async function toggleHarmony(classId: string, open: boolean): Promise<void> {
+  await client.patch(`/classes/${classId}/harmony`, { open });
 }
 
 export async function deleteClass(classId: string): Promise<void> {

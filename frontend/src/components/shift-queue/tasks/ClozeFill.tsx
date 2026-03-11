@@ -8,6 +8,12 @@ interface Blank {
   correctWord: string;
 }
 
+function wordHint(word: string): string {
+  const prefixLen = Math.min(3, word.length);
+  const remaining = word.length - prefixLen;
+  return word.slice(0, prefixLen) + '_'.repeat(remaining);
+}
+
 export default function ClozeFill({ config, onComplete }: TaskProps) {
   const passage = (config.passage as string) || '';
   const blanks = (config.blanks as Blank[]) || [];
@@ -175,7 +181,7 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
       {/* Instruction */}
       <p className="text-[10px] text-[#9CA3AF] text-center tracking-wider">
         {selectedId
-          ? <>Tap a blank to place <span className="font-semibold text-sky-600">{selectedId}</span></>
+          ? <>Tap a blank to place <span className="font-semibold text-sky-600">{wordHint(selectedId)}</span></>
           : 'Tap a word below, then tap a blank to fill it in.'}
       </p>
 
@@ -199,7 +205,7 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
                   : 'border-[#D4CFC6] bg-white text-[#4B5563] cursor-pointer hover:border-sky-300 hover:shadow-sm active:bg-sky-100 active:scale-[0.98]'
               }`}
             >
-              {word}
+              {isUsed ? word : wordHint(word)}
             </div>
           );
         })}

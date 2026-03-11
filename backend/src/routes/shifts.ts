@@ -341,7 +341,17 @@ router.post('/weeks/:weekId/shift-result', async (req: Request, res: Response) =
       res.status(404).json({ error: 'Week not found' });
       return;
     }
-    const data = req.body;
+    const body = req.body;
+    const data = {
+      documentsProcessed: body.documentsProcessed ?? 0,
+      documentsTotal: body.documentsTotal ?? 0,
+      errorsFound: body.errorsFound ?? 0,
+      errorsTotal: body.errorsTotal ?? 0,
+      vocabScore: body.vocabScore ?? 0,
+      grammarAccuracy: body.grammarAccuracy ?? 0,
+      targetWordsUsed: body.targetWordsUsed ?? 0,
+      concernScoreDelta: body.concernScoreDelta ?? 0,
+    };
     const result = await prisma.shiftResult.upsert({
       where: { pairId_weekNumber: { pairId, weekNumber: week.weekNumber } },
       update: { ...data, completedAt: new Date() },

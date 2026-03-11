@@ -65,7 +65,8 @@ export default function ErrorCorrectionDoc({
   onComplete,
 }: ErrorCorrectionDocProps) {
   const addConcern = useShiftQueueStore(s => s.addConcern);
-  const normalizedDoc = { ...doc, errors: normalizeErrors(doc.errors) };
+  const normalizedDocRef = useRef({ ...doc, errors: normalizeErrors(doc.errors) });
+  const normalizedDoc = normalizedDocRef.current;
 
   const [activeError, setActiveError] = useState<number | null>(null);
   const [corrections, setCorrections] = useState<Record<number, number | null>>({});

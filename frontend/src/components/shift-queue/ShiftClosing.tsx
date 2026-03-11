@@ -125,8 +125,6 @@ export default function ShiftClosing() {
           grammarAccuracy: avgGrammarAccuracy,
           targetWordsUsed,
           concernScoreDelta,
-          tasksCompleted: completedTasks.length,
-          tasksTotal: totalTasks,
         };
 
         await postShiftResult(currentWeek.id, resultPayload);

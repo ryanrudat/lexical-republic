@@ -4,6 +4,7 @@ import {
   regenerateClassCode,
   unlockWeek,
   lockWeek,
+  toggleHarmony,
   deleteClass,
   removeStudentFromClass,
   fetchClassDetail,
@@ -91,6 +92,15 @@ export default function ClassManager({ classes, onRefresh }: Props) {
       await onRefresh();
     } catch (err) {
       console.error('Failed to toggle week:', err);
+    }
+  };
+
+  const handleToggleHarmony = async (classId: string, currentlyOpen: boolean) => {
+    try {
+      await toggleHarmony(classId, !currentlyOpen);
+      await onRefresh();
+    } catch (err) {
+      console.error('Failed to toggle Harmony:', err);
     }
   };
 
@@ -191,6 +201,17 @@ export default function ClassManager({ classes, onRefresh }: Props) {
                       ↻
                     </button>
                   </div>
+                  <button
+                    onClick={() => handleToggleHarmony(cls.id, cls.harmonyOpen)}
+                    className={`text-xs px-2 py-1 rounded-md font-medium transition-colors ${
+                      cls.harmonyOpen
+                        ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                        : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                    }`}
+                    title={cls.harmonyOpen ? 'Harmony is open — click to close' : 'Harmony is closed — click to open'}
+                  >
+                    Harmony {cls.harmonyOpen ? 'On' : 'Off'}
+                  </button>
                   <button
                     onClick={() => handleExpand(cls.id, 'students')}
                     className={`text-xs px-2 py-1 rounded-md font-medium transition-colors ${

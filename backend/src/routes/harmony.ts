@@ -13,6 +13,7 @@ type HarmonyViewerContext = {
   classId: string | null;
   accessibleClassIds: string[];
   currentWeekNumber: number;
+  harmonyOpen: boolean;
 };
 
 function getClassFilter(accessibleClassIds: string[]) {
@@ -29,7 +30,7 @@ async function getViewerContext(req: Request): Promise<HarmonyViewerContext | nu
     const [enrollment, currentWeekNumber] = await Promise.all([
       prisma.classEnrollment.findFirst({
         where: { pairId },
-        select: { classId: true },
+        select: { classId: true, class: { select: { harmonyOpen: true } } },
       }),
       getCurrentWeekNumberForPair(pairId),
     ]);
@@ -41,6 +42,7 @@ async function getViewerContext(req: Request): Promise<HarmonyViewerContext | nu
       classId,
       accessibleClassIds: classId ? [classId] : [],
       currentWeekNumber,
+      harmonyOpen: enrollment?.class?.harmonyOpen ?? false,
     };
   }
 
@@ -60,6 +62,7 @@ async function getViewerContext(req: Request): Promise<HarmonyViewerContext | nu
     classId: classes[0]?.id ?? null,
     accessibleClassIds: classes.map((entry) => entry.id),
     currentWeekNumber: 18,
+    harmonyOpen: true,
   };
 }
 
@@ -89,6 +92,19 @@ router.get('/posts', async (req, res) => {
     const viewer = await getViewerContext(req);
     if (!viewer) {
       res.status(403).json({ error: 'Unsupported Harmony session' });
+      return;
+    }
+
+    // Teacher gate — Harmony must be opened by teacher for the class
+    if (viewer.pairId && !viewer.harmonyOpen) {
+      res.json({
+        locked: true,
+        lockMessage: 'Harmony is not yet available. Your supervisor will open access when ready.',
+        posts: [],
+        currentWeekNumber: viewer.currentWeekNumber,
+        focusWords: [],
+        reviewWords: [],
+      });
       return;
     }
 
@@ -189,6 +205,12 @@ router.get('/censure-queue', async (req, res) => {
     const viewer = await getViewerContext(req);
     if (!viewer?.pairId) {
       res.status(403).json({ error: 'Pair auth required' });
+      return;
+    }
+
+    // Teacher gate
+    if (!viewer.harmonyOpen) {
+      res.json({ locked: true, items: [], stats: { total: 0, completed: 0 } });
       return;
     }
 

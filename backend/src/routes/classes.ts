@@ -111,6 +111,7 @@ router.get('/', async (req: Request, res: Response) => {
         name: c.name,
         joinCode: c.joinCode,
         isActive: c.isActive,
+        harmonyOpen: c.harmonyOpen,
         studentCount: c._count.enrollments,
         unlockedWeekIds: c.weekUnlocks.map((u) => u.weekId),
         createdAt: c.createdAt,
@@ -439,6 +440,36 @@ router.get('/:classId/unlocked-weeks', async (req: Request, res: Response) => {
   } catch (err) {
     console.error('List unlocked weeks error:', err);
     res.status(500).json({ error: 'Failed to list unlocked weeks' });
+  }
+});
+
+// PATCH /api/classes/:classId/harmony — Toggle Harmony open/closed for a class
+router.patch('/:classId/harmony', async (req: Request, res: Response) => {
+  try {
+    const classId = req.params.classId as string;
+    const teacherId = req.user!.userId;
+    const { open } = req.body as { open?: boolean };
+
+    if (typeof open !== 'boolean') {
+      res.status(400).json({ error: 'open (boolean) is required' });
+      return;
+    }
+
+    const cls = await prisma.class.findUnique({ where: { id: classId } });
+    if (!cls || cls.teacherId !== teacherId) {
+      res.status(404).json({ error: 'Class not found' });
+      return;
+    }
+
+    const updated = await prisma.class.update({
+      where: { id: classId },
+      data: { harmonyOpen: open },
+    });
+
+    res.json({ classId, harmonyOpen: updated.harmonyOpen });
+  } catch (err) {
+    console.error('Toggle harmony error:', err);
+    res.status(500).json({ error: 'Failed to toggle Harmony' });
   }
 });
 
