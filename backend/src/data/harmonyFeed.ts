@@ -7,6 +7,8 @@ export type HarmonySeedPost = {
   authorLabel: string;
   content: string;
   pearlNote: string;
+  postType?: string;
+  censureData?: Record<string, unknown>;
 };
 
 /**
@@ -54,6 +56,30 @@ export const HARMONY_SEED_POSTS: HarmonySeedPost[] = [
     content:
       'Has anyone seen my neighbor? She always arrive at the community center on Tuesday, but her chair was empty this week. I am sure she is fine. The Ministry takes care of everyone. I should not worry.',
     pearlNote: 'Community post from Citizen-4488 — deliberate grammar error (arrive → arrives).',
+  },
+  {
+    id: 'harmony-w1-routine',
+    weekNumber: 1,
+    authorLabel: 'WA-15',
+    content:
+      'I always follow the standard checklist. Today I had to describe an unusual document to my supervisor. She approved it after a careful check. Another productive day.',
+    pearlNote: 'Shift 1 review feed: target words (follow, standard, describe, approve, check).',
+  },
+  {
+    id: 'harmony-w1-pride',
+    weekNumber: 1,
+    authorLabel: 'Citizen-5502',
+    content:
+      'My first assignment is complete. I arrived on time, checked every document, and submitted my report before noon. The supervisor confirmed my work meets the standard. I feel proud.',
+    pearlNote: 'Shift 1 review feed: target words (arrive, check, submit, report, confirm, standard).',
+  },
+  {
+    id: 'harmony-w1-advice',
+    weekNumber: 1,
+    authorLabel: 'CA-09',
+    content:
+      'Reminder for new associates: always confirm your assignment number before you submit. If you follow the steps and check twice, your reports will be approved every time.',
+    pearlNote: 'Shift 1 review feed: target words (confirm, assign, submit, follow, check, report, approve).',
   },
   // ── Week 2: Target words — notice, compare, replace, update, request, remove, change, include, require, inform
   // Review words — arrive, follow, check, report, submit, approve, describe, assign, standard, confirm

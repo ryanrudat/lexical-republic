@@ -25,6 +25,41 @@ function isCitizen4488(post: HarmonyPost): boolean {
 
 /* ─── Word Highlighting ─────────────────────────────────────────── */
 
+function VocabWord({
+  text,
+  type,
+}: {
+  text: string;
+  type: 'focus' | 'review';
+}) {
+  const [showTip, setShowTip] = useState(false);
+  const label = type === 'focus' ? 'Target word' : 'Review word';
+  const color = type === 'focus'
+    ? 'text-neon-cyan font-medium'
+    : 'text-terminal-amber';
+  const tipBg = type === 'focus'
+    ? 'bg-neon-cyan/20 border-neon-cyan/30 text-neon-cyan'
+    : 'bg-terminal-amber/20 border-terminal-amber/30 text-terminal-amber';
+
+  return (
+    <span className="relative inline">
+      <span
+        className={`${color} cursor-help underline decoration-dotted decoration-1 underline-offset-2`}
+        onClick={() => setShowTip(!showTip)}
+      >
+        {text}
+      </span>
+      {showTip && (
+        <span
+          className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 rounded text-[9px] font-medium border whitespace-nowrap z-10 ${tipBg}`}
+        >
+          {label}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function HighlightedContent({
   content,
   focusWords,
@@ -56,24 +91,8 @@ function HighlightedContent({
   return (
     <p className="text-[13px] text-white/80 leading-relaxed">
       {parts.map((p) => {
-        if (p.type === 'focus')
-          return (
-            <span
-              key={p.key}
-              className="text-neon-cyan font-medium"
-            >
-              {p.text}
-            </span>
-          );
-        if (p.type === 'review')
-          return (
-            <span
-              key={p.key}
-              className="text-terminal-amber"
-            >
-              {p.text}
-            </span>
-          );
+        if (p.type === 'focus' || p.type === 'review')
+          return <VocabWord key={p.key} text={p.text} type={p.type} />;
         return <span key={p.key}>{p.text}</span>;
       })}
     </p>
@@ -146,13 +165,16 @@ function PostCard({
   focusWords,
   reviewWords,
   onOpenThread,
+  onCensure,
 }: {
   post: HarmonyPost;
   focusWords: string[];
   reviewWords: string[];
   onOpenThread: (postId: string) => void;
+  onCensure?: (postId: string, action: 'approve' | 'flag', weekNumber: number) => void;
 }) {
   const is4488 = isCitizen4488(post);
+  const [censureAction, setCensureAction] = useState<'approve' | 'flag' | null>(null);
 
   const avatarColor = is4488
     ? 'bg-terminal-amber/15 border-terminal-amber/30 text-terminal-amber'
@@ -162,6 +184,12 @@ function PostCard({
 
   const designation = post.isOwn ? 'YOU' : post.designation;
   const initials = designation.slice(0, 3).toUpperCase();
+
+  const handleCensureAction = (action: 'approve' | 'flag') => {
+    if (censureAction || !onCensure) return;
+    setCensureAction(action);
+    onCensure(post.id, action, post.weekNumber ?? 1);
+  };
 
   return (
     <div
@@ -214,6 +242,35 @@ function PostCard({
               <p className="text-[10px] text-neon-cyan/60 italic">
                 PEARL: {post.pearlNote}
               </p>
+            </div>
+          )}
+
+          {/* Citizen-4488 interaction */}
+          {is4488 && !post.isOwn && onCensure && (
+            <div className="mt-2 flex items-center gap-2">
+              {censureAction ? (
+                <span className={`text-[10px] tracking-wider font-medium ${
+                  censureAction === 'approve' ? 'text-green-400' : 'text-neon-pink'
+                }`}>
+                  {censureAction === 'approve' ? 'APPROVED' : 'FLAGGED FOR REVIEW'}
+                </span>
+              ) : (
+                <>
+                  <span className="text-[9px] text-terminal-amber/40 tracking-wider mr-1">COMPLIANCE:</span>
+                  <button
+                    onClick={() => handleCensureAction('approve')}
+                    className="text-[10px] px-2.5 py-1 rounded-md border border-green-500/20 text-green-400/70 hover:bg-green-500/10 hover:text-green-400 transition-colors active:scale-95"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => handleCensureAction('flag')}
+                    className="text-[10px] px-2.5 py-1 rounded-md border border-neon-pink/20 text-neon-pink/60 hover:bg-neon-pink/10 hover:text-neon-pink transition-colors active:scale-95"
+                  >
+                    Flag
+                  </button>
+                </>
+              )}
             </div>
           )}
 
@@ -639,9 +696,12 @@ export default function HarmonyApp() {
     setShowOnboarding(false);
   }, []);
 
+  const { loadCensureQueue, censureStats } = useHarmonyStore();
+
   useEffect(() => {
     void loadPosts();
-  }, [loadPosts]);
+    void loadCensureQueue();
+  }, [loadPosts, loadCensureQueue]);
 
   const handleCensure = useCallback(
     (postId: string, action: 'approve' | 'correct' | 'flag', weekNumber: number) => {
@@ -649,8 +709,6 @@ export default function HarmonyApp() {
     },
     [_censurePost],
   );
-  // suppress unused-var warning — handleCensure used via PostCard censure actions
-  void handleCensure;
 
   // Thread view
   if (selectedPostId) {
@@ -699,6 +757,11 @@ export default function HarmonyApp() {
           }`}
         >
           Censure Queue
+          {censureStats.total - censureStats.completed > 0 && (
+            <span className="ml-1.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold bg-neon-pink/80 text-white">
+              {censureStats.total - censureStats.completed}
+            </span>
+          )}
           {activeTab === 'censure' && (
             <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-neon-cyan rounded-full" />
           )}
@@ -716,6 +779,7 @@ export default function HarmonyApp() {
           error={error}
           onSubmitPost={submitPost}
           onOpenThread={openThread}
+          onCensure={handleCensure}
         />
       ) : (
         <CensureQueue />
@@ -758,6 +822,7 @@ function FeedTab({
   error,
   onSubmitPost,
   onOpenThread,
+  onCensure,
 }: {
   posts: HarmonyPost[];
   focusWords: string[];
@@ -767,6 +832,7 @@ function FeedTab({
   error: string | null;
   onSubmitPost: (content: string) => Promise<void>;
   onOpenThread: (postId: string) => void;
+  onCensure: (postId: string, action: 'approve' | 'correct' | 'flag', weekNumber: number) => void;
 }) {
   const [showVocab, setShowVocab] = useState(false);
 
@@ -851,6 +917,7 @@ function FeedTab({
             focusWords={focusWords}
             reviewWords={reviewWords}
             onOpenThread={onOpenThread}
+            onCensure={onCensure}
           />
         ))}
       </div>

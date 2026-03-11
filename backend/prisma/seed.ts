@@ -587,6 +587,8 @@ async function seedHarmonyPosts() {
           userId: null,
           pairId: null,
           pearlNote: post.pearlNote,
+          postType: post.postType ?? 'feed',
+          censureData: (post.censureData ?? undefined) as any,
         },
       });
       updated++;
@@ -604,6 +606,8 @@ async function seedHarmonyPosts() {
         userId: null,
         pairId: null,
         pearlNote: post.pearlNote,
+        postType: post.postType ?? 'feed',
+        censureData: (post.censureData ?? undefined) as any,
       },
     });
     created++;

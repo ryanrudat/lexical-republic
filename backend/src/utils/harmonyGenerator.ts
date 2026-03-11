@@ -139,11 +139,20 @@ export async function generateHarmonyPosts(
   weekNumber: number,
   classId: string,
 ): Promise<void> {
-  // Check if posts already exist for this week + class (seed or generated)
-  const existing = await prisma.harmonyPost.count({
-    where: { weekNumber, classId },
-  });
-  if (existing >= 5) return; // Already populated
+  // Check censure and feed items separately so we can fill in what's missing
+  const [existingCensure, existingFeed] = await Promise.all([
+    prisma.harmonyPost.count({
+      where: { weekNumber, classId, postType: { not: 'feed' } },
+    }),
+    prisma.harmonyPost.count({
+      where: { weekNumber, classId, postType: 'feed' },
+    }),
+  ]);
+
+  const needsCensure = existingCensure < 5;
+  const needsFeed = existingFeed < 4;
+
+  if (!needsCensure && !needsFeed) return; // Already populated
 
   const openai = getOpenAI();
   let posts: GeneratedPost[];
@@ -177,8 +186,12 @@ export async function generateHarmonyPosts(
     posts = buildFallbackPosts(weekNumber);
   }
 
-  // Store generated posts
+  // Only insert post types that are still needed
+  let inserted = 0;
   for (const post of posts) {
+    if (post.postType === 'feed' && !needsFeed) continue;
+    if (post.postType !== 'feed' && !needsCensure) continue;
+
     await prisma.harmonyPost.create({
       data: {
         authorLabel: post.authorLabel,
@@ -192,14 +205,156 @@ export async function generateHarmonyPosts(
         isGenerated: true,
       },
     });
+    inserted++;
   }
 
-  console.log(`  Harmony: generated ${posts.length} posts for week ${weekNumber}, class ${classId}`);
+  if (inserted > 0) {
+    console.log(`  Harmony: generated ${inserted} posts for week ${weekNumber}, class ${classId}`);
+  }
 }
+
+/* ─── Week-specific static censure content ─────────────────────── */
+
+const STATIC_CENSURE_ITEMS: Record<number, GeneratedPost[]> = {
+  1: [
+    // ── Grammar: present-simple errors ──────────────────────────────
+    {
+      authorLabel: 'Citizen-3050',
+      content: 'Every morning I arrives at the Ministry and check my assignment list. It is the standard way to begin.',
+      postType: 'censure_grammar',
+      pearlNote: null,
+      censureData: {
+        errorType: 'grammar',
+        errorWord: 'arrives',
+        correction: 'arrive',
+        explanation: 'With "I" we use the base form of the verb: "I arrive", not "I arrives".',
+        options: ['arrive', 'arrives', 'arriving', 'arrived'],
+        correctIndex: 0,
+      },
+    },
+    {
+      authorLabel: 'WA-33',
+      content: 'The supervisor describe the new procedure to us every Monday. She is very careful about the standard.',
+      postType: 'censure_grammar',
+      pearlNote: null,
+      censureData: {
+        errorType: 'grammar',
+        errorWord: 'describe',
+        correction: 'describes',
+        explanation: '"The supervisor" is third person singular and requires "describes" with an -s.',
+        options: ['describes', 'describe', 'describing', 'described'],
+        correctIndex: 0,
+      },
+    },
+    {
+      authorLabel: 'CA-41',
+      content: 'Our team submit every report on time. We always confirm the details before sending anything.',
+      postType: 'censure_grammar',
+      pearlNote: null,
+      censureData: {
+        errorType: 'grammar',
+        errorWord: 'submit',
+        correction: 'submits',
+        explanation: '"Our team" is a singular collective noun and needs "submits" in present simple.',
+        options: ['submits', 'submit', 'submitting', 'submitted'],
+        correctIndex: 0,
+      },
+    },
+
+    // ── Vocab: target word misuse ───────────────────────────────────
+    {
+      authorLabel: 'Citizen-4030',
+      content: 'I need to approve my lunch box before going to the cafeteria. I am always hungry by noon.',
+      postType: 'censure_vocab',
+      pearlNote: null,
+      censureData: {
+        errorType: 'vocab',
+        errorWord: 'approve',
+        correction: '"Approve" means to officially accept or agree to something, not to prepare food.',
+        explanation: 'The word "approve" is used incorrectly here. It means to officially accept, not to prepare.',
+        options: [
+          'To officially accept or agree to something',
+          'To prepare or pack something',
+          'To eat or consume quickly',
+          'To throw something away',
+        ],
+        correctIndex: 0,
+      },
+    },
+    {
+      authorLabel: 'Citizen-5180',
+      content: 'Please arrive the documents on the shelf so they look neat and organized for the supervisor.',
+      postType: 'censure_vocab',
+      pearlNote: null,
+      censureData: {
+        errorType: 'vocab',
+        errorWord: 'arrive',
+        correction: '"Arrive" means to reach or come to a place, not to arrange things.',
+        explanation: 'The word "arrive" is used incorrectly here. It means to reach a destination, not to organize.',
+        options: [
+          'To reach or come to a place',
+          'To arrange or organize things',
+          'To copy or duplicate something',
+          'To throw something away',
+        ],
+        correctIndex: 0,
+      },
+    },
+    {
+      authorLabel: 'Citizen-6221',
+      content: 'She confirmed the entire room by closing all the windows and locking the door.',
+      postType: 'censure_vocab',
+      pearlNote: null,
+      censureData: {
+        errorType: 'vocab',
+        errorWord: 'confirmed',
+        correction: '"Confirm" means to verify or establish that something is true, not to secure a room.',
+        explanation: 'The word "confirm" is used incorrectly here. It means to verify, not to make secure.',
+        options: [
+          'To verify or establish that something is true',
+          'To make a place safe or secure',
+          'To paint or decorate a room',
+          'To heat or cool a space',
+        ],
+        correctIndex: 0,
+      },
+    },
+
+    // ── Replace: fill in the blank ──────────────────────────────────
+    {
+      authorLabel: 'Citizen-7100',
+      content: 'I need to [give] my report to the supervisor before the end of my shift. She requires all documents by 5 PM.',
+      postType: 'censure_replace',
+      pearlNote: null,
+      censureData: {
+        errorType: 'replace',
+        blankWord: 'give',
+        correction: 'submit',
+        explanation: '"Submit" means to formally hand in work or documents, which fits this context better than "give".',
+        options: ['submit', 'arrive', 'describe', 'assign'],
+        correctIndex: 0,
+      },
+    },
+    {
+      authorLabel: 'Citizen-8055',
+      content: 'The manager will [look at] every document to make sure they follow the standard. Nothing is sent without review.',
+      postType: 'censure_replace',
+      pearlNote: null,
+      censureData: {
+        errorType: 'replace',
+        blankWord: 'look at',
+        correction: 'check',
+        explanation: '"Check" means to examine something carefully to verify it is correct — more precise than "look at".',
+        options: ['check', 'follow', 'confirm', 'report'],
+        correctIndex: 0,
+      },
+    },
+  ],
+};
 
 /**
  * Fallback posts when OpenAI is unavailable.
- * Uses target words in template sentences.
+ * Uses target words in template sentences + static censure content.
  */
 function buildFallbackPosts(weekNumber: number): GeneratedPost[] {
   const { targetWords, grammarTarget } = getVocabContext(weekNumber);
@@ -207,7 +362,7 @@ function buildFallbackPosts(weekNumber: number): GeneratedPost[] {
 
   const posts: GeneratedPost[] = [];
 
-  // 3 feed posts
+  // Feed posts
   if (w.length >= 4) {
     posts.push({
       authorLabel: `Citizen-${2000 + weekNumber * 100 + 4}`,
@@ -237,49 +392,104 @@ function buildFallbackPosts(weekNumber: number): GeneratedPost[] {
     authorLabel: 'Citizen-4488',
     content: `My neighbor used to ${w[0] ?? 'work'} at the center every Tuesday. Last week her desk was empty. I should not worry. The Ministry always ${w[2] ?? 'handle'}s these things. Everything is fine.`,
     postType: 'feed',
-    pearlNote: `Community post from Citizen-4488 — review for language compliance.`,
+    pearlNote: `Community post from Citizen-4488 — contains deliberate language anomalies.`,
     censureData: null,
   });
 
-  // 1 censure_grammar post
-  if (w.length >= 2) {
-    posts.push({
-      authorLabel: `Citizen-${3000 + weekNumber * 50}`,
-      content: `Yesterday I ${w[0]} the new documents. The team have ${w[1]} everything already.`,
-      postType: 'censure_grammar',
-      pearlNote: null,
-      censureData: {
-        errorType: 'grammar',
-        errorWord: 'have',
-        correction: 'has',
-        explanation: `"The team" is singular and requires "has" not "have" (${grammarTarget}).`,
-        options: ['has', 'have', 'having', 'had'],
-        correctIndex: 0,
-      },
-    });
-  }
+  // Censure items: use static content if available, else generic
+  const staticCensure = STATIC_CENSURE_ITEMS[weekNumber];
+  if (staticCensure) {
+    posts.push(...staticCensure);
+  } else {
+    // Generic censure fallback for weeks without static content
+    if (w.length >= 2) {
+      posts.push({
+        authorLabel: `Citizen-${3000 + weekNumber * 50}`,
+        content: `Yesterday I ${w[0]} the new documents. The team have ${w[1]} everything already.`,
+        postType: 'censure_grammar',
+        pearlNote: null,
+        censureData: {
+          errorType: 'grammar',
+          errorWord: 'have',
+          correction: 'has',
+          explanation: `"The team" is singular and requires "has" not "have" (${grammarTarget}).`,
+          options: ['has', 'have', 'having', 'had'],
+          correctIndex: 0,
+        },
+      });
+      posts.push({
+        authorLabel: `Citizen-${3100 + weekNumber * 50}`,
+        content: `She always ${w[0]} the reports but never ${w[1]} them on time. The supervisor say nothing about it.`,
+        postType: 'censure_grammar',
+        pearlNote: null,
+        censureData: {
+          errorType: 'grammar',
+          errorWord: 'say',
+          correction: 'says',
+          explanation: `"The supervisor" is third person singular and needs "says" (${grammarTarget}).`,
+          options: ['says', 'say', 'saying', 'said'],
+          correctIndex: 0,
+        },
+      });
+    }
 
-  // 1 censure_vocab post
-  if (w.length >= 3) {
-    posts.push({
-      authorLabel: `Citizen-${4000 + weekNumber * 30}`,
-      content: `I need to ${w[0]} my lunch to the cafeteria before noon.`,
-      postType: 'censure_vocab',
-      pearlNote: null,
-      censureData: {
-        errorType: 'vocab',
-        errorWord: w[0],
-        correction: `"${w[0]}" means to formally hand in work, not to bring food somewhere.`,
-        explanation: `The word "${w[0]}" is used incorrectly in this context.`,
-        options: [
-          `To formally hand in work or documents`,
-          `To carry something to a place`,
-          `To eat at a restaurant`,
-          `To clean a surface`,
-        ],
-        correctIndex: 0,
-      },
-    });
+    if (w.length >= 3) {
+      posts.push({
+        authorLabel: `Citizen-${4000 + weekNumber * 30}`,
+        content: `I need to ${w[0]} my lunch to the cafeteria before noon.`,
+        postType: 'censure_vocab',
+        pearlNote: null,
+        censureData: {
+          errorType: 'vocab',
+          errorWord: w[0],
+          correction: `"${w[0]}" does not mean to carry or bring something.`,
+          explanation: `The word "${w[0]}" is used incorrectly in this context.`,
+          options: [
+            `To formally hand in work or documents`,
+            `To carry something to a place`,
+            `To eat at a restaurant`,
+            `To clean a surface`,
+          ],
+          correctIndex: 0,
+        },
+      });
+      posts.push({
+        authorLabel: `Citizen-${4100 + weekNumber * 30}`,
+        content: `Please ${w[2]} the chair closer to the window. It is too far away.`,
+        postType: 'censure_vocab',
+        pearlNote: null,
+        censureData: {
+          errorType: 'vocab',
+          errorWord: w[2],
+          correction: `"${w[2]}" does not mean to move or push something.`,
+          explanation: `The word "${w[2]}" is used incorrectly in this context.`,
+          options: [
+            `The correct meaning of "${w[2]}"`,
+            `To move or push something`,
+            `To paint or color something`,
+            `To break or destroy something`,
+          ],
+          correctIndex: 0,
+        },
+      });
+    }
+
+    if (w.length >= 4) {
+      posts.push({
+        authorLabel: `Citizen-${5000 + weekNumber * 20}`,
+        content: `I need to [do] my ${w[1]} before the deadline. The supervisor expects quality work.`,
+        postType: 'censure_replace',
+        pearlNote: null,
+        censureData: {
+          errorType: 'replace',
+          blankWord: 'do',
+          correction: w[3],
+          explanation: `"${w[3]}" is more specific and precise than "do" in this context.`,
+          options: [w[3], w[0], w[1], w[2]],
+          correctIndex: 0,
+        },
+      });
+    }
   }
 
   return posts;
