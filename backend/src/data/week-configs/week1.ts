@@ -30,6 +30,17 @@ export const WEEK_1_CONFIG: WeekConfig = {
             ],
           },
           {
+            type: "briefing",
+            title: "New Associate Orientation Memo",
+            from: "Department of Clarity — Human Resources Division",
+            paragraphs: [
+              "Welcome to the Ministry for Healthy and Safe Communication. Please read the following orientation guidelines before proceeding with your intake assessment.",
+              "All new associates arrive at 08:00 for morning briefing. Upon arrival, check your schedule for the day's assignments. If there are any changes to your schedule, report them to your supervisor immediately.",
+              "The Ministry values associates who follow standard procedures. All documents must be submitted before 16:00. Late submissions will be flagged by P.E.A.R.L.",
+              "Your cooperation ensures clarity for all citizens. Proceed to the comprehension check when ready.",
+            ],
+          },
+          {
             type: "intake_questions",
             title: "Orientation Comprehension",
             questions: [

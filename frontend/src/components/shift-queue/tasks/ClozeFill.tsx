@@ -24,6 +24,15 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
 
   const { selectedId, selectItem, clearSelection } = useTapOrDrag();
 
+  const shuffledWordBank = useMemo(() => {
+    const a = [...wordBank];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }, [wordBank]);
+
   const placedWords = useMemo(() => {
     const s = new Set<string>();
     for (const idx of locked) {
@@ -172,7 +181,7 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
 
       {/* Word bank */}
       <div className="flex flex-wrap gap-2 justify-center">
-        {wordBank.map((word) => {
+        {shuffledWordBank.map((word) => {
           const isUsed = placedWords.has(word);
           return (
             <div

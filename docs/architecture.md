@@ -52,6 +52,16 @@ Deprecated: `Vocabulary`, `StudentVocabulary`
 
 ## Backend Endpoints
 
+### Shift routes (`backend/src/routes/shifts.ts`)
+- `GET /api/shifts/weeks/:weekId/config` — week config for task queue
+- `DELETE /api/shifts/weeks/:weekId/scores` — reset all MissionScore records for a week (used by teacher task controls)
+
+### Socket.IO Teacher Task Commands
+- Teacher dashboard emits `task-command` events via Socket.IO
+- Supported actions: `skip` (skip current task), `goToTask` (jump to specific task), `resetShift` (clear all progress), `resetTask` (restart current task)
+- All commands persist to server (MissionScore creation/deletion) before updating local Zustand state
+- Null weekConfig guard returns PEARL feedback instead of silent failure
+
 ### Teacher routes (`backend/src/routes/teacher.ts`)
 - `GET /api/teacher/weeks` — week list + briefing config
 - `PATCH /api/teacher/weeks/:weekId/briefing` — update briefing config (`embedUrl`, `episodeTitle`, `episodeSubtitle`, `fallbackText`)

@@ -2,6 +2,61 @@
 
 Last updated: 2026-03-10
 
+## 2026-03-10 — Chromebook Compatibility, Task Randomization, Touch Support, Task Controls Fix
+
+### Chromebook / Short Viewport Fixes
+- **Proceed button relocated**: "PROCEED TO YOUR STATION" and "SKIP (TEST)" buttons moved from below the CRT monitor into the video player area itself (absolutely positioned inside the clip-path screen region). Ensures visibility on Chromebook viewports where the monitor image fills most of the screen.
+- **Approach**: User preferred keeping the full-size monitor rather than constraining it with `max-height`. Button now overlays at `bottom-[8%]` inside the CRT screen with frosted green background + blur.
+
+### TaskCard Dropdown Clipping Fix
+- **Bug**: ErrorCorrectionDoc's word-correction dropdown was clipped by `overflow-hidden` on the parent TaskCard container.
+- **Fix**: Removed `overflow-hidden` from TaskCard's main div. Wrapped the "APPROVED" stamp watermark in its own `overflow-hidden` container so the stamp still clips correctly without affecting child dropdowns.
+- **File**: `frontend/src/components/shift-queue/TaskCard.tsx`
+
+### Option Randomization (All Quiz/Match Tasks)
+- **WordMatch**: Added Fisher-Yates shuffle for both word column (`shuffledWords`) and definition column (`shuffledDefs`) — both independently shuffled on mount via `useRef`.
+- **VocabClearance**: Item order shuffled + option order within each item shuffled. `correctIndex` remapped after shuffling.
+- **ErrorCorrectionDoc**: `normalizeErrors()` now shuffles dropdown option order and remaps `correctIndex`.
+- All three use the same `shuffle<T>()` utility (Fisher-Yates).
+
+### Writing Prompt Simplification (Vocabulary-Focused)
+- **Change**: Shift report prompts across all 3 weeks changed from content-recall ("describe what happened during your shift") to vocabulary-usage ("Write your shift report using 3 to 5 sentences. Try to use as many of the target words as possible").
+- **Lane 1 guided questions**: Changed from comprehension-based ("What did you learn about the Ministry?") to vocabulary-pairing exercises ("Write a sentence using 'arrive' and 'check'").
+- **Lane 1 hints**: Simplified to basic sentence starters ("I arrived at..." / "First, I had to...").
+- **Pedagogy**: Aligns with Involvement Load Hypothesis — "need + search + evaluate" engagement with target vocabulary is more effective for A2-B1 learners than content recall.
+- **Files**: `backend/src/data/week-configs/week1.ts`, `week2.ts`, `week3.ts`
+
+### PEARL Writing Evaluation Updated
+- Backend evaluation criteria in `POST /api/submissions/evaluate` updated to match vocabulary-focused prompts.
+- AI rubric now evaluates vocabulary usage and natural integration rather than content accuracy.
+- **File**: `backend/src/routes/submissions.ts`
+
+### Teacher Task Controls Fix (Server Persistence)
+- **Bug**: Skip Task, Reset Task, Reset Shift, and Send to Task only updated local Zustand state — refreshing the page or reconnecting reset everything back to onboarding.
+- **Fix**: All shiftQueueStore control functions now persist to the server:
+  - `skipCurrentTask()`: Async — calls `submitMissionScore()` with score 0 + `{ skipped: true }`
+  - `goToTask()`: Async — persists all skipped tasks before the target
+  - `resetShift()`: Async — calls new `resetWeekScores()` API to delete mission scores
+  - Added `reloadFromServer()` for state sync
+- **New backend endpoint**: `DELETE /api/shifts/weeks/:weekId/scores` — deletes all MissionScore records for a given week
+- **New frontend API**: `resetWeekScores(weekId)` in `frontend/src/api/shifts.ts`
+- **Socket handler**: `onTaskCommand` in App.tsx made async with null weekConfig guard + PEARL feedback
+- **Files**: `frontend/src/stores/shiftQueueStore.ts`, `frontend/src/App.tsx`, `backend/src/routes/shifts.ts`, `frontend/src/api/shifts.ts`
+
+### Touch Support for Chromebooks
+- Added `active:scale-[0.97]`, `active:scale-95`, `active:bg-*` states across all interactive elements for touchscreen Chromebooks.
+- **Files affected** (10+ components): OfficeView, FrostedGlassPlayer, TerminalDesktop, VocabClearance, WordMatch, WordSort, ClozeFill, ComprehensionDoc, ErrorCorrectionDoc, PriorityBriefing, PrioritySort, IntakeForm
+
+### Login Page Music Replacement
+- Replaced `The_Iron_Grip_Overture.mp3` with `Synthetic_Serenity.mp3` as background music on the login page.
+- **File**: `frontend/src/pages/Login.tsx`
+
+### Welcome Video — Visual Polish
+- Added CRT vignette overlay (`box-shadow: inset`) for gradient edge blending with monitor frame.
+- Added subtle screen glare (`radial-gradient` overlay).
+- Playback controls (rewind, pause/play) made visible with `opacity-40` baseline (previously `opacity-0`).
+- Volume knob repositioned and styled as vintage brass knob on the bezel.
+
 ## 2026-03-10 — Frontend Build Fix, Welcome Video System, Retro Monitor Frame
 
 ### Critical Frontend Build Fix

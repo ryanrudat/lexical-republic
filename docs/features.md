@@ -20,6 +20,13 @@ Config-driven task queue. Each week has 4 tasks driven by static `WeekConfig` Ty
 
 **Task types:** `intake_form`, `vocab_clearance`, `document_review`, `contradiction_report`, `shift_report`, `word_match`, `word_sort`, `priority_briefing`, `priority_sort`, `cloze_fill`
 
+**Option randomization:** All quiz/match tasks shuffle options on mount using Fisher-Yates:
+- `WordMatch`: Both word and definition columns independently shuffled
+- `VocabClearance`: Item order + option order within each item shuffled, `correctIndex` remapped
+- `ErrorCorrectionDoc`: Dropdown options shuffled per error, `correctIndex` remapped
+
+**Touch support:** All interactive elements have `active:` Tailwind states for touchscreen Chromebooks (active:scale-95, active:bg-*, etc.)
+
 **Shared components:**
 - `TargetWordHighlighter` — word status chips (emerald=used, neutral=unused), progress bar, Porter Stemmer matching (inflected forms accepted)
 - `WritingEvaluator` — 3-attempt system: full eval → relaxed threshold → auto-pass. Calls `POST /api/submissions/evaluate`
@@ -31,6 +38,8 @@ Config-driven task queue. Each week has 4 tasks driven by static `WeekConfig` Ty
 - Backend: `POST /api/submissions/evaluate` — Layer 1 auto-checks (word count, vocab usage) + Layer 2 AI rubric (fail-open)
 - Vocabulary matching uses Porter Stemmer on both frontend (`frontend/src/utils/stemmer.ts`) and backend (`backend/src/utils/stemmer.ts`)
 - Student writing persisted in `MissionScore.details` JSON blob
+- Writing prompts are vocabulary-focused ("Use 3-5 sentences using as many target words as possible"), not content-recall
+- Lane 1 guided questions use vocabulary-pairing exercises ("Write a sentence using 'arrive' and 'check'")
 
 **Dictionary word gating:** Words gated by student progress (MissionScore/ShiftResult), not ClassWeekUnlock.
 
@@ -84,15 +93,16 @@ Step navigation gated by completion. All steps support optional video via `StepV
 ## Welcome Video Gate
 - One-time modal for pairs with `hasWatchedWelcome === false`
 - **Retro CRT monitor frame**: Video plays inside a vintage monitor image (`public/images/welcome-monitor.jpg`), positioned with `clip-path: polygon()` tracing the exact glossy black screen shape
-- CRT visual effects: scanline overlay + radial glare gradient
+- CRT visual effects: scanline overlay, vignette edge blending (inset box-shadow), radial glare gradient
 - Progress bar overlaid on the monitor's green LED strip position
-- Volume mute/unmute toggle inside the screen area
+- Playback controls: rewind 10s + pause/play buttons on bezel, vintage brass volume knob — all touch-friendly
 - Autoplay rejection handling: "Begin Orientation" manual play button overlay
+- **Proceed button**: Overlaid inside the CRT screen area (`bottom-[8%]`) after video ends — ensures visibility on short-viewport Chromebooks
+- CA-1 test bypass: "SKIP (TEST)" button inside CRT screen area
 - Teacher-uploadable video via `/api/dictionary/welcome-video` (multer, 200MB limit)
 - Teacher delete video via `DELETE /api/dictionary/welcome-video`
 - Video served via static `/uploads/welcome/welcome-video.mp4` (no auth needed for `<video>` tags)
 - Static fallback: green CRT "WELCOME TO THE MINISTRY" text inside screen, auto-proceeds after 5s
-- CA-1 test pair gets "SKIP (TEST)" button below monitor
 - Mounted in `App.tsx` after boot sequence, before routes
 
 ## Teacher Dashboard (`frontend/src/pages/TeacherDashboard.tsx`)

@@ -92,17 +92,23 @@ router.get('/posts', async (req, res) => {
       return;
     }
 
-    // Week 1 lock — Harmony is not available during the first shift
+    // Week 1 lock — Harmony is not available until the first shift is completed
     if (viewer.pairId && viewer.currentWeekNumber <= 1) {
-      res.json({
-        locked: true,
-        lockMessage: 'Harmony access requires completion of your first shift. Return after Shift 1 clearance.',
-        posts: [],
-        currentWeekNumber: viewer.currentWeekNumber,
-        focusWords: [],
-        reviewWords: [],
+      const shift1Complete = await prisma.shiftResult.findFirst({
+        where: { pairId: viewer.pairId, weekNumber: 1 },
+        select: { id: true },
       });
-      return;
+      if (!shift1Complete) {
+        res.json({
+          locked: true,
+          lockMessage: 'Harmony access requires completion of your first shift. Return after Shift 1 clearance.',
+          posts: [],
+          currentWeekNumber: viewer.currentWeekNumber,
+          focusWords: [],
+          reviewWords: [],
+        });
+        return;
+      }
     }
 
     const reviewContext = getHarmonyReviewContext(viewer.currentWeekNumber);
@@ -186,10 +192,16 @@ router.get('/censure-queue', async (req, res) => {
       return;
     }
 
-    // Week 1 lock
+    // Week 1 lock — unlock after completing Shift 1
     if (viewer.currentWeekNumber <= 1) {
-      res.json({ locked: true, items: [], stats: { total: 0, completed: 0 } });
-      return;
+      const shift1Complete = await prisma.shiftResult.findFirst({
+        where: { pairId: viewer.pairId, weekNumber: 1 },
+        select: { id: true },
+      });
+      if (!shift1Complete) {
+        res.json({ locked: true, items: [], stats: { total: 0, completed: 0 } });
+        return;
+      }
     }
 
     if (!viewer.classId) {

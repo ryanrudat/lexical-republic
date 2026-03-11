@@ -50,6 +50,9 @@ export default function DutyRosterApp() {
         <p className="font-ibm-mono text-xs text-white/50 mt-1 tracking-wider">
           {subtitle || '18 Shifts \u2022 50 minutes each \u2022 Ministry-assigned'}
         </p>
+        <p className="font-ibm-mono text-[11px] text-white/40 mt-3 max-w-md mx-auto leading-relaxed">
+          Choose an unlocked shift to start. Complete each shift in order to unlock the next one.
+        </p>
       </div>
 
       {loading ? (

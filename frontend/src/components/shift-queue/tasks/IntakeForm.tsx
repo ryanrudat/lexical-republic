@@ -38,7 +38,7 @@ interface IntakeQuestion {
 }
 
 interface CardConfig {
-  type: 'personal_info' | 'status_review' | 'writing' | 'acknowledgment' | 'intake_questions';
+  type: 'personal_info' | 'status_review' | 'writing' | 'acknowledgment' | 'intake_questions' | 'briefing';
   title?: string;
   fields?: FieldConfig[];
   prompt?: string;
@@ -47,6 +47,8 @@ interface CardConfig {
   blanks?: BlankConfig[];
   checkbox?: string;
   questions?: IntakeQuestion[];
+  paragraphs?: string[];
+  from?: string;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────
@@ -207,6 +209,45 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
             onClick={advanceCard}
           >
             Continue
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  function renderBriefingCard(c: CardConfig) {
+    return (
+      <div className="space-y-3">
+        {c.title && (
+          <h3 className="font-ibm-mono text-[10px] tracking-[0.15em] uppercase text-[#8B8578] mb-2">
+            {c.title}
+          </h3>
+        )}
+
+        {c.from && (
+          <p className="font-ibm-mono text-[10px] text-[#9CA3AF] tracking-wider">
+            From: {c.from}
+          </p>
+        )}
+
+        <div className="bg-[#FAFAF7] border border-[#E8E4DC] rounded-xl p-4 space-y-3">
+          {(c.paragraphs ?? []).map((para, i) => (
+            <p key={i} className="text-sm text-[#4B5563] leading-relaxed">
+              {para}
+            </p>
+          ))}
+        </div>
+
+        <p className="font-ibm-mono text-[10px] text-[#B8B3AA] italic">
+          Read carefully. You will be asked about this information.
+        </p>
+
+        <div className="pt-4">
+          <button
+            className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 active:bg-sky-800 active:scale-[0.98] transition-colors"
+            onClick={advanceCard}
+          >
+            I have read this document
           </button>
         </div>
       </div>
@@ -480,6 +521,8 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
           renderInfoCard(card)}
         {card.type === 'writing' &&
           renderWritingCard(card)}
+        {card.type === 'briefing' &&
+          renderBriefingCard(card)}
         {card.type === 'intake_questions' &&
           renderIntakeQuestionsCard(card)}
         {card.type === 'acknowledgment' &&

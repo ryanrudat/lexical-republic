@@ -142,15 +142,6 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
           </div>
         )}
 
-        {/* Word label */}
-        {item.word && (
-          <div className="text-center">
-            <span className="text-lg font-semibold text-sky-700 tracking-wide">
-              {item.word}
-            </span>
-          </div>
-        )}
-
         {/* Question */}
         <p className="text-sm text-[#2C3340] leading-relaxed">
           {item.question}
