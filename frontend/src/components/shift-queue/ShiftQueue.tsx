@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useShiftQueueStore } from '../../stores/shiftQueueStore';
 import { useMessagingStore } from '../../stores/messagingStore';
 import { useShiftStore } from '../../stores/shiftStore';
@@ -32,6 +32,14 @@ const TASK_REGISTRY: Record<string, React.ComponentType<TaskProps>> = {
   priority_sort: PrioritySort,
 };
 
+/** Extract teacher video clip info from a task config */
+function getTaskClip(config: Record<string, unknown>) {
+  const override = config?.teacherOverride as Record<string, unknown> | undefined;
+  const clipUrl = typeof override?.videoClipUrl === 'string' ? resolveUploadUrl(override.videoClipUrl) : '';
+  const clipEmbed = typeof override?.videoClipEmbedUrl === 'string' ? (override.videoClipEmbedUrl as string).trim() : '';
+  return { clipUrl, clipEmbed, hasClip: !!(clipUrl || clipEmbed) };
+}
+
 export default function ShiftQueue() {
   const { weekConfig, taskProgress, currentTaskIndex, shiftComplete, loading, taskResetKey } =
     useShiftQueueStore();
@@ -43,6 +51,31 @@ export default function ShiftQueue() {
   const currentTask = weekConfig?.tasks[currentTaskIndex] ?? null;
   const messagesReadyRef = useRef(false);
   const lastTriggeredTaskRef = useRef<string | null>(null);
+
+  // Video clip gate — show clip before task, then reveal task
+  const [watchingClip, setWatchingClip] = useState(false);
+  const [showSkip, setShowSkip] = useState(false);
+  const skipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // When task changes, check if it has a clip to play first
+  useEffect(() => {
+    if (skipTimerRef.current) clearTimeout(skipTimerRef.current);
+    setShowSkip(false);
+
+    if (currentTask) {
+      const { hasClip } = getTaskClip(currentTask.config);
+      if (hasClip) {
+        setWatchingClip(true);
+        skipTimerRef.current = setTimeout(() => setShowSkip(true), 3000);
+      } else {
+        setWatchingClip(false);
+      }
+    }
+
+    return () => {
+      if (skipTimerRef.current) clearTimeout(skipTimerRef.current);
+    };
+  }, [currentTask?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load messages on mount, then fire shift_start + initial task_start
   useEffect(() => {
@@ -96,6 +129,12 @@ export default function ShiftQueue() {
     triggerMessage('task_complete', { taskId: currentTask.id, weekNumber }, weekConfig);
   };
 
+  const handleClipDone = () => {
+    setWatchingClip(false);
+    setShowSkip(false);
+    if (skipTimerRef.current) clearTimeout(skipTimerRef.current);
+  };
+
   // Loading state
   if (loading || !weekConfig) {
     return (
@@ -119,6 +158,53 @@ export default function ShiftQueue() {
   // Resolve current task component
   const TaskComponent = currentTask ? TASK_REGISTRY[currentTask.type] : null;
 
+  // Video clip gate — play clip before showing task
+  if (currentTask && watchingClip) {
+    const { clipUrl, clipEmbed } = getTaskClip(currentTask.config);
+    return (
+      <div className="flex flex-col gap-4">
+        {/* Progress bar */}
+        <div className="flex gap-1.5 mb-1">
+          {taskProgress.map((tp, idx) => (
+            <div
+              key={tp.taskId}
+              className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
+                tp.status === 'complete'
+                  ? 'bg-emerald-400'
+                  : tp.status === 'current'
+                    ? 'bg-sky-400 animate-pulse'
+                    : 'bg-[#D4CFC6]'
+              }`}
+              aria-label={`Task ${idx + 1}: ${tp.status}`}
+            />
+          ))}
+        </div>
+
+        <div className="flex flex-col items-center gap-3 py-4 max-w-2xl mx-auto w-full">
+          <MonitorPlayer
+            src={clipUrl || undefined}
+            embedUrl={clipEmbed || undefined}
+            autoPlay
+            onEnded={handleClipDone}
+          />
+          {showSkip && (
+            <button
+              onClick={handleClipDone}
+              className="font-ibm-mono text-[10px] tracking-[0.2em] uppercase px-4 py-2 border rounded transition-all active:scale-95 opacity-60 hover:opacity-100"
+              style={{
+                borderColor: '#5a8a6a',
+                color: '#5a8a6a',
+                background: 'transparent',
+              }}
+            >
+              SKIP
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {/* ─── Progress Bar ─── */}
@@ -139,31 +225,20 @@ export default function ShiftQueue() {
       </div>
 
       {/* ─── Current Task ─── */}
-      {currentTask && TaskComponent && weekConfig && (() => {
-        const override = currentTask.config?.teacherOverride as Record<string, unknown> | undefined;
-        const clipUrl = typeof override?.videoClipUrl === 'string' ? resolveUploadUrl(override.videoClipUrl) : '';
-        const clipEmbed = typeof override?.videoClipEmbedUrl === 'string' ? (override.videoClipEmbedUrl as string).trim() : '';
-
-        return (
-          <TaskCard
-            taskId={currentTask.id}
-            label={currentTask.label}
-            status="idle"
-          >
-            {(clipUrl || clipEmbed) && (
-              <div className="mb-4 max-w-2xl mx-auto">
-                <MonitorPlayer src={clipUrl || undefined} embedUrl={clipEmbed || undefined} autoPlay />
-              </div>
-            )}
-            <TaskComponent
-              key={`${currentTask.id}-${taskResetKey}`}
-              config={currentTask.config}
-              weekConfig={weekConfig}
-              onComplete={handleComplete}
-            />
-          </TaskCard>
-        );
-      })()}
+      {currentTask && TaskComponent && weekConfig && (
+        <TaskCard
+          taskId={currentTask.id}
+          label={currentTask.label}
+          status="idle"
+        >
+          <TaskComponent
+            key={`${currentTask.id}-${taskResetKey}`}
+            config={currentTask.config}
+            weekConfig={weekConfig}
+            onComplete={handleComplete}
+          />
+        </TaskCard>
+      )}
     </div>
   );
 }
