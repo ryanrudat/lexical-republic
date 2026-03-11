@@ -5,7 +5,7 @@ import path from 'path';
 import { uploadVideo } from '../middleware/upload';
 import prisma from '../utils/prisma';
 import { io, getOnlineStudents } from '../socketServer';
-import { getAlternatives, findAlternative } from '../data/activityPool';
+import { findAlternative } from '../data/activityPool';
 import { getWeekConfig } from '../data/week-configs';
 
 const router = Router();
@@ -902,15 +902,21 @@ router.delete('/students', async (req: Request, res: Response) => {
 
 // ── Storyboard Routes ──────────────────────────────────────────────
 
-const STEP_ORDER = [
-  { id: 'recap', label: 'Shift Intake', location: 'intake', icon: '\uD83D\uDCCD' },
-  { id: 'briefing', label: 'Broadcast', location: 'broadcast', icon: '\uD83C\uDFAC' },
-  { id: 'grammar', label: 'Language Lab', location: 'language-lab', icon: '\uD83D\uDD24' },
-  { id: 'listening', label: 'Evidence Desk', location: 'evidence-desk', icon: '\uD83C\uDFA7' },
-  { id: 'voice_log', label: 'Voice Booth', location: 'voice-booth', icon: '\uD83C\uDFA4' },
-  { id: 'case_file', label: 'Filing Desk', location: 'filing-desk', icon: '\u270D\uFE0F' },
-  { id: 'clock_out', label: 'Clock-Out', location: 'intake', icon: '\uD83D\uDD1A' },
-];
+// Icons for WeekConfig task types shown in the Storyboard
+const TASK_ICONS: Record<string, string> = {
+  intake_form: '\uD83D\uDCCB',
+  word_match: '\uD83D\uDD24',
+  cloze_fill: '\uD83D\uDCDD',
+  vocab_clearance: '\u2705',
+  document_review: '\uD83D\uDCC4',
+  shift_report: '\u270D\uFE0F',
+  contradiction_report: '\uD83D\uDD0D',
+  priority_briefing: '\uD83D\uDCCA',
+  priority_sort: '\uD83D\uDCC2',
+  evidence_assembly: '\uD83E\uDDE9',
+  word_sort: '\uD83D\uDDC2\uFE0F',
+  custom: '\u2699\uFE0F',
+};
 
 function safeConfig(config: unknown): Record<string, unknown> {
   if (config && typeof config === 'object' && !Array.isArray(config)) {
@@ -919,7 +925,7 @@ function safeConfig(config: unknown): Record<string, unknown> {
   return {};
 }
 
-// GET /api/teacher/weeks/:weekId/storyboard — Full 7-step storyboard with summaries
+// GET /api/teacher/weeks/:weekId/storyboard — Steps derived from WeekConfig tasks
 router.get('/weeks/:weekId/storyboard', async (req: Request, res: Response) => {
   try {
     const weekId = req.params.weekId as string;
@@ -946,66 +952,38 @@ router.get('/weeks/:weekId/storyboard', async (req: Request, res: Response) => {
       return;
     }
 
-    const steps = STEP_ORDER.map((step, idx) => {
-      const mission = week.missions.find(m => m.missionType === step.id);
+    const weekConfig = getWeekConfig(week.weekNumber);
+    if (!weekConfig) {
+      res.status(404).json({ error: 'No config for this week' });
+      return;
+    }
+
+    const steps = weekConfig.tasks.map((task, idx) => {
+      // Find the Mission record that matches this WeekConfig task type
+      const mission = week.missions.find(m => m.missionType === task.type);
       const cfg = safeConfig(mission?.config);
-      const storyBeat = cfg.storyBeat as Record<string, unknown> | undefined;
       const teacherOverride = cfg.teacherOverride as Record<string, unknown> | undefined;
-      const alternatives = getAlternatives(step.id);
-
-      // Build summary text from storyBeat or mission description
-      const summary = storyBeat
-        ? (typeof storyBeat.objective === 'string' ? storyBeat.objective : '')
-        : (mission?.description || '');
-
-      // Grammar summary
-      const grammarFocus = storyBeat && typeof storyBeat.learningFocus === 'string'
-        ? storyBeat.learningFocus : '';
-
-      // Vocab summary
-      const knownWords = Array.isArray(storyBeat?.knownWords) ? storyBeat.knownWords as string[] : [];
-      const newWords = Array.isArray(storyBeat?.newWords) ? storyBeat.newWords as string[] : [];
-
-      // Briefing-specific fields
-      const briefingFields = step.id === 'briefing' ? {
-        episodeTitle: typeof cfg.episodeTitle === 'string' ? cfg.episodeTitle : '',
-        episodeSubtitle: typeof cfg.episodeSubtitle === 'string' ? cfg.episodeSubtitle : '',
-        nowShowingStage: typeof cfg.nowShowingStage === 'string' ? cfg.nowShowingStage : 'free',
-        videoSource: typeof cfg.videoSource === 'string' ? cfg.videoSource : 'auto',
-        clipAUploadedVideoUrl: typeof cfg.clipAUploadedVideoUrl === 'string' ? cfg.clipAUploadedVideoUrl : '',
-        clipAUploadedVideoFilename: typeof cfg.clipAUploadedVideoFilename === 'string' ? cfg.clipAUploadedVideoFilename : '',
-        clipBUploadedVideoUrl: typeof cfg.clipBUploadedVideoUrl === 'string' ? cfg.clipBUploadedVideoUrl : '',
-        clipBUploadedVideoFilename: typeof cfg.clipBUploadedVideoFilename === 'string' ? cfg.clipBUploadedVideoFilename : '',
-        uploadedVideoUrl: typeof cfg.uploadedVideoUrl === 'string' ? cfg.uploadedVideoUrl : '',
-        uploadedVideoFilename: typeof cfg.uploadedVideoFilename === 'string' ? cfg.uploadedVideoFilename : '',
-        embedUrl: typeof cfg.embedUrl === 'string' ? cfg.embedUrl : '',
-        clipAEmbedUrl: typeof cfg.clipAEmbedUrl === 'string' ? cfg.clipAEmbedUrl : '',
-        clipBEmbedUrl: typeof cfg.clipBEmbedUrl === 'string' ? cfg.clipBEmbedUrl : '',
-        fallbackText: typeof cfg.fallbackText === 'string' ? cfg.fallbackText : '',
-        checksCount: Array.isArray(cfg.checks) ? cfg.checks.length : 0,
-      } : {};
 
       return {
         orderIndex: idx,
         missionId: mission?.id || null,
-        missionType: step.id,
-        label: step.label,
-        icon: step.icon,
-        location: step.location,
-        summary,
-        grammarFocus,
-        knownWords,
-        newWords,
+        missionType: task.type,
+        label: task.label,
+        icon: TASK_ICONS[task.type] || '\uD83D\uDCCB',
+        location: task.location,
+        summary: '',
+        grammarFocus: '',
+        knownWords: [] as string[],
+        newWords: [] as string[],
         currentActivityId: teacherOverride && typeof teacherOverride.activityId === 'string'
           ? teacherOverride.activityId : 'default',
-        alternatives: alternatives.map(a => ({ id: a.id, label: a.label, description: a.description })),
+        alternatives: [] as { id: string; label: string; description: string }[],
         videoClipUrl: teacherOverride && typeof teacherOverride.videoClipUrl === 'string'
           ? teacherOverride.videoClipUrl : '',
         videoClipFilename: teacherOverride && typeof teacherOverride.videoClipFilename === 'string'
           ? teacherOverride.videoClipFilename : '',
         videoClipEmbedUrl: teacherOverride && typeof teacherOverride.videoClipEmbedUrl === 'string'
           ? teacherOverride.videoClipEmbedUrl : '',
-        ...briefingFields,
       };
     });
 

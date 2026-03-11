@@ -307,6 +307,7 @@ router.post(
 );
 
 // GET /api/shifts/weeks/:weekId/config — Return WeekConfig for queue-based weeks
+// Merges teacher overrides (video clips, activity swaps) from DB Mission records
 router.get('/weeks/:weekId/config', async (req: Request, res: Response) => {
   try {
     const weekId = req.params.weekId as string;
@@ -320,7 +321,26 @@ router.get('/weeks/:weekId/config', async (req: Request, res: Response) => {
       res.status(404).json({ error: 'No queue config for this week' });
       return;
     }
-    res.json(config);
+
+    // Fetch all mission records for this week to get teacher overrides
+    const missions = await prisma.mission.findMany({
+      where: { weekId },
+      select: { missionType: true, config: true },
+    });
+
+    // Merge teacher overrides into matching task configs
+    const enrichedTasks = config.tasks.map(task => {
+      const mission = missions.find(m => m.missionType === task.type);
+      if (!mission) return task;
+      const missionConfig = mission.config as Record<string, unknown> | null;
+      const teacherOverride = missionConfig?.teacherOverride;
+      if (teacherOverride && typeof teacherOverride === 'object') {
+        return { ...task, config: { ...task.config, teacherOverride } };
+      }
+      return task;
+    });
+
+    res.json({ ...config, tasks: enrichedTasks });
   } catch (err) {
     console.error('Week config fetch error:', err);
     res.status(500).json({ error: 'Failed to fetch week config' });

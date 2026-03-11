@@ -3,8 +3,10 @@ import { useShiftQueueStore } from '../../stores/shiftQueueStore';
 import { useMessagingStore } from '../../stores/messagingStore';
 import { useShiftStore } from '../../stores/shiftStore';
 import { getSocket } from '../../utils/socket';
+import { resolveUploadUrl } from '../../api/client';
 import TaskCard from './TaskCard';
 import ShiftClosing from './ShiftClosing';
+import MonitorPlayer from '../shared/MonitorPlayer';
 import IntakeForm from './tasks/IntakeForm';
 import WordMatch from './tasks/WordMatch';
 import ClozeFill from './tasks/ClozeFill';
@@ -137,20 +139,31 @@ export default function ShiftQueue() {
       </div>
 
       {/* ─── Current Task ─── */}
-      {currentTask && TaskComponent && weekConfig && (
-        <TaskCard
-          taskId={currentTask.id}
-          label={currentTask.label}
-          status="idle"
-        >
-          <TaskComponent
-            key={`${currentTask.id}-${taskResetKey}`}
-            config={currentTask.config}
-            weekConfig={weekConfig}
-            onComplete={handleComplete}
-          />
-        </TaskCard>
-      )}
+      {currentTask && TaskComponent && weekConfig && (() => {
+        const override = currentTask.config?.teacherOverride as Record<string, unknown> | undefined;
+        const clipUrl = typeof override?.videoClipUrl === 'string' ? resolveUploadUrl(override.videoClipUrl) : '';
+        const clipEmbed = typeof override?.videoClipEmbedUrl === 'string' ? (override.videoClipEmbedUrl as string).trim() : '';
+
+        return (
+          <TaskCard
+            taskId={currentTask.id}
+            label={currentTask.label}
+            status="idle"
+          >
+            {(clipUrl || clipEmbed) && (
+              <div className="mb-4 max-w-2xl mx-auto">
+                <MonitorPlayer src={clipUrl || undefined} embedUrl={clipEmbed || undefined} autoPlay />
+              </div>
+            )}
+            <TaskComponent
+              key={`${currentTask.id}-${taskResetKey}`}
+              config={currentTask.config}
+              weekConfig={weekConfig}
+              onComplete={handleComplete}
+            />
+          </TaskCard>
+        );
+      })()}
     </div>
   );
 }
