@@ -45,6 +45,23 @@ Week 1 keeps custom authored content; weeks 2-18 use the default mission generat
 - 8 `WordStatusEvent` entries for narrative status changes (grey week 6, monitored week 7, proscribed week 10)
 - Dictionary word statuses: Approved → Proscribed (week 10+) → Recovered (week 10+)
 
+## Harmony Content & Citizen-4488 Arc
+
+**Citizen-4488** is a recurring Harmony character whose posts escalate unease across shifts:
+- **Week 1**: Missing neighbor, empty chair — "I should not worry. The Ministry takes care of everyone."
+- **Week 2**: Names changing overnight, three citizens gone — "It is probably nothing. Everything is fine."
+- **Week 3**: Friend's transfer papers processed, no response — "I must maintain focus. Everything is fine."
+- PEARL notes escalate in parallel: observation → wellness check scheduled → Pattern-7 monitoring
+
+**Static censure content** (hand-written, high quality) exists for weeks 1-3:
+- Each week: 3 grammar + 3 vocab + 2 replace items using that week's target words and grammar focus
+- Week 1: present-simple errors (arrive/arrives, describe/describes, submit/submits)
+- Week 2: past-simple-vs-present errors (notice/noticed, remove/removed, update/updated)
+- Week 3: modal errors (should maintains/maintain, must to complete/complete, can identifies/identify)
+- Weeks 4+ fall back to AI generation or generic templates
+
+**Feed seed posts** in `harmonyFeed.ts`: 6 for week 1, 3 for week 2, 3 for week 3 (including one Citizen-4488 each)
+
 ## Content Pipeline
 
 ### Script-first working agreement

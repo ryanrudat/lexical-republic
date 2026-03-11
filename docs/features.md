@@ -87,6 +87,13 @@ Step navigation gated by completion. All steps support optional video via `StepV
 - Layer 3b: Task context injection (aggressive "QUIZ IN PROGRESS" instruction for quiz tasks)
 - Layer 4: Post-response filter catches leaked target words, replaces with in-character deflection
 
+**Chat Rate Limiting:**
+- 20 messages per shift per student (in-memory counter keyed by `pairId-weekN`)
+- In-world dystopian responses when limit reached ("Communication allocation exhausted, Citizen")
+- Frontend disables input field and send button when rate-limited
+- 5-second cooldown between messages, 200-character max per message
+- Resets on new shift (different week key) or server restart
+
 ## Character Messaging System
 - `MessagingPanel` — slides from right (360px, z-[41]), inbox/thread navigation
 - `InboxView` — preview cards sorted most-recent-first with color dot, designation, preview, timestamp
@@ -95,6 +102,34 @@ Step navigation gated by completion. All steps support optional video via `StepV
 - Messages triggered by `task_start`, `task_complete`, `shift_start` events from WeekConfig
 - Dedup: module-level `inFlightKeys` + backend `$transaction` + GET response dedup
 - Header icon layout: [Dictionary] [Messages] | [PEARL eye + label] (Ministry text and PEARL label hidden on mobile)
+
+## Harmony App (State Social Network)
+- Locked until Shift 1 completed (checks `ShiftResult` record)
+- Two tabs: **Feed** (citizen posts) and **Censure Queue** (language correction exercises)
+- Content accumulates across shifts — queries scoped by `weekNumber: { lte: currentWeekNumber }`
+
+**Feed:**
+- AI-generated + seed + student posts, sorted newest-first
+- Citizen-4488 recurring character with escalating narrative across weeks
+- Students can delete their own posts (cascade: replies → censure responses → post)
+- Tappable highlighted vocabulary words show "Target word" / "Review word" tooltips
+- Citizen-4488 posts have Approve/Flag interaction buttons
+
+**Censure Queue (language exercises):**
+- Three types: `censure_grammar` (verb form), `censure_vocab` (word meaning MCQ), `censure_replace` (fill-in-blank)
+- Error word highlighted in post text (pink pill for grammar, cyan for vocab, amber brackets for replace)
+- Question prompt names the specific error word: `Find the correct form of "arrives":`
+- Options shuffled via Fisher-Yates with index mapping back to original for validation
+- Post-answer feedback: correct option (green + checkmark), wrong pick (red + X), others dimmed
+- Neon stamp overlay (`ResultOverlay`): large check or X renders for 3.5 seconds after submission
+- Tab badge shows unreviewed item count (pink pill)
+
+**Content generation pipeline:**
+- `ensureHarmonyPostsExist()` called lazily when student opens Harmony
+- Checks censure (<5) and feed (<4) thresholds separately per week per class
+- Static hand-written censure items for weeks 1-3 (`STATIC_CENSURE_ITEMS` in `harmonyGenerator.ts`): 8 items each (3 grammar + 3 vocab + 2 replace)
+- AI generation via OpenAI when available, falls back to static + template content
+- Seed feed posts in `backend/src/data/harmonyFeed.ts` for weeks 1-3
 
 ## Welcome Video Gate
 - One-time modal for pairs with `hasWatchedWelcome === false`

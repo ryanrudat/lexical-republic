@@ -47,6 +47,7 @@ Story and learning are coupled: grammar, listening, speaking, and writing tasks 
 - Full scripted dialogue pass for all character beats (especially Weeks 4-18).
 - Custom domain setup for student-friendly URLs (optional).
 - Expand dictionary seed data beyond Weeks 1-3 (currently 49 words, target ~120+ across 18 weeks).
+- Expand Harmony static censure content beyond Weeks 1-3 (currently 8 items per week for weeks 1-3; weeks 4+ use AI generation or generic templates).
 - Lane adjustment system — auto-promote/demote evaluation after each shift (deferred to Phase B).
 - Hybrid class model app changes — compact intake_form mode, `teacherLed` task gating flag, teacher "advance to Station Work" signal in dashboard.
 - Printable Ministry materials — Vocabulary Cards, Evidence Board memos, Priority Board case cards, Conversation Frame cards.

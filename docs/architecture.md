@@ -86,3 +86,18 @@ Deprecated: `Vocabulary`, `StudentVocabulary`
 - `DELETE /api/dictionary/welcome-video` — teacher deletes welcome video
 - `PATCH /api/dictionary/:wordId/starred` — toggle starred
 - `PATCH /api/dictionary/:wordId/chinese-revealed` — set chineseRevealed=true (one-way)
+
+### Harmony routes (`backend/src/routes/harmony.ts`)
+- `GET /api/harmony/posts` — feed posts (locked until Shift 1 completed, triggers lazy generation)
+- `POST /api/harmony/posts` — create student post
+- `DELETE /api/harmony/posts/:id` — delete post (own posts only for students, cascade: replies → censure responses → post)
+- `GET /api/harmony/posts/:id/replies` — fetch replies for a post
+- `POST /api/harmony/posts/:id/replies` — create reply
+- `POST /api/harmony/posts/:id/censure` — approve/correct/flag a post
+- `GET /api/harmony/censure-queue` — censure queue items (locked until Shift 1 completed, triggers lazy generation)
+- `POST /api/harmony/censure-queue/:id/respond` — submit censure response (action + selectedIndex)
+
+### PEARL routes (`backend/src/routes/pearl.ts`)
+- `GET /api/pearl/messages` — active ambient messages (shuffled)
+- `POST /api/pearl/bark` — AI-generated contextual bark (3s timeout, fail-open to pool)
+- `POST /api/pearl/chat` — AI chat with 4-layer guardrails, per-shift rate limit (20 messages per `pairId-weekN`)
