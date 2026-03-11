@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { ClipConfig } from '../../types/sessions';
 import { resolveUploadUrl } from '../../api/client';
+import MonitorPlayer from '../shared/MonitorPlayer';
 
 interface PhaseClipPlayerProps {
   clip: ClipConfig;
@@ -13,14 +14,12 @@ export default function PhaseClipPlayer({ clip, onComplete }: PhaseClipPlayerPro
 
   const hasVideo = clip.embedUrl || clip.uploadPath;
 
-  // Auto-advance for fallback text (3s), show skip immediately for video
+  // Auto-advance for fallback text (3s), show skip after 3s for video
   useEffect(() => {
     if (!hasVideo) {
-      // Fallback text mode: auto-advance after 3s with Continue button
       timerRef.current = setTimeout(onComplete, 3000);
       setShowSkip(true);
     } else {
-      // Video mode: show skip after 3s
       timerRef.current = setTimeout(() => setShowSkip(true), 3000);
     }
     return () => {
@@ -28,66 +27,69 @@ export default function PhaseClipPlayer({ clip, onComplete }: PhaseClipPlayerPro
     };
   }, [hasVideo, onComplete]);
 
-  // Fallback text card
+  // Fallback text — shown inside the CRT monitor
   if (!hasVideo) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 px-8 max-w-xl mx-auto">
-        <div className="w-full border border-white/10 bg-white/5 backdrop-blur-sm p-6">
-          {clip.title && (
-            <h3 className="font-ibm-mono text-[10px] text-neon-cyan/60 tracking-[0.3em] uppercase mb-3">
-              {clip.title}
-            </h3>
-          )}
-          <p className="font-ibm-sans text-sm text-white/70 leading-relaxed">
-            {clip.fallbackText}
-          </p>
-        </div>
-        <button
-          onClick={onComplete}
-          className="mt-4 ios-glass-pill px-4 py-2 font-ibm-mono text-xs text-neon-cyan tracking-wider hover:border-neon-cyan/40 transition-colors"
-        >
-          CONTINUE
-        </button>
+      <div className="flex flex-col items-center justify-center py-6 px-4 max-w-2xl mx-auto w-full">
+        <MonitorPlayer
+          screenOverlay={
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              {clip.title && (
+                <h3
+                  className="font-ibm-mono text-[10px] sm:text-xs tracking-[0.3em] uppercase mb-3"
+                  style={{ color: '#5a8a6a' }}
+                >
+                  {clip.title}
+                </h3>
+              )}
+              <p
+                className="font-ibm-mono text-xs sm:text-sm leading-relaxed max-w-[80%] text-center"
+                style={{ color: '#00ff88' }}
+              >
+                {clip.fallbackText}
+              </p>
+            </div>
+          }
+        />
+        {showSkip && (
+          <button
+            onClick={onComplete}
+            className="mt-3 font-ibm-mono text-[10px] tracking-[0.2em] uppercase px-4 py-2 border rounded transition-all active:scale-95"
+            style={{
+              borderColor: '#00cc6a',
+              color: '#00ff88',
+              background: 'rgba(0, 40, 0, 0.6)',
+            }}
+          >
+            CONTINUE
+          </button>
+        )}
       </div>
     );
   }
 
-  // Video player
+  // Video player inside CRT monitor
   const videoSrc = clip.uploadPath
     ? resolveUploadUrl(clip.uploadPath)
-    : null;
+    : undefined;
 
   return (
     <div className="flex flex-col items-center justify-center py-6 px-4 max-w-2xl mx-auto w-full">
-      {clip.title && (
-        <h3 className="font-ibm-mono text-[10px] text-neon-cyan/60 tracking-[0.3em] uppercase mb-3">
-          {clip.title}
-        </h3>
-      )}
-
-      <div className="w-full aspect-video bg-black/50 border border-white/10 rounded overflow-hidden relative">
-        {clip.embedUrl ? (
-          <iframe
-            src={clip.embedUrl}
-            className="absolute inset-0 w-full h-full"
-            allow="autoplay; fullscreen"
-            allowFullScreen
-          />
-        ) : videoSrc ? (
-          <video
-            src={videoSrc}
-            className="absolute inset-0 w-full h-full object-contain"
-            autoPlay
-            onEnded={onComplete}
-            controls
-          />
-        ) : null}
-      </div>
-
+      <MonitorPlayer
+        src={videoSrc}
+        embedUrl={clip.embedUrl}
+        autoPlay
+        onEnded={onComplete}
+      />
       {showSkip && (
         <button
           onClick={onComplete}
-          className="mt-4 ios-glass-pill px-4 py-2 font-ibm-mono text-[10px] text-white/40 tracking-wider hover:text-white/60 hover:border-white/30 transition-colors"
+          className="mt-3 font-ibm-mono text-[10px] tracking-[0.2em] uppercase px-4 py-2 border rounded transition-all active:scale-95 opacity-60 hover:opacity-100"
+          style={{
+            borderColor: '#5a8a6a',
+            color: '#5a8a6a',
+            background: 'transparent',
+          }}
         >
           SKIP
         </button>

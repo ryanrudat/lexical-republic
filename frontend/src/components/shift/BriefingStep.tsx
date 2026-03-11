@@ -6,7 +6,7 @@ import MultipleChoiceCheck from './shared/MultipleChoiceCheck';
 import type { ComprehensionCheck } from '../../types/shifts';
 import StoryBeatCard from './shared/StoryBeatCard';
 import type { StoryBeatConfig } from './shared/StoryBeatCard';
-import FrostedGlassPlayer from './media/FrostedGlassPlayer';
+import MonitorPlayer from '../shared/MonitorPlayer';
 import { resolveUploadUrl } from '../../api/client';
 
 type VideoSourceMode = 'auto' | 'upload' | 'embed';
@@ -205,34 +205,17 @@ export default function BriefingStep() {
 
   const renderVideoBlock = () => {
     if (activeVideo.kind === 'upload' && activeVideo.src) {
-      const title = nowShowingStage === 'clip_b'
-        ? '1950s Briefing TV — Clip B'
-        : nowShowingStage === 'clip_a'
-        ? '1950s Briefing TV — Clip A'
-        : '1950s Briefing TV';
-      return <FrostedGlassPlayer src={activeVideo.src} title={title} />;
+      return (
+        <div className="max-w-2xl mx-auto">
+          <MonitorPlayer src={activeVideo.src} />
+        </div>
+      );
     }
 
     if (activeVideo.kind === 'embed' && activeVideo.src && !embedFailed) {
       return (
-        <div>
-          <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
-            <iframe
-              src={activeVideo.src}
-              className="absolute inset-0 w-full h-full rounded-lg"
-              title="Ministry Briefing"
-              onError={() => setEmbedFailed(true)}
-              allow="autoplay; fullscreen"
-            />
-          </div>
-          <a
-            href={activeVideo.src}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block mt-2 text-center font-ibm-mono text-[10px] text-white/30 tracking-wider hover:text-neon-cyan/70 transition-colors"
-          >
-            Open briefing in new tab
-          </a>
+        <div className="max-w-2xl mx-auto">
+          <MonitorPlayer embedUrl={activeVideo.src} />
         </div>
       );
     }
