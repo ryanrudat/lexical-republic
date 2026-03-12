@@ -54,6 +54,13 @@ export default function MonitorPlayer({
 
   const hasVideo = !!(src || embedUrl);
 
+  // Auto-skip when video fails to load (file deleted, 404, etc.)
+  useEffect(() => {
+    if (!videoError) return;
+    const t = setTimeout(() => onEnded?.(), 2000);
+    return () => clearTimeout(t);
+  }, [videoError, onEnded]);
+
   // Try autoplay if requested
   useEffect(() => {
     if (!autoPlay || !src || videoError) return;

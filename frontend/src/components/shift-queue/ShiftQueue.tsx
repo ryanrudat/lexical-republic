@@ -159,49 +159,32 @@ export default function ShiftQueue() {
   // Resolve current task component
   const TaskComponent = currentTask ? TASK_REGISTRY[currentTask.type] : null;
 
-  // Video clip gate — play clip before showing task
+  // Video clip gate — full-screen "movie theater" overlay
   if (currentTask && watchingClip) {
     const { clipUrl, clipEmbed } = getTaskClip(currentTask.config);
     return (
-      <div className="flex flex-col gap-4">
-        {/* Progress bar */}
-        <div className="flex gap-1.5 mb-1">
-          {taskProgress.map((tp, idx) => (
-            <div
-              key={tp.taskId}
-              className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
-                tp.status === 'complete'
-                  ? 'bg-emerald-400'
-                  : tp.status === 'current'
-                    ? 'bg-sky-400 animate-pulse'
-                    : 'bg-[#D4CFC6]'
-              }`}
-              aria-label={`Task ${idx + 1}: ${tp.status}`}
-            />
-          ))}
-        </div>
-
-        <div className="flex flex-col items-center gap-3 py-4 max-w-2xl mx-auto w-full">
+      <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center">
+        <div className="w-full max-w-3xl px-4">
           <MonitorPlayer
             src={clipUrl || undefined}
             embedUrl={clipEmbed || undefined}
             autoPlay
             onEnded={handleClipDone}
           />
-          {showSkip && (
-            <button
-              onClick={handleClipDone}
-              className="font-ibm-mono text-[10px] tracking-[0.2em] uppercase px-4 py-2 border rounded transition-all active:scale-95 opacity-60 hover:opacity-100"
-              style={{
-                borderColor: '#5a8a6a',
-                color: '#5a8a6a',
-                background: 'transparent',
-              }}
-            >
-              SKIP
-            </button>
-          )}
         </div>
+        {showSkip && (
+          <button
+            onClick={handleClipDone}
+            className="mt-6 font-ibm-mono text-[10px] tracking-[0.2em] uppercase px-5 py-2.5 border rounded transition-all active:scale-95 opacity-50 hover:opacity-100"
+            style={{
+              borderColor: '#5a8a6a',
+              color: '#5a8a6a',
+              background: 'transparent',
+            }}
+          >
+            SKIP
+          </button>
+        )}
       </div>
     );
   }
