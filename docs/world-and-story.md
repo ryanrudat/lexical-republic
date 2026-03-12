@@ -38,8 +38,34 @@ Each week plan drives: episode title/subtitle, character voice line, objective, 
 
 Week 1 keeps custom authored content; weeks 2-18 use the default mission generator.
 
-## Vocabulary & Dictionary Seeding
-- 15 Week-1 baseline words + 72 story words (4 new words x 18 weeks)
+## Vocabulary Design Principle: TOEIC-first
+
+**TOEIC-aligned words come first; world-building / story words come second.**
+
+Each week's vocabulary has two tiers:
+1. **TOEIC target words** — words from the TOEIC exam word lists that students actively practice through tasks (word_match, cloze_fill, vocab_clearance, shift_report). These are the `targetWords` in each WeekConfig.
+2. **World-building words** — narrative/setting vocabulary (e.g., ministry, citizen, directive, protocol) that students encounter in context but are not the primary drill focus. These appear in documents, dialogue, and the Party Lexical Dictionary.
+
+When designing new weeks, fill `targetWords` with TOEIC-aligned vocabulary first, then layer in world-building words through narrative context.
+
+### Week 1 vocabulary breakdown (current, locked)
+Week 1 is an exception — it was authored narrative-first. Its 25 total words break down as:
+
+**`targetWords` (10 — actively drilled in tasks):**
+TOEIC: approve, assign, check, confirm, report, submit (6)
+Non-TOEIC: arrive, describe, follow, standard (4)
+
+**Dictionary target words (10 — in Party Lexical Dictionary, `isWorldBuilding: false`):**
+TOEIC: accurate, assignment, submit (3, submit overlaps)
+Non-TOEIC: clearance, compliance, directive, protocol, rule, team, work (7)
+
+**World-building words (6 — `isWorldBuilding: true`):**
+TOEIC: shift, supervisor (2)
+Non-TOEIC: associate, citizen, designation, ministry (4)
+
+Week 1 stays as-is. Weeks 2+ should prioritize TOEIC alignment in `targetWords`.
+
+## Dictionary Seeding
 - 49 `DictionaryWord` entries across Weeks 1-3 with Traditional Chinese translations
 - 28 `WordFamily` groups (e.g., `fam-employ`, `fam-comply`, `fam-submit`)
 - 8 `WordStatusEvent` entries for narrative status changes (grey week 6, monitored week 7, proscribed week 10)
@@ -78,6 +104,7 @@ Do not finalize story questions until episode scripts are approved. Keep each lo
 - Use Taiwan national exam/curriculum-aligned word bands as baseline
 - "Known words" from foundational bands (pre-Grade 10)
 - "New words" from Grade 10-11 target range, small weekly sets
+- **TOEIC alignment is the primary filter** for selecting `targetWords` each week — pick from TOEIC word lists first, then supplement with world-building vocabulary as needed for narrative
 - Script readability: clips use mostly known words; new words introduced in controlled repetition
 
 ### Current content reality check

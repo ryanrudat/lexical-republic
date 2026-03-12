@@ -15,7 +15,7 @@ Derived from Desktop Dplan source files:
 - Nation: The Lexical Republic.
 - Origin myth: founded after the "Babel Collapse."
 - Core doctrine: controlled language prevents chaos.
-- Main institution: Ministry of Healthy and Safe Information.
+- Main institution: Ministry of Healthy and Safe Communication.
 
 ## 2) Regime Principles (Never Contradict)
 1. The Party above all (self, family, truth).

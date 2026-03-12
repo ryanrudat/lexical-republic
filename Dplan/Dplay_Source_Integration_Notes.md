@@ -25,7 +25,7 @@ Last updated: 2026-02-11
 - PEARL: always friendly, always monitoring, frames coercion as care.
 
 ### World language canon
-- Ministry: Ministry of Healthy and Safe Information.
+- Ministry: Ministry of Healthy and Safe Communication.
 - Family terms: `Prior-1`, `Prior-2`, `Unit`.
 - Enforcement terms: `Concern`, `Wellness Assistance`, `Referral`.
 - Ideology: "control through comfort" and "cheerful dystopia".

@@ -1117,7 +1117,7 @@ async function main() {
       partOfSpeech: 'noun',
       phonetic: '/ˈmɪn.ɪ.stri/',
       definition: 'A government department responsible for a particular area of activity.',
-      exampleSentence: 'The Ministry of Healthy and Safe Information protects all citizens.',
+      exampleSentence: 'The Ministry of Healthy and Safe Communication protects all citizens.',
       translationZhTw: '部；部門',
       toeicCategory: 'business',
       wordFamilyGroup: null,
