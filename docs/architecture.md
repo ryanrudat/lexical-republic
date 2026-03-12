@@ -21,7 +21,8 @@
 - `/teacher` is a dedicated route only for teacher-role users. All other routes show the student experience.
 - Auth tokens in `sessionStorage` (per-tab isolation). Token cleared on logout via `disconnectSocket()` + `clearStoredToken()`.
 - Stale chunk handling: `vite:preloadError` listener in `main.tsx` auto-reloads once after deploys.
-- `FrostedGlassPlayer`: `frontend/src/components/shift/media/FrostedGlassPlayer.tsx` — dark glass video player with cyan tint, frosted bars, loading spinner, error retry.
+- `MonitorPlayer`: `frontend/src/components/shared/MonitorPlayer.tsx` — shared CRT monitor video player (used for welcome video, storyboard clips, shift queue task clips). Renders video inside retro monitor frame with clip-path, scanlines, vignette, seekable LED progress bar, brass volume knob.
+- `FrostedGlassPlayer`: `frontend/src/components/shift/media/FrostedGlassPlayer.tsx` — DEPRECATED (no remaining imports). Was replaced by MonitorPlayer.
 
 ## Data Model (Prisma)
 Primary models: `User`, `Arc`, `Week`, `Mission`, `MissionScore`, `Recording`, `HarmonyPost`, `PearlMessage`, `Class`, `ClassEnrollment`, `ClassWeekUnlock`, `Character`, `DialogueNode`, `PearlConversation`, `NarrativeChoice`, `TeacherConfig`, `DictionaryWord`, `WordFamily`, `WordStatusEvent`, `PairDictionaryProgress`, `Pair`, `SessionConfig`, `CharacterMessage`, `Citizen4488Interaction`, `ShiftResult`
@@ -36,8 +37,9 @@ Deprecated: `Vocabulary`, `StudentVocabulary`
   - Start: `npx prisma migrate deploy && npm run seed && npm run start`
 - **Frontend service**: `accurate-transformation` → `https://accurate-transformation-production.up.railway.app`
   - Root directory: `frontend`
-  - Build: `npm run build`
-  - Start: `npx serve dist -s -l 3000`
+  - Build: `npm run build` (via `nixpacks.toml`)
+  - Start: `npx serve dist -s -l 3000` (via `nixpacks.toml`)
+  - `nixpacks.toml` sets `NPM_CONFIG_PRODUCTION=""` to suppress deprecated npm flag warning
   - Only env var: `VITE_API_BASE_URL=https://lexical-republic-production.up.railway.app/api`
 - **PostgreSQL**: Railway-managed, connected via `${{Postgres.DATABASE_URL}}`
 - **Volume**: 5 GB persistent disk mounted at `/data/uploads` on backend service
@@ -53,7 +55,7 @@ Deprecated: `Vocabulary`, `StudentVocabulary`
 ## Backend Endpoints
 
 ### Shift routes (`backend/src/routes/shifts.ts`)
-- `GET /api/shifts/weeks/:weekId/config` — week config for task queue
+- `GET /api/shifts/weeks/:weekId/config` — week config for task queue (merges teacher overrides from Mission DB records into static WeekConfig)
 - `DELETE /api/shifts/weeks/:weekId/scores` — reset all MissionScore records for a week (used by teacher task controls)
 
 ### Socket.IO Teacher Task Commands
@@ -64,6 +66,9 @@ Deprecated: `Vocabulary`, `StudentVocabulary`
 
 ### Teacher routes (`backend/src/routes/teacher.ts`)
 - `GET /api/teacher/weeks` — week list + briefing config
+- `GET /api/teacher/weeks/:weekId/storyboard` — shift storyboard (derived from WeekConfig tasks, auto-creates missing Mission records)
+- `PATCH /api/teacher/weeks/:weekId/steps/:missionType` — update step: swap activity, set embed URL, toggle `videoClipHidden`, remove video, reset override
+- `POST /api/teacher/weeks/:weekId/steps/:missionType/video` — upload video clip for storyboard step (stored in `uploads/briefings/`)
 - `PATCH /api/teacher/weeks/:weekId/briefing` — update briefing config (`embedUrl`, `episodeTitle`, `episodeSubtitle`, `fallbackText`)
 - `PATCH /api/teacher/dictionary/:wordId` — edit dictionary word fields
 - `PATCH /api/teacher/scores/:scoreId` — edit individual score

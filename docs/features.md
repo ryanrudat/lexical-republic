@@ -131,20 +131,38 @@ Step navigation gated by completion. All steps support optional video via `StepV
 - AI generation via OpenAI when available, falls back to static + template content
 - Seed feed posts in `backend/src/data/harmonyFeed.ts` for weeks 1-3
 
+## MonitorPlayer (Shared CRT Video Player)
+- **Single source of truth** for all video playback: `frontend/src/components/shared/MonitorPlayer.tsx`
+- Used by: WelcomeVideoModal, ShiftQueue task clip gate, PhaseClipPlayer, BriefingStep, StepVideoClip
+- **Retro CRT monitor frame**: Video plays inside vintage monitor image (`public/images/welcome-monitor.jpg`, 2744x1568)
+- Screen positioned with `clip-path: polygon()` tracing the exact glossy black glass shape
+- CRT visual effects: scanline overlay, vignette edge blending (inset box-shadow), radial glare gradient
+- Seekable progress bar overlaid on the monitor's green LED strip
+- Playback controls: rewind 10s + pause/play buttons on bezel, vintage brass volume knob — all touch-friendly
+- Autoplay rejection handling: "Play Transmission" manual play button overlay
+- STANDBY screen when no video source; auto-skip after 2s on video load error (404/missing file)
+- Props: `src?`, `embedUrl?`, `autoPlay?`, `onEnded?`, `screenOverlay?`
+- Replaced: FrostedGlassPlayer (deprecated, no remaining imports)
+
 ## Welcome Video Gate
 - One-time modal for pairs with `hasWatchedWelcome === false`
-- **Retro CRT monitor frame**: Video plays inside a vintage monitor image (`public/images/welcome-monitor.jpg`), positioned with `clip-path: polygon()` tracing the exact glossy black screen shape
-- CRT visual effects: scanline overlay, vignette edge blending (inset box-shadow), radial glare gradient
-- Progress bar overlaid on the monitor's green LED strip position
-- Playback controls: rewind 10s + pause/play buttons on bezel, vintage brass volume knob — all touch-friendly
-- Autoplay rejection handling: "Begin Orientation" manual play button overlay
-- **Proceed button**: Overlaid inside the CRT screen area (`bottom-[8%]`) after video ends — ensures visibility on short-viewport Chromebooks
+- Uses MonitorPlayer with `screenOverlay` for proceed/skip buttons inside CRT screen area
 - CA-1 test bypass: "SKIP (TEST)" button inside CRT screen area
 - Teacher-uploadable video via `/api/dictionary/welcome-video` (multer, 200MB limit)
 - Teacher delete video via `DELETE /api/dictionary/welcome-video`
 - Video served via static `/uploads/welcome/welcome-video.mp4` (no auth needed for `<video>` tags)
 - Static fallback: green CRT "WELCOME TO THE MINISTRY" text inside screen, auto-proceeds after 5s
 - Mounted in `App.tsx` after boot sequence, before routes
+
+## Shift Storyboard & Teacher Video Clips
+- **Storyboard derived from WeekConfig**: `GET /api/teacher/weeks/:weekId/storyboard` returns steps matching the actual student task sequence (intake_form, word_match, etc.)
+- **Auto-creates Mission records**: Opening the storyboard ensures DB Mission records exist for all WeekConfig tasks — no manual seed needed
+- **Video upload per step**: Teacher can upload a video clip or embed URL for any storyboard step
+- **Hide/Show toggle**: Teacher can hide uploaded videos without deleting them (`videoClipHidden` field in teacherOverride)
+- **Teacher override pipeline**: Uploads stored as `teacherOverride` in Mission.config JSON → merged into WeekConfig at `GET /api/shifts/weeks/:weekId/config` → frontend reads override in task config
+- **Movie theater mode**: When a task has a video clip, students see a full-screen black overlay with the CRT monitor centered — no header, progress bar, or PEARL bar visible during playback
+- **Skip button**: Appears after 3 seconds; auto-skip after 2s if video fails to load
+- **Seed preservation**: Re-running seed preserves existing teacherOverride data on Mission records
 
 ## Teacher Dashboard (`frontend/src/pages/TeacherDashboard.tsx`)
 - Tabs: Class, Grades, Shifts, Dictionary
@@ -153,7 +171,7 @@ Step navigation gated by completion. All steps support optional video via `StepV
 - Clip-specific media inputs (upload or embed URL)
 - Grades: per-student drill-down, inline score editing, writing viewer, week reset, concern override (dual ShiftQueue/PhaseRunner support)
 - Dictionary: editable word table (inline edit → PATCH save)
-- Shifts: welcome video upload + Shift Storyboard
+- Shifts: welcome video upload + Shift Storyboard (per-task video upload, embed URL, hide/show toggle)
 - **ClassManager**: expandable students/weeks panels per class, delete class (cascade), remove individual students with confirmation dialogs
 - **ClassMonitor**: per-student delete button, bulk "Delete All Students" in header, both with destructive confirmation dialogs
 - **Student deletion cascade**: Pair → pairDictionaryProgress, missionScore, recording, pearlConversation, narrativeChoice, harmonyPost, harmonyCensureResponse, classEnrollment, characterMessage, citizen4488Interaction, shiftResult (11 related tables)

@@ -5,6 +5,8 @@ import {
   uploadStepVideo,
 } from '../../api/teacher';
 import type { StoryboardData, StoryboardStep } from '../../api/teacher';
+import { resolveUploadUrl } from '../../api/client';
+import MonitorPlayer from '../shared/MonitorPlayer';
 
 interface ShiftStoryboardProps {
   weekId: string;
@@ -218,53 +220,65 @@ function StepVideoSection({
 
   return (
     <div className="space-y-2 pt-1">
-      {/* Uploaded video */}
+      {/* Uploaded video — preview + controls */}
       {hasUpload && (
-        <div className="flex items-center gap-3">
-          <span className={`text-sm truncate flex-1 ${step.videoClipHidden ? 'text-slate-400 line-through' : 'text-slate-600'}`}>
-            Video: {step.videoClipFilename}
-          </span>
-          <button
-            onClick={() => onToggleHidden(!step.videoClipHidden)}
-            className={`text-xs font-medium px-2 py-1 transition-colors ${
-              step.videoClipHidden
-                ? 'text-amber-600 hover:text-amber-700'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            {step.videoClipHidden ? 'Show' : 'Hide'}
-          </button>
-          <button
-            onClick={onRemove}
-            className="text-xs font-medium text-red-500 hover:text-red-600 transition-colors px-2 py-1"
-          >
-            Remove
-          </button>
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <span className={`text-sm truncate flex-1 ${step.videoClipHidden ? 'text-slate-400 line-through' : 'text-slate-600'}`}>
+              Video: {step.videoClipFilename}
+            </span>
+            <button
+              onClick={() => onToggleHidden(!step.videoClipHidden)}
+              className={`text-xs font-medium px-2 py-1 transition-colors ${
+                step.videoClipHidden
+                  ? 'text-amber-600 hover:text-amber-700'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              {step.videoClipHidden ? 'Show' : 'Hide'}
+            </button>
+            <button
+              onClick={onRemove}
+              className="text-xs font-medium text-red-500 hover:text-red-600 transition-colors px-2 py-1"
+            >
+              Remove
+            </button>
+          </div>
+          {/* Video preview */}
+          <div className="max-w-md">
+            <MonitorPlayer src={resolveUploadUrl(step.videoClipUrl)} />
+          </div>
         </div>
       )}
 
-      {/* Embed URL display */}
+      {/* Embed URL display — preview + controls */}
       {hasEmbed && !hasUpload && (
-        <div className="flex items-center gap-3">
-          <span className={`text-sm truncate flex-1 ${step.videoClipHidden ? 'text-slate-400 line-through' : 'text-slate-600'}`}>
-            Embed: {step.videoClipEmbedUrl}
-          </span>
-          <button
-            onClick={() => onToggleHidden(!step.videoClipHidden)}
-            className={`text-xs font-medium px-2 py-1 transition-colors ${
-              step.videoClipHidden
-                ? 'text-amber-600 hover:text-amber-700'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            {step.videoClipHidden ? 'Show' : 'Hide'}
-          </button>
-          <button
-            onClick={() => onEmbedUrlChange('')}
-            className="text-xs font-medium text-red-500 hover:text-red-600 transition-colors px-2 py-1"
-          >
-            Remove
-          </button>
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <span className={`text-sm truncate flex-1 ${step.videoClipHidden ? 'text-slate-400 line-through' : 'text-slate-600'}`}>
+              Embed: {step.videoClipEmbedUrl}
+            </span>
+            <button
+              onClick={() => onToggleHidden(!step.videoClipHidden)}
+              className={`text-xs font-medium px-2 py-1 transition-colors ${
+                step.videoClipHidden
+                  ? 'text-amber-600 hover:text-amber-700'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              {step.videoClipHidden ? 'Show' : 'Hide'}
+            </button>
+            <button
+              onClick={() => onEmbedUrlChange('')}
+              className="text-xs font-medium text-red-500 hover:text-red-600 transition-colors px-2 py-1"
+            >
+              Remove
+            </button>
+          </div>
+          {/* Embed preview */}
+          <div className="max-w-md">
+            <MonitorPlayer embedUrl={step.videoClipEmbedUrl} />
+          </div>
         </div>
       )}
 
