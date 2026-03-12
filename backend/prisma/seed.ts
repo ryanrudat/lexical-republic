@@ -531,25 +531,35 @@ async function createQueueWeekMissions(weekId: string, weekNumber: number) {
 
     const missionId = existing?.id ?? `mission-queue-${weekId}-${i}`;
 
-    await prisma.mission.upsert({
-      where: { id: missionId },
-      update: {
-        weekId,
-        orderIndex: i,
-        title: task.label,
-        missionType: task.type,
-        config: { weekConfigTask: task.id } as unknown as Prisma.InputJsonValue,
-      },
-      create: {
-        id: missionId,
-        weekId,
-        orderIndex: i,
-        title: task.label,
-        description: `Queue task: ${task.label}`,
-        missionType: task.type,
-        config: { weekConfigTask: task.id } as unknown as Prisma.InputJsonValue,
-      },
-    });
+    if (existing) {
+      // Preserve teacherOverride on re-seed
+      const existingCfg = (existing.config && typeof existing.config === 'object' && !Array.isArray(existing.config))
+        ? existing.config as Record<string, unknown> : {};
+      const preservedConfig = existingCfg.teacherOverride
+        ? { weekConfigTask: task.id, teacherOverride: existingCfg.teacherOverride }
+        : { weekConfigTask: task.id };
+      await prisma.mission.update({
+        where: { id: existing.id },
+        data: {
+          orderIndex: i,
+          title: task.label,
+          missionType: task.type,
+          config: preservedConfig as unknown as Prisma.InputJsonValue,
+        },
+      });
+    } else {
+      await prisma.mission.create({
+        data: {
+          id: missionId,
+          weekId,
+          orderIndex: i,
+          title: task.label,
+          description: `Queue task: ${task.label}`,
+          missionType: task.type,
+          config: { weekConfigTask: task.id } as unknown as Prisma.InputJsonValue,
+        },
+      });
+    }
   }
 
   console.log(`  Queue missions: ${config.tasks.length} tasks seeded for week ${weekNumber}`);

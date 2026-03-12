@@ -925,6 +925,30 @@ function safeConfig(config: unknown): Record<string, unknown> {
   return {};
 }
 
+/** Ensure a Mission record exists for each WeekConfig task (auto-create if missing) */
+async function ensureWeekMissions(weekId: string, weekNumber: number) {
+  const weekConfig = getWeekConfig(weekNumber);
+  if (!weekConfig) return;
+  for (let i = 0; i < weekConfig.tasks.length; i++) {
+    const task = weekConfig.tasks[i];
+    const existing = await prisma.mission.findFirst({
+      where: { weekId, missionType: task.type },
+    });
+    if (!existing) {
+      await prisma.mission.create({
+        data: {
+          weekId,
+          orderIndex: i,
+          title: task.label,
+          description: `Queue task: ${task.label}`,
+          missionType: task.type,
+          config: { weekConfigTask: task.id },
+        },
+      });
+    }
+  }
+}
+
 // GET /api/teacher/weeks/:weekId/storyboard — Steps derived from WeekConfig tasks
 router.get('/weeks/:weekId/storyboard', async (req: Request, res: Response) => {
   try {
@@ -958,9 +982,17 @@ router.get('/weeks/:weekId/storyboard', async (req: Request, res: Response) => {
       return;
     }
 
+    // Auto-create any missing Mission records so uploads/overrides always work
+    await ensureWeekMissions(weekId, week.weekNumber);
+    // Re-fetch missions after possible creation
+    const freshMissions = await prisma.mission.findMany({
+      where: { weekId },
+      select: { id: true, missionType: true, title: true, description: true, orderIndex: true, config: true },
+    });
+
     const steps = weekConfig.tasks.map((task, idx) => {
       // Find the Mission record that matches this WeekConfig task type
-      const mission = week.missions.find(m => m.missionType === task.type);
+      const mission = freshMissions.find(m => m.missionType === task.type);
       const cfg = safeConfig(mission?.config);
       const teacherOverride = cfg.teacherOverride as Record<string, unknown> | undefined;
 
