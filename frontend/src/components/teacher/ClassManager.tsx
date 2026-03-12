@@ -15,13 +15,14 @@ import type { ClassInfo, ClassStudent, WeekBriefingSetting } from '../../api/tea
 interface Props {
   classes: ClassInfo[];
   onRefresh: () => Promise<void>;
+  onSelectClass?: (classId: string) => void;
 }
 
 type ConfirmAction =
   | { type: 'delete-class'; classId: string; className: string }
   | { type: 'remove-student'; classId: string; studentId: string; studentName: string };
 
-export default function ClassManager({ classes, onRefresh }: Props) {
+export default function ClassManager({ classes, onRefresh, onSelectClass }: Props) {
   const [newClassName, setNewClassName] = useState('');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
@@ -213,7 +214,10 @@ export default function ClassManager({ classes, onRefresh }: Props) {
                     Harmony {cls.harmonyOpen ? 'On' : 'Off'}
                   </button>
                   <button
-                    onClick={() => handleExpand(cls.id, 'students')}
+                    onClick={() => {
+                      handleExpand(cls.id, 'students');
+                      onSelectClass?.(cls.id);
+                    }}
                     className={`text-xs px-2 py-1 rounded-md font-medium transition-colors ${
                       isStudentsExpanded
                         ? 'bg-indigo-100 text-indigo-700'

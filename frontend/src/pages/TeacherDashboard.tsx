@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useStudentStore } from '../stores/studentStore';
 import { useTeacherStore } from '../stores/teacherStore';
 import type { TeacherTab } from '../stores/teacherStore';
@@ -30,6 +30,7 @@ export default function TeacherDashboard() {
 
   const [classes, setClasses] = useState<ClassInfo[]>([]);
   const [showClassManager, setShowClassManager] = useState(false);
+  const monitorRef = useRef<HTMLDivElement>(null);
 
   useTeacherSocket();
 
@@ -50,6 +51,15 @@ export default function TeacherDashboard() {
       setSelectedClassId(cls[0].id);
     }
   };
+
+  const handleSelectClassFromManager = useCallback((classId: string) => {
+    setSelectedClassId(classId);
+    setActiveTab('class');
+    // Scroll to monitor after React re-renders
+    requestAnimationFrame(() => {
+      monitorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [setSelectedClassId, setActiveTab]);
 
   return (
     <div className="fixed inset-0 bg-slate-50 text-slate-900 flex flex-col teacher-view">
@@ -134,7 +144,6 @@ export default function TeacherDashboard() {
                 onChange={(e) => setSelectedClassId(e.target.value || null)}
                 className="text-sm border border-slate-300 rounded-md px-2 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-400"
               >
-                <option value="">All Classes</option>
                 {classes.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name} ({c.studentCount})
@@ -160,10 +169,15 @@ export default function TeacherDashboard() {
               <ClassManager
                 classes={classes}
                 onRefresh={refreshClasses}
+                onSelectClass={handleSelectClassFromManager}
               />
             </div>
           )}
-          {activeTab === 'class' && <ClassMonitor classId={selectedClassId} />}
+          {activeTab === 'class' && (
+            <div ref={monitorRef}>
+              <ClassMonitor classId={selectedClassId} />
+            </div>
+          )}
           {activeTab === 'grades' && <Gradebook classId={selectedClassId} />}
           {activeTab === 'shifts' && <ShiftsTab />}
           {activeTab === 'dictionary' && <DictionaryManager />}
