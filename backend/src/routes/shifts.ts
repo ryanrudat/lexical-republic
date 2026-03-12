@@ -340,7 +340,21 @@ router.get('/weeks/:weekId/config', async (req: Request, res: Response) => {
       return task;
     });
 
-    res.json({ ...config, tasks: enrichedTasks });
+    // Look up task gate for the student's class
+    const ctx = getAuthContext(req);
+    const enrollment = await prisma.classEnrollment.findFirst({
+      where: ctx.enrollmentWhere,
+    });
+    let taskGateIndex: number | null = null;
+    if (enrollment) {
+      const unlock = await prisma.classWeekUnlock.findUnique({
+        where: { classId_weekId: { classId: enrollment.classId, weekId } },
+        select: { taskGateIndex: true },
+      });
+      taskGateIndex = unlock?.taskGateIndex ?? null;
+    }
+
+    res.json({ ...config, tasks: enrichedTasks, taskGateIndex });
   } catch (err) {
     console.error('Week config fetch error:', err);
     res.status(500).json({ error: 'Failed to fetch week config' });

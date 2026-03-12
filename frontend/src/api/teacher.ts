@@ -275,6 +275,25 @@ export async function fetchClassDetail(classId: string): Promise<ClassDetail> {
   return data as ClassDetail;
 }
 
+// ── Task Gate API ───────────────────────────────────────────────
+
+export async function fetchTaskGate(
+  classId: string,
+  weekId: string
+): Promise<{ taskGateIndex: number | null }> {
+  const { data } = await client.get(`/classes/${classId}/weeks/${weekId}/task-gate`);
+  return data as { taskGateIndex: number | null };
+}
+
+export async function setTaskGate(
+  classId: string,
+  weekId: string,
+  taskGateIndex: number | null
+): Promise<{ taskGateIndex: number | null }> {
+  const { data } = await client.patch(`/classes/${classId}/weeks/${weekId}/task-gate`, { taskGateIndex });
+  return data as { taskGateIndex: number | null };
+}
+
 // ── Storyboard API ──────────────────────────────────────────────
 
 export interface StoryboardAlternative {

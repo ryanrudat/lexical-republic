@@ -54,10 +54,15 @@ export default function MonitorPlayer({
 
   const hasVideo = !!(src || embedUrl);
 
-  // Auto-skip when video fails to load (file deleted, 404, etc.)
+  const handleVideoError = () => {
+    console.error(`[MonitorPlayer] Video failed to load: ${src}`);
+    setVideoError(true);
+  };
+
+  // Auto-skip when video fails to load — only if onEnded is provided (student context)
   useEffect(() => {
-    if (!videoError) return;
-    const t = setTimeout(() => onEnded?.(), 2000);
+    if (!videoError || !onEnded) return;
+    const t = setTimeout(() => onEnded(), 2000);
     return () => clearTimeout(t);
   }, [videoError, onEnded]);
 
@@ -163,20 +168,29 @@ export default function MonitorPlayer({
         }}
       >
         {!hasVideo || videoError ? (
-          /* CRT standby screen */
-          <div className="w-full h-full flex flex-col items-center justify-center bg-[#050a05]">
+          /* CRT standby / error screen */
+          <div className="w-full h-full flex flex-col items-center justify-center bg-[#050a05] px-4">
             <h2
               className="font-ibm-mono text-sm sm:text-lg tracking-[0.3em] uppercase mb-2"
-              style={{ color: '#00ff88' }}
+              style={{ color: videoError ? '#ff4444' : '#00ff88' }}
             >
-              STANDBY
+              {videoError ? 'SIGNAL LOST' : 'STANDBY'}
             </h2>
             <p
-              className="font-ibm-mono text-[10px] sm:text-xs tracking-wider"
-              style={{ color: '#5a8a6a' }}
+              className="font-ibm-mono text-[10px] sm:text-xs tracking-wider text-center"
+              style={{ color: videoError ? '#aa3333' : '#5a8a6a' }}
             >
-              No transmission available.
+              {videoError ? 'Video file could not be loaded.' : 'No transmission available.'}
             </p>
+            {videoError && src && (
+              <p
+                className="font-ibm-mono text-[8px] sm:text-[10px] tracking-wider mt-2 max-w-[90%] truncate text-center"
+                style={{ color: '#663333' }}
+                title={src}
+              >
+                {src}
+              </p>
+            )}
           </div>
         ) : embedUrl ? (
           /* Embed iframe */
@@ -214,7 +228,7 @@ export default function MonitorPlayer({
               onClick={togglePlayPause}
               onTimeUpdate={handleTimeUpdate}
               onEnded={handleEnded}
-              onError={() => setVideoError(true)}
+              onError={handleVideoError}
             />
 
             {/* CRT scanline overlay */}

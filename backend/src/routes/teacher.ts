@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { Router, Request, Response } from 'express';
 import { authenticate, requireRole, getTeacherId } from '../middleware/auth';
 import path from 'path';
+import fs from 'fs';
 import { uploadVideo } from '../middleware/upload';
 import prisma from '../utils/prisma';
 import { io, getOnlineStudents } from '../socketServer';
@@ -1231,6 +1232,28 @@ router.patch('/dictionary/:wordId', async (req: Request, res: Response) => {
     console.error('Teacher dictionary edit error:', err);
     res.status(500).json({ error: 'Failed to update dictionary word' });
   }
+});
+
+// GET /api/teacher/debug/uploads — Check what files exist in the uploads directory
+router.get('/debug/uploads', (_req: Request, res: Response) => {
+  const rawDir = process.env.UPLOAD_DIR || 'uploads';
+  const resolvedDir = path.isAbsolute(rawDir) ? rawDir : path.resolve(__dirname, '../../', rawDir);
+  const briefingsDir = path.join(resolvedDir, 'briefings');
+  const welcomeDir = path.join(resolvedDir, 'welcome');
+
+  const result: Record<string, unknown> = {
+    UPLOAD_DIR_env: process.env.UPLOAD_DIR || '(not set, default: uploads)',
+    resolvedDir,
+    dirExists: fs.existsSync(resolvedDir),
+    briefingsDir,
+    briefingsDirExists: fs.existsSync(briefingsDir),
+    briefingFiles: fs.existsSync(briefingsDir) ? fs.readdirSync(briefingsDir) : [],
+    welcomeDir,
+    welcomeDirExists: fs.existsSync(welcomeDir),
+    welcomeFiles: fs.existsSync(welcomeDir) ? fs.readdirSync(welcomeDir) : [],
+  };
+
+  res.json(result);
 });
 
 export default router;

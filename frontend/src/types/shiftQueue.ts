@@ -27,6 +27,7 @@ export interface WeekConfig {
   targetWords: string[];
   previousWords: string[];
   tasks: TaskConfig[];
+  taskGateIndex?: number | null;
   harmonyConfig: HarmonyConfig;
   characterMessages: CharacterMessageConfig[];
   narrativeHook: { title: string; body: string; borderColor: string };

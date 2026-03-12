@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { authenticate, requireRole } from '../middleware/auth';
 import prisma from '../utils/prisma';
+import { io } from '../socketServer';
 
 const router = Router();
 
@@ -470,6 +471,75 @@ router.patch('/:classId/harmony', async (req: Request, res: Response) => {
   } catch (err) {
     console.error('Toggle harmony error:', err);
     res.status(500).json({ error: 'Failed to toggle Harmony' });
+  }
+});
+
+// GET /api/classes/:classId/weeks/:weekId/task-gate — Read current gate
+router.get('/:classId/weeks/:weekId/task-gate', async (req: Request, res: Response) => {
+  try {
+    const classId = req.params.classId as string;
+    const weekId = req.params.weekId as string;
+    const teacherId = req.user!.userId;
+
+    const cls = await prisma.class.findUnique({ where: { id: classId } });
+    if (!cls || cls.teacherId !== teacherId) {
+      res.status(404).json({ error: 'Class not found' });
+      return;
+    }
+
+    const unlock = await prisma.classWeekUnlock.findUnique({
+      where: { classId_weekId: { classId, weekId } },
+      select: { taskGateIndex: true },
+    });
+
+    res.json({ taskGateIndex: unlock?.taskGateIndex ?? null });
+  } catch (err) {
+    console.error('Get task gate error:', err);
+    res.status(500).json({ error: 'Failed to get task gate' });
+  }
+});
+
+// PATCH /api/classes/:classId/weeks/:weekId/task-gate — Set or clear the gate
+router.patch('/:classId/weeks/:weekId/task-gate', async (req: Request, res: Response) => {
+  try {
+    const classId = req.params.classId as string;
+    const weekId = req.params.weekId as string;
+    const teacherId = req.user!.userId;
+    const { taskGateIndex } = req.body as { taskGateIndex: number | null };
+
+    if (taskGateIndex !== null && (typeof taskGateIndex !== 'number' || taskGateIndex < 0)) {
+      res.status(400).json({ error: 'taskGateIndex must be a non-negative integer or null' });
+      return;
+    }
+
+    const cls = await prisma.class.findUnique({ where: { id: classId } });
+    if (!cls || cls.teacherId !== teacherId) {
+      res.status(404).json({ error: 'Class not found' });
+      return;
+    }
+
+    const unlock = await prisma.classWeekUnlock.findUnique({
+      where: { classId_weekId: { classId, weekId } },
+    });
+    if (!unlock) {
+      res.status(404).json({ error: 'Week not unlocked for this class' });
+      return;
+    }
+
+    await prisma.classWeekUnlock.update({
+      where: { classId_weekId: { classId, weekId } },
+      data: { taskGateIndex },
+    });
+
+    // Broadcast to all students in the class — single emit to the room, O(1)
+    if (io) {
+      io.to(`class:${classId}`).emit('session:gate-updated', { weekId, taskGateIndex });
+    }
+
+    res.json({ classId, weekId, taskGateIndex });
+  } catch (err) {
+    console.error('Set task gate error:', err);
+    res.status(500).json({ error: 'Failed to set task gate' });
   }
 });
 

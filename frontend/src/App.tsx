@@ -9,6 +9,7 @@ import { GUIDED_STUDENT_MODE } from './config/runtimeFlags';
 import { connectSocket } from './utils/socket';
 import { useSessionPauseStore } from './stores/sessionPauseStore';
 import { useShiftQueueStore } from './stores/shiftQueueStore';
+import { useShiftStore } from './stores/shiftStore';
 import { usePearlStore } from './stores/pearlStore';
 import WelcomeVideoModal from './components/welcome/WelcomeVideoModal';
 
@@ -72,16 +73,33 @@ export default function App() {
         }
       };
 
+      const onGateUpdated = (data: { weekId: string; taskGateIndex: number | null }) => {
+        const store = useShiftQueueStore.getState();
+        const shiftState = useShiftStore.getState();
+
+        // Only apply if student is currently on this week
+        if (shiftState.currentWeek?.id !== data.weekId) return;
+
+        store.setTaskGateIndex(data.taskGateIndex);
+
+        const pearl = usePearlStore.getState();
+        if (data.taskGateIndex === null || store.currentTaskIndex < data.taskGateIndex) {
+          pearl.triggerBark('notice', 'PROCESSING AUTHORIZED: Your station has been cleared for the next assignment. Proceed, Citizen.');
+        }
+      };
+
       sock.on('connect_error', onError);
       sock.on('session:paused', onPaused);
       sock.on('session:resumed', onResumed);
       sock.on('session:task-command', onTaskCommand);
+      sock.on('session:gate-updated', onGateUpdated);
 
       return () => {
         sock.off('connect_error', onError);
         sock.off('session:paused', onPaused);
         sock.off('session:resumed', onResumed);
         sock.off('session:task-command', onTaskCommand);
+        sock.off('session:gate-updated', onGateUpdated);
       };
     }
   }, [user?.id, user?.role, user?.designation, user?.displayName]);

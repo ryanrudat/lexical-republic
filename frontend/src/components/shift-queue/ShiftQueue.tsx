@@ -17,6 +17,7 @@ import ContradictionReport from './tasks/ContradictionReport';
 import PriorityBriefing from './tasks/PriorityBriefing';
 import PrioritySort from './tasks/PrioritySort';
 import ShiftReport from './tasks/ShiftReport';
+import TaskGateOverlay from './TaskGateOverlay';
 import type { TaskProps } from '../../types/shiftQueue';
 
 const TASK_REGISTRY: Record<string, React.ComponentType<TaskProps>> = {
@@ -42,7 +43,7 @@ function getTaskClip(config: Record<string, unknown>) {
 }
 
 export default function ShiftQueue() {
-  const { weekConfig, taskProgress, currentTaskIndex, shiftComplete, loading, taskResetKey } =
+  const { weekConfig, taskProgress, currentTaskIndex, shiftComplete, loading, taskResetKey, gated } =
     useShiftQueueStore();
   const { completeTask } = useShiftQueueStore();
   const { triggerMessage, loadMessages } = useMessagingStore();
@@ -143,6 +144,35 @@ export default function ShiftQueue() {
         <div className="font-ibm-mono text-[#8B8578] text-xs animate-pulse tracking-[0.2em]">
           Loading module...
         </div>
+      </div>
+    );
+  }
+
+  // Gated — waiting for teacher to advance
+  if (gated && !shiftComplete) {
+    const sock = getSocket();
+    if (sock?.connected) {
+      sock.emit('student:task-update', { taskId: 'gated', taskLabel: 'Awaiting Clearance', failCount: 0 });
+    }
+    return (
+      <div className="flex flex-col gap-4">
+        {/* Progress bar */}
+        <div className="flex gap-1.5 mb-1">
+          {taskProgress.map((tp, idx) => (
+            <div
+              key={tp.taskId}
+              className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
+                tp.status === 'complete'
+                  ? 'bg-emerald-400'
+                  : tp.status === 'current'
+                    ? 'bg-amber-400 animate-pulse'
+                    : 'bg-[#D4CFC6]'
+              }`}
+              aria-label={`Task ${idx + 1}: ${tp.status}`}
+            />
+          ))}
+        </div>
+        <TaskGateOverlay />
       </div>
     );
   }

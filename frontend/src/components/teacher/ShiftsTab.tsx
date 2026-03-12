@@ -3,9 +3,11 @@ import { fetchWeekBriefings } from '../../api/teacher';
 import type { WeekBriefingSetting } from '../../api/teacher';
 import client from '../../api/client';
 import { resolveUploadUrl } from '../../api/client';
+import { useTeacherStore } from '../../stores/teacherStore';
 import ShiftStoryboard from './ShiftStoryboard';
 
 export default function ShiftsTab() {
+  const selectedClassId = useTeacherStore(s => s.selectedClassId);
   const [weekBriefings, setWeekBriefings] = useState<WeekBriefingSetting[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedWeekId, setSelectedWeekId] = useState('');
@@ -144,7 +146,7 @@ export default function ShiftsTab() {
             </select>
           </div>
 
-          {selectedWeekId && <ShiftStoryboard weekId={selectedWeekId} />}
+          {selectedWeekId && <ShiftStoryboard weekId={selectedWeekId} classId={selectedClassId} />}
         </>
       ) : (
         <div className="text-sm text-slate-400 py-4">No shift data found.</div>

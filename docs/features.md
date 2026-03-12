@@ -164,6 +164,16 @@ Step navigation gated by completion. All steps support optional video via `StepV
 - **Skip button**: Appears after 3 seconds; auto-skip after 2s if video fails to load
 - **Seed preservation**: Re-running seed preserves existing teacherOverride data on Mission records
 
+## Task Gating (Teacher Pace Control)
+- **Per-class per-week gate**: `taskGateIndex` on `ClassWeekUnlock` — `null` = all unlocked (default), `N` = students gated before task N
+- **Teacher storyboard UI**: Clickable gate markers between storyboard steps, gate control bar with Advance/Remove Gate buttons
+- **Student gate screen**: "Station Hold" overlay with rotating Party-style waiting messages, amber pulse animation
+- **Real-time push**: `session:gate-updated` socket event broadcasts to `class:${classId}` room — all waiting students proceed instantly when teacher advances
+- **PEARL bark**: Students get in-world notification when gate lifts ("PROCESSING AUTHORIZED: Your station has been cleared...")
+- **Backend**: `GET/PATCH /api/classes/:classId/weeks/:weekId/task-gate` — single DB query, O(1) broadcast
+- **Edge cases**: Gate only prevents forward progress, never moves students backward; refresh while gated resumes correctly; gate at 0 blocks all tasks
+- **Class-filtered monitor**: Live Class Monitor filters by selected class; "Students" button on class card scrolls to filtered monitor
+
 ## Teacher Dashboard (`frontend/src/pages/TeacherDashboard.tsx`)
 - Tabs: Class, Grades, Shifts, Dictionary
 - Briefing Setup: episode title/subtitle, Canva/embed URL, fallback text

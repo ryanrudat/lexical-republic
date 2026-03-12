@@ -13,6 +13,8 @@ interface ShiftQueueState {
   loading: boolean;
   error: string | null;
   taskResetKey: number;
+  taskGateIndex: number | null;
+  gated: boolean;
 
   loadWeekConfig: (weekId: string) => Promise<void>;
   completeTask: (taskId: string, score?: number, details?: Record<string, unknown>) => Promise<void>;
@@ -24,6 +26,7 @@ interface ShiftQueueState {
   resetCurrentTask: () => void;
   resetShift: () => Promise<void>;
   reloadFromServer: () => Promise<void>;
+  setTaskGateIndex: (index: number | null) => void;
 }
 
 export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
@@ -36,6 +39,8 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
   loading: false,
   error: null,
   taskResetKey: 0,
+  taskGateIndex: null,
+  gated: false,
 
   loadWeekConfig: async (weekId: string) => {
     set({ loading: true, error: null });
@@ -83,13 +88,18 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
       }
 
       const allComplete = progress.every(p => p.status === 'complete');
+      const gateIdx = config.taskGateIndex ?? null;
+      const nextIdx = firstIncompleteIdx >= 0 ? firstIncompleteIdx : config.tasks.length - 1;
+      const isGated = gateIdx !== null && nextIdx >= gateIdx && !allComplete;
 
       set({
         weekConfig: config,
         taskProgress: progress,
-        currentTaskIndex: firstIncompleteIdx >= 0 ? firstIncompleteIdx : config.tasks.length - 1,
-        shiftComplete: allComplete,
+        currentTaskIndex: nextIdx,
+        shiftComplete: allComplete && !isGated,
         loading: false,
+        taskGateIndex: gateIdx,
+        gated: isGated,
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to load week config';
@@ -123,11 +133,14 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
     }
 
     const allComplete = updated.every(p => p.status === 'complete');
+    const { taskGateIndex } = get();
+    const isGated = taskGateIndex !== null && nextIdx >= 0 && nextIdx >= taskGateIndex;
 
     set({
       taskProgress: updated,
       currentTaskIndex: nextIdx >= 0 ? nextIdx : updated.length,
-      shiftComplete: allComplete,
+      shiftComplete: allComplete && !isGated,
+      gated: isGated,
     });
 
     // Persist only the unpersisted concern delta
@@ -160,6 +173,8 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
     loading: false,
     error: null,
     taskResetKey: 0,
+    taskGateIndex: null,
+    gated: false,
   }),
 
   goToTask: async (taskId: string) => {
@@ -270,5 +285,12 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
       // Then reload the queue config using the fresh mission data
       await get().loadWeekConfig(weekId);
     }
+  },
+
+  setTaskGateIndex: (index: number | null) => {
+    const { currentTaskIndex, taskProgress } = get();
+    const allComplete = taskProgress.every(p => p.status === 'complete');
+    const isGated = index !== null && currentTaskIndex >= index && !allComplete;
+    set({ taskGateIndex: index, gated: isGated });
   },
 }));

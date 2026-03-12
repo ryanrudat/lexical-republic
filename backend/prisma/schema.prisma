@@ -446,12 +446,13 @@ model ClassEnrollment {
 }
 
 model ClassWeekUnlock {
-  id         String   @id @default(uuid())
-  classId    String
-  weekId     String
-  class      Class    @relation(fields: [classId], references: [id])
-  week       Week     @relation(fields: [weekId], references: [id])
-  unlockedAt DateTime @default(now())
+  id             String   @id @default(uuid())
+  classId        String
+  weekId         String
+  class          Class    @relation(fields: [classId], references: [id])
+  week           Week     @relation(fields: [weekId], references: [id])
+  unlockedAt     DateTime @default(now())
+  taskGateIndex  Int?     // null = all tasks unlocked; 0 = gated before first task; N = gated before task N
 
   @@unique([classId, weekId])
   @@map("class_week_unlocks")
