@@ -448,19 +448,19 @@ function GateMarker({
   onToggle: () => void;
 }) {
   return (
-    <div className="relative flex items-center my-2 group">
+    <div className="relative flex items-center my-2">
       <div
-        className={`flex-1 border-t-2 border-dashed transition-colors ${
-          isActive ? 'border-amber-400' : 'border-transparent group-hover:border-slate-200'
+        className={`flex-1 border-t-2 border-dashed ${
+          isActive ? 'border-amber-400' : 'border-slate-200'
         }`}
       />
       <button
         onClick={onToggle}
         disabled={disabled}
-        className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium transition-all disabled:opacity-50 ${
+        className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium transition-colors disabled:opacity-50 ${
           isActive
             ? 'bg-amber-100 text-amber-700 border border-amber-300'
-            : 'opacity-0 group-hover:opacity-100 bg-slate-100 text-slate-400 hover:text-slate-600 border border-slate-200'
+            : 'bg-slate-50 text-slate-400 hover:text-slate-600 hover:bg-slate-100 border border-slate-200'
         }`}
         title={isActive ? 'Remove gate' : `Set gate before step ${index + 1}`}
       >
@@ -470,8 +470,8 @@ function GateMarker({
         {isActive ? 'GATE' : 'Gate'}
       </button>
       <div
-        className={`flex-1 border-t-2 border-dashed transition-colors ${
-          isActive ? 'border-amber-400' : 'border-transparent group-hover:border-slate-200'
+        className={`flex-1 border-t-2 border-dashed ${
+          isActive ? 'border-amber-400' : 'border-slate-200'
         }`}
       />
     </div>
