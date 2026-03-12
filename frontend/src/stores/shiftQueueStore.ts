@@ -13,7 +13,7 @@ interface ShiftQueueState {
   loading: boolean;
   error: string | null;
   taskResetKey: number;
-  taskGateIndex: number | null;
+  taskGates: number[];
   gated: boolean;
 
   loadWeekConfig: (weekId: string) => Promise<void>;
@@ -26,7 +26,7 @@ interface ShiftQueueState {
   resetCurrentTask: () => void;
   resetShift: () => Promise<void>;
   reloadFromServer: () => Promise<void>;
-  setTaskGateIndex: (index: number | null) => void;
+  setTaskGates: (gates: number[]) => void;
 }
 
 export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
@@ -39,7 +39,7 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
   loading: false,
   error: null,
   taskResetKey: 0,
-  taskGateIndex: null,
+  taskGates: [],
   gated: false,
 
   loadWeekConfig: async (weekId: string) => {
@@ -88,9 +88,9 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
       }
 
       const allComplete = progress.every(p => p.status === 'complete');
-      const gateIdx = config.taskGateIndex ?? null;
+      const gates = config.taskGates ?? [];
       const nextIdx = firstIncompleteIdx >= 0 ? firstIncompleteIdx : config.tasks.length - 1;
-      const isGated = gateIdx !== null && nextIdx >= gateIdx && !allComplete;
+      const isGated = gates.length > 0 && !allComplete && gates.includes(nextIdx);
 
       set({
         weekConfig: config,
@@ -98,7 +98,7 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
         currentTaskIndex: nextIdx,
         shiftComplete: allComplete && !isGated,
         loading: false,
-        taskGateIndex: gateIdx,
+        taskGates: gates,
         gated: isGated,
       });
     } catch (err: unknown) {
@@ -133,8 +133,8 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
     }
 
     const allComplete = updated.every(p => p.status === 'complete');
-    const { taskGateIndex } = get();
-    const isGated = taskGateIndex !== null && nextIdx >= 0 && nextIdx >= taskGateIndex;
+    const { taskGates } = get();
+    const isGated = taskGates.length > 0 && nextIdx >= 0 && !allComplete && taskGates.includes(nextIdx);
 
     set({
       taskProgress: updated,
@@ -173,7 +173,7 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
     loading: false,
     error: null,
     taskResetKey: 0,
-    taskGateIndex: null,
+    taskGates: [],
     gated: false,
   }),
 
@@ -287,10 +287,10 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
     }
   },
 
-  setTaskGateIndex: (index: number | null) => {
+  setTaskGates: (gates: number[]) => {
     const { currentTaskIndex, taskProgress } = get();
     const allComplete = taskProgress.every(p => p.status === 'complete');
-    const isGated = index !== null && currentTaskIndex >= index && !allComplete;
-    set({ taskGateIndex: index, gated: isGated });
+    const isGated = gates.length > 0 && !allComplete && gates.includes(currentTaskIndex);
+    set({ taskGates: gates, gated: isGated });
   },
 }));

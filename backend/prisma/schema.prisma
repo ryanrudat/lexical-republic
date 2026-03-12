@@ -452,7 +452,7 @@ model ClassWeekUnlock {
   class          Class    @relation(fields: [classId], references: [id])
   week           Week     @relation(fields: [weekId], references: [id])
   unlockedAt     DateTime @default(now())
-  taskGateIndex  Int?     // null = all tasks unlocked; 0 = gated before first task; N = gated before task N
+  taskGates      Int[]    @default([])  // Empty = all unlocked; [1,3] = gated before tasks 1 and 3
 
   @@unique([classId, weekId])
   @@map("class_week_unlocks")

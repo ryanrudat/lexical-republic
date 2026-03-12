@@ -474,7 +474,7 @@ router.patch('/:classId/harmony', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/classes/:classId/weeks/:weekId/task-gate — Read current gate
+// GET /api/classes/:classId/weeks/:weekId/task-gate — Read current gates
 router.get('/:classId/weeks/:weekId/task-gate', async (req: Request, res: Response) => {
   try {
     const classId = req.params.classId as string;
@@ -489,26 +489,26 @@ router.get('/:classId/weeks/:weekId/task-gate', async (req: Request, res: Respon
 
     const unlock = await prisma.classWeekUnlock.findUnique({
       where: { classId_weekId: { classId, weekId } },
-      select: { taskGateIndex: true },
+      select: { taskGates: true },
     });
 
-    res.json({ taskGateIndex: unlock?.taskGateIndex ?? null });
+    res.json({ taskGates: unlock?.taskGates ?? [] });
   } catch (err) {
     console.error('Get task gate error:', err);
     res.status(500).json({ error: 'Failed to get task gate' });
   }
 });
 
-// PATCH /api/classes/:classId/weeks/:weekId/task-gate — Set or clear the gate
+// PATCH /api/classes/:classId/weeks/:weekId/task-gate — Set gates (array of positions)
 router.patch('/:classId/weeks/:weekId/task-gate', async (req: Request, res: Response) => {
   try {
     const classId = req.params.classId as string;
     const weekId = req.params.weekId as string;
     const teacherId = req.user!.userId;
-    const { taskGateIndex } = req.body as { taskGateIndex: number | null };
+    const { taskGates } = req.body as { taskGates: number[] };
 
-    if (taskGateIndex !== null && (typeof taskGateIndex !== 'number' || taskGateIndex < 0)) {
-      res.status(400).json({ error: 'taskGateIndex must be a non-negative integer or null' });
+    if (!Array.isArray(taskGates) || taskGates.some(g => typeof g !== 'number' || g < 0)) {
+      res.status(400).json({ error: 'taskGates must be an array of non-negative integers' });
       return;
     }
 
@@ -526,17 +526,20 @@ router.patch('/:classId/weeks/:weekId/task-gate', async (req: Request, res: Resp
       return;
     }
 
+    // Dedupe and sort
+    const sorted = [...new Set(taskGates)].sort((a, b) => a - b);
+
     await prisma.classWeekUnlock.update({
       where: { classId_weekId: { classId, weekId } },
-      data: { taskGateIndex },
+      data: { taskGates: sorted },
     });
 
     // Broadcast to all students in the class — single emit to the room, O(1)
     if (io) {
-      io.to(`class:${classId}`).emit('session:gate-updated', { weekId, taskGateIndex });
+      io.to(`class:${classId}`).emit('session:gate-updated', { weekId, taskGates: sorted });
     }
 
-    res.json({ classId, weekId, taskGateIndex });
+    res.json({ classId, weekId, taskGates: sorted });
   } catch (err) {
     console.error('Set task gate error:', err);
     res.status(500).json({ error: 'Failed to set task gate' });

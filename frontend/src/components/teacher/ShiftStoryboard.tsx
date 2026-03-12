@@ -3,8 +3,8 @@ import {
   fetchWeekStoryboard,
   updateStepActivity,
   uploadStepVideo,
-  fetchTaskGate,
-  setTaskGate,
+  fetchTaskGates,
+  setTaskGates,
 } from '../../api/teacher';
 import type { StoryboardData, StoryboardStep } from '../../api/teacher';
 import { resolveUploadUrl } from '../../api/client';
@@ -33,7 +33,7 @@ export default function ShiftStoryboard({ weekId, classId }: ShiftStoryboardProp
   const [error, setError] = useState<string | null>(null);
   const [savedStep, setSavedStep] = useState<string | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [gateIndex, setGateIndex] = useState<number | null>(null);
+  const [activeGates, setActiveGates] = useState<number[]>([]);
   const [gateLoading, setGateLoading] = useState(false);
 
   const load = useCallback(async () => {
@@ -54,25 +54,56 @@ export default function ShiftStoryboard({ weekId, classId }: ShiftStoryboardProp
     void load();
   }, [load]);
 
-  // Fetch current gate when classId or weekId changes
+  // Fetch current gates when classId or weekId changes
   useEffect(() => {
     if (classId && weekId) {
-      fetchTaskGate(classId, weekId)
-        .then(d => setGateIndex(d.taskGateIndex))
-        .catch(() => setGateIndex(null));
+      fetchTaskGates(classId, weekId)
+        .then(d => setActiveGates(d.taskGates))
+        .catch(() => setActiveGates([]));
     } else {
-      setGateIndex(null);
+      setActiveGates([]);
     }
   }, [classId, weekId]);
 
-  const handleSetGate = async (index: number | null) => {
+  const handleToggleGate = async (index: number) => {
     if (!classId) return;
     setGateLoading(true);
     try {
-      await setTaskGate(classId, weekId, index);
-      setGateIndex(index);
+      const next = activeGates.includes(index)
+        ? activeGates.filter(g => g !== index)
+        : [...activeGates, index].sort((a, b) => a - b);
+      await setTaskGates(classId, weekId, next);
+      setActiveGates(next);
     } catch {
       setError('Failed to update gate');
+    } finally {
+      setGateLoading(false);
+    }
+  };
+
+  const handleRemoveAllGates = async () => {
+    if (!classId) return;
+    setGateLoading(true);
+    try {
+      await setTaskGates(classId, weekId, []);
+      setActiveGates([]);
+    } catch {
+      setError('Failed to remove gates');
+    } finally {
+      setGateLoading(false);
+    }
+  };
+
+  const handleAdvanceGate = async () => {
+    if (!classId || activeGates.length === 0) return;
+    setGateLoading(true);
+    try {
+      // Remove the lowest active gate
+      const next = activeGates.slice(1);
+      await setTaskGates(classId, weekId, next);
+      setActiveGates(next);
+    } catch {
+      setError('Failed to advance gate');
     } finally {
       setGateLoading(false);
     }
@@ -152,11 +183,13 @@ export default function ShiftStoryboard({ weekId, classId }: ShiftStoryboardProp
 
   if (!data) return null;
 
-  const gateLabel = gateIndex !== null && data.steps[gateIndex]
-    ? `Before Step ${gateIndex + 1} (${data.steps[gateIndex].label})`
-    : gateIndex === 0
-      ? 'Before Step 1 (all tasks gated)'
-      : null;
+  const gateLabels = activeGates.map(g =>
+    data.steps[g]
+      ? `Before Step ${g + 1} (${data.steps[g].label})`
+      : g === 0
+        ? 'Before Step 1'
+        : `Position ${g}`
+  );
 
   return (
     <div className="space-y-4">
@@ -176,29 +209,29 @@ export default function ShiftStoryboard({ weekId, classId }: ShiftStoryboardProp
             <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
           </svg>
           <span className="text-xs text-amber-800 font-medium flex-1">
-            {gateIndex !== null ? (
-              <>Gate: {gateLabel}</>
+            {activeGates.length > 0 ? (
+              <>Gates ({activeGates.length}): {gateLabels.join(' · ')}</>
             ) : (
-              <>Gate: None (all tasks unlocked)</>
+              <>Gates: None (all tasks unlocked)</>
             )}
           </span>
           <div className="flex items-center gap-1.5">
-            {gateIndex !== null && gateIndex < data.steps.length && (
+            {activeGates.length > 0 && (
               <button
-                onClick={() => handleSetGate(gateIndex + 1 < data.steps.length ? gateIndex + 1 : null)}
+                onClick={handleAdvanceGate}
                 disabled={gateLoading}
                 className="text-[11px] font-medium px-2.5 py-1 bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors disabled:opacity-50"
               >
-                {gateIndex + 1 < data.steps.length ? 'Advance' : 'Unlock All'}
+                Advance
               </button>
             )}
-            {gateIndex !== null && (
+            {activeGates.length > 0 && (
               <button
-                onClick={() => handleSetGate(null)}
+                onClick={handleRemoveAllGates}
                 disabled={gateLoading}
                 className="text-[11px] font-medium px-2.5 py-1 bg-white text-amber-700 border border-amber-300 rounded hover:bg-amber-100 transition-colors disabled:opacity-50"
               >
-                Remove Gate
+                Remove All
               </button>
             )}
           </div>
@@ -213,9 +246,9 @@ export default function ShiftStoryboard({ weekId, classId }: ShiftStoryboardProp
       {classId && (
         <GateMarker
           index={0}
-          isActive={gateIndex === 0}
+          isActive={activeGates.includes(0)}
           disabled={gateLoading}
-          onToggle={() => handleSetGate(gateIndex === 0 ? null : 0)}
+          onToggle={() => handleToggleGate(0)}
         />
       )}
 
@@ -233,9 +266,9 @@ export default function ShiftStoryboard({ weekId, classId }: ShiftStoryboardProp
           {classId && i < data.steps.length - 1 && (
             <GateMarker
               index={i + 1}
-              isActive={gateIndex === i + 1}
+              isActive={activeGates.includes(i + 1)}
               disabled={gateLoading}
-              onToggle={() => handleSetGate(gateIndex === i + 1 ? null : i + 1)}
+              onToggle={() => handleToggleGate(i + 1)}
             />
           )}
         </div>

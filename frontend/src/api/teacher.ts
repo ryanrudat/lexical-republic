@@ -277,21 +277,21 @@ export async function fetchClassDetail(classId: string): Promise<ClassDetail> {
 
 // ── Task Gate API ───────────────────────────────────────────────
 
-export async function fetchTaskGate(
+export async function fetchTaskGates(
   classId: string,
   weekId: string
-): Promise<{ taskGateIndex: number | null }> {
+): Promise<{ taskGates: number[] }> {
   const { data } = await client.get(`/classes/${classId}/weeks/${weekId}/task-gate`);
-  return data as { taskGateIndex: number | null };
+  return data as { taskGates: number[] };
 }
 
-export async function setTaskGate(
+export async function setTaskGates(
   classId: string,
   weekId: string,
-  taskGateIndex: number | null
-): Promise<{ taskGateIndex: number | null }> {
-  const { data } = await client.patch(`/classes/${classId}/weeks/${weekId}/task-gate`, { taskGateIndex });
-  return data as { taskGateIndex: number | null };
+  taskGates: number[]
+): Promise<{ taskGates: number[] }> {
+  const { data } = await client.patch(`/classes/${classId}/weeks/${weekId}/task-gate`, { taskGates });
+  return data as { taskGates: number[] };
 }
 
 // ── Storyboard API ──────────────────────────────────────────────

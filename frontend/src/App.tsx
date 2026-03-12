@@ -73,17 +73,19 @@ export default function App() {
         }
       };
 
-      const onGateUpdated = (data: { weekId: string; taskGateIndex: number | null }) => {
+      const onGateUpdated = (data: { weekId: string; taskGates: number[] }) => {
         const store = useShiftQueueStore.getState();
         const shiftState = useShiftStore.getState();
 
         // Only apply if student is currently on this week
         if (shiftState.currentWeek?.id !== data.weekId) return;
 
-        store.setTaskGateIndex(data.taskGateIndex);
+        const wasGated = store.gated;
+        store.setTaskGates(data.taskGates);
 
-        const pearl = usePearlStore.getState();
-        if (data.taskGateIndex === null || store.currentTaskIndex < data.taskGateIndex) {
+        // If student was gated and is now ungated, notify via PEARL
+        if (wasGated && !store.gated) {
+          const pearl = usePearlStore.getState();
           pearl.triggerBark('notice', 'PROCESSING AUTHORIZED: Your station has been cleared for the next assignment. Proceed, Citizen.');
         }
       };
