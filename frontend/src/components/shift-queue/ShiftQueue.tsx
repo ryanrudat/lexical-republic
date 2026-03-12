@@ -35,6 +35,7 @@ const TASK_REGISTRY: Record<string, React.ComponentType<TaskProps>> = {
 /** Extract teacher video clip info from a task config */
 function getTaskClip(config: Record<string, unknown>) {
   const override = config?.teacherOverride as Record<string, unknown> | undefined;
+  if (override?.videoClipHidden === true) return { clipUrl: '', clipEmbed: '', hasClip: false };
   const clipUrl = typeof override?.videoClipUrl === 'string' ? resolveUploadUrl(override.videoClipUrl) : '';
   const clipEmbed = typeof override?.videoClipEmbedUrl === 'string' ? (override.videoClipEmbedUrl as string).trim() : '';
   return { clipUrl, clipEmbed, hasClip: !!(clipUrl || clipEmbed) };

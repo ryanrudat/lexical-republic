@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { markWelcomeWatched } from '../../api/dictionary';
 import { resolveUploadUrl } from '../../api/client';
 import MonitorPlayer from '../shared/MonitorPlayer';

@@ -299,6 +299,7 @@ export interface StoryboardStep {
   videoClipUrl: string;
   videoClipFilename: string;
   videoClipEmbedUrl: string;
+  videoClipHidden: boolean;
   // Briefing-specific
   episodeTitle?: string;
   episodeSubtitle?: string;
@@ -333,7 +334,7 @@ export async function fetchWeekStoryboard(weekId: string): Promise<StoryboardDat
 export async function updateStepActivity(
   weekId: string,
   missionType: string,
-  payload: { activityId?: string; reset?: boolean; removeVideo?: boolean; videoClipEmbedUrl?: string }
+  payload: { activityId?: string; reset?: boolean; removeVideo?: boolean; videoClipEmbedUrl?: string; videoClipHidden?: boolean }
 ): Promise<void> {
   await client.patch(`/teacher/weeks/${weekId}/steps/${missionType}`, payload);
 }

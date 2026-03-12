@@ -86,6 +86,17 @@ export default function ShiftStoryboard({ weekId }: ShiftStoryboardProps) {
     }
   };
 
+  const handleToggleHidden = async (step: StoryboardStep, hidden: boolean) => {
+    if (!data) return;
+    try {
+      await updateStepActivity(data.weekId, step.missionType, { videoClipHidden: hidden });
+      flashSaved(step.missionType);
+      await load();
+    } catch {
+      setError('Failed to toggle video visibility');
+    }
+  };
+
   if (loading) {
     return (
       <div className="text-sm text-slate-400 animate-pulse py-4">
@@ -129,6 +140,7 @@ export default function ShiftStoryboard({ weekId }: ShiftStoryboardProps) {
           onRemoveVideo={() => handleRemoveVideo(step)}
           onUploadVideo={(file) => handleUploadStepVideo(step, file)}
           onEmbedUrlChange={(url) => handleEmbedUrlChange(step, url)}
+          onToggleHidden={(hidden) => handleToggleHidden(step, hidden)}
         />
       ))}
     </div>
@@ -141,6 +153,7 @@ interface StoryboardCardProps {
   onRemoveVideo: () => void;
   onUploadVideo: (file: File) => void;
   onEmbedUrlChange: (embedUrl: string) => void;
+  onToggleHidden: (hidden: boolean) => void;
 }
 
 function StoryboardCard({
@@ -149,6 +162,7 @@ function StoryboardCard({
   onRemoveVideo,
   onUploadVideo,
   onEmbedUrlChange,
+  onToggleHidden,
 }: StoryboardCardProps) {
   return (
     <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
@@ -176,6 +190,7 @@ function StoryboardCard({
           onUpload={onUploadVideo}
           onRemove={onRemoveVideo}
           onEmbedUrlChange={onEmbedUrlChange}
+          onToggleHidden={onToggleHidden}
         />
       </div>
     </div>
@@ -187,11 +202,13 @@ function StepVideoSection({
   onUpload,
   onRemove,
   onEmbedUrlChange,
+  onToggleHidden,
 }: {
   step: StoryboardStep;
   onUpload: (file: File) => void;
   onRemove: () => void;
   onEmbedUrlChange: (url: string) => void;
+  onToggleHidden: (hidden: boolean) => void;
 }) {
   const [embedDraft, setEmbedDraft] = useState(step.videoClipEmbedUrl || '');
   const [showEmbedInput, setShowEmbedInput] = useState(false);
@@ -204,9 +221,19 @@ function StepVideoSection({
       {/* Uploaded video */}
       {hasUpload && (
         <div className="flex items-center gap-3">
-          <span className="text-sm text-slate-600 truncate flex-1">
+          <span className={`text-sm truncate flex-1 ${step.videoClipHidden ? 'text-slate-400 line-through' : 'text-slate-600'}`}>
             Video: {step.videoClipFilename}
           </span>
+          <button
+            onClick={() => onToggleHidden(!step.videoClipHidden)}
+            className={`text-xs font-medium px-2 py-1 transition-colors ${
+              step.videoClipHidden
+                ? 'text-amber-600 hover:text-amber-700'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            {step.videoClipHidden ? 'Show' : 'Hide'}
+          </button>
           <button
             onClick={onRemove}
             className="text-xs font-medium text-red-500 hover:text-red-600 transition-colors px-2 py-1"
@@ -219,9 +246,19 @@ function StepVideoSection({
       {/* Embed URL display */}
       {hasEmbed && !hasUpload && (
         <div className="flex items-center gap-3">
-          <span className="text-sm text-slate-600 truncate flex-1">
+          <span className={`text-sm truncate flex-1 ${step.videoClipHidden ? 'text-slate-400 line-through' : 'text-slate-600'}`}>
             Embed: {step.videoClipEmbedUrl}
           </span>
+          <button
+            onClick={() => onToggleHidden(!step.videoClipHidden)}
+            className={`text-xs font-medium px-2 py-1 transition-colors ${
+              step.videoClipHidden
+                ? 'text-amber-600 hover:text-amber-700'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            {step.videoClipHidden ? 'Show' : 'Hide'}
+          </button>
           <button
             onClick={() => onEmbedUrlChange('')}
             className="text-xs font-medium text-red-500 hover:text-red-600 transition-colors px-2 py-1"

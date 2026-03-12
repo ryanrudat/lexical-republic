@@ -984,6 +984,7 @@ router.get('/weeks/:weekId/storyboard', async (req: Request, res: Response) => {
           ? teacherOverride.videoClipFilename : '',
         videoClipEmbedUrl: teacherOverride && typeof teacherOverride.videoClipEmbedUrl === 'string'
           ? teacherOverride.videoClipEmbedUrl : '',
+        videoClipHidden: teacherOverride?.videoClipHidden === true,
       };
     });
 
@@ -1005,11 +1006,12 @@ router.patch('/weeks/:weekId/steps/:missionType', async (req: Request, res: Resp
   try {
     const weekId = req.params.weekId as string;
     const missionType = req.params.missionType as string;
-    const { activityId, reset, removeVideo, videoClipEmbedUrl } = req.body as {
+    const { activityId, reset, removeVideo, videoClipEmbedUrl, videoClipHidden } = req.body as {
       activityId?: string;
       reset?: boolean;
       removeVideo?: boolean;
       videoClipEmbedUrl?: string;
+      videoClipHidden?: boolean;
     };
 
     const mission = await prisma.mission.findFirst({
@@ -1037,7 +1039,7 @@ router.patch('/weeks/:weekId/steps/:missionType', async (req: Request, res: Resp
 
     if (removeVideo) {
       // Remove video clip and embed URL from override
-      const { videoClipUrl: _v, videoClipFilename: _f, videoClipEmbedUrl: _e, ...restOverride } = existingOverride;
+      const { videoClipUrl: _v, videoClipFilename: _f, videoClipEmbedUrl: _e, videoClipHidden: _h, ...restOverride } = existingOverride;
       const updatedConfig = Object.keys(restOverride).length > 0
         ? { ...existingConfig, teacherOverride: restOverride }
         : (() => { const { teacherOverride: _, ...clean } = existingConfig; return clean; })();
@@ -1063,6 +1065,20 @@ router.patch('/weeks/:weekId/steps/:missionType', async (req: Request, res: Resp
         data: { config: updatedConfig as Prisma.InputJsonValue },
       });
       res.json({ status: 'embed_url_updated', missionId: mission.id });
+      return;
+    }
+
+    if (typeof videoClipHidden === 'boolean') {
+      const newOverride = { ...existingOverride, videoClipHidden };
+      if (!videoClipHidden) delete (newOverride as Record<string, unknown>).videoClipHidden;
+      const updatedConfig = Object.keys(newOverride).length > 0
+        ? { ...existingConfig, teacherOverride: newOverride }
+        : (() => { const { teacherOverride: _, ...clean } = existingConfig; return clean; })();
+      await prisma.mission.update({
+        where: { id: mission.id },
+        data: { config: updatedConfig as Prisma.InputJsonValue },
+      });
+      res.json({ status: videoClipHidden ? 'video_hidden' : 'video_shown', missionId: mission.id });
       return;
     }
 

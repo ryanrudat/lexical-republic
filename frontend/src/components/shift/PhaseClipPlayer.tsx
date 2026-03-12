@@ -77,7 +77,7 @@ export default function PhaseClipPlayer({ clip, onComplete }: PhaseClipPlayerPro
     <div className="flex flex-col items-center justify-center py-6 px-4 max-w-2xl mx-auto w-full">
       <MonitorPlayer
         src={videoSrc}
-        embedUrl={clip.embedUrl}
+        embedUrl={clip.embedUrl || undefined}
         autoPlay
         onEnded={onComplete}
       />
