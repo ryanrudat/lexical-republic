@@ -178,14 +178,16 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
   }),
 
   goToTask: async (taskId: string) => {
-    const { weekConfig, taskProgress } = get();
+    const { weekConfig, taskProgress, taskGates } = get();
     if (!weekConfig) return;
 
     const targetIdx = weekConfig.tasks.findIndex(t => t.id === taskId);
     if (targetIdx < 0) return;
 
-    // Persist: mark all tasks before target as complete (skipped)
     const shiftState = useShiftStore.getState();
+    const weekId = shiftState.currentWeek?.id;
+
+    // Persist: mark all tasks before target as complete (skipped)
     for (let i = 0; i < targetIdx; i++) {
       if (taskProgress[i].status === 'complete') continue;
       const taskConfig = weekConfig.tasks[i];
@@ -195,22 +197,32 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
       }
     }
 
+    // Persist: clear server scores for target task and all tasks after it
+    // so a refresh doesn't show them as already completed
+    if (weekId) {
+      const typesToClear = weekConfig.tasks.slice(targetIdx).map(t => t.type);
+      resetWeekScores(weekId, typesToClear).catch(() => {});
+    }
+
     const updated = taskProgress.map((p, i) => {
       if (i < targetIdx) return { ...p, status: 'complete' as TaskStatus };
       if (i === targetIdx) return { ...p, status: 'current' as TaskStatus, score: undefined, details: undefined };
       return { ...p, status: 'locked' as TaskStatus, score: undefined, details: undefined };
     });
 
+    const isGated = taskGates.length > 0 && taskGates.includes(targetIdx);
+
     set({
       taskProgress: updated,
       currentTaskIndex: targetIdx,
       shiftComplete: false,
+      gated: isGated,
       taskResetKey: get().taskResetKey + 1,
     });
   },
 
   skipCurrentTask: async () => {
-    const { currentTaskIndex, taskProgress, weekConfig } = get();
+    const { currentTaskIndex, taskProgress, weekConfig, taskGates } = get();
     if (!weekConfig || currentTaskIndex >= taskProgress.length) return;
 
     // Persist: mark current task as complete (skipped) on server
@@ -235,11 +247,13 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
     }
 
     const allComplete = updated.every(p => p.status === 'complete');
+    const isGated = taskGates.length > 0 && nextIdx >= 0 && !allComplete && taskGates.includes(nextIdx);
 
     set({
       taskProgress: updated,
       currentTaskIndex: nextIdx >= 0 ? nextIdx : updated.length,
-      shiftComplete: allComplete,
+      shiftComplete: allComplete && !isGated,
+      gated: isGated,
     });
   },
 

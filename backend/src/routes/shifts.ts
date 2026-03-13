@@ -446,28 +446,35 @@ router.patch('/concern', async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/shifts/weeks/:weekId/scores — Reset all mission scores for a week (used by teacher task controls)
+// DELETE /api/shifts/weeks/:weekId/scores — Reset mission scores for a week
+// Optional body { missionTypes: string[] } to delete only specific mission types
 router.delete('/weeks/:weekId/scores', async (req: Request, res: Response) => {
   try {
     const ctx = getAuthContext(req);
     const weekId = req.params.weekId as string;
+    const { missionTypes } = req.body as { missionTypes?: string[] };
 
-    // Find all missions for this week
+    // Find missions for this week, optionally filtered by type
     const missions = await prisma.mission.findMany({
-      where: { weekId },
+      where: {
+        weekId,
+        ...(Array.isArray(missionTypes) && missionTypes.length > 0
+          ? { missionType: { in: missionTypes } }
+          : {}),
+      },
       select: { id: true },
     });
     const missionIds = missions.map(m => m.id);
 
-    // Delete all scores for this student's missions in this week
-    await prisma.missionScore.deleteMany({
+    // Delete scores for this student's missions
+    const result = await prisma.missionScore.deleteMany({
       where: {
         missionId: { in: missionIds },
         ...ctx.scoreFilter,
       },
     });
 
-    res.json({ success: true, deleted: missionIds.length });
+    res.json({ success: true, deleted: result.count });
   } catch (err) {
     console.error('Reset shift scores error:', err);
     res.status(500).json({ error: 'Failed to reset shift scores' });

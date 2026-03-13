@@ -58,6 +58,8 @@ export async function patchConcern(delta: number): Promise<{ concernScore: numbe
   return data;
 }
 
-export async function resetWeekScores(weekId: string): Promise<void> {
-  await client.delete(`/shifts/weeks/${weekId}/scores`);
+export async function resetWeekScores(weekId: string, missionTypes?: string[]): Promise<void> {
+  await client.delete(`/shifts/weeks/${weekId}/scores`, {
+    data: missionTypes ? { missionTypes } : undefined,
+  });
 }
