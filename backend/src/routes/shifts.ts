@@ -87,7 +87,7 @@ router.get('/season', async (req: Request, res: Response) => {
           stepsCompleted,
           clockedOut: week.missions.some(
             (m) =>
-              m.missionType === 'clock_out' &&
+              (m.missionType === 'clock_out' || m.missionType === 'shift_report') &&
               m.missionScores.some(
                 (s) => (s.details as any)?.status === 'complete'
               )

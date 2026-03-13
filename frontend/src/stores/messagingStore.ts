@@ -118,10 +118,12 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
 
   markAsRead: async (id: string) => {
     try {
+      // Only decrement if the message is currently unread in our store
+      const wasUnread = get().messages.find(m => m.id === id)?.isRead === false;
       const updated = await markRead(id);
       set(state => ({
         messages: state.messages.map(m => (m.id === id ? updated : m)),
-        unreadCount: Math.max(0, state.unreadCount - 1),
+        unreadCount: wasUnread ? Math.max(0, state.unreadCount - 1) : state.unreadCount,
       }));
     } catch {
       // Silently fail
@@ -187,7 +189,11 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
   },
 
   openPanel: () => set({ isPanelOpen: true }),
-  closePanel: () => set({ isPanelOpen: false, selectedMessageId: null }),
+  closePanel: () => {
+    set({ isPanelOpen: false, selectedMessageId: null });
+    // Sync unread count from backend when panel closes
+    getUnreadCount().then(({ count }) => set({ unreadCount: count })).catch(() => {});
+  },
   selectMessage: (id: string) => set({ selectedMessageId: id }),
   backToInbox: () => set({ selectedMessageId: null }),
 

@@ -87,6 +87,7 @@ router.get('/students', async (req: Request, res: Response) => {
     const pairs = await prisma.pair.findMany({
       where: { enrollments: { some: { classId: { in: filterClassIds } } } },
       include: {
+        shiftResults: { select: { weekNumber: true } },
         missionScores: {
           include: {
             mission: { select: { weekId: true, missionType: true } },
@@ -101,15 +102,20 @@ router.get('/students', async (req: Request, res: Response) => {
     });
 
     const pairResults = pairs.map((p) => {
-      const clockedOutWeeks = new Set(
-        p.missionScores
-          .filter(
-            (ms) =>
-              ms.mission.missionType === 'clock_out' &&
-              (ms.details as any)?.status === 'complete'
-          )
-          .map((ms) => ms.mission.weekId)
-      );
+      // ShiftResult is the canonical completion record; fall back to
+      // clock_out/shift_report MissionScore for legacy data
+      const completedWeeks = new Set<string>();
+      for (const sr of p.shiftResults) {
+        completedWeeks.add(String(sr.weekNumber));
+      }
+      for (const ms of p.missionScores) {
+        if (
+          (ms.mission.missionType === 'clock_out' || ms.mission.missionType === 'shift_report') &&
+          (ms.details as any)?.status === 'complete'
+        ) {
+          completedWeeks.add(ms.mission.weekId);
+        }
+      }
       const enrollment = p.enrollments[0];
       return {
         id: p.id,
@@ -120,7 +126,7 @@ router.get('/students', async (req: Request, res: Response) => {
         lane: p.lane,
         xp: p.xp,
         concernScore: p.concernScore,
-        weeksCompleted: clockedOutWeeks.size,
+        weeksCompleted: completedWeeks.size,
         lastLoginAt: p.lastLoginAt,
         classId: enrollment?.class.id ?? null,
         className: enrollment?.class.name ?? null,
@@ -153,7 +159,7 @@ router.get('/students', async (req: Request, res: Response) => {
         s.missionScores
           .filter(
             (ms) =>
-              ms.mission.missionType === 'clock_out' &&
+              (ms.mission.missionType === 'clock_out' || ms.mission.missionType === 'shift_report') &&
               (ms.details as any)?.status === 'complete'
           )
           .map((ms) => ms.mission.weekId)
