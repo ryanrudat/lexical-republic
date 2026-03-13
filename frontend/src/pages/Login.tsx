@@ -37,14 +37,17 @@ export default function Login() {
     };
   }, []);
 
+  const isTeacherMode = mode === 'teacher' || mode === 'teacher-register';
+
   const startMusic = useCallback(() => {
-    if (musicStartedRef.current) return;
+    if (musicStartedRef.current || isTeacherMode) return;
     const audio = audioRef.current;
     if (!audio) return;
     audio.play().then(() => { musicStartedRef.current = true; }).catch(() => {});
-  }, []);
+  }, [isTeacherMode]);
 
   useEffect(() => {
+    if (isTeacherMode) return;
     const handler = () => startMusic();
     document.addEventListener('click', handler, { once: true });
     document.addEventListener('keydown', handler, { once: true });
@@ -52,7 +55,18 @@ export default function Login() {
       document.removeEventListener('click', handler);
       document.removeEventListener('keydown', handler);
     };
-  }, [startMusic]);
+  }, [startMusic, isTeacherMode]);
+
+  // Pause music on teacher views, resume on student views
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (isTeacherMode) {
+      audio.pause();
+    } else if (musicStartedRef.current) {
+      audio.play().catch(() => {});
+    }
+  }, [isTeacherMode]);
 
   const toggleMute = useCallback(() => {
     setMuted(prev => {
@@ -131,8 +145,8 @@ export default function Login() {
       {/* Soft pastel accent bar */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#B3E5FC] via-[#E1BEE7] to-[#FCE4EC] z-10" />
 
-      {/* Music mute toggle */}
-      <button
+      {/* Music mute toggle — hidden on teacher views */}
+      {!isTeacherMode && <button
         type="button"
         onClick={toggleMute}
         className="absolute bottom-5 right-5 z-20 w-10 h-10 flex items-center justify-center rounded-full bg-white/30 backdrop-blur-sm border border-white/50 text-[#2D8A6E]/60 hover:bg-white/50 hover:text-[#2D8A6E] transition-all"
@@ -151,7 +165,7 @@ export default function Login() {
             <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
           </svg>
         )}
-      </button>
+      </button>}
 
       {/* Fixed header — does NOT scroll */}
       <div className="relative pt-6 pb-4 z-10">
@@ -163,10 +177,10 @@ export default function Login() {
           />
 
           <h1 className="font-special-elite text-[#2D8A6E] text-xl tracking-[0.12em] leading-tight">
-            Ministry for Healthy
+            Ministry of Safe
           </h1>
           <h1 className="font-special-elite text-[#2D8A6E] text-xl tracking-[0.12em] leading-tight">
-            & Safe Communication
+            & Healthy Communication
           </h1>
 
           <div className="mt-3 mb-2 flex items-center justify-center gap-3">
@@ -287,7 +301,7 @@ export default function Login() {
 
                   <div className="mb-4">
                     <label className="block font-ibm-mono text-[11px] text-[#5a6a78]/60 uppercase tracking-[0.15em] mb-2">
-                      Pair Designation
+                      Designated Sign-In
                     </label>
                     <input
                       type="text"
