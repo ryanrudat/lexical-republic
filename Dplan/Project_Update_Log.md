@@ -1,6 +1,51 @@
 # Project Update Log
 
-Last updated: 2026-03-10
+Last updated: 2026-03-13
+
+## 2026-03-13 — Multi-Gate System, Documentation Update
+
+### Multiple Simultaneous Task Gates
+- **Change**: Upgraded from single `taskGateIndex Int?` to `taskGates Int[]` array on `ClassWeekUnlock`. Teachers can now set gates at any combination of positions between storyboard steps.
+- **Student gating logic**: Student is blocked when their `currentTaskIndex` matches any gate in the array. Passing a gate position doesn't re-block.
+- **Teacher UI**: Gate markers toggle independently (click to activate/deactivate). Gate control bar shows count + labels. "Advance" removes the lowest gate; "Remove All" clears everything.
+- **Backend**: PATCH endpoint accepts `{ taskGates: number[] }`, deduplicates and sorts. Socket broadcasts full array.
+- **PEARL bark**: Only fires when student transitions from gated → ungated (was previously firing on every gate update).
+- **Migration**: `20260312072042_multi_task_gates` — drops `taskGateIndex`, adds `taskGates Int[] @default([])`.
+- **Files**: schema.prisma, classes.ts, shifts.ts, shiftQueue.ts (types), teacher.ts (API), shiftQueueStore.ts, App.tsx, ShiftStoryboard.tsx
+
+## 2026-03-12 — Task Gating, Class Monitor Filter, TOEIC Vocab, Ministry Naming, Storyboard Videos
+
+### Task Gating System (Teacher Pace Control)
+- **New feature**: Per-class, per-week task gating. Teacher places gate markers between storyboard steps — students hit "Station Hold" overlay with Party-style rotating messages until teacher advances.
+- **Real-time**: `session:gate-updated` socket event broadcasts to `class:${classId}` room. All waiting students proceed instantly.
+- **PEARL bark**: Students get in-world notification when gate lifts.
+- **Student gate screen**: "AWAITING CLEARANCE" badge, lock icon, amber pulse animation, rotating dystopian messages (8-second cycle).
+- **Files**: New `TaskGateOverlay.tsx`, modified schema.prisma, classes.ts, shifts.ts, shiftQueueStore.ts, App.tsx, ShiftStoryboard.tsx, ShiftQueue.tsx, teacher.ts, shiftQueue.ts types
+
+### Gate Marker Visibility Fix
+- **Bug**: GateMarker between storyboard steps used `opacity-0 group-hover:opacity-100`, making gates invisible unless hovered.
+- **Fix**: Replaced with always-visible `bg-slate-50 text-slate-400` styling with dashed border lines.
+
+### Class-Filtered Live Class Monitor
+- **Change**: Live Class Monitor now filters students by the selected class in the teacher dashboard.
+- **"Students" button**: On ClassManager class cards, now sets `selectedClassId` in Zustand store and smooth-scrolls to the ClassMonitor section.
+- **Removed**: "All Classes" dropdown option (monitor always shows selected class).
+
+### TOEIC-First Vocabulary Documentation
+- **New principle**: TOEIC-aligned words come first in `targetWords`; world-building/story words come second.
+- **Week 1 vocabulary breakdown**: Documented the full 25-word split (10 targetWords, 10 dictionary targets, 6 world-building). Week 1 is locked as narrative-first exception.
+- **Files**: docs/world-and-story.md, CLAUDE.md (locked decision added)
+
+### Ministry Naming Fix
+- **Change**: All instances of "Ministry for Healthy and Safe Information" → "Ministry for Healthy and Safe Communication" across codebase.
+- **Files**: TerminalView.tsx, seed.ts, World_Canon.md, Dplay_Source_Integration_Notes.md
+
+### Storyboard & Video Clip System Enhancements (from prior session)
+- **Storyboard derived from WeekConfig**: Steps now match actual student tasks instead of hardcoded 7-step sequence.
+- **Auto-create Mission records**: Opening storyboard ensures DB records exist for all WeekConfig tasks.
+- **Video clip per step**: Upload or embed URL, with hide/show toggle (`videoClipHidden`).
+- **Movie theater mode**: Full-screen black overlay with CRT monitor during task clip playback.
+- **Seed preservation**: Re-running seed preserves existing `teacherOverride` data.
 
 ## 2026-03-10 — Chromebook Compatibility, Task Randomization, Touch Support, Task Controls Fix
 
@@ -235,6 +280,8 @@ Last updated: 2026-03-10
 
 ## Next Confirmed Step
 - Write Weeks 4-6 full script packs using fixed media timeline
-- Define per-week vocabulary ladders (known vs new words) for all 18 shifts
-- Hybrid class model app changes (compact intake_form, teacherLed gating, teacher "advance" signal)
-- Printable Ministry materials (Vocabulary Cards, Evidence Board memos, etc.)
+- Define per-week vocabulary ladders (TOEIC target words vs world-building words) for all 18 shifts
+- Hybrid class model app changes (compact intake_form, teacher "advance to Station Work" signal — multi-gate system now implemented)
+- Printable Ministry materials (Vocabulary Cards, Evidence Board memos, Priority Board case cards, Conversation Frame cards)
+- Persistent file storage for Railway (S3/R2) — currently uses Railway volume
+- Expand dictionary seed data beyond Weeks 1-3 (currently 49 words, target ~120+ across 18 weeks)

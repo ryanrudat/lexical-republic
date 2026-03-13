@@ -55,7 +55,7 @@ Deprecated: `Vocabulary`, `StudentVocabulary`
 ## Backend Endpoints
 
 ### Shift routes (`backend/src/routes/shifts.ts`)
-- `GET /api/shifts/weeks/:weekId/config` — week config for task queue (merges teacher overrides from Mission DB records into static WeekConfig)
+- `GET /api/shifts/weeks/:weekId/config` — week config for task queue (merges teacher overrides from Mission DB records into static WeekConfig, includes `taskGates` array from student's class)
 - `DELETE /api/shifts/weeks/:weekId/scores` — reset all MissionScore records for a week (used by teacher task controls)
 
 ### Socket.IO Teacher Task Commands
@@ -81,6 +81,8 @@ Deprecated: `Vocabulary`, `StudentVocabulary`
 ### Class routes (`backend/src/routes/classes.ts`)
 - `DELETE /api/classes/:classId` — cascade delete class (enrollments, week unlocks, harmony posts)
 - `DELETE /api/classes/:classId/students/:studentId` — remove student enrollment from class
+- `GET /api/classes/:classId/weeks/:weekId/task-gate` — read active gates (returns `taskGates: number[]`)
+- `PATCH /api/classes/:classId/weeks/:weekId/task-gate` — set gates (accepts `{ taskGates: number[] }`), broadcasts `session:gate-updated` to class room
 
 ### Dictionary routes (`backend/src/routes/dictionary.ts`)
 - `GET /api/dictionary` — full word list with `translationZhTw`, `starred`, `chineseRevealed`
