@@ -91,6 +91,12 @@ export interface ShiftClosingConfig {
 
 // ─── Character Message (from DB) ──────────────────────────────
 
+export interface ThreadEntry {
+  sender: 'teacher' | 'student';
+  text: string;
+  timestamp: string;
+}
+
 export interface CharacterMessage {
   id: string;
   pairId: string;
@@ -104,6 +110,7 @@ export interface CharacterMessage {
   weekNumber: number;
   isRead: boolean;
   studentReply: string | null;
+  thread: ThreadEntry[] | null;
   createdAt: string;
 }
 

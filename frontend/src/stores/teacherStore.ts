@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { SocketStatus } from '../utils/socket';
+import type { CharacterMessage, ThreadEntry } from '../types/shiftQueue';
 
 export type TeacherTab = 'class' | 'grades' | 'shifts' | 'dictionary';
 
@@ -46,6 +47,14 @@ interface TeacherState {
 
   classPaused: boolean;
   setClassPaused: (paused: boolean) => void;
+
+  /** Clarity Minder: cached threads by pairId */
+  clarityThreads: Map<string, CharacterMessage[]>;
+  setClarityThreads: (pairId: string, messages: CharacterMessage[]) => void;
+  /** Bumped on incoming student replies — drives re-render in ClarityMinderThread */
+  clarityReplyTick: number;
+  bumpClarityReplyTick: () => void;
+  appendClarityEntry: (pairId: string, messageId: string, entry: ThreadEntry) => void;
 }
 
 export const useTeacherStore = create<TeacherState>((set) => ({
@@ -85,4 +94,32 @@ export const useTeacherStore = create<TeacherState>((set) => ({
 
   classPaused: false,
   setClassPaused: (paused) => set({ classPaused: paused }),
+
+  clarityThreads: new Map(),
+  setClarityThreads: (pairId, messages) =>
+    set((state) => {
+      const next = new Map(state.clarityThreads);
+      next.set(pairId, messages);
+      return { clarityThreads: next };
+    }),
+  clarityReplyTick: 0,
+  bumpClarityReplyTick: () => set((s) => ({ clarityReplyTick: s.clarityReplyTick + 1 })),
+  appendClarityEntry: (pairId, messageId, entry) =>
+    set((state) => {
+      const threads = state.clarityThreads.get(pairId);
+      if (!threads) return state;
+
+      const next = new Map(state.clarityThreads);
+      next.set(
+        pairId,
+        threads.map((m) => {
+          if (m.id !== messageId) return m;
+          const currentThread = (m.thread ?? []) as ThreadEntry[];
+          // Dedup
+          if (currentThread.some((e) => e.timestamp === entry.timestamp && e.text === entry.text)) return m;
+          return { ...m, thread: [...currentThread, entry] };
+        })
+      );
+      return { clarityThreads: next };
+    }),
 }));

@@ -35,3 +35,29 @@ export async function getUnreadCount(): Promise<{ count: number }> {
   const { data } = await client.get('/messages/unread-count');
   return data;
 }
+
+// ─── Clarity Minder (teacher↔student direct messaging) ──────
+
+export async function sendDirectMessage(
+  pairId: string,
+  text: string,
+  weekNumber: number
+): Promise<CharacterMessage> {
+  const { data } = await client.post('/messages/direct', { pairId, text, weekNumber });
+  return data;
+}
+
+export async function appendToThread(
+  messageId: string,
+  text: string
+): Promise<CharacterMessage> {
+  const { data } = await client.post(`/messages/${messageId}/thread`, { text });
+  return data;
+}
+
+export async function fetchDirectMessages(
+  pairId: string
+): Promise<{ messages: CharacterMessage[] }> {
+  const { data } = await client.get(`/messages/direct/${pairId}`);
+  return data;
+}

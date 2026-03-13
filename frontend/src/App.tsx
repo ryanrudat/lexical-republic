@@ -11,6 +11,8 @@ import { useSessionPauseStore } from './stores/sessionPauseStore';
 import { useShiftQueueStore } from './stores/shiftQueueStore';
 import { useShiftStore } from './stores/shiftStore';
 import { usePearlStore } from './stores/pearlStore';
+import { useMessagingStore } from './stores/messagingStore';
+import type { CharacterMessage, ThreadEntry } from './types/shiftQueue';
 import WelcomeVideoModal from './components/welcome/WelcomeVideoModal';
 
 export default function App() {
@@ -73,6 +75,17 @@ export default function App() {
         }
       };
 
+      const onClarityMessage = (data: { message?: CharacterMessage; messageId?: string; entry?: ThreadEntry }) => {
+        const messaging = useMessagingStore.getState();
+        if (data.message) {
+          // New conversation from teacher
+          messaging.addIncomingMessage(data.message);
+        } else if (data.messageId && data.entry) {
+          // Follow-up in existing thread
+          messaging.addIncomingThreadEntry(data.messageId, data.entry);
+        }
+      };
+
       const onGateUpdated = (data: { weekId: string; taskGates: number[] }) => {
         const store = useShiftQueueStore.getState();
         const shiftState = useShiftStore.getState();
@@ -95,6 +108,7 @@ export default function App() {
       sock.on('session:resumed', onResumed);
       sock.on('session:task-command', onTaskCommand);
       sock.on('session:gate-updated', onGateUpdated);
+      sock.on('session:clarity-message', onClarityMessage);
 
       return () => {
         sock.off('connect_error', onError);
@@ -102,6 +116,7 @@ export default function App() {
         sock.off('session:resumed', onResumed);
         sock.off('session:task-command', onTaskCommand);
         sock.off('session:gate-updated', onGateUpdated);
+        sock.off('session:clarity-message', onClarityMessage);
       };
     }
   }, [user?.id, user?.role, user?.designation, user?.displayName]);

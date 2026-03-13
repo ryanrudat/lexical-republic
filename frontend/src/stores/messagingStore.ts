@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import type { CharacterMessage, CharacterMessageConfig, WeekConfig } from '../types/shiftQueue';
-import { fetchMessages, createMessage, markRead, submitReply, getUnreadCount } from '../api/messages';
+import type { CharacterMessage, CharacterMessageConfig, ThreadEntry, WeekConfig } from '../types/shiftQueue';
+import { fetchMessages, createMessage, markRead, submitReply, getUnreadCount, appendToThread as apiAppendToThread } from '../api/messages';
 
 interface ActiveNotification {
   message: CharacterMessage;
@@ -23,6 +23,9 @@ interface MessagingState {
   ) => Promise<void>;
   markAsRead: (id: string) => Promise<void>;
   sendReply: (id: string, reply: string) => Promise<void>;
+  appendToThread: (messageId: string, text: string) => Promise<void>;
+  addIncomingMessage: (message: CharacterMessage) => void;
+  addIncomingThreadEntry: (messageId: string, entry: ThreadEntry) => void;
   openPanel: () => void;
   closePanel: () => void;
   selectMessage: (id: string) => void;
@@ -134,6 +137,53 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
     } catch {
       // Silently fail
     }
+  },
+
+  appendToThread: async (messageId: string, text: string) => {
+    try {
+      const updated = await apiAppendToThread(messageId, text);
+      set(state => ({
+        messages: state.messages.map(m => (m.id === messageId ? updated : m)),
+      }));
+    } catch {
+      // Silently fail
+    }
+  },
+
+  addIncomingMessage: (message: CharacterMessage) => {
+    set(state => {
+      // Guard: don't append if already present
+      if (state.messages.some(m => m.id === message.id)) return state;
+      return {
+        messages: [...state.messages, message],
+        unreadCount: state.unreadCount + 1,
+        activeNotification: { message },
+      };
+    });
+  },
+
+  addIncomingThreadEntry: (messageId: string, entry: ThreadEntry) => {
+    set(state => {
+      const msg = state.messages.find(m => m.id === messageId);
+      if (!msg) return state;
+
+      const currentThread = msg.thread ?? [];
+      // Dedup: check if entry already exists
+      if (currentThread.some(e => e.timestamp === entry.timestamp && e.text === entry.text)) {
+        return state;
+      }
+
+      const updatedMsg: CharacterMessage = {
+        ...msg,
+        thread: [...currentThread, entry],
+        isRead: false,
+      };
+
+      return {
+        messages: state.messages.map(m => (m.id === messageId ? updatedMsg : m)),
+        unreadCount: entry.sender === 'teacher' ? state.unreadCount + 1 : state.unreadCount,
+      };
+    });
   },
 
   openPanel: () => set({ isPanelOpen: true }),

@@ -4,6 +4,7 @@ import { useTeacherStore } from '../../stores/teacherStore';
 import { getSocket } from '../../utils/socket';
 import { STEP_ORDER } from '../../types/shifts';
 import type { StudentSummary } from '../../types/shifts';
+import ClarityMinderThread from './ClarityMinderThread';
 
 const stepLabel = (stepId: string) =>
   STEP_ORDER.find((s) => s.id === stepId)?.label ?? stepId;
@@ -496,6 +497,15 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
                       </div>
                     </div>
                   )}
+
+                  {/* Clarity Minder: teacher↔student direct messaging */}
+                  <div className="mt-2 pt-2 border-t border-slate-200">
+                    <ClarityMinderThread
+                      studentId={student.id}
+                      designation={student.designation ?? '??'}
+                      weekNumber={student.online?.weekNumber ?? null}
+                    />
+                  </div>
                 </div>
               )}
             </div>

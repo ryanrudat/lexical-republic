@@ -481,6 +481,7 @@ model CharacterMessage {
   weekNumber    Int
   isRead        Boolean  @default(false)
   studentReply  String?
+  thread        Json?    // [{sender:'teacher'|'student', text:string, timestamp:string}]
   createdAt     DateTime @default(now())
 
   @@map("character_messages")

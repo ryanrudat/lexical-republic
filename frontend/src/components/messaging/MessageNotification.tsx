@@ -5,6 +5,7 @@ const CHARACTER_COLORS: Record<string, string> = {
   'Ivan': 'border-neon-cyan/40',
   'M.K.': 'border-terminal-amber/40',
   'Chad': 'border-violet-400/40',
+  'Clarity Minder': 'border-amber-400/40',
 };
 
 export default function MessageNotification() {

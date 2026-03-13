@@ -1,12 +1,13 @@
 import { useMemo } from 'react';
 import { useMessagingStore } from '../../stores/messagingStore';
-import type { CharacterMessage } from '../../types/shiftQueue';
+import type { CharacterMessage, ThreadEntry } from '../../types/shiftQueue';
 
 const CHARACTER_DOT_COLORS: Record<string, string> = {
   'Betty': 'bg-neon-mint',
   'Ivan': 'bg-neon-cyan',
   'M.K.': 'bg-terminal-amber',
   'Chad': 'bg-violet-400',
+  'Clarity Minder': 'bg-amber-400',
 };
 
 function MessagePreviewCard({ message }: { message: CharacterMessage }) {
@@ -14,12 +15,23 @@ function MessagePreviewCard({ message }: { message: CharacterMessage }) {
   const markAsRead = useMessagingStore((s) => s.markAsRead);
 
   const dotColor = CHARACTER_DOT_COLORS[message.characterName] || 'bg-white/40';
-  const hasReplied = !!message.studentReply;
+  const isThread = message.replyType === 'thread';
+  const hasReplied = isThread ? false : !!message.studentReply;
 
   const preview = useMemo(() => {
+    // For thread messages, show last thread entry text
+    if (isThread) {
+      const thread = (message.thread ?? []) as ThreadEntry[];
+      if (thread.length > 0) {
+        const last = thread[thread.length - 1];
+        const prefix = last.sender === 'teacher' ? 'Minder: ' : 'You: ';
+        const text = prefix + last.text;
+        return text.length > 60 ? text.slice(0, 60) + '...' : text;
+      }
+    }
     const text = message.messageText;
     return text.length > 60 ? text.slice(0, 60) + '...' : text;
-  }, [message.messageText]);
+  }, [message.messageText, message.thread, isThread]);
 
   const timeAgo = (() => {
     const diff = Date.now() - new Date(message.createdAt).getTime();
@@ -72,7 +84,16 @@ function MessagePreviewCard({ message }: { message: CharacterMessage }) {
 
           {/* Status row */}
           <div className="flex items-center gap-2 mt-1.5">
-            {hasReplied ? (
+            {isThread ? (
+              <>
+                <span className="font-ibm-mono text-[8px] tracking-wider px-1.5 py-0.5 rounded-full bg-amber-400/10 text-amber-400/60 border border-amber-400/15">
+                  THREAD
+                </span>
+                {!message.isRead && (
+                  <span className="w-2 h-2 rounded-full bg-neon-pink animate-pulse" />
+                )}
+              </>
+            ) : hasReplied ? (
               <span className="font-ibm-mono text-[8px] tracking-wider px-1.5 py-0.5 rounded-full bg-neon-cyan/10 text-neon-cyan/60 border border-neon-cyan/15">
                 REPLIED
               </span>

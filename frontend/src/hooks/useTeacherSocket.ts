@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { connectSocket, disconnectSocket, getSocket, onSocketStatus } from '../utils/socket';
 import { useTeacherStore } from '../stores/teacherStore';
 import type { OnlineStudent } from '../stores/teacherStore';
+import type { ThreadEntry } from '../types/shiftQueue';
 
 export function useTeacherSocket() {
   const setClassSnapshot = useTeacherStore((s) => s.setClassSnapshot);
@@ -10,6 +11,8 @@ export function useTeacherSocket() {
   const setSocketStatus = useTeacherStore((s) => s.setSocketStatus);
   const bumpRegistrationTick = useTeacherStore((s) => s.bumpRegistrationTick);
   const setClassPaused = useTeacherStore((s) => s.setClassPaused);
+  const appendClarityEntry = useTeacherStore((s) => s.appendClarityEntry);
+  const bumpClarityReplyTick = useTeacherStore((s) => s.bumpClarityReplyTick);
 
   useEffect(() => {
     const sock = connectSocket();
@@ -32,6 +35,10 @@ export function useTeacherSocket() {
     const onPauseState = (data: { paused: boolean }) => {
       setClassPaused(data.paused);
     };
+    const onClarityReply = (data: { messageId: string; pairId: string; entry: ThreadEntry }) => {
+      appendClarityEntry(data.pairId, data.messageId, data.entry);
+      bumpClarityReplyTick();
+    };
 
     sock.on('teacher:class-snapshot', onSnapshot);
     sock.on('student:connected', onConnected);
@@ -39,6 +46,7 @@ export function useTeacherSocket() {
     sock.on('student:disconnected', onDisconnected);
     sock.on('student:registered', onRegistered);
     sock.on('teacher:pause-state', onPauseState);
+    sock.on('teacher:clarity-reply', onClarityReply);
 
     // Track connection status
     const unsubStatus = onSocketStatus((status, error) => {
@@ -54,9 +62,10 @@ export function useTeacherSocket() {
         s.off('student:disconnected', onDisconnected);
         s.off('student:registered', onRegistered);
         s.off('teacher:pause-state', onPauseState);
+        s.off('teacher:clarity-reply', onClarityReply);
       }
       unsubStatus();
       disconnectSocket();
     };
-  }, [setClassSnapshot, upsertStudent, removeStudent, setSocketStatus, bumpRegistrationTick, setClassPaused]);
+  }, [setClassSnapshot, upsertStudent, removeStudent, setSocketStatus, bumpRegistrationTick, setClassPaused, appendClarityEntry, bumpClarityReplyTick]);
 }
