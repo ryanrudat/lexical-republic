@@ -42,34 +42,34 @@ export default function TerminalTaskbar() {
   };
 
   return (
-    <div className="relative z-10 border-t border-white/10 bg-ios-bg/80 backdrop-blur-md px-4 py-1.5 flex items-center justify-between">
+    <div className="relative z-10 retro-bezel border-t px-4 py-1.5 flex items-center justify-between">
       <div className="flex items-center gap-3">
         <button
           onClick={handleBack}
           disabled={guidedLockedInShift}
-          className="font-ibm-mono text-xs text-white/40 hover:text-neon-cyan tracking-wider transition-colors flex items-center gap-1"
+          className="font-ibm-mono text-xs text-[#6B5D45] hover:text-[#C9944A] tracking-wider transition-colors flex items-center gap-1"
         >
           {'\u25C0'} {guidedLockedInShift ? 'TEACHER GUIDED' : terminalApp === 'desktop' ? 'OFFICE' : 'DESKTOP'}
         </button>
         {terminalApp !== 'desktop' && (
-          <span className="font-ibm-mono text-[10px] text-white/25 tracking-wider uppercase">
+          <span className="font-ibm-mono text-[10px] text-[#3D3529] tracking-wider uppercase">
             | {terminalApp.replace(/-/g, ' ')}
           </span>
         )}
       </div>
 
       <div className="flex items-center gap-2">
-        <div className="w-1.5 h-1.5 rounded-full bg-neon-mint animate-pulse" />
-        <span className="font-ibm-mono text-[9px] text-neon-mint/60 tracking-[0.25em]">
+        <div className="w-1.5 h-1.5 rounded-full bg-[#5BB88C] animate-pulse" style={{ boxShadow: '0 0 4px rgba(91,184,140,0.5)' }} />
+        <span className="font-ibm-mono text-[9px] text-[#5BB88C]/60 tracking-[0.25em]">
           SESSION LIVE
         </span>
       </div>
 
       <div className="flex items-center gap-3">
-        <span className="font-ibm-mono text-[10px] text-neon-cyan/50 tracking-wider">
+        <span className="font-ibm-mono text-[10px] text-[#C9944A]/50 tracking-wider">
           PEARL: {eyeStateLabel[eyeState]}
         </span>
-        <span className="font-dseg7 text-xs text-neon-cyan/60">
+        <span className="font-ibm-mono text-xs text-[#C9944A]/60 font-bold tabular-nums tracking-wider">
           {hours}:{minutes}
         </span>
       </div>

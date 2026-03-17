@@ -69,56 +69,60 @@ export default function TerminalView() {
 
   return (
     <div className="fixed inset-0 ios-terminal-bg flex flex-col">
-      {/* Ambient glow layers */}
+      {/* Warm ambient glow */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            'radial-gradient(circle at 18% 12%, rgba(0,229,255,0.06) 0%, transparent 36%), radial-gradient(circle at 84% 86%, rgba(105,240,174,0.04) 0%, transparent 30%)',
+            'radial-gradient(ellipse 60% 50% at 50% 40%, rgba(201,148,74,0.04) 0%, transparent 70%), radial-gradient(circle at 80% 85%, rgba(91,184,140,0.025) 0%, transparent 30%)',
         }}
       />
 
-      {/* Subtle scanline overlay */}
-      <div className="ios-scanline-overlay" />
+      {/* CRT vignette */}
+      <div className="retro-vignette" />
+
+      {/* Warm scanlines */}
+      <div className="retro-scanline-overlay" />
 
       <div className="relative z-10 flex-1 flex flex-col overflow-hidden">
-        <header className="border-b border-white/10 bg-ios-bg/80 backdrop-blur-md px-4 py-2">
+        {/* ── Header bezel ──────────────────────────────── */}
+        <header className="retro-bezel border-b px-4 py-2">
           <div className="flex items-center justify-between gap-3">
             {/* Left: Home + Title */}
             <div className="flex items-center gap-3 min-w-0">
               <button
                 onClick={handleHome}
-                className="ios-glass-pill font-ibm-mono text-[10px] text-white/60 hover:text-neon-cyan hover:border-neon-cyan/30 px-2.5 py-1.5 tracking-wider transition-all uppercase shrink-0"
+                className="retro-pill font-ibm-mono text-[10px] text-[#8B7D65] hover:text-[#C9944A] hover:border-[#C9944A]/30 px-2.5 py-1.5 tracking-wider transition-all uppercase shrink-0"
                 aria-label="Return to terminal desktop"
               >
                 ⌂ HOME
               </button>
               <div className="min-w-0 hidden sm:block">
-                <p className="font-ibm-mono text-[10px] text-white/40 tracking-[0.3em] uppercase truncate">
+                <p className="font-ibm-mono text-[10px] text-[#6B5D45] tracking-[0.3em] uppercase truncate">
                   Ministry of Healthy and Safe Communication
                 </p>
-                <p className="font-ibm-mono text-xs text-white/80 tracking-wider mt-0.5">
+                <p className="font-ibm-mono text-xs text-[#D4C5A9] tracking-wider mt-0.5">
                   Department of Clarity
-                  {currentWeek ? ` • Shift ${currentWeek.weekNumber}` : ' • Terminal Standby'}
+                  {currentWeek ? ` · Shift ${currentWeek.weekNumber}` : ' · Terminal Standby'}
                 </p>
               </div>
             </div>
 
             {/* Center: Concern counter — only visible when > 0 */}
             {concernScore > 0 && (
-              <div className="ios-glass-pill px-2 py-1 flex items-center gap-1.5 shrink-0">
-                <div className={`w-1.5 h-1.5 rounded-full ${
-                  concernScore >= 3.0 ? 'bg-neon-pink animate-pulse' :
-                  concernScore >= 1.0 ? 'bg-terminal-amber animate-pulse' :
-                  'bg-terminal-amber'
-                }`} />
-                <span className="font-ibm-mono text-[8px] text-white/40 tracking-wider uppercase">
+              <div className="retro-pill px-2 py-1 flex items-center gap-1.5 shrink-0">
+                <div className={`retro-indicator ${
+                  concernScore >= 3.0 ? 'text-red-400 animate-pulse' :
+                  concernScore >= 1.0 ? 'text-[#C9944A] animate-pulse' :
+                  'text-[#C9944A]'
+                }`} style={{ backgroundColor: 'currentColor' }} />
+                <span className="font-ibm-mono text-[8px] text-[#6B5D45] tracking-wider uppercase">
                   CONCERN
                 </span>
-                <span className={`font-dseg7 text-sm tracking-wider tabular-nums ${
-                  concernScore >= 3.0 ? 'text-neon-pink' :
-                  concernScore >= 1.0 ? 'text-terminal-amber' :
-                  'text-terminal-amber/70'
+                <span className={`font-ibm-mono text-sm font-bold tracking-wider tabular-nums ${
+                  concernScore >= 3.0 ? 'text-red-400' :
+                  concernScore >= 1.0 ? 'text-[#C9944A]' :
+                  'text-[#C9944A]/70'
                 }`}>
                   {concernScore.toFixed(1)}
                 </span>
@@ -133,11 +137,11 @@ export default function TerminalView() {
               {/* Messaging icon */}
               <button
                 onClick={() => useMessagingStore.getState().isPanelOpen ? useMessagingStore.getState().closePanel() : useMessagingStore.getState().openPanel()}
-                className="relative ios-glass-pill px-2 py-1.5 hover:border-neon-cyan/30 transition-all group"
+                className="relative retro-pill px-2 py-1.5 hover:border-[#C9944A]/30 transition-all group"
                 aria-label="Messages"
                 title="Messages"
               >
-                <svg width="20" height="16" viewBox="0 0 16 14" fill="none" className="text-white/50 group-hover:text-neon-cyan transition-colors">
+                <svg width="20" height="16" viewBox="0 0 16 14" fill="none" className="text-[#6B5D45] group-hover:text-[#C9944A] transition-colors">
                   <path d="M1 1h14v9H5l-4 3V1z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
                   <line x1="4" y1="4" x2="12" y2="4" stroke="currentColor" strokeWidth="0.8" opacity="0.5" />
                   <line x1="4" y1="6.5" x2="10" y2="6.5" stroke="currentColor" strokeWidth="0.8" opacity="0.5" />
@@ -146,10 +150,10 @@ export default function TerminalView() {
               </button>
 
               {/* Divider */}
-              <div className="w-px h-6 bg-white/10 mx-0.5" />
+              <div className="w-px h-6 bg-[#3D3529] mx-0.5" />
 
               {/* PEARL */}
-              <div className="flex items-center gap-2 ios-glass-pill px-2.5 py-1">
+              <div className="flex items-center gap-2 retro-pill px-2.5 py-1">
                 <PearlEye
                   onClick={() => setPearlOpen((v) => !v)}
                   panelOpen={pearlOpen}
@@ -157,10 +161,10 @@ export default function TerminalView() {
                   size="md"
                 />
                 <div className="text-left hidden sm:block">
-                  <p className="font-ibm-mono text-[10px] text-neon-cyan tracking-[0.2em] uppercase">
+                  <p className="font-ibm-mono text-[10px] text-[#5BB88C] tracking-[0.2em] uppercase">
                     P.E.A.R.L.
                   </p>
-                  <p className="font-ibm-mono text-[10px] text-white/40 tracking-wider">
+                  <p className="font-ibm-mono text-[10px] text-[#6B5D45] tracking-wider">
                     {eyeStateLabel[eyeState]}
                   </p>
                 </div>

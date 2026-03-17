@@ -82,14 +82,22 @@ export default function TerminalDesktop() {
   return (
     <div className="flex-1 flex flex-col overflow-auto ios-scroll px-6 py-8">
       {/* Welcome header */}
-      <div className="text-center mb-8">
-        <p className="font-ibm-mono text-xs text-white/30 tracking-[0.5em] uppercase mb-2">
+      <div className="text-center mb-10">
+        <p className="font-ibm-mono text-[10px] text-[#6B5D45] tracking-[0.5em] uppercase mb-3">
           Ministry Work Terminal
         </p>
-        <h2 className="font-special-elite text-xl text-white/90 tracking-wider ios-text-glow mb-1">
+        <h2 className="font-special-elite text-2xl text-[#D4C5A9] tracking-wider retro-text-glow mb-2">
           Welcome, Citizen {user?.designation || 'UNKNOWN'}
         </h2>
-        <p className="font-ibm-mono text-xs text-white/40 tracking-wider">
+        <div
+          className="mx-auto my-3"
+          style={{
+            width: '80px',
+            height: '1px',
+            background: 'linear-gradient(90deg, transparent, rgba(201,148,74,0.3), transparent)',
+          }}
+        />
+        <p className="font-ibm-mono text-[11px] text-[#8B7D65] tracking-wider">
           {GUIDED_STUDENT_MODE && user?.role === 'student'
             ? 'Open one of your approved applications.'
             : 'Select an application to begin.'}
@@ -101,15 +109,19 @@ export default function TerminalDesktop() {
         {/* Office tile — return to office view */}
         <button
           onClick={() => { exitTerminal(); navigate('/', { replace: true }); }}
-          className="text-left p-4 ios-glass-card transition-all group hover:scale-[1.03] active:scale-[0.97] hover:border-neon-cyan/30 hover:shadow-[0_0_20px_rgba(0,229,255,0.1)]"
+          className="text-left p-5 retro-panel transition-all duration-200 group hover:scale-[1.02] active:scale-[0.97]"
         >
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-2 h-2 rounded-full bg-[#5BB88C] opacity-60 group-hover:opacity-100 transition-opacity" style={{ boxShadow: '0 0 4px rgba(91,184,140,0.4)' }} />
+            <span className="font-ibm-mono text-[8px] text-[#6B5D45] tracking-[0.3em] uppercase">SYS-01</span>
+          </div>
           <div className="text-2xl mb-2 group-hover:scale-110 group-active:scale-95 transition-transform">
             {'\uD83C\uDFE2'}
           </div>
-          <h3 className="font-ibm-mono text-sm tracking-wider mb-1 text-white/90">
+          <h3 className="font-ibm-mono text-sm tracking-wider mb-1 text-[#D4C5A9] group-hover:text-[#E8DCC8]">
             Office
           </h3>
-          <p className="font-ibm-mono text-[10px] text-white/40 tracking-wider">
+          <p className="font-ibm-mono text-[10px] text-[#6B5D45] tracking-wider">
             Return to your desk
           </p>
         </button>
@@ -117,42 +129,60 @@ export default function TerminalDesktop() {
         {/* Dictionary tile — opens sidebar overlay */}
         <button
           onClick={toggleDictionary}
-          className="text-left p-4 ios-glass-card transition-all group hover:scale-[1.03] active:scale-[0.97] hover:border-neon-cyan/30 hover:shadow-[0_0_20px_rgba(0,229,255,0.1)]"
+          className="text-left p-5 retro-panel transition-all duration-200 group hover:scale-[1.02] active:scale-[0.97]"
         >
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-2 h-2 rounded-full bg-[#5BB88C] opacity-60 group-hover:opacity-100 transition-opacity" style={{ boxShadow: '0 0 4px rgba(91,184,140,0.4)' }} />
+            <span className="font-ibm-mono text-[8px] text-[#6B5D45] tracking-[0.3em] uppercase">SYS-02</span>
+          </div>
           <div className="text-2xl mb-2 group-hover:scale-110 group-active:scale-95 transition-transform">
             {'\uD83D\uDCD6'}
           </div>
-          <h3 className="font-ibm-mono text-sm tracking-wider mb-1 text-white/90">
+          <h3 className="font-ibm-mono text-sm tracking-wider mb-1 text-[#D4C5A9] group-hover:text-[#E8DCC8]">
             Lexicon
           </h3>
-          <p className="font-ibm-mono text-[10px] text-white/40 tracking-wider">
+          <p className="font-ibm-mono text-[10px] text-[#6B5D45] tracking-wider">
             Party vocabulary reference
           </p>
         </button>
 
-        {visibleApps.map((app) => {
+        {visibleApps.map((app, idx) => {
           const isLocked = app.lockWeek !== undefined && highestUnlockedWeek < app.lockWeek;
           return (
             <button
               key={app.id}
               onClick={() => !isLocked && openApp(app.id)}
               disabled={isLocked}
-              className={`text-left p-4 ios-glass-card transition-all group ${
+              className={`text-left p-5 retro-panel transition-all duration-200 group ${
                 isLocked
-                  ? 'opacity-40 cursor-not-allowed'
-                  : 'hover:scale-[1.03] active:scale-[0.97] hover:border-neon-cyan/30 hover:shadow-[0_0_20px_rgba(0,229,255,0.1)]'
+                  ? 'opacity-30 cursor-not-allowed'
+                  : 'hover:scale-[1.02] active:scale-[0.97]'
               }`}
             >
+              {/* Status indicator + system label */}
+              <div className="flex items-center gap-2 mb-3">
+                <div
+                  className={`w-2 h-2 rounded-full transition-opacity ${
+                    isLocked
+                      ? 'bg-[#3D3529] opacity-50'
+                      : 'bg-[#C9944A] opacity-60 group-hover:opacity-100'
+                  }`}
+                  style={isLocked ? {} : { boxShadow: '0 0 4px rgba(201,148,74,0.4)' }}
+                />
+                <span className="font-ibm-mono text-[8px] text-[#6B5D45] tracking-[0.3em] uppercase">
+                  APP-{String(idx + 1).padStart(2, '0')}
+                </span>
+              </div>
               {/* Emoji icon */}
               <div className="text-2xl mb-2 group-hover:scale-110 group-active:scale-95 transition-transform">
                 {isLocked ? '\uD83D\uDD12' : app.emoji}
               </div>
               <h3 className={`font-ibm-mono text-sm tracking-wider mb-1 ${
-                isLocked ? 'text-white/25' : 'text-white/90'
+                isLocked ? 'text-[#3D3529]' : 'text-[#D4C5A9] group-hover:text-[#E8DCC8]'
               }`}>
                 {app.name}
               </h3>
-              <p className="font-ibm-mono text-[10px] text-white/40 tracking-wider">
+              <p className="font-ibm-mono text-[10px] text-[#6B5D45] tracking-wider">
                 {isLocked
                   ? `Unlocks in Shift ${app.lockWeek}`
                   : app.description}

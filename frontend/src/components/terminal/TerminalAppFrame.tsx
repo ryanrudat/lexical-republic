@@ -19,16 +19,17 @@ export default function TerminalAppFrame({ title, children }: TerminalAppFramePr
   return (
     <div className="flex-1 flex flex-col overflow-hidden rounded-xl mx-2 mt-1">
       {/* Title bar */}
-      <div className="border-b border-white/10 bg-ios-bg/60 backdrop-blur-md rounded-t-xl px-4 py-2 flex items-center justify-between">
+      <div className="retro-bezel border-b rounded-t-xl px-4 py-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="font-ibm-mono text-sm text-white/90 tracking-wider ios-text-glow">
+          <div className="w-1.5 h-1.5 rounded-full bg-[#C9944A]" style={{ boxShadow: '0 0 4px rgba(201,148,74,0.4)' }} />
+          <span className="font-ibm-mono text-sm text-[#D4C5A9] tracking-wider retro-text-glow">
             {title.toUpperCase()}
           </span>
         </div>
         <button
           onClick={returnToDesktop}
           disabled={guidedLockedInShift}
-          className="font-ibm-mono text-xs text-white/30 hover:text-neon-pink transition-colors"
+          className="font-ibm-mono text-xs text-[#6B5D45] hover:text-red-400 transition-colors"
         >
           {guidedLockedInShift ? 'TEACHER GUIDED' : '\u2715 CLOSE'}
         </button>
