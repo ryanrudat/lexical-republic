@@ -178,7 +178,7 @@ export default function TerminalDesktop() {
                 {isLocked ? '\uD83D\uDD12' : app.emoji}
               </div>
               <h3 className={`font-ibm-mono text-sm tracking-wider mb-1 ${
-                isLocked ? 'text-[#3D3529]' : 'text-[#D4C5A9] group-hover:text-[#E8DCC8]'
+                isLocked ? 'text-white/15' : 'text-[#D4C5A9] group-hover:text-[#E8DCC8]'
               }`}>
                 {app.name}
               </h3>

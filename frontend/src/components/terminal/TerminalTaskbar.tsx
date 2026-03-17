@@ -52,7 +52,7 @@ export default function TerminalTaskbar() {
           {'\u25C0'} {guidedLockedInShift ? 'TEACHER GUIDED' : terminalApp === 'desktop' ? 'OFFICE' : 'DESKTOP'}
         </button>
         {terminalApp !== 'desktop' && (
-          <span className="font-ibm-mono text-[10px] text-[#3D3529] tracking-wider uppercase">
+          <span className="font-ibm-mono text-[10px] text-white/15 tracking-wider uppercase">
             | {terminalApp.replace(/-/g, ' ')}
           </span>
         )}

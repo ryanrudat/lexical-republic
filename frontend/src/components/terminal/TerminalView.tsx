@@ -150,7 +150,7 @@ export default function TerminalView() {
               </button>
 
               {/* Divider */}
-              <div className="w-px h-6 bg-[#3D3529] mx-0.5" />
+              <div className="w-px h-6 bg-white/10 mx-0.5" />
 
               {/* PEARL */}
               <div className="flex items-center gap-2 retro-pill px-2.5 py-1">
