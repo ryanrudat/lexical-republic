@@ -12,6 +12,7 @@ interface AppTile {
   name: string;
   description: string;
   emoji: string;
+  icon?: string;
   lockWeek?: number;
 }
 
@@ -32,7 +33,8 @@ const APPS: AppTile[] = [
     id: 'harmony',
     name: 'Harmony',
     description: 'Weekly vocabulary review feed',
-    emoji: '\u{1F4AC}',
+    emoji: '',
+    icon: '/images/harmony-icon.png',
   },
   {
     id: 'my-file',
@@ -173,9 +175,15 @@ export default function TerminalDesktop() {
                   APP-{String(idx + 1).padStart(2, '0')}
                 </span>
               </div>
-              {/* Emoji icon */}
-              <div className="text-2xl mb-2 group-hover:scale-110 group-active:scale-95 transition-transform">
-                {isLocked ? '\uD83D\uDD12' : app.emoji}
+              {/* Icon */}
+              <div className="mb-2 group-hover:scale-110 group-active:scale-95 transition-transform">
+                {isLocked ? (
+                  <span className="text-2xl">{'\uD83D\uDD12'}</span>
+                ) : app.icon ? (
+                  <img src={app.icon} alt={app.name} className="w-10 h-10 rounded-lg object-cover" />
+                ) : (
+                  <span className="text-2xl">{app.emoji}</span>
+                )}
               </div>
               <h3 className={`font-ibm-mono text-sm tracking-wider mb-1 ${
                 isLocked ? 'text-white/15' : 'text-[#D4C5A9] group-hover:text-[#E8DCC8]'
