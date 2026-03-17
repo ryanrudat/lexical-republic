@@ -529,7 +529,7 @@ async function createQueueWeekMissions(weekId: string, weekNumber: number) {
       where: { weekId, missionType: task.type },
     });
 
-    const missionId = existing?.id ?? `mission-queue-${weekId}-${i}`;
+    const missionId = existing?.id ?? `mission-queue-${weekId}-${task.id}`;
 
     if (existing) {
       // Preserve teacherOverride on re-seed
