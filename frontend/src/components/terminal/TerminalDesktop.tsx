@@ -111,21 +111,13 @@ export default function TerminalDesktop() {
         {/* Office tile — return to office view */}
         <button
           onClick={() => { exitTerminal(); navigate('/', { replace: true }); }}
-          className="text-left p-5 retro-panel transition-all duration-200 group hover:scale-[1.02] active:scale-[0.97]"
+          className="overflow-hidden rounded-xl transition-all duration-200 group hover:scale-[1.02] active:scale-[0.97] hover:shadow-[0_0_20px_rgba(201,148,74,0.12)]"
         >
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-2 h-2 rounded-full bg-[#5BB88C] opacity-60 group-hover:opacity-100 transition-opacity" style={{ boxShadow: '0 0 4px rgba(91,184,140,0.4)' }} />
-            <span className="font-ibm-mono text-[8px] text-[#6B5D45] tracking-[0.3em] uppercase">SYS-01</span>
-          </div>
-          <div className="text-2xl mb-2 group-hover:scale-110 group-active:scale-95 transition-transform">
-            {'\uD83C\uDFE2'}
-          </div>
-          <h3 className="font-ibm-mono text-sm tracking-wider mb-1 text-[#D4C5A9] group-hover:text-[#E8DCC8]">
-            Office
-          </h3>
-          <p className="font-ibm-mono text-[10px] text-[#6B5D45] tracking-wider">
-            Return to your desk
-          </p>
+          <img
+            src="/images/office-icon.png"
+            alt="Office"
+            className="w-full h-full object-cover aspect-square"
+          />
         </button>
 
         {/* Dictionary tile — opens sidebar overlay */}
