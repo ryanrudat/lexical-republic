@@ -81,6 +81,9 @@ export default function TerminalView() {
       {/* Digital grid lines */}
       <div className="retro-grid-overlay" />
 
+      {/* Horizontal glitch scan line */}
+      <div className="retro-glitch-line" />
+
       {/* CRT vignette */}
       <div className="retro-vignette" />
 

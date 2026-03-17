@@ -89,7 +89,7 @@ export default function TerminalDesktop() {
         <p className="font-ibm-mono text-[10px] text-[#6B5D45] tracking-[0.5em] uppercase mb-3">
           Ministry Work Terminal
         </p>
-        <h2 className="font-special-elite text-2xl text-[#D4C5A9] tracking-wider retro-text-glow mb-2">
+        <h2 className="font-ibm-mono text-2xl text-[#D4C5A9] tracking-[0.15em] retro-text-glow mb-2 uppercase">
           Welcome, Citizen {user?.designation || 'UNKNOWN'}
         </h2>
         <div
