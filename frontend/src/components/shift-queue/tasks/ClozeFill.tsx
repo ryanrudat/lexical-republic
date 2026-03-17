@@ -39,14 +39,23 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
     return a;
   }, [wordBank]);
 
-  const placedWords = useMemo(() => {
-    const s = new Set<string>();
-    for (const idx of locked) {
-      const b = blanks.find((bl) => bl.index === idx);
-      if (b) s.add(b.correctWord);
+  // Track which word bank chip indices have been consumed (supports duplicate words)
+  const usedBankIndices = useMemo(() => {
+    const indices = new Set<number>();
+    const bankUsed = new Array(shuffledWordBank.length).fill(false);
+    for (const blankIdx of locked) {
+      const b = blanks.find((bl) => bl.index === blankIdx);
+      if (!b) continue;
+      for (let i = 0; i < shuffledWordBank.length; i++) {
+        if (!bankUsed[i] && shuffledWordBank[i] === b.correctWord) {
+          bankUsed[i] = true;
+          indices.add(i);
+          break;
+        }
+      }
     }
-    return s;
-  }, [locked, blanks]);
+    return indices;
+  }, [locked, blanks, shuffledWordBank]);
 
   const segments = useMemo(() => {
     const parts: Array<{ type: 'text'; text: string } | { type: 'blank'; index: number }> = [];
@@ -187,11 +196,11 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
 
       {/* Word bank */}
       <div className="flex flex-wrap gap-2 justify-center">
-        {shuffledWordBank.map((word) => {
-          const isUsed = placedWords.has(word);
+        {shuffledWordBank.map((word, idx) => {
+          const isUsed = usedBankIndices.has(idx);
           return (
             <div
-              key={word}
+              key={idx}
               draggable={!isUsed}
               onDragStart={(e) => {
                 e.dataTransfer.setData('text/plain', word);
