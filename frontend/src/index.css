@@ -369,7 +369,21 @@ body.view-terminal {
 }
 
 .ios-terminal-bg {
-  background: linear-gradient(180deg, #080808 0%, #0C0C0C 40%, #080808 100%);
+  background: #000000;
+}
+
+/* CRT monitor screen — muted cyan like a vintage terminal display */
+.crt-monitor-screen {
+  background: linear-gradient(
+    180deg,
+    #8EBCC1 0%,
+    #95C2C6 30%,
+    #8AB8BD 70%,
+    #82B0B5 100%
+  );
+  box-shadow:
+    inset 0 0 60px 10px rgba(0, 0, 0, 0.15),
+    inset 0 0 120px 30px rgba(0, 0, 0, 0.08);
 }
 
 /* ═══════════════════════════════════════════
@@ -428,7 +442,7 @@ body.view-terminal {
 
 /* Bezel bar — brushed metal header/footer */
 .retro-bezel {
-  background: linear-gradient(180deg, #141414 0%, #0E0E0E 100%);
+  background: linear-gradient(180deg, #0A0A0A 0%, #050505 100%);
   border-color: rgba(255, 255, 255, 0.06);
 }
 

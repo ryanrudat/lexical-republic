@@ -84,13 +84,13 @@ export default function TerminalDesktop() {
     : APPS;
 
   return (
-    <div className="flex-1 flex flex-col overflow-auto ios-scroll px-6 py-8">
+    <div className="flex-1 flex flex-col overflow-auto ios-scroll px-6 py-8 crt-monitor-screen">
       {/* Welcome header */}
       <div className="text-center mb-10">
-        <p className="font-ibm-mono text-[10px] text-[#6B5D45] tracking-[0.5em] uppercase mb-3">
+        <p className="font-ibm-mono text-[10px] text-[#2A4A4E] tracking-[0.5em] uppercase mb-3">
           Ministry Work Terminal
         </p>
-        <h2 className="font-ibm-mono text-2xl text-[#D4C5A9] tracking-[0.15em] retro-text-glow mb-2 uppercase">
+        <h2 className="font-ibm-mono text-2xl text-[#1A3035] tracking-[0.15em] mb-2 uppercase">
           Welcome, Citizen {user?.designation || 'UNKNOWN'}
         </h2>
         <div
@@ -98,10 +98,10 @@ export default function TerminalDesktop() {
           style={{
             width: '80px',
             height: '1px',
-            background: 'linear-gradient(90deg, transparent, rgba(201,148,74,0.3), transparent)',
+            background: 'linear-gradient(90deg, transparent, rgba(30,70,75,0.3), transparent)',
           }}
         />
-        <p className="font-ibm-mono text-[11px] text-[#8B7D65] tracking-wider">
+        <p className="font-ibm-mono text-[11px] text-[#3A5A5E] tracking-wider">
           {GUIDED_STUDENT_MODE && user?.role === 'student'
             ? 'Open one of your approved applications.'
             : 'Select an application to begin.'}

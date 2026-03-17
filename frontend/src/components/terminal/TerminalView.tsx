@@ -69,12 +69,12 @@ export default function TerminalView() {
 
   return (
     <div className="fixed inset-0 ios-terminal-bg flex flex-col">
-      {/* Warm ambient glow */}
+      {/* Subtle ambient glow */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            'radial-gradient(ellipse 60% 50% at 50% 40%, rgba(201,148,74,0.04) 0%, transparent 70%), radial-gradient(circle at 80% 85%, rgba(91,184,140,0.025) 0%, transparent 30%)',
+            'radial-gradient(ellipse 60% 50% at 50% 40%, rgba(0,0,0,0.3) 0%, transparent 70%)',
         }}
       />
 

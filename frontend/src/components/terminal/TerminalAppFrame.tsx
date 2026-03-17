@@ -36,7 +36,7 @@ export default function TerminalAppFrame({ title, children }: TerminalAppFramePr
       </div>
 
       {/* App content */}
-      <div className="flex-1 overflow-auto ios-scroll bg-ios-bg-subtle/40">
+      <div className="flex-1 overflow-auto ios-scroll crt-monitor-screen">
         {children}
       </div>
 
