@@ -78,6 +78,9 @@ export default function TerminalView() {
         }}
       />
 
+      {/* Digital grid lines */}
+      <div className="retro-grid-overlay" />
+
       {/* CRT vignette */}
       <div className="retro-vignette" />
 

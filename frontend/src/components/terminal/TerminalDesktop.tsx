@@ -21,7 +21,8 @@ const APPS: AppTile[] = [
     id: 'clarity-queue',
     name: 'Current Shift',
     description: 'Resume mission workflow',
-    emoji: '\u{1F4CB}',
+    emoji: '',
+    icon: '/images/current-shift-icon.png',
   },
   {
     id: 'duty-roster',
