@@ -41,7 +41,8 @@ const APPS: AppTile[] = [
     id: 'my-file',
     name: 'My File',
     description: 'Citizen records & stats',
-    emoji: '\u{1F4C1}',
+    emoji: '',
+    icon: '/images/my-file-icon.png',
   },
 ];
 const GUIDED_STUDENT_APPS: TerminalApp[] = ['clarity-queue', 'harmony', 'my-file'];
