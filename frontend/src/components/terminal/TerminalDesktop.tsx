@@ -150,6 +150,24 @@ export default function TerminalDesktop() {
 
         {visibleApps.map((app, idx) => {
           const isLocked = app.lockWeek !== undefined && highestUnlockedWeek < app.lockWeek;
+
+          // Full-image tile — the image IS the app button
+          if (app.icon && !isLocked) {
+            return (
+              <button
+                key={app.id}
+                onClick={() => openApp(app.id)}
+                className="overflow-hidden rounded-xl transition-all duration-200 group hover:scale-[1.02] active:scale-[0.97] hover:shadow-[0_0_20px_rgba(201,148,74,0.12)]"
+              >
+                <img
+                  src={app.icon}
+                  alt={app.name}
+                  className="w-full h-full object-cover aspect-square"
+                />
+              </button>
+            );
+          }
+
           return (
             <button
               key={app.id}
@@ -166,7 +184,7 @@ export default function TerminalDesktop() {
                 <div
                   className={`w-2 h-2 rounded-full transition-opacity ${
                     isLocked
-                      ? 'bg-[#3D3529] opacity-50'
+                      ? 'bg-white/15 opacity-50'
                       : 'bg-[#C9944A] opacity-60 group-hover:opacity-100'
                   }`}
                   style={isLocked ? {} : { boxShadow: '0 0 4px rgba(201,148,74,0.4)' }}
@@ -175,15 +193,9 @@ export default function TerminalDesktop() {
                   APP-{String(idx + 1).padStart(2, '0')}
                 </span>
               </div>
-              {/* Icon */}
-              <div className="mb-2 group-hover:scale-110 group-active:scale-95 transition-transform">
-                {isLocked ? (
-                  <span className="text-2xl">{'\uD83D\uDD12'}</span>
-                ) : app.icon ? (
-                  <img src={app.icon} alt={app.name} className="w-10 h-10 rounded-lg object-cover" />
-                ) : (
-                  <span className="text-2xl">{app.emoji}</span>
-                )}
+              {/* Emoji icon */}
+              <div className="text-2xl mb-2 group-hover:scale-110 group-active:scale-95 transition-transform">
+                {isLocked ? '\uD83D\uDD12' : app.emoji}
               </div>
               <h3 className={`font-ibm-mono text-sm tracking-wider mb-1 ${
                 isLocked ? 'text-white/15' : 'text-[#D4C5A9] group-hover:text-[#E8DCC8]'
