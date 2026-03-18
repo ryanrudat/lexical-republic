@@ -113,24 +113,24 @@ export default function TerminalDesktop() {
         {/* Office tile — return to office view */}
         <button
           onClick={() => { exitTerminal(); navigate('/', { replace: true }); }}
-          className="overflow-hidden rounded-xl transition-all duration-200 group hover:scale-[1.02] active:scale-[0.97] hover:shadow-[0_0_20px_rgba(201,148,74,0.12)]"
+          className="rounded-xl transition-all duration-200 group hover:scale-[1.02] active:scale-[0.97] hover:shadow-[0_0_20px_rgba(201,148,74,0.12)]"
         >
           <img
             src="/images/office-icon.png"
             alt="Office"
-            className="w-full h-full object-cover aspect-square"
+            className="w-[130%] h-[130%] -mt-[15%] -ml-[15%] object-contain aspect-square"
           />
         </button>
 
         {/* Dictionary tile — opens sidebar overlay */}
         <button
           onClick={toggleDictionary}
-          className="overflow-hidden rounded-xl transition-all duration-200 group hover:scale-[1.02] active:scale-[0.97] hover:shadow-[0_0_20px_rgba(201,148,74,0.12)]"
+          className="rounded-xl transition-all duration-200 group hover:scale-[1.02] active:scale-[0.97] hover:shadow-[0_0_20px_rgba(201,148,74,0.12)]"
         >
           <img
             src="/images/lexicon-icon.png"
             alt="Lexicon"
-            className="w-full h-full object-cover aspect-square"
+            className="w-[130%] h-[130%] -mt-[15%] -ml-[15%] object-contain aspect-square"
           />
         </button>
 
@@ -143,12 +143,12 @@ export default function TerminalDesktop() {
               <button
                 key={app.id}
                 onClick={() => openApp(app.id)}
-                className="overflow-hidden rounded-xl transition-all duration-200 group hover:scale-[1.02] active:scale-[0.97] hover:shadow-[0_0_20px_rgba(201,148,74,0.12)]"
+                className="rounded-xl transition-all duration-200 group hover:scale-[1.02] active:scale-[0.97] hover:shadow-[0_0_20px_rgba(201,148,74,0.12)]"
               >
                 <img
                   src={app.icon}
                   alt={app.name}
-                  className="w-full h-full object-cover aspect-square"
+                  className="w-[130%] h-[130%] -mt-[15%] -ml-[15%] object-contain aspect-square"
                 />
               </button>
             );
