@@ -128,7 +128,7 @@ function HighlightedContent({
   }, [content, allWords]);
 
   return (
-    <p className="text-[13px] text-[#1A3035] leading-relaxed">
+    <p className="text-[13px] text-[#4B5563] leading-relaxed">
       {parts.map((p) => {
         if (p.type === 'focus' || p.type === 'review')
           return <VocabWord key={p.key} text={p.text} type={p.type} />;
@@ -165,28 +165,28 @@ function ComposeBox({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="px-4 py-3 border-b border-black/[0.08]">
+    <form onSubmit={handleSubmit} className="mx-4 mt-3 mb-2 bg-white rounded-xl border border-[#E8E4DC] shadow-sm p-3">
       <div className="flex gap-3">
-        <div className="w-8 h-8 rounded-full bg-teal-800/15 border border-teal-800/20 flex items-center justify-center shrink-0 mt-0.5">
-          <span className="text-[9px] font-bold text-teal-800">YOU</span>
+        <div className="w-8 h-8 rounded-full bg-sky-100 border border-sky-200 flex items-center justify-center shrink-0 mt-0.5">
+          <span className="text-[9px] font-bold text-sky-600">YOU</span>
         </div>
         <div className="flex-1">
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder={placeholder}
-            className="w-full bg-transparent text-sm text-[#1A3035] placeholder:text-[#8AAAB0] resize-none outline-none"
+            className="w-full bg-transparent text-sm text-[#2C3340] placeholder:text-[#B8B3AA] resize-none outline-none"
             rows={2}
             maxLength={280}
           />
           <div className="flex items-center justify-between mt-1.5">
-            <span className="font-ibm-mono text-[10px] text-[#8AAAB0]">
+            <span className="text-[10px] text-[#B8B3AA]">
               {text.length}/280
             </span>
             <button
               type="submit"
               disabled={!text.trim() || submitting}
-              className="px-4 py-1.5 rounded-full text-[11px] font-medium tracking-wider bg-teal-800/15 text-teal-800 border border-teal-800/25 hover:bg-teal-800/25 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+              className="px-4 py-1.5 rounded-full text-[11px] font-semibold tracking-wider bg-sky-600 text-white hover:bg-sky-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
               {submitting ? 'POSTING...' : submitLabel}
             </button>
@@ -219,10 +219,10 @@ function PostCard({
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const avatarColor = is4488
-    ? 'bg-terminal-amber/15 border-terminal-amber/30 text-terminal-amber'
+    ? 'bg-amber-100 border-amber-300 text-amber-700'
     : post.isOwn
-      ? 'bg-teal-800/15 border-teal-800/25 text-teal-800'
-      : 'bg-black/[0.06] border-black/10 text-[#4A6A6E]';
+      ? 'bg-sky-100 border-sky-200 text-sky-600'
+      : 'bg-gray-100 border-gray-200 text-gray-500';
 
   const designation = post.isOwn ? 'YOU' : post.designation;
   const initials = designation.slice(0, 3).toUpperCase();
@@ -235,8 +235,8 @@ function PostCard({
 
   return (
     <div
-      className={`px-4 py-3 border-b border-black/[0.08] hover:bg-black/[0.03] transition-colors ${
-        is4488 ? 'bg-terminal-amber/[0.02]' : ''
+      className={`mx-4 mb-2 p-3 rounded-xl border shadow-sm transition-colors ${
+        is4488 ? 'bg-amber-50 border-amber-200' : 'bg-white border-[#E8E4DC] hover:border-[#D4CFC6]'
       }`}
     >
       <div className="flex gap-3">
@@ -253,20 +253,20 @@ function PostCard({
         <div className="flex-1 min-w-0">
           {/* Header row */}
           <div className="flex items-center gap-2 mb-0.5">
-            <span className={`text-[13px] font-medium ${is4488 ? 'text-terminal-amber' : post.isOwn ? 'text-teal-800' : 'text-[#1A3035]'}`}>
+            <span className={`text-[13px] font-semibold ${is4488 ? 'text-amber-700' : post.isOwn ? 'text-sky-600' : 'text-[#2C3340]'}`}>
               {designation}
             </span>
             {post.weekNumber != null && (
-              <span className="text-[10px] text-[#7A9A9E]">
+              <span className="text-[10px] text-[#9CA3AF] bg-gray-100 px-1.5 py-0.5 rounded">
                 S{post.weekNumber}
               </span>
             )}
             {post.status === 'pending_review' && (
-              <span className="text-[9px] text-teal-800/60 tracking-wider">
+              <span className="text-[9px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded tracking-wider font-medium">
                 PENDING
               </span>
             )}
-            <span className="text-[11px] text-[#8AAAB0] ml-auto">
+            <span className="text-[11px] text-[#9CA3AF] ml-auto">
               {formatTimestamp(post.createdAt)}
             </span>
           </div>
@@ -280,8 +280,8 @@ function PostCard({
 
           {/* PEARL note */}
           {post.pearlNote && (
-            <div className="mt-2 pl-2 border-l-2 border-teal-800/20">
-              <p className="text-[10px] text-teal-800/60 italic">
+            <div className="mt-2 pl-2 border-l-2 border-emerald-300">
+              <p className="text-[10px] text-emerald-700 italic">
                 PEARL: {post.pearlNote}
               </p>
             </div>
@@ -291,23 +291,23 @@ function PostCard({
           {is4488 && !post.isOwn && onCensure && (
             <div className="mt-2 flex items-center gap-2">
               {censureAction ? (
-                <span className={`text-[10px] tracking-wider font-medium ${
-                  censureAction === 'approve' ? 'text-green-400' : 'text-rose-700'
+                <span className={`text-[10px] tracking-wider font-semibold ${
+                  censureAction === 'approve' ? 'text-emerald-600' : 'text-rose-600'
                 }`}>
                   {censureAction === 'approve' ? 'APPROVED' : 'FLAGGED FOR REVIEW'}
                 </span>
               ) : (
                 <>
-                  <span className="text-[9px] text-terminal-amber/40 tracking-wider mr-1">COMPLIANCE:</span>
+                  <span className="text-[9px] text-[#9CA3AF] tracking-wider mr-1">COMPLIANCE:</span>
                   <button
                     onClick={() => handleCensureAction('approve')}
-                    className="text-[10px] px-2.5 py-1 rounded-md border border-green-500/20 text-green-400/70 hover:bg-green-500/10 hover:text-green-400 transition-colors active:scale-95"
+                    className="text-[10px] px-2.5 py-1 rounded-lg border border-emerald-200 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 transition-colors active:scale-95 font-medium"
                   >
                     Approve
                   </button>
                   <button
                     onClick={() => handleCensureAction('flag')}
-                    className="text-[10px] px-2.5 py-1 rounded-md border border-rose-700/20 text-rose-700/60 hover:bg-rose-700/10 hover:text-rose-700 transition-colors active:scale-95"
+                    className="text-[10px] px-2.5 py-1 rounded-lg border border-rose-200 text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors active:scale-95 font-medium"
                   >
                     Flag
                   </button>
@@ -317,10 +317,10 @@ function PostCard({
           )}
 
           {/* Footer */}
-          <div className="mt-2 flex items-center gap-4">
+          <div className="mt-2 pt-2 border-t border-gray-100 flex items-center gap-4">
             <button
               onClick={() => onOpenThread(post.id)}
-              className="text-[11px] text-[#7A9A9E] hover:text-teal-800/60 transition-colors flex items-center gap-1"
+              className="text-[11px] text-[#9CA3AF] hover:text-sky-600 transition-colors flex items-center gap-1"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z" />
@@ -931,7 +931,7 @@ export default function HarmonyApp() {
   // Locked state
   if (locked) {
     return (
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full bg-[#F5F1EB]">
         <HarmonyHeader currentWeekNumber={0} />
         <HarmonyLocked message={lockMessage} />
       </div>
@@ -939,7 +939,7 @@ export default function HarmonyApp() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-[#F5F1EB]">
       {/* Header */}
       <HarmonyHeader currentWeekNumber={currentWeekNumber} />
 
@@ -947,36 +947,30 @@ export default function HarmonyApp() {
       {showOnboarding && <HarmonyOnboarding onDismiss={dismissOnboarding} />}
 
       {/* Tabs */}
-      <div className="flex border-b border-black/[0.08]">
+      <div className="flex gap-1 px-4 py-2 bg-[#EFEBE4] border-b border-[#D4CFC6]">
         <button
           onClick={() => setTab('feed')}
-          className={`flex-1 py-2.5 text-[11px] font-medium tracking-[0.15em] uppercase transition-colors relative ${
+          className={`flex-1 py-2 rounded-lg text-[11px] font-semibold tracking-[0.1em] uppercase transition-all ${
             activeTab === 'feed'
-              ? 'text-teal-800'
-              : 'text-[#6A8A8E] hover:text-[#4A6A6E]'
+              ? 'bg-white text-[#2C3340] shadow-sm border border-[#D4CFC6]'
+              : 'text-[#8B8578] hover:text-[#4B5563] hover:bg-white/40'
           }`}
         >
           Feed
-          {activeTab === 'feed' && (
-            <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-neon-cyan rounded-full" />
-          )}
         </button>
         <button
           onClick={() => setTab('censure')}
-          className={`flex-1 py-2.5 text-[11px] font-medium tracking-[0.15em] uppercase transition-colors relative ${
+          className={`flex-1 py-2 rounded-lg text-[11px] font-semibold tracking-[0.1em] uppercase transition-all ${
             activeTab === 'censure'
-              ? 'text-teal-800'
-              : 'text-[#6A8A8E] hover:text-[#4A6A6E]'
+              ? 'bg-white text-[#2C3340] shadow-sm border border-[#D4CFC6]'
+              : 'text-[#8B8578] hover:text-[#4B5563] hover:bg-white/40'
           }`}
         >
-          Censure Queue
+          Review Queue
           {censureStats.total - censureStats.completed > 0 && (
-            <span className="ml-1.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold bg-neon-pink/80 text-white">
+            <span className="ml-1.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold bg-rose-500 text-white">
               {censureStats.total - censureStats.completed}
             </span>
-          )}
-          {activeTab === 'censure' && (
-            <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-neon-cyan rounded-full" />
           )}
         </button>
       </div>
@@ -1006,21 +1000,28 @@ export default function HarmonyApp() {
 
 function HarmonyHeader({ currentWeekNumber }: { currentWeekNumber: number }) {
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-b border-black/[0.08]">
-      <div>
-        <h2 className="font-special-elite text-[17px] text-[#1A3035] tracking-wider">
-          Harmony
-        </h2>
-        <p className="text-[9px] text-[#7A9A9E] tracking-[0.2em] uppercase">
-          Ministry-Monitored Community
-        </p>
-      </div>
-      {currentWeekNumber > 0 && (
-        <div className="flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-500/60" />
-          <span className="text-[10px] text-[#7A9A9E]">S{currentWeekNumber}</span>
+    <div className="bg-gradient-to-b from-[#E8E4DC] to-[#F5F1EB] border-b border-[#D4CFC6] px-4 py-3">
+      <div className="flex items-center gap-3">
+        <img
+          src="/images/harmony-icon.png"
+          alt="Harmony"
+          className="w-10 h-10 object-contain"
+        />
+        <div className="flex-1">
+          <h2 className="text-[18px] font-semibold text-[#2C3340] tracking-wide" style={{ fontFamily: "'DM Serif Display', serif" }}>
+            Harmony
+          </h2>
+          <p className="text-[9px] text-[#8B8578] tracking-[0.2em] uppercase">
+            Content Moderation Console
+          </p>
         </div>
-      )}
+        {currentWeekNumber > 0 && (
+          <div className="flex items-center gap-1.5 bg-white/60 rounded-full px-2.5 py-1 border border-[#D4CFC6]">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <span className="text-[10px] font-medium text-[#4B5563]">Shift {currentWeekNumber}</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
