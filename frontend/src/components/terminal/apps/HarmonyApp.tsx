@@ -386,41 +386,41 @@ function ThreadView({
   if (!parentPost) return null;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-[#F5F1EB]">
       {/* Thread header */}
-      <div className="flex items-center gap-3 px-4 py-2.5 border-b border-black/[0.08]">
+      <div className="flex items-center gap-3 px-4 py-2.5 bg-[#EFEBE4] border-b border-[#D4CFC6]">
         <button
           onClick={closeThread}
-          className="text-xs text-[#5A7A7E] hover:text-teal-800 transition-colors flex items-center gap-1"
+          className="text-xs text-[#4B5563] hover:text-sky-600 transition-colors flex items-center gap-1 font-medium"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
           Back
         </button>
-        <span className="text-[10px] text-[#8AAAB0] tracking-[0.2em] uppercase">
+        <span className="text-[10px] text-[#9CA3AF] tracking-[0.2em] uppercase">
           Thread
         </span>
       </div>
 
       {/* Thread content */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto p-4">
         {/* Parent post */}
-        <div className="px-4 py-3 border-b border-black/[0.08]">
+        <div className="bg-white rounded-xl border border-[#E8E4DC] shadow-sm p-3 mb-3">
           <div className="flex gap-3">
             <div className={`w-9 h-9 rounded-full border flex items-center justify-center shrink-0 ${
-              isCitizen4488(parentPost) ? 'bg-terminal-amber/15 border-terminal-amber/30' : 'bg-black/[0.06] border-black/10'
+              isCitizen4488(parentPost) ? 'bg-amber-100 border-amber-300' : parentPost.isOwn ? 'bg-sky-100 border-sky-200' : 'bg-gray-100 border-gray-200'
             }`}>
-              <span className={`text-[8px] font-bold ${isCitizen4488(parentPost) ? 'text-terminal-amber' : 'text-[#4A6A6E]'}`}>
+              <span className={`text-[8px] font-bold ${isCitizen4488(parentPost) ? 'text-amber-700' : parentPost.isOwn ? 'text-sky-600' : 'text-gray-500'}`}>
                 {(parentPost.isOwn ? 'YOU' : parentPost.designation).slice(0, 4)}
               </span>
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[13px] font-medium text-[#1A3035]">
+                <span className="text-[13px] font-semibold text-[#2C3340]">
                   {parentPost.isOwn ? 'YOU' : parentPost.designation}
                 </span>
-                <span className="text-[11px] text-[#8AAAB0]">
+                <span className="text-[11px] text-[#9CA3AF]">
                   {formatTimestamp(parentPost.createdAt)}
                 </span>
               </div>
@@ -431,23 +431,23 @@ function ThreadView({
 
         {/* Replies */}
         {repliesLoading && (
-          <div className="text-xs text-teal-800/50 animate-pulse text-center py-6 tracking-wider">
+          <div className="text-xs text-[#9CA3AF] animate-pulse text-center py-6 tracking-wider">
             LOADING...
           </div>
         )}
 
         {replies.map((reply) => (
-          <div key={reply.id} className="px-4 py-2.5 border-b border-black/[0.06] ml-6">
+          <div key={reply.id} className="bg-white rounded-lg border border-[#E8E4DC] shadow-sm p-3 mb-2 ml-6">
             <div className="flex gap-2.5">
-              <div className="w-7 h-7 rounded-full bg-black/[0.04] border border-black/[0.1] flex items-center justify-center shrink-0">
-                <span className="text-[7px] font-bold text-[#5A7A7E]">
+              <div className="w-7 h-7 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0">
+                <span className="text-[7px] font-bold text-gray-500">
                   {reply.designation.slice(0, 3)}
                 </span>
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-[12px] font-medium text-[#2A4A4E]">{reply.designation}</span>
-                  <span className="text-[10px] text-[#8AAAB0]">{formatTimestamp(reply.createdAt)}</span>
+                  <span className="text-[12px] font-semibold text-[#2C3340]">{reply.designation}</span>
+                  <span className="text-[10px] text-[#9CA3AF]">{formatTimestamp(reply.createdAt)}</span>
                 </div>
                 <HighlightedContent content={reply.content} focusWords={focusWords} reviewWords={reviewWords} />
               </div>
@@ -456,7 +456,7 @@ function ThreadView({
         ))}
 
         {!repliesLoading && replies.length === 0 && (
-          <div className="text-[11px] text-[#8AAAB0] text-center py-6 tracking-wider">
+          <div className="text-[11px] text-[#9CA3AF] text-center py-6 tracking-wider">
             No replies yet
           </div>
         )}
