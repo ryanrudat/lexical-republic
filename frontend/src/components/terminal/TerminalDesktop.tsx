@@ -109,28 +109,28 @@ export default function TerminalDesktop() {
       </div>
 
       {/* App grid */}
-      <div className="relative z-[1] grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 max-w-4xl mx-auto w-full">
+      <div className="relative z-[1] grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-6 max-w-3xl mx-auto w-full justify-items-center">
         {/* Office tile — return to office view */}
         <button
           onClick={() => { exitTerminal(); navigate('/', { replace: true }); }}
-          className="rounded-xl transition-all duration-200 group hover:scale-[1.02] active:scale-[0.97] hover:shadow-[0_0_20px_rgba(201,148,74,0.12)]"
+          className="w-full max-w-[160px] rounded-xl transition-all duration-200 group hover:scale-105 active:scale-95"
         >
           <img
             src="/images/office-icon.png"
             alt="Office"
-            className="w-[150%] h-[150%] -mt-[25%] -ml-[25%] object-contain aspect-square"
+            className="w-full object-contain"
           />
         </button>
 
         {/* Dictionary tile — opens sidebar overlay */}
         <button
           onClick={toggleDictionary}
-          className="rounded-xl transition-all duration-200 group hover:scale-[1.02] active:scale-[0.97] hover:shadow-[0_0_20px_rgba(201,148,74,0.12)]"
+          className="w-full max-w-[160px] rounded-xl transition-all duration-200 group hover:scale-105 active:scale-95"
         >
           <img
             src="/images/lexicon-icon.png"
             alt="Lexicon"
-            className="w-[150%] h-[150%] -mt-[25%] -ml-[25%] object-contain aspect-square"
+            className="w-full object-contain"
           />
         </button>
 
@@ -143,12 +143,12 @@ export default function TerminalDesktop() {
               <button
                 key={app.id}
                 onClick={() => openApp(app.id)}
-                className="rounded-xl transition-all duration-200 group hover:scale-[1.02] active:scale-[0.97] hover:shadow-[0_0_20px_rgba(201,148,74,0.12)]"
+                className="w-full max-w-[160px] rounded-xl transition-all duration-200 group hover:scale-105 active:scale-95"
               >
                 <img
                   src={app.icon}
                   alt={app.name}
-                  className="w-[150%] h-[150%] -mt-[25%] -ml-[25%] object-contain aspect-square"
+                  className="w-full object-contain"
                 />
               </button>
             );
