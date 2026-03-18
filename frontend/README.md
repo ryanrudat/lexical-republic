@@ -40,6 +40,8 @@ npm run build
 ## Current student app structure
 Terminal desktop tiles (in order): Office, Lexicon, Current Shift, Duty Roster, Harmony, My File.
 
+All tiles use custom PNG app icons at 130% size with transparent backgrounds on a cyan CRT monitor screen. Icon files are in `public/images/` (e.g. `office-icon.png`, `lexicon-icon.png`, `current-shift-icon.png`, `harmony-icon.png`, `my-file-icon.png`).
+
 In guided mode, visible apps are limited to:
 - Current Shift (`clarity-queue`)
 - Harmony (`harmony`, unlocks Shift 3)

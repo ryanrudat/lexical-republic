@@ -86,7 +86,7 @@ export default function TerminalDesktop() {
   return (
     <div className="flex-1 flex flex-col overflow-auto ios-scroll px-6 py-8 crt-monitor-screen">
       {/* Welcome header */}
-      <div className="text-center mb-10">
+      <div className="relative z-[1] text-center mb-10">
         <p className="font-ibm-mono text-[10px] text-[#2A4A4E] tracking-[0.5em] uppercase mb-3">
           Ministry Work Terminal
         </p>
@@ -109,7 +109,7 @@ export default function TerminalDesktop() {
       </div>
 
       {/* App grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 max-w-4xl mx-auto w-full">
+      <div className="relative z-[1] grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 max-w-4xl mx-auto w-full">
         {/* Office tile — return to office view */}
         <button
           onClick={() => { exitTerminal(); navigate('/', { replace: true }); }}

@@ -205,13 +205,23 @@ Step navigation gated by completion. All steps support optional video via `StepV
 - Design bible: `Dplan/UI_Design_System.md`
 - **Shift queue uses "forced happy" light pastel aesthetic** — NOT dark CRT terminal:
   - Cream backgrounds (#F5F1EB), white cards, sky-600 action accents, emerald success, rose errors, warm gray borders (#D4CFC6)
-  - TerminalAppFrame stays dark (device chrome), content area is cream/white (government app content)
+  - TerminalAppFrame device chrome stays dark; content area uses `crt-monitor-screen` cyan CRT background
   - No ios-glass-card, no neon-* colors, no dseg7 font, no text-white/* in shift queue
   - All 16 shift queue components rethemed: ShiftClosing, ShiftQueue, TaskCard, ClarityQueueApp, IntakeForm, ClozeFill, VocabClearance, WordMatch, DocumentCard, ErrorCorrectionDoc, ComprehensionDoc, DocumentReview, ShiftReport, PriorityBriefing, PrioritySort, ContradictionReport, WordSort, LaneScaffolding, TargetWordHighlighter, WritingEvaluator
 - Office/HUD: Frosted glass pills (`backdrop-blur`, `rounded-full`, semi-transparent gradients, soft shadows)
 - Color roles: Sky = primary action, Emerald = success/safe, Rose = error/danger, Amber = warning/narrative
 - All on-screen elements scale with monitor rect — no fixed pixel sizes
 - HUD elements use warm `retro-card` style, not frosted glass
+
+## Terminal Desktop Visual Design
+- **Background**: Pure black (`#000000`) surround with near-black header/taskbar bezels
+- **Monitor screen**: Muted cyan CRT gradient (`#8EBCC1` → `#95C2C6` → `#82B0B5`) via `crt-monitor-screen` CSS class — applied to both desktop and app frame content areas
+- **CRT scan line**: White horizontal line sweeps down the monitor screen every 6s (`crt-monitor-screen::after`), rendered behind app content (`z-index: 0`)
+- **Animated grid**: Cyan grid lines (`rgba(0, 229, 255, 0.03)`) drift slowly across the black surround
+- **CRT vignette**: Inset box-shadow darkens edges of the full terminal frame
+- **App tiles**: All 6 tiles (Office, Lexicon, Current Shift, Harmony, My File, Duty Roster) use custom PNG icons at 130% size with transparent backgrounds — no clipping, cyan CRT shows through
+- **App icon files**: `office-icon.png`, `lexicon-icon.png`, `current-shift-icon.png`, `harmony-icon.png`, `my-file-icon.png` in `frontend/public/images/`
+- **Desktop text**: Dark teal tones (`#1A3035`, `#2A4A4E`, `#3A5A5E`) readable on cyan background
 
 ## Voice Log Quality Gate
 - Requires at least one rubric item checked AND successful recording upload

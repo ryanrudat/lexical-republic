@@ -107,11 +107,22 @@ HUD elements use the existing `retro-card` utility class (warm wood tones, subtl
 - Volume button: retro-card with cyan glow when active
 - PEARL eye: chrome variant, always visible
 
+## Terminal Desktop (Implemented)
+
+The Terminal desktop uses a **CRT monitor aesthetic** — a black frame surrounding a muted cyan screen:
+
+- **Outer surround**: Pure black (`#000000`) with animated cyan grid lines and CRT vignette
+- **Monitor screen**: Muted cyan CRT gradient (`#8EBCC1` → `#95C2C6` → `#82B0B5`) via `crt-monitor-screen` CSS class
+- **CRT scan line**: White horizontal line sweeps down the screen every 6 seconds, rendered behind app content
+- **App tiles**: Custom PNG icons at 130% size with transparent backgrounds (cyan shows through). No text labels on tiles — the icon IS the button
+- **Desktop text**: Dark teal tones readable on cyan background
+- **Header/taskbar bezels**: Near-black, retro-bezel styling
+
 ## Future Application
 
-When redesigning the Terminal view's app tiles and in-shift UI, this same iOS-dystopia pattern should apply:
+When designing additional in-shift UI, the iOS-dystopia pattern should apply:
 
 - Shift step cards → frosted glass pills
 - Navigation → pill-shaped buttons with tracking text
-- Status indicators → mint pulse dots + DSEG7 readouts
+- Status indicators → mint pulse dots
 - The tone is always: **helpful, monitored, mandatory**
