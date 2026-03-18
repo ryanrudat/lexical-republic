@@ -109,11 +109,11 @@ export default function TerminalDesktop() {
       </div>
 
       {/* App grid */}
-      <div className="relative z-[1] grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-6 max-w-3xl mx-auto w-full justify-items-center">
+      <div className="relative z-[1] flex flex-wrap justify-center gap-6 max-w-4xl mx-auto w-full">
         {/* Office tile — return to office view */}
         <button
           onClick={() => { exitTerminal(); navigate('/', { replace: true }); }}
-          className="w-full max-w-[160px] rounded-xl transition-all duration-200 group hover:scale-105 active:scale-95"
+          className="w-[180px] shrink-0 rounded-xl transition-all duration-200 group hover:scale-105 active:scale-95"
         >
           <img
             src="/images/office-icon.png"
@@ -125,7 +125,7 @@ export default function TerminalDesktop() {
         {/* Dictionary tile — opens sidebar overlay */}
         <button
           onClick={toggleDictionary}
-          className="w-full max-w-[160px] rounded-xl transition-all duration-200 group hover:scale-105 active:scale-95"
+          className="w-[180px] shrink-0 rounded-xl transition-all duration-200 group hover:scale-105 active:scale-95"
         >
           <img
             src="/images/lexicon-icon.png"
@@ -143,7 +143,7 @@ export default function TerminalDesktop() {
               <button
                 key={app.id}
                 onClick={() => openApp(app.id)}
-                className="w-full max-w-[160px] rounded-xl transition-all duration-200 group hover:scale-105 active:scale-95"
+                className="w-[180px] shrink-0 rounded-xl transition-all duration-200 group hover:scale-105 active:scale-95"
               >
                 <img
                   src={app.icon}
