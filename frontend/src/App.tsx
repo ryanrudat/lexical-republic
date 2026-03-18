@@ -103,6 +103,9 @@ export default function App() {
         }
       };
 
+      // Load all existing messages on login so inbox is populated immediately
+      void useMessagingStore.getState().loadMessages();
+
       sock.on('connect_error', onError);
       sock.on('session:paused', onPaused);
       sock.on('session:resumed', onResumed);

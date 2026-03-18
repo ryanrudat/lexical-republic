@@ -74,10 +74,10 @@ function VocabWord({
   const [showTip, setShowTip] = useState(false);
   const label = type === 'focus' ? 'Target word' : 'Review word';
   const color = type === 'focus'
-    ? 'text-neon-cyan font-medium'
+    ? 'text-teal-800 font-medium'
     : 'text-terminal-amber';
   const tipBg = type === 'focus'
-    ? 'bg-neon-cyan/20 border-neon-cyan/30 text-neon-cyan'
+    ? 'bg-teal-800/20 border-teal-800/30 text-teal-800'
     : 'bg-terminal-amber/20 border-terminal-amber/30 text-terminal-amber';
 
   return (
@@ -128,7 +128,7 @@ function HighlightedContent({
   }, [content, allWords]);
 
   return (
-    <p className="text-[13px] text-white/80 leading-relaxed">
+    <p className="text-[13px] text-[#1A3035] leading-relaxed">
       {parts.map((p) => {
         if (p.type === 'focus' || p.type === 'review')
           return <VocabWord key={p.key} text={p.text} type={p.type} />;
@@ -165,28 +165,28 @@ function ComposeBox({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="px-4 py-3 border-b border-white/[0.06]">
+    <form onSubmit={handleSubmit} className="px-4 py-3 border-b border-black/[0.08]">
       <div className="flex gap-3">
-        <div className="w-8 h-8 rounded-full bg-neon-cyan/15 border border-neon-cyan/20 flex items-center justify-center shrink-0 mt-0.5">
-          <span className="text-[9px] font-bold text-neon-cyan">YOU</span>
+        <div className="w-8 h-8 rounded-full bg-teal-800/15 border border-teal-800/20 flex items-center justify-center shrink-0 mt-0.5">
+          <span className="text-[9px] font-bold text-teal-800">YOU</span>
         </div>
         <div className="flex-1">
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder={placeholder}
-            className="w-full bg-transparent text-sm text-white/80 placeholder:text-white/20 resize-none outline-none"
+            className="w-full bg-transparent text-sm text-[#1A3035] placeholder:text-[#8AAAB0] resize-none outline-none"
             rows={2}
             maxLength={280}
           />
           <div className="flex items-center justify-between mt-1.5">
-            <span className="font-ibm-mono text-[10px] text-white/20">
+            <span className="font-ibm-mono text-[10px] text-[#8AAAB0]">
               {text.length}/280
             </span>
             <button
               type="submit"
               disabled={!text.trim() || submitting}
-              className="px-4 py-1.5 rounded-full text-[11px] font-medium tracking-wider bg-neon-cyan/15 text-neon-cyan border border-neon-cyan/25 hover:bg-neon-cyan/25 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+              className="px-4 py-1.5 rounded-full text-[11px] font-medium tracking-wider bg-teal-800/15 text-teal-800 border border-teal-800/25 hover:bg-teal-800/25 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
             >
               {submitting ? 'POSTING...' : submitLabel}
             </button>
@@ -221,8 +221,8 @@ function PostCard({
   const avatarColor = is4488
     ? 'bg-terminal-amber/15 border-terminal-amber/30 text-terminal-amber'
     : post.isOwn
-      ? 'bg-neon-cyan/15 border-neon-cyan/25 text-neon-cyan'
-      : 'bg-white/[0.06] border-white/10 text-white/50';
+      ? 'bg-teal-800/15 border-teal-800/25 text-teal-800'
+      : 'bg-black/[0.06] border-black/10 text-[#4A6A6E]';
 
   const designation = post.isOwn ? 'YOU' : post.designation;
   const initials = designation.slice(0, 3).toUpperCase();
@@ -235,7 +235,7 @@ function PostCard({
 
   return (
     <div
-      className={`px-4 py-3 border-b border-white/[0.06] hover:bg-white/[0.02] transition-colors ${
+      className={`px-4 py-3 border-b border-black/[0.08] hover:bg-black/[0.03] transition-colors ${
         is4488 ? 'bg-terminal-amber/[0.02]' : ''
       }`}
     >
@@ -253,20 +253,20 @@ function PostCard({
         <div className="flex-1 min-w-0">
           {/* Header row */}
           <div className="flex items-center gap-2 mb-0.5">
-            <span className={`text-[13px] font-medium ${is4488 ? 'text-terminal-amber' : post.isOwn ? 'text-neon-cyan' : 'text-white/90'}`}>
+            <span className={`text-[13px] font-medium ${is4488 ? 'text-terminal-amber' : post.isOwn ? 'text-teal-800' : 'text-[#1A3035]'}`}>
               {designation}
             </span>
             {post.weekNumber != null && (
-              <span className="text-[10px] text-white/25">
+              <span className="text-[10px] text-[#7A9A9E]">
                 S{post.weekNumber}
               </span>
             )}
             {post.status === 'pending_review' && (
-              <span className="text-[9px] text-neon-cyan/60 tracking-wider">
+              <span className="text-[9px] text-teal-800/60 tracking-wider">
                 PENDING
               </span>
             )}
-            <span className="text-[11px] text-white/20 ml-auto">
+            <span className="text-[11px] text-[#8AAAB0] ml-auto">
               {formatTimestamp(post.createdAt)}
             </span>
           </div>
@@ -280,8 +280,8 @@ function PostCard({
 
           {/* PEARL note */}
           {post.pearlNote && (
-            <div className="mt-2 pl-2 border-l-2 border-neon-cyan/20">
-              <p className="text-[10px] text-neon-cyan/60 italic">
+            <div className="mt-2 pl-2 border-l-2 border-teal-800/20">
+              <p className="text-[10px] text-teal-800/60 italic">
                 PEARL: {post.pearlNote}
               </p>
             </div>
@@ -292,7 +292,7 @@ function PostCard({
             <div className="mt-2 flex items-center gap-2">
               {censureAction ? (
                 <span className={`text-[10px] tracking-wider font-medium ${
-                  censureAction === 'approve' ? 'text-green-400' : 'text-neon-pink'
+                  censureAction === 'approve' ? 'text-green-400' : 'text-rose-700'
                 }`}>
                   {censureAction === 'approve' ? 'APPROVED' : 'FLAGGED FOR REVIEW'}
                 </span>
@@ -307,7 +307,7 @@ function PostCard({
                   </button>
                   <button
                     onClick={() => handleCensureAction('flag')}
-                    className="text-[10px] px-2.5 py-1 rounded-md border border-neon-pink/20 text-neon-pink/60 hover:bg-neon-pink/10 hover:text-neon-pink transition-colors active:scale-95"
+                    className="text-[10px] px-2.5 py-1 rounded-md border border-rose-700/20 text-rose-700/60 hover:bg-rose-700/10 hover:text-rose-700 transition-colors active:scale-95"
                   >
                     Flag
                   </button>
@@ -320,7 +320,7 @@ function PostCard({
           <div className="mt-2 flex items-center gap-4">
             <button
               onClick={() => onOpenThread(post.id)}
-              className="text-[11px] text-white/25 hover:text-neon-cyan/60 transition-colors flex items-center gap-1"
+              className="text-[11px] text-[#7A9A9E] hover:text-teal-800/60 transition-colors flex items-center gap-1"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z" />
@@ -332,16 +332,16 @@ function PostCard({
             {post.isOwn && onDelete && (
               confirmDelete ? (
                 <span className="flex items-center gap-1.5">
-                  <span className="text-[10px] text-neon-pink/60">Delete?</span>
+                  <span className="text-[10px] text-rose-700/60">Delete?</span>
                   <button
                     onClick={() => { onDelete(post.id); setConfirmDelete(false); }}
-                    className="text-[10px] text-neon-pink hover:text-neon-pink/80 transition-colors active:scale-95"
+                    className="text-[10px] text-rose-700 hover:text-rose-700/80 transition-colors active:scale-95"
                   >
                     Yes
                   </button>
                   <button
                     onClick={() => setConfirmDelete(false)}
-                    className="text-[10px] text-white/30 hover:text-white/50 transition-colors"
+                    className="text-[10px] text-[#6A8A8E] hover:text-[#4A6A6E] transition-colors"
                   >
                     No
                   </button>
@@ -349,7 +349,7 @@ function PostCard({
               ) : (
                 <button
                   onClick={() => setConfirmDelete(true)}
-                  className="text-[11px] text-white/20 hover:text-neon-pink/60 transition-colors flex items-center gap-1"
+                  className="text-[11px] text-[#8AAAB0] hover:text-rose-700/60 transition-colors flex items-center gap-1"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
@@ -388,17 +388,17 @@ function ThreadView({
   return (
     <div className="flex flex-col h-full">
       {/* Thread header */}
-      <div className="flex items-center gap-3 px-4 py-2.5 border-b border-white/[0.06]">
+      <div className="flex items-center gap-3 px-4 py-2.5 border-b border-black/[0.08]">
         <button
           onClick={closeThread}
-          className="text-xs text-white/40 hover:text-neon-cyan transition-colors flex items-center gap-1"
+          className="text-xs text-[#5A7A7E] hover:text-teal-800 transition-colors flex items-center gap-1"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
           Back
         </button>
-        <span className="text-[10px] text-white/20 tracking-[0.2em] uppercase">
+        <span className="text-[10px] text-[#8AAAB0] tracking-[0.2em] uppercase">
           Thread
         </span>
       </div>
@@ -406,21 +406,21 @@ function ThreadView({
       {/* Thread content */}
       <div className="flex-1 overflow-auto">
         {/* Parent post */}
-        <div className="px-4 py-3 border-b border-white/[0.06]">
+        <div className="px-4 py-3 border-b border-black/[0.08]">
           <div className="flex gap-3">
             <div className={`w-9 h-9 rounded-full border flex items-center justify-center shrink-0 ${
-              isCitizen4488(parentPost) ? 'bg-terminal-amber/15 border-terminal-amber/30' : 'bg-white/[0.06] border-white/10'
+              isCitizen4488(parentPost) ? 'bg-terminal-amber/15 border-terminal-amber/30' : 'bg-black/[0.06] border-black/10'
             }`}>
-              <span className={`text-[8px] font-bold ${isCitizen4488(parentPost) ? 'text-terminal-amber' : 'text-white/50'}`}>
+              <span className={`text-[8px] font-bold ${isCitizen4488(parentPost) ? 'text-terminal-amber' : 'text-[#4A6A6E]'}`}>
                 {(parentPost.isOwn ? 'YOU' : parentPost.designation).slice(0, 4)}
               </span>
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[13px] font-medium text-white/90">
+                <span className="text-[13px] font-medium text-[#1A3035]">
                   {parentPost.isOwn ? 'YOU' : parentPost.designation}
                 </span>
-                <span className="text-[11px] text-white/20">
+                <span className="text-[11px] text-[#8AAAB0]">
                   {formatTimestamp(parentPost.createdAt)}
                 </span>
               </div>
@@ -431,23 +431,23 @@ function ThreadView({
 
         {/* Replies */}
         {repliesLoading && (
-          <div className="text-xs text-neon-cyan/50 animate-pulse text-center py-6 tracking-wider">
+          <div className="text-xs text-teal-800/50 animate-pulse text-center py-6 tracking-wider">
             LOADING...
           </div>
         )}
 
         {replies.map((reply) => (
-          <div key={reply.id} className="px-4 py-2.5 border-b border-white/[0.04] ml-6">
+          <div key={reply.id} className="px-4 py-2.5 border-b border-black/[0.06] ml-6">
             <div className="flex gap-2.5">
-              <div className="w-7 h-7 rounded-full bg-white/[0.04] border border-white/[0.08] flex items-center justify-center shrink-0">
-                <span className="text-[7px] font-bold text-white/40">
+              <div className="w-7 h-7 rounded-full bg-black/[0.04] border border-black/[0.1] flex items-center justify-center shrink-0">
+                <span className="text-[7px] font-bold text-[#5A7A7E]">
                   {reply.designation.slice(0, 3)}
                 </span>
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-[12px] font-medium text-white/70">{reply.designation}</span>
-                  <span className="text-[10px] text-white/15">{formatTimestamp(reply.createdAt)}</span>
+                  <span className="text-[12px] font-medium text-[#2A4A4E]">{reply.designation}</span>
+                  <span className="text-[10px] text-[#8AAAB0]">{formatTimestamp(reply.createdAt)}</span>
                 </div>
                 <HighlightedContent content={reply.content} focusWords={focusWords} reviewWords={reviewWords} />
               </div>
@@ -456,7 +456,7 @@ function ThreadView({
         ))}
 
         {!repliesLoading && replies.length === 0 && (
-          <div className="text-[11px] text-white/20 text-center py-6 tracking-wider">
+          <div className="text-[11px] text-[#8AAAB0] text-center py-6 tracking-wider">
             No replies yet
           </div>
         )}
@@ -483,7 +483,7 @@ function CensureContentHighlight({
   postType: string;
 }) {
   if (!errorWord) {
-    return <p className="text-[13px] text-white/75 leading-relaxed">{content}</p>;
+    return <p className="text-[13px] text-[#2A4A4E] leading-relaxed">{content}</p>;
   }
 
   // For replace items, look for [word] brackets
@@ -493,7 +493,7 @@ function CensureContentHighlight({
     if (match) {
       const idx = content.indexOf(match[0]);
       return (
-        <p className="text-[13px] text-white/75 leading-relaxed">
+        <p className="text-[13px] text-[#2A4A4E] leading-relaxed">
           {content.slice(0, idx)}
           <span className="px-1.5 py-0.5 rounded bg-terminal-amber/15 text-terminal-amber font-medium border border-terminal-amber/25">
             {match[0]}
@@ -511,15 +511,15 @@ function CensureContentHighlight({
 
   if (parts.length === 1) {
     // Word not found as whole word — show content as-is
-    return <p className="text-[13px] text-white/75 leading-relaxed">{content}</p>;
+    return <p className="text-[13px] text-[#2A4A4E] leading-relaxed">{content}</p>;
   }
 
   const highlightColor = postType === 'censure_grammar'
-    ? 'bg-neon-pink/15 text-neon-pink border-neon-pink/25'
-    : 'bg-neon-cyan/15 text-neon-cyan border-neon-cyan/25';
+    ? 'bg-rose-700/15 text-rose-700 border-rose-700/25'
+    : 'bg-teal-800/15 text-teal-800 border-teal-800/25';
 
   return (
-    <p className="text-[13px] text-white/75 leading-relaxed">
+    <p className="text-[13px] text-[#2A4A4E] leading-relaxed">
       {parts.map((part, i) =>
         wordPattern.test(part) ? (
           <span key={i} className={`px-1 py-0.5 rounded font-medium border ${highlightColor}`}>
@@ -569,8 +569,8 @@ function CensureCard({ item }: { item: CensureItem }) {
     : 'WORD REPLACEMENT';
 
   const typeColor =
-    item.postType === 'censure_grammar' ? 'text-neon-pink border-neon-pink/20 bg-neon-pink/[0.06]'
-    : item.postType === 'censure_vocab' ? 'text-neon-cyan border-neon-cyan/20 bg-neon-cyan/[0.06]'
+    item.postType === 'censure_grammar' ? 'text-rose-700 border-rose-700/20 bg-neon-pink/[0.06]'
+    : item.postType === 'censure_vocab' ? 'text-teal-800 border-teal-800/20 bg-teal-800/[0.08]'
     : 'text-terminal-amber border-terminal-amber/20 bg-terminal-amber/[0.06]';
 
   const handleSubmit = async () => {
@@ -589,26 +589,26 @@ function CensureCard({ item }: { item: CensureItem }) {
   const isReviewed = item.reviewed || result !== null;
 
   return (
-    <div className={`mx-4 mb-3 rounded-xl border border-white/[0.08] overflow-hidden ${
+    <div className={`mx-4 mb-3 rounded-xl border border-black/[0.1] overflow-hidden ${
       isReviewed
         ? result?.isCorrect || item.wasCorrect
           ? 'border-green-500/20 bg-green-500/[0.03]'
-          : 'border-neon-pink/20 bg-neon-pink/[0.03]'
-        : 'bg-white/[0.02]'
+          : 'border-rose-700/20 bg-neon-pink/[0.03]'
+        : 'bg-black/[0.03]'
     }`}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-white/[0.06]">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-black/[0.08]">
         <div className="flex items-center gap-2">
           <span className={`text-[9px] font-medium tracking-[0.15em] uppercase px-2 py-0.5 rounded-full border ${typeColor}`}>
             {typeLabel}
           </span>
           {item.weekNumber && (
-            <span className="text-[10px] text-white/20">Shift {item.weekNumber}</span>
+            <span className="text-[10px] text-[#8AAAB0]">Shift {item.weekNumber}</span>
           )}
         </div>
         {isReviewed && (
           <span className={`text-[10px] font-medium tracking-wider ${
-            result?.isCorrect || item.wasCorrect ? 'text-green-400' : 'text-neon-pink'
+            result?.isCorrect || item.wasCorrect ? 'text-green-400' : 'text-rose-700'
           }`}>
             {result?.isCorrect || item.wasCorrect ? 'CORRECT' : 'INCORRECT'}
           </span>
@@ -618,12 +618,12 @@ function CensureCard({ item }: { item: CensureItem }) {
       {/* Post content — highlight the error word */}
       <div className="px-4 py-3">
         <div className="flex items-center gap-2 mb-1.5">
-          <div className="w-6 h-6 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center">
-            <span className="text-[7px] font-bold text-white/40">
+          <div className="w-6 h-6 rounded-full bg-black/[0.06] border border-black/10 flex items-center justify-center">
+            <span className="text-[7px] font-bold text-[#5A7A7E]">
               {item.designation.slice(0, 3)}
             </span>
           </div>
-          <span className="text-[12px] text-white/60">{item.designation}</span>
+          <span className="text-[12px] text-[#3A5A5E]">{item.designation}</span>
         </div>
         <CensureContentHighlight
           content={item.content}
@@ -634,12 +634,12 @@ function CensureCard({ item }: { item: CensureItem }) {
 
       {/* Question / options */}
       <div className="px-4 pb-3 space-y-2">
-        <p className="text-[11px] text-white/40 tracking-wider uppercase">
+        <p className="text-[11px] text-[#5A7A7E] tracking-wider uppercase">
           {item.postType === 'censure_grammar' && (
-            <>Find the correct form of "<span className="text-neon-pink font-medium normal-case">{data.errorWord}</span>":</>
+            <>Find the correct form of "<span className="text-rose-700 font-medium normal-case">{data.errorWord}</span>":</>
           )}
           {item.postType === 'censure_vocab' && (
-            <>What does "<span className="text-neon-cyan font-medium normal-case">{data.errorWord}</span>" actually mean?</>
+            <>What does "<span className="text-teal-800 font-medium normal-case">{data.errorWord}</span>" actually mean?</>
           )}
           {item.postType === 'censure_replace' && (
             <>Replace "<span className="text-terminal-amber font-medium normal-case">{data.blankWord || '...'}</span>" with the correct word:</>
@@ -658,9 +658,9 @@ function CensureCard({ item }: { item: CensureItem }) {
               if (isCorrectOption) {
                 optionStyle = 'border-green-500/40 bg-green-500/10 text-green-400';
               } else if (isSelected && !wasRight) {
-                optionStyle = 'border-neon-pink/40 bg-neon-pink/10 text-neon-pink';
+                optionStyle = 'border-rose-700/40 bg-rose-700/10 text-rose-700';
               } else {
-                optionStyle = 'border-white/[0.04] bg-white/[0.01] text-white/25';
+                optionStyle = 'border-black/[0.06] bg-black/[0.02] text-[#7A9A9E]';
               }
               return (
                 <div
@@ -689,8 +689,8 @@ function CensureCard({ item }: { item: CensureItem }) {
                 onClick={() => setSelectedIdx(displayIdx)}
                 className={`text-left px-3 py-2 rounded-lg text-[12px] border transition-all active:scale-[0.98] ${
                   isSelected
-                    ? 'border-neon-cyan/40 bg-neon-cyan/10 text-neon-cyan'
-                    : 'border-white/[0.08] bg-white/[0.02] text-white/60 hover:border-white/20'
+                    ? 'border-teal-800/40 bg-teal-800/10 text-teal-800'
+                    : 'border-black/[0.1] bg-black/[0.03] text-[#3A5A5E] hover:border-white/20'
                 }`}
               >
                 {opt}
@@ -704,7 +704,7 @@ function CensureCard({ item }: { item: CensureItem }) {
           <button
             onClick={handleSubmit}
             disabled={selectedIdx === null || submitting}
-            className="w-full mt-1 py-2 rounded-lg text-[11px] font-medium tracking-wider bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20 hover:bg-neon-cyan/20 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+            className="w-full mt-1 py-2 rounded-lg text-[11px] font-medium tracking-wider bg-teal-800/10 text-teal-800 border border-teal-800/20 hover:bg-teal-800/20 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
           >
             {submitting ? 'CHECKING...' : 'SUBMIT REVIEW'}
           </button>
@@ -719,7 +719,7 @@ function CensureCard({ item }: { item: CensureItem }) {
               ? 'border-green-500/15 bg-green-500/[0.05]'
               : 'border-neon-pink/15 bg-neon-pink/[0.05]'
           }`}>
-            <p className="text-[11px] text-white/60">
+            <p className="text-[11px] text-[#3A5A5E]">
               {result?.explanation || data.explanation}
             </p>
           </div>
@@ -752,7 +752,7 @@ function CensureQueue() {
   if (censureLoading && censureItems.length === 0) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-xs text-neon-cyan/50 animate-pulse tracking-wider">
+        <div className="text-xs text-teal-800/50 animate-pulse tracking-wider">
           LOADING CENSURE QUEUE...
         </div>
       </div>
@@ -763,17 +763,17 @@ function CensureQueue() {
     <div className="flex-1 overflow-auto py-3">
       {/* Stats bar */}
       <div className="flex items-center justify-between px-4 py-2 mb-2">
-        <span className="text-[10px] text-white/30 tracking-[0.15em] uppercase">
+        <span className="text-[10px] text-[#6A8A8E] tracking-[0.15em] uppercase">
           Documents for Review
         </span>
-        <span className="text-[11px] text-neon-cyan/60 font-medium">
+        <span className="text-[11px] text-teal-800/60 font-medium">
           {censureStats.completed}/{censureStats.total} reviewed
         </span>
       </div>
 
       {/* Progress bar */}
       {censureStats.total > 0 && (
-        <div className="mx-4 mb-4 h-1 rounded-full bg-white/[0.06] overflow-hidden">
+        <div className="mx-4 mb-4 h-1 rounded-full bg-black/[0.06] overflow-hidden">
           <div
             className="h-full rounded-full bg-neon-cyan/40 transition-all duration-500"
             style={{ width: `${(censureStats.completed / censureStats.total) * 100}%` }}
@@ -789,7 +789,7 @@ function CensureQueue() {
       {/* Reviewed items (collapsed) */}
       {reviewed.length > 0 && (
         <div className="px-4 py-2 mt-2">
-          <p className="text-[10px] text-white/20 tracking-[0.15em] uppercase mb-2">
+          <p className="text-[10px] text-[#8AAAB0] tracking-[0.15em] uppercase mb-2">
             Completed ({reviewed.length})
           </p>
           {reviewed.map((item) => (
@@ -800,10 +800,10 @@ function CensureQueue() {
 
       {censureItems.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-[11px] text-white/25 tracking-wider">
+          <p className="text-[11px] text-[#7A9A9E] tracking-wider">
             No documents pending review.
           </p>
-          <p className="text-[10px] text-white/15 mt-1">
+          <p className="text-[10px] text-[#8AAAB0] mt-1">
             New items appear as you progress through shifts.
           </p>
         </div>
@@ -821,36 +821,36 @@ function HarmonyOnboarding({ onDismiss }: { onDismiss: () => void }) {
     <div className="mx-4 mt-3 rounded-xl border border-neon-cyan/15 bg-neon-cyan/[0.04] overflow-hidden">
       <div className="px-4 py-2.5 border-b border-neon-cyan/10">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-medium tracking-[0.15em] uppercase text-neon-cyan/70">
+          <span className="text-[10px] font-medium tracking-[0.15em] uppercase text-teal-800/70">
             Ministry Orientation — Harmony Protocol
           </span>
           <button
             onClick={onDismiss}
-            className="text-[9px] text-white/25 hover:text-white/50 transition-colors tracking-wider"
+            className="text-[9px] text-[#7A9A9E] hover:text-[#4A6A6E] transition-colors tracking-wider"
           >
             DISMISS
           </button>
         </div>
       </div>
       <div className="px-4 py-3 space-y-2.5">
-        <p className="text-[12px] text-white/70 leading-relaxed">
-          Welcome to <span className="text-neon-cyan font-medium">Harmony</span>, the Ministry-monitored community network. As a Clarity Associate, you have two duties here:
+        <p className="text-[12px] text-[#2A4A4E] leading-relaxed">
+          Welcome to <span className="text-teal-800 font-medium">Harmony</span>, the Ministry-monitored community network. As a Clarity Associate, you have two duties here:
         </p>
         <div className="space-y-1.5 pl-2 border-l border-neon-cyan/15">
           <div>
-            <span className="text-[11px] text-neon-cyan/80 font-medium">Feed</span>
-            <p className="text-[11px] text-white/50 leading-relaxed">
+            <span className="text-[11px] text-teal-800/80 font-medium">Feed</span>
+            <p className="text-[11px] text-[#4A6A6E] leading-relaxed">
               Read citizen posts and practice your target vocabulary. You may write your own posts for Ministry review. Words from your current shift are highlighted.
             </p>
           </div>
           <div>
             <span className="text-[11px] text-terminal-amber/80 font-medium">Censure Queue</span>
-            <p className="text-[11px] text-white/50 leading-relaxed">
+            <p className="text-[11px] text-[#4A6A6E] leading-relaxed">
               Review flagged citizen posts for language errors — grammar mistakes, vocabulary misuse, and incorrect word choices. Select the correct answer to clear each item.
             </p>
           </div>
         </div>
-        <p className="text-[10px] text-white/30 italic">
+        <p className="text-[10px] text-[#6A8A8E] italic">
           P.E.A.R.L. monitors all community activity. Proceed with clarity.
         </p>
       </div>
@@ -863,15 +863,15 @@ function HarmonyOnboarding({ onDismiss }: { onDismiss: () => void }) {
 function HarmonyLocked({ message }: { message: string | null }) {
   return (
     <div className="flex flex-col items-center justify-center h-full px-8">
-      <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-center mb-4">
-        <svg className="w-8 h-8 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <div className="w-16 h-16 rounded-2xl bg-black/[0.04] border border-black/10 flex items-center justify-center mb-4">
+        <svg className="w-8 h-8 text-[#8AAAB0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
         </svg>
       </div>
-      <h3 className="font-special-elite text-base text-white/60 tracking-wider mb-2">
+      <h3 className="font-special-elite text-base text-[#3A5A5E] tracking-wider mb-2">
         Harmony Restricted
       </h3>
-      <p className="text-[11px] text-white/30 text-center leading-relaxed max-w-xs">
+      <p className="text-[11px] text-[#6A8A8E] text-center leading-relaxed max-w-xs">
         {message || 'Complete your first shift to gain Harmony access. The community awaits your contributions.'}
       </p>
     </div>
@@ -947,13 +947,13 @@ export default function HarmonyApp() {
       {showOnboarding && <HarmonyOnboarding onDismiss={dismissOnboarding} />}
 
       {/* Tabs */}
-      <div className="flex border-b border-white/[0.06]">
+      <div className="flex border-b border-black/[0.08]">
         <button
           onClick={() => setTab('feed')}
           className={`flex-1 py-2.5 text-[11px] font-medium tracking-[0.15em] uppercase transition-colors relative ${
             activeTab === 'feed'
-              ? 'text-neon-cyan'
-              : 'text-white/30 hover:text-white/50'
+              ? 'text-teal-800'
+              : 'text-[#6A8A8E] hover:text-[#4A6A6E]'
           }`}
         >
           Feed
@@ -965,8 +965,8 @@ export default function HarmonyApp() {
           onClick={() => setTab('censure')}
           className={`flex-1 py-2.5 text-[11px] font-medium tracking-[0.15em] uppercase transition-colors relative ${
             activeTab === 'censure'
-              ? 'text-neon-cyan'
-              : 'text-white/30 hover:text-white/50'
+              ? 'text-teal-800'
+              : 'text-[#6A8A8E] hover:text-[#4A6A6E]'
           }`}
         >
           Censure Queue
@@ -1006,19 +1006,19 @@ export default function HarmonyApp() {
 
 function HarmonyHeader({ currentWeekNumber }: { currentWeekNumber: number }) {
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+    <div className="flex items-center justify-between px-4 py-3 border-b border-black/[0.08]">
       <div>
-        <h2 className="font-special-elite text-[17px] text-white/90 tracking-wider">
+        <h2 className="font-special-elite text-[17px] text-[#1A3035] tracking-wider">
           Harmony
         </h2>
-        <p className="text-[9px] text-white/25 tracking-[0.2em] uppercase">
+        <p className="text-[9px] text-[#7A9A9E] tracking-[0.2em] uppercase">
           Ministry-Monitored Community
         </p>
       </div>
       {currentWeekNumber > 0 && (
         <div className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-green-500/60" />
-          <span className="text-[10px] text-white/25">S{currentWeekNumber}</span>
+          <span className="text-[10px] text-[#7A9A9E]">S{currentWeekNumber}</span>
         </div>
       )}
     </div>
@@ -1056,15 +1056,15 @@ function FeedTab({
     <>
       {/* Vocab chips (collapsible) */}
       {(focusWords.length > 0 || reviewWords.length > 0) && (
-        <div className="border-b border-white/[0.06]">
+        <div className="border-b border-black/[0.08]">
           <button
             onClick={() => setShowVocab(!showVocab)}
             className="w-full flex items-center justify-between px-4 py-2 group"
           >
-            <span className="text-[10px] text-neon-cyan/50 tracking-[0.2em] uppercase">
+            <span className="text-[10px] text-teal-800/50 tracking-[0.2em] uppercase">
               Shift {currentWeekNumber} Vocabulary
             </span>
-            <span className="text-[9px] text-white/20 group-hover:text-white/40 transition-colors">
+            <span className="text-[9px] text-[#8AAAB0] group-hover:text-[#5A7A7E] transition-colors">
               {showVocab ? 'HIDE' : 'SHOW'}
             </span>
           </button>
@@ -1072,10 +1072,10 @@ function FeedTab({
             <div className="px-4 pb-3 space-y-2">
               {focusWords.length > 0 && (
                 <div>
-                  <p className="text-[9px] text-white/25 tracking-[0.15em] uppercase mb-1">Focus</p>
+                  <p className="text-[9px] text-[#7A9A9E] tracking-[0.15em] uppercase mb-1">Focus</p>
                   <div className="flex flex-wrap gap-1">
                     {focusWords.map((w) => (
-                      <span key={w} className="text-[10px] px-2 py-0.5 rounded-full border border-neon-cyan/20 text-neon-cyan/70 bg-neon-cyan/[0.05]">
+                      <span key={w} className="text-[10px] px-2 py-0.5 rounded-full border border-teal-800/20 text-teal-800/70 bg-neon-cyan/[0.05]">
                         {w}
                       </span>
                     ))}
@@ -1084,7 +1084,7 @@ function FeedTab({
               )}
               {reviewWords.length > 0 && (
                 <div>
-                  <p className="text-[9px] text-white/25 tracking-[0.15em] uppercase mb-1">Review</p>
+                  <p className="text-[9px] text-[#7A9A9E] tracking-[0.15em] uppercase mb-1">Review</p>
                   <div className="flex flex-wrap gap-1">
                     {reviewWords.map((w) => (
                       <span key={w} className="text-[10px] px-2 py-0.5 rounded-full border border-terminal-amber/20 text-terminal-amber/70 bg-terminal-amber/[0.05]">
@@ -1109,19 +1109,19 @@ function FeedTab({
       {/* Feed */}
       <div className="flex-1 overflow-auto">
         {loading && posts.length === 0 && (
-          <div className="text-xs text-neon-cyan/50 animate-pulse text-center py-8 tracking-wider">
+          <div className="text-xs text-teal-800/50 animate-pulse text-center py-8 tracking-wider">
             LOADING FEED...
           </div>
         )}
 
         {error && (
-          <div className="text-xs text-neon-pink/60 text-center py-2 tracking-wider">
+          <div className="text-xs text-rose-700/60 text-center py-2 tracking-wider">
             {error.toUpperCase()}
           </div>
         )}
 
         {!loading && posts.length === 0 && (
-          <div className="text-[11px] text-white/25 text-center py-8 tracking-wider">
+          <div className="text-[11px] text-[#7A9A9E] text-center py-8 tracking-wider">
             No posts yet. Be the first to contribute.
           </div>
         )}
