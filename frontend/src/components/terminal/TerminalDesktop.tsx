@@ -118,7 +118,7 @@ export default function TerminalDesktop() {
           <img
             src="/images/office-icon.png"
             alt="Office"
-            className="w-[130%] h-[130%] -mt-[15%] -ml-[15%] object-contain aspect-square"
+            className="w-[150%] h-[150%] -mt-[25%] -ml-[25%] object-contain aspect-square"
           />
         </button>
 
@@ -130,7 +130,7 @@ export default function TerminalDesktop() {
           <img
             src="/images/lexicon-icon.png"
             alt="Lexicon"
-            className="w-[130%] h-[130%] -mt-[15%] -ml-[15%] object-contain aspect-square"
+            className="w-[150%] h-[150%] -mt-[25%] -ml-[25%] object-contain aspect-square"
           />
         </button>
 
@@ -148,7 +148,7 @@ export default function TerminalDesktop() {
                 <img
                   src={app.icon}
                   alt={app.name}
-                  className="w-[130%] h-[130%] -mt-[15%] -ml-[15%] object-contain aspect-square"
+                  className="w-[150%] h-[150%] -mt-[25%] -ml-[25%] object-contain aspect-square"
                 />
               </button>
             );

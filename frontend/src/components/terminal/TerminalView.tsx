@@ -105,7 +105,7 @@ export default function TerminalView() {
               </button>
               <div className="min-w-0 hidden sm:block">
                 <p className="font-ibm-mono text-[10px] text-[#6B5D45] tracking-[0.3em] uppercase truncate">
-                  Ministry of Healthy and Safe Communication
+                  Ministry for Safe and Healthy Communication
                 </p>
                 <p className="font-ibm-mono text-xs text-[#D4C5A9] tracking-wider mt-0.5">
                   Department of Clarity

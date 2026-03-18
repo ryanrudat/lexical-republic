@@ -375,6 +375,7 @@ body.view-terminal {
 /* CRT monitor screen — muted cyan like a vintage terminal display */
 .crt-monitor-screen {
   position: relative;
+  border-radius: 1.5rem;
   background: linear-gradient(
     180deg,
     #8EBCC1 0%,
