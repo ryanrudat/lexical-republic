@@ -386,7 +386,7 @@ function ThreadView({
   if (!parentPost) return null;
 
   return (
-    <div className="flex flex-col h-full bg-[#F5F1EB]">
+    <div className="flex flex-col h-full min-h-full bg-[#F5F1EB]">
       {/* Thread header */}
       <div className="flex items-center gap-3 px-4 py-2.5 bg-[#EFEBE4] border-b border-[#D4CFC6]">
         <button
@@ -931,7 +931,7 @@ export default function HarmonyApp() {
   // Locked state
   if (locked) {
     return (
-      <div className="flex flex-col h-full bg-[#F5F1EB]">
+      <div className="flex flex-col h-full min-h-full bg-[#F5F1EB]">
         <HarmonyHeader currentWeekNumber={0} />
         <HarmonyLocked message={lockMessage} />
       </div>
@@ -939,7 +939,7 @@ export default function HarmonyApp() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#F5F1EB]">
+    <div className="flex flex-col h-full min-h-full bg-[#F5F1EB]">
       {/* Header */}
       <HarmonyHeader currentWeekNumber={currentWeekNumber} />
 
