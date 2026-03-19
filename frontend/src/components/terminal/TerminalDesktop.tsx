@@ -113,7 +113,7 @@ export default function TerminalDesktop() {
         {/* Office tile — return to office view */}
         <button
           onClick={() => { exitTerminal(); navigate('/', { replace: true }); }}
-          className="w-[180px] shrink-0 rounded-xl transition-all duration-200 group hover:scale-105 active:scale-95"
+          className="w-[240px] shrink-0 rounded-xl transition-all duration-200 group hover:scale-105 active:scale-95"
         >
           <img
             src="/images/office-icon.png"
@@ -125,7 +125,7 @@ export default function TerminalDesktop() {
         {/* Dictionary tile — opens sidebar overlay */}
         <button
           onClick={toggleDictionary}
-          className="w-[180px] shrink-0 rounded-xl transition-all duration-200 group hover:scale-105 active:scale-95"
+          className="w-[240px] shrink-0 rounded-xl transition-all duration-200 group hover:scale-105 active:scale-95"
         >
           <img
             src="/images/lexicon-icon.png"
@@ -143,7 +143,7 @@ export default function TerminalDesktop() {
               <button
                 key={app.id}
                 onClick={() => openApp(app.id)}
-                className="w-[180px] shrink-0 rounded-xl transition-all duration-200 group hover:scale-105 active:scale-95"
+                className="w-[240px] shrink-0 rounded-xl transition-all duration-200 group hover:scale-105 active:scale-95"
               >
                 <img
                   src={app.icon}
