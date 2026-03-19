@@ -12,6 +12,8 @@ interface MessagingState {
   unreadCount: number;
   isPanelOpen: boolean;
   selectedMessageId: string | null;
+  /** When set, shows all messages from this character as a grouped conversation */
+  selectedConversation: string | null;
   activeNotification: ActiveNotification | null;
   loading: boolean;
 
@@ -29,6 +31,7 @@ interface MessagingState {
   openPanel: () => void;
   closePanel: () => void;
   selectMessage: (id: string) => void;
+  selectConversation: (characterName: string) => void;
   backToInbox: () => void;
   dismissNotification: () => void;
   refreshUnreadCount: () => Promise<void>;
@@ -42,6 +45,7 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
   unreadCount: 0,
   isPanelOpen: false,
   selectedMessageId: null,
+  selectedConversation: null,
   activeNotification: null,
   loading: false,
 
@@ -190,12 +194,13 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
 
   openPanel: () => set({ isPanelOpen: true }),
   closePanel: () => {
-    set({ isPanelOpen: false, selectedMessageId: null });
+    set({ isPanelOpen: false, selectedMessageId: null, selectedConversation: null });
     // Sync unread count from backend when panel closes
     getUnreadCount().then(({ count }) => set({ unreadCount: count })).catch(() => {});
   },
-  selectMessage: (id: string) => set({ selectedMessageId: id }),
-  backToInbox: () => set({ selectedMessageId: null }),
+  selectMessage: (id: string) => set({ selectedMessageId: id, selectedConversation: null }),
+  selectConversation: (characterName: string) => set({ selectedConversation: characterName, selectedMessageId: null }),
+  backToInbox: () => set({ selectedMessageId: null, selectedConversation: null }),
 
   dismissNotification: () => {
     const { activeNotification } = get();

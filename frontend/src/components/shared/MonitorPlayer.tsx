@@ -52,6 +52,7 @@ export default function MonitorPlayer({
   const [needsManualPlay, setNeedsManualPlay] = useState(false);
   const [videoError, setVideoError] = useState(false);
 
+  const [imageLoaded, setImageLoaded] = useState(false);
   const hasVideo = !!(src || embedUrl);
 
   const handleVideoError = () => {
@@ -149,11 +150,21 @@ export default function MonitorPlayer({
 
   return (
     <div className="relative w-full" style={{ aspectRatio: '2744 / 1568' }}>
+      {/* Loading indicator — shown until monitor frame image is ready */}
+      {!imageLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="font-ibm-mono text-xs tracking-[0.2em] uppercase" style={{ color: '#5a8a6a' }}>
+            INITIALIZING DISPLAY...
+          </div>
+        </div>
+      )}
+
       <img
         src="/images/welcome-monitor.jpg"
         alt=""
-        className="w-full h-full object-contain pointer-events-none select-none"
+        className={`w-full h-full object-contain pointer-events-none select-none transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
         draggable={false}
+        onLoad={() => setImageLoaded(true)}
       />
 
       {/* Screen area — positioned at monitor glass */}
@@ -223,6 +234,7 @@ export default function MonitorPlayer({
             <video
               ref={videoRef}
               src={src}
+              preload="metadata"
               className="w-full h-full object-contain bg-black cursor-pointer"
               playsInline
               onClick={togglePlayPause}

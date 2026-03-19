@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useMessagingStore } from '../../stores/messagingStore';
 import InboxView from './InboxView';
 import ThreadView from './ThreadView';
@@ -6,12 +7,25 @@ export default function MessagingPanel() {
   const isPanelOpen = useMessagingStore((s) => s.isPanelOpen);
   const closePanel = useMessagingStore((s) => s.closePanel);
   const selectedMessageId = useMessagingStore((s) => s.selectedMessageId);
+  const selectedConversation = useMessagingStore((s) => s.selectedConversation);
   const backToInbox = useMessagingStore((s) => s.backToInbox);
   const messages = useMessagingStore((s) => s.messages);
 
   const selectedMessage = selectedMessageId
     ? messages.find((m) => m.id === selectedMessageId) ?? null
     : null;
+
+  // All messages from the selected character, sorted chronologically
+  const conversationMessages = useMemo(() => {
+    if (!selectedConversation) return [];
+    return [...messages]
+      .filter((m) => m.characterName === selectedConversation)
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }, [selectedConversation, messages]);
+
+  const isConversationOpen = !!selectedMessage || conversationMessages.length > 0;
+  const headerName = selectedMessage?.characterName ?? selectedConversation;
+  const headerDesignation = selectedMessage?.designation ?? conversationMessages[0]?.designation;
 
   return (
     <>
@@ -31,8 +45,8 @@ export default function MessagingPanel() {
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-          {selectedMessage ? (
-            /* Thread header: back arrow + character name */
+          {isConversationOpen ? (
+            /* Conversation header: back arrow + character name */
             <div className="flex items-center gap-2.5">
               <button
                 onClick={backToInbox}
@@ -45,11 +59,11 @@ export default function MessagingPanel() {
               </button>
               <div>
                 <h2 className="font-special-elite text-xs text-white/80">
-                  {selectedMessage.characterName}
+                  {headerName}
                 </h2>
-                {selectedMessage.designation && (
+                {headerDesignation && (
                   <p className="font-ibm-mono text-[8px] text-white/25 tracking-wider">
-                    {selectedMessage.designation}
+                    {headerDesignation}
                   </p>
                 )}
               </div>
@@ -77,6 +91,12 @@ export default function MessagingPanel() {
         <div className="flex-1 overflow-y-auto p-4 ios-scroll" style={{ maxHeight: 'calc(100vh - 52px)' }}>
           {selectedMessage ? (
             <ThreadView key={selectedMessage.id} message={selectedMessage} />
+          ) : conversationMessages.length > 0 ? (
+            <div className="space-y-6">
+              {conversationMessages.map((msg) => (
+                <ThreadView key={msg.id} message={msg} />
+              ))}
+            </div>
           ) : (
             <InboxView />
           )}

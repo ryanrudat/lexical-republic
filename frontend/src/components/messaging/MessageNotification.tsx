@@ -11,7 +11,7 @@ const CHARACTER_COLORS: Record<string, string> = {
 export default function MessageNotification() {
   const activeNotification = useMessagingStore((s) => s.activeNotification);
   const openPanel = useMessagingStore((s) => s.openPanel);
-  const selectMessage = useMessagingStore((s) => s.selectMessage);
+  const selectConversation = useMessagingStore((s) => s.selectConversation);
   const dismissNotification = useMessagingStore((s) => s.dismissNotification);
 
   if (!activeNotification) return null;
@@ -43,7 +43,7 @@ export default function MessageNotification() {
         <button
           onClick={() => {
             dismissNotification();
-            selectMessage(msg.id);
+            selectConversation(msg.characterName);
             openPanel();
           }}
           className="text-left w-full hover:bg-white/5 transition-colors cursor-pointer rounded"
