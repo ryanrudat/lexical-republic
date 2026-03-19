@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { fetchStudents, deleteStudent, deleteAllStudents } from '../../api/teacher';
+import { fetchStudents, deleteStudent, deleteAllStudents, sendTaskCommand } from '../../api/teacher';
 import { useTeacherStore } from '../../stores/teacherStore';
 import { getSocket } from '../../utils/socket';
 import { STEP_ORDER } from '../../types/shifts';
@@ -122,25 +122,14 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
       return;
     }
 
-    // Socket-based task controls
-    const sock = getSocket();
-    if (!sock) return;
-    switch (action) {
-      case 'skip-task':
-        sock.emit('teacher:skip-task', { studentId });
-        break;
-      case 'reset-task':
-        sock.emit('teacher:reset-task', { studentId });
-        break;
-      case 'reset-shift':
-        sock.emit('teacher:reset-shift', { studentId });
-        break;
-      case 'send-to-task':
-        if (taskId) sock.emit('teacher:send-to-task', { studentId, taskId });
-        break;
+    // REST API persists to DB + relays via socket to online students
+    try {
+      await sendTaskCommand(studentId, action as 'skip-task' | 'reset-task' | 'reset-shift' | 'send-to-task', taskId);
+    } catch (err) {
+      console.error('Task command failed:', err);
     }
     setConfirmAction(null);
-  }, [confirmAction, loadStudents]);
+  }, [confirmAction]);
 
   const actionLabels: Record<string, string> = {
     'skip-task': 'Skip Current Task',
@@ -320,13 +309,9 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
           return (
             <div
               key={student.id}
-              className={`rounded-xl border shadow-sm p-4 ${flagBorder} ${
-                student.online ? 'cursor-pointer' : ''
-              }`}
+              className={`rounded-xl border shadow-sm p-4 ${flagBorder} cursor-pointer`}
               onClick={() => {
-                if (student.online) {
-                  setExpandedStudent(isExpanded ? null : student.id);
-                }
+                setExpandedStudent(isExpanded ? null : student.id);
               }}
             >
               <div className="flex items-start gap-3">
@@ -353,11 +338,9 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
                     <h3 className="text-sm font-medium text-slate-800 truncate">
                       {student.displayName}
                     </h3>
-                    {student.online && (
-                      <span className="text-[10px] text-slate-300 ml-auto shrink-0">
-                        {isExpanded ? '▲' : '▼'}
-                      </span>
-                    )}
+                    <span className="text-[10px] text-slate-300 ml-auto shrink-0">
+                      {isExpanded ? '▲' : '▼'}
+                    </span>
                   </div>
 
                   {student.online ? (
@@ -428,7 +411,7 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
               </div>
 
               {/* Expanded task controls */}
-              {isExpanded && student.online && (
+              {isExpanded && (
                 <div
                   className="mt-3 pt-3 border-t border-slate-200 space-y-2"
                   onClick={(e) => e.stopPropagation()}
@@ -469,8 +452,8 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
                     </button>
                   </div>
 
-                  {/* Send to specific task — only if task list is available */}
-                  {student.online.tasks && student.online.tasks.length > 0 && (
+                  {/* Send to specific task — only if task list is available (online students) */}
+                  {student.online?.tasks && student.online.tasks.length > 0 && (
                     <div className="mt-1">
                       <div className="text-[10px] text-slate-400 mb-1">Send to task:</div>
                       <div className="flex flex-wrap gap-1">

@@ -1262,4 +1262,128 @@ router.get('/debug/uploads', (_req: Request, res: Response) => {
   res.json(result);
 });
 
+// ── Teacher Task Command (works for online AND offline students) ──────────
+
+router.post('/students/:studentId/task-command', async (req: Request, res: Response) => {
+  try {
+    const teacherId = getTeacherId(req)!;
+    const pairId = req.params.studentId as string;
+    const { action, taskId } = req.body as { action: string; taskId?: string };
+
+    // Verify ownership
+    if (!(await teacherOwnsPair(teacherId, pairId))) {
+      res.status(403).json({ error: 'Not your student' });
+      return;
+    }
+
+    // Find student's current week
+    const { getCurrentWeekNumberForPair } = await import('../utils/progression');
+    const weekNumber = await getCurrentWeekNumberForPair(pairId);
+
+    // Find Week record
+    const week = await prisma.week.findFirst({
+      where: { weekNumber },
+      select: { id: true },
+    });
+    if (!week) {
+      res.status(404).json({ error: `No week found for weekNumber ${weekNumber}` });
+      return;
+    }
+
+    // Get missions for this week (ordered by orderIndex)
+    const missions = await prisma.mission.findMany({
+      where: { weekId: week.id },
+      orderBy: { orderIndex: 'asc' },
+      select: { id: true, missionType: true, orderIndex: true },
+    });
+
+    // Get existing scores for this student's missions
+    const existingScores = await prisma.missionScore.findMany({
+      where: { pairId, missionId: { in: missions.map(m => m.id) } },
+      select: { missionId: true },
+    });
+    const scoredMissionIds = new Set(existingScores.map(s => s.missionId));
+
+    // Determine current task index (first mission without a score)
+    const currentIdx = missions.findIndex(m => !scoredMissionIds.has(m.id));
+
+    switch (action) {
+      case 'skip-task': {
+        // Mark current task as complete (skipped)
+        if (currentIdx < 0 || currentIdx >= missions.length) {
+          res.json({ success: true, message: 'No task to skip — all complete' });
+          return;
+        }
+        const mission = missions[currentIdx];
+        await prisma.missionScore.upsert({
+          where: { pairId_missionId: { pairId, missionId: mission.id } },
+          create: { pairId, missionId: mission.id, score: 0, details: { status: 'complete', skipped: true } },
+          update: { score: 0, details: { status: 'complete', skipped: true } },
+        });
+        break;
+      }
+
+      case 'reset-task': {
+        // Delete score for current task so it restarts
+        if (currentIdx >= 0 && currentIdx < missions.length) {
+          await prisma.missionScore.deleteMany({
+            where: { pairId, missionId: missions[currentIdx].id },
+          });
+        }
+        break;
+      }
+
+      case 'reset-shift': {
+        // Delete all mission scores for this week + shift result
+        await prisma.missionScore.deleteMany({
+          where: { pairId, missionId: { in: missions.map(m => m.id) } },
+        });
+        await prisma.shiftResult.deleteMany({
+          where: { pairId, weekNumber },
+        });
+        break;
+      }
+
+      case 'send-to-task': {
+        if (!taskId) {
+          res.status(400).json({ error: 'taskId required for send-to-task' });
+          return;
+        }
+        // Find target mission by missionType matching the taskId
+        const targetIdx = missions.findIndex(m => m.missionType === taskId);
+        if (targetIdx < 0) {
+          res.status(404).json({ error: `Task "${taskId}" not found in week ${weekNumber}` });
+          return;
+        }
+
+        // Mark all missions before target as complete (skipped)
+        for (let i = 0; i < targetIdx; i++) {
+          if (scoredMissionIds.has(missions[i].id)) continue;
+          await prisma.missionScore.create({
+            data: { pairId, missionId: missions[i].id, score: 0, details: { status: 'complete', skipped: true } },
+          });
+        }
+        // Delete scores for target and all missions after it
+        const toReset = missions.slice(targetIdx).map(m => m.id);
+        await prisma.missionScore.deleteMany({
+          where: { pairId, missionId: { in: toReset } },
+        });
+        break;
+      }
+
+      default:
+        res.status(400).json({ error: `Unknown action: ${action}` });
+        return;
+    }
+
+    // Also relay via socket if student is online (for immediate UI update)
+    io.to(`student:${pairId}`).emit('session:task-command', { action, taskId });
+
+    res.json({ success: true, action, weekNumber });
+  } catch (err) {
+    console.error('Teacher task-command error:', err);
+    res.status(500).json({ error: 'Task command failed' });
+  }
+});
+
 export default router;

@@ -197,6 +197,14 @@ export async function deleteAllStudents(): Promise<{ pairsDeleted: number; users
   return data as { pairsDeleted: number; usersDeleted: number };
 }
 
+export async function sendTaskCommand(
+  studentId: string,
+  action: 'skip-task' | 'reset-task' | 'reset-shift' | 'send-to-task',
+  taskId?: string,
+): Promise<void> {
+  await client.post(`/teacher/students/${studentId}/task-command`, { action, taskId });
+}
+
 // ── Class Management ───────────────────────────────────────────
 
 export interface ClassInfo {
