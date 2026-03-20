@@ -9,6 +9,7 @@ import {
   removeStudentFromClass,
   fetchClassDetail,
   fetchWeekBriefings,
+  setClassDefaultLane,
 } from '../../api/teacher';
 import type { ClassInfo, ClassStudent, WeekBriefingSetting } from '../../api/teacher';
 
@@ -201,6 +202,31 @@ export default function ClassManager({ classes, onRefresh, onSelectClass }: Prop
                     >
                       ↻
                     </button>
+                  </div>
+                  {/* Default tier selector */}
+                  <div className="flex items-center gap-0.5 border border-slate-200 rounded-md overflow-hidden" title="Default difficulty tier for new students">
+                    {([1, 2, 3] as const).map((tier) => {
+                      const isCurrent = (cls.defaultLane ?? 2) === tier;
+                      const labels = ['G', 'S', 'I'] as const;
+                      const titles = ['Guided (Tier 1)', 'Standard (Tier 2)', 'Independent (Tier 3)'] as const;
+                      return (
+                        <button
+                          key={tier}
+                          className={`text-[10px] px-1.5 py-1 font-medium transition-colors ${
+                            isCurrent
+                              ? 'bg-indigo-600 text-white'
+                              : 'bg-white text-slate-400 hover:bg-slate-50 hover:text-slate-600'
+                          }`}
+                          title={`${titles[tier - 1]} — default for new students`}
+                          onClick={() => {
+                            if (isCurrent) return;
+                            void setClassDefaultLane(cls.id, tier).then(() => onRefresh());
+                          }}
+                        >
+                          {labels[tier - 1]}{tier}
+                        </button>
+                      );
+                    })}
                   </div>
                   <button
                     onClick={() => handleToggleHarmony(cls.id, cls.harmonyOpen)}

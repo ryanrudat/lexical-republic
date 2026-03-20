@@ -8,6 +8,7 @@ export function useTeacherSocket() {
   const setClassSnapshot = useTeacherStore((s) => s.setClassSnapshot);
   const upsertStudent = useTeacherStore((s) => s.upsertStudent);
   const removeStudent = useTeacherStore((s) => s.removeStudent);
+  const purgeStudent = useTeacherStore((s) => s.purgeStudent);
   const setSocketStatus = useTeacherStore((s) => s.setSocketStatus);
   const bumpRegistrationTick = useTeacherStore((s) => s.bumpRegistrationTick);
   const setClassPaused = useTeacherStore((s) => s.setClassPaused);
@@ -39,11 +40,15 @@ export function useTeacherSocket() {
       appendClarityEntry(data.pairId, data.messageId, data.entry);
       bumpClarityReplyTick();
     };
+    const onDeleted = (data: { userId: string }) => {
+      purgeStudent(data.userId);
+    };
 
     sock.on('teacher:class-snapshot', onSnapshot);
     sock.on('student:connected', onConnected);
     sock.on('student:status-updated', onUpdated);
     sock.on('student:disconnected', onDisconnected);
+    sock.on('student:deleted', onDeleted);
     sock.on('student:registered', onRegistered);
     sock.on('teacher:pause-state', onPauseState);
     sock.on('teacher:clarity-reply', onClarityReply);
@@ -60,6 +65,7 @@ export function useTeacherSocket() {
         s.off('student:connected', onConnected);
         s.off('student:status-updated', onUpdated);
         s.off('student:disconnected', onDisconnected);
+        s.off('student:deleted', onDeleted);
         s.off('student:registered', onRegistered);
         s.off('teacher:pause-state', onPauseState);
         s.off('teacher:clarity-reply', onClarityReply);
@@ -67,5 +73,5 @@ export function useTeacherSocket() {
       unsubStatus();
       disconnectSocket();
     };
-  }, [setClassSnapshot, upsertStudent, removeStudent, setSocketStatus, bumpRegistrationTick, setClassPaused, appendClarityEntry, bumpClarityReplyTick]);
+  }, [setClassSnapshot, upsertStudent, removeStudent, purgeStudent, setSocketStatus, bumpRegistrationTick, setClassPaused, appendClarityEntry, bumpClarityReplyTick]);
 }

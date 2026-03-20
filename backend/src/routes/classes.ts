@@ -113,6 +113,7 @@ router.get('/', async (req: Request, res: Response) => {
         joinCode: c.joinCode,
         isActive: c.isActive,
         harmonyOpen: c.harmonyOpen,
+        defaultLane: c.defaultLane,
         studentCount: c._count.enrollments,
         unlockedWeekIds: c.weekUnlocks.map((u) => u.weekId),
         createdAt: c.createdAt,
@@ -216,7 +217,7 @@ router.patch('/:classId', async (req: Request, res: Response) => {
   try {
     const classId = req.params.classId as string;
     const teacherId = req.user!.userId;
-    const { name, isActive } = req.body as { name?: string; isActive?: boolean };
+    const { name, isActive, defaultLane } = req.body as { name?: string; isActive?: boolean; defaultLane?: number };
 
     // Verify ownership
     const existing = await prisma.class.findUnique({ where: { id: classId } });
@@ -225,9 +226,15 @@ router.patch('/:classId', async (req: Request, res: Response) => {
       return;
     }
 
+    if (defaultLane !== undefined && (typeof defaultLane !== 'number' || ![1, 2, 3].includes(defaultLane))) {
+      res.status(400).json({ error: 'defaultLane must be 1, 2, or 3' });
+      return;
+    }
+
     const updates: Record<string, unknown> = {};
     if (typeof name === 'string' && name.trim()) updates.name = name.trim();
     if (typeof isActive === 'boolean') updates.isActive = isActive;
+    if (typeof defaultLane === 'number') updates.defaultLane = defaultLane;
 
     if (Object.keys(updates).length === 0) {
       res.status(400).json({ error: 'No valid fields to update' });
@@ -244,6 +251,7 @@ router.patch('/:classId', async (req: Request, res: Response) => {
       name: cls.name,
       joinCode: cls.joinCode,
       isActive: cls.isActive,
+      defaultLane: cls.defaultLane,
     });
   } catch (err) {
     console.error('Update class error:', err);

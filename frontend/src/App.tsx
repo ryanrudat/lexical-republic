@@ -98,6 +98,12 @@ export default function App() {
         }
       };
 
+      const onLaneChanged = (data: { lane: number }) => {
+        useStudentStore.getState().setLane(data.lane);
+        const pearl = usePearlStore.getState();
+        pearl.triggerBark('notice', 'CLASSIFICATION UPDATE: Your operational tier has been adjusted by a supervisor.');
+      };
+
       const onGateUpdated = (data: { weekId: string; taskGates: number[] }) => {
         const store = useShiftQueueStore.getState();
         const shiftState = useShiftStore.getState();
@@ -122,6 +128,7 @@ export default function App() {
       sock.on('session:paused', onPaused);
       sock.on('session:resumed', onResumed);
       sock.on('session:task-command', onTaskCommand);
+      sock.on('session:lane-changed', onLaneChanged);
       sock.on('session:gate-updated', onGateUpdated);
       sock.on('session:clarity-message', onClarityMessage);
 
@@ -130,6 +137,7 @@ export default function App() {
         sock.off('session:paused', onPaused);
         sock.off('session:resumed', onResumed);
         sock.off('session:task-command', onTaskCommand);
+        sock.off('session:lane-changed', onLaneChanged);
         sock.off('session:gate-updated', onGateUpdated);
         sock.off('session:clarity-message', onClarityMessage);
       };

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { fetchStudents, deleteStudent, deleteAllStudents, sendTaskCommand, fetchShiftStatus } from '../../api/teacher';
+import { fetchStudents, deleteStudent, deleteAllStudents, sendTaskCommand, fetchShiftStatus, setStudentLane } from '../../api/teacher';
 import type { ShiftStatus } from '../../api/teacher';
 import { useTeacherStore } from '../../stores/teacherStore';
 import { getSocket } from '../../utils/socket';
@@ -441,7 +441,7 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
                       </div>
 
                       {/* Task info + time on task */}
-                      {student.online.taskLabel && (
+                      {student.online.taskLabel ? (
                         <div className="text-[11px] text-slate-400 flex items-center gap-2">
                           <span className="truncate">
                             Task: {student.online.taskLabel}
@@ -459,7 +459,11 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
                             </span>
                           )}
                         </div>
-                      )}
+                      ) : student.online.weekNumber ? (
+                        <div className="text-[11px] text-slate-400 animate-pulse">
+                          Loading task info...
+                        </div>
+                      ) : null}
                     </div>
                   ) : (
                     <div className="mt-1 space-y-0.5">
@@ -595,6 +599,45 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
                   {!student.online && statusLoading.has(student.id) && taskList.length === 0 && (
                     <div className="text-[10px] text-slate-400 animate-pulse">Loading task list...</div>
                   )}
+
+                  {/* Difficulty Tier selector */}
+                  <div className="mt-2 pt-2 border-t border-slate-200">
+                    <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                      Difficulty Tier
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {([1, 2, 3] as const).map((tier) => {
+                        const isCurrent = student.lane === tier;
+                        const labels = ['Guided', 'Standard', 'Independent'] as const;
+                        const colors = isCurrent
+                          ? tier === 1
+                            ? 'bg-sky-100 text-sky-700 border-sky-300 font-semibold'
+                            : tier === 2
+                            ? 'bg-slate-200 text-slate-700 border-slate-400 font-semibold'
+                            : 'bg-amber-100 text-amber-700 border-amber-300 font-semibold'
+                          : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100 hover:text-slate-600';
+                        return (
+                          <button
+                            key={tier}
+                            className={`px-2.5 py-1 text-[11px] rounded-md border transition-colors ${colors}`}
+                            onClick={() => {
+                              if (isCurrent) return;
+                              void setStudentLane(student.id, tier).then(loadStudents);
+                            }}
+                          >
+                            {tier} {labels[tier - 1]}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[9px] text-slate-400 mt-1">
+                      {student.lane === 1
+                        ? 'Sentence starters, Chinese word bank, 20-word min, grammar hints'
+                        : student.lane === 3
+                        ? 'No scaffolding, 40-word min, bonus prompts, stricter evaluation'
+                        : 'English word list, 30-word min, standard evaluation'}
+                    </p>
+                  </div>
 
                   {/* Clarity Minder: teacher↔student direct messaging */}
                   <div className="mt-2 pt-2 border-t border-slate-200">

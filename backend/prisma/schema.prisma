@@ -413,13 +413,14 @@ model HarmonyCensureResponse {
 }
 
 model Class {
-  id         String   @id @default(uuid())
-  name       String
-  joinCode   String   @unique
-  teacherId  String
-  teacher    User     @relation("TeacherClasses", fields: [teacherId], references: [id])
+  id          String   @id @default(uuid())
+  name        String
+  joinCode    String   @unique
+  teacherId   String
+  teacher     User     @relation("TeacherClasses", fields: [teacherId], references: [id])
   isActive    Boolean  @default(true)
   harmonyOpen Boolean  @default(false)
+  defaultLane Int      @default(2)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

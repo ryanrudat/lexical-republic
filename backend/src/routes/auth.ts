@@ -268,7 +268,7 @@ router.post('/register', async (req: Request, res: Response) => {
         pin: pinHash,
         studentAName: nameA,
         studentBName: nameB,
-        lane: 2,
+        lane: cls.defaultLane,
       },
     });
 

@@ -35,6 +35,8 @@ interface TeacherState {
   setClassSnapshot: (students: OnlineStudent[]) => void;
   upsertStudent: (student: OnlineStudent) => void;
   removeStudent: (userId: string) => void;
+  /** Permanently remove a student from both onlineStudents AND lastKnownStatus (used after deletion) */
+  purgeStudent: (userId: string) => void;
 
   selectedCell: { studentId: string; weekId: string } | null;
   setSelectedCell: (cell: { studentId: string; weekId: string } | null) => void;
@@ -97,6 +99,14 @@ export const useTeacherStore = create<TeacherState>((set) => ({
         lk.set(userId, current);
       }
       next.delete(userId);
+      return { onlineStudents: next, lastKnownStatus: lk };
+    }),
+  purgeStudent: (userId) =>
+    set((state) => {
+      const next = new Map(state.onlineStudents);
+      const lk = new Map(state.lastKnownStatus);
+      next.delete(userId);
+      lk.delete(userId);
       return { onlineStudents: next, lastKnownStatus: lk };
     }),
 

@@ -30,6 +30,7 @@ interface StudentState {
   registerTeacher: (username: string, password: string, displayName: string, registrationCode: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
+  setLane: (lane: number) => void;
 }
 
 export const useStudentStore = create<StudentState>((set) => ({
@@ -102,6 +103,12 @@ export const useStudentStore = create<StudentState>((set) => ({
       set({ user: null, loading: false, error: null });
     }
   },
+
+  setLane: (lane) =>
+    set((state) => {
+      if (!state.user) return state;
+      return { user: { ...state.user, lane } };
+    }),
 
   refresh: async () => {
     // Only show loading screen on initial load (user not yet known).

@@ -42,6 +42,17 @@ export function getOnlineStudents(classId?: string): StudentStatus[] {
   return all;
 }
 
+/** Remove a student from all in-memory tracking (called after deletion) */
+export function purgeOnlineStudent(entityId: string): void {
+  onlineStudents.delete(entityId);
+  entitySockets.delete(entityId);
+  const timer = disconnectTimers.get(entityId);
+  if (timer) {
+    clearTimeout(timer);
+    disconnectTimers.delete(entityId);
+  }
+}
+
 // ── Init ───────────────────────────────────────────────────────────
 
 export function initSocketServer(app: Express, allowedOrigins: string[]) {

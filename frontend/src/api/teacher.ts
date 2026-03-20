@@ -188,6 +188,14 @@ export async function overrideConcern(pairId: string, concernScore: number): Pro
   await client.patch(`/teacher/students/${pairId}/concern`, { concernScore });
 }
 
+export async function setStudentLane(pairId: string, lane: number): Promise<void> {
+  await client.patch(`/teacher/students/${pairId}/lane`, { lane });
+}
+
+export async function setClassDefaultLane(classId: string, defaultLane: number): Promise<void> {
+  await client.patch(`/classes/${classId}`, { defaultLane });
+}
+
 export async function deleteStudent(studentId: string): Promise<void> {
   await client.delete(`/teacher/students/${studentId}`);
 }
@@ -227,6 +235,7 @@ export interface ClassInfo {
   joinCode: string;
   isActive: boolean;
   harmonyOpen: boolean;
+  defaultLane: number;
   studentCount: number;
   unlockedWeekIds: string[];
   createdAt: string;

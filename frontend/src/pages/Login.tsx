@@ -1,24 +1,31 @@
 import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react';
 import { useStudentStore } from '../stores/studentStore';
+import { useLoginFormStore } from '../stores/loginFormStore';
 
 export default function Login() {
-  const [mode, setMode] = useState<'student' | 'teacher' | 'register' | 'teacher-register'>('student');
-  const [designation, setDesignation] = useState('');
-  const [pin, setPin] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [regDesignation, setRegDesignation] = useState('');
-  const [regPin, setRegPin] = useState('');
-  const [regPinConfirm, setRegPinConfirm] = useState('');
-  const [regStudentAName, setRegStudentAName] = useState('');
-  const [regStudentBName, setRegStudentBName] = useState('');
-  const [regClassCode, setRegClassCode] = useState('');
-  // Teacher registration fields
-  const [tRegUsername, setTRegUsername] = useState('');
-  const [tRegPassword, setTRegPassword] = useState('');
-  const [tRegPasswordConfirm, setTRegPasswordConfirm] = useState('');
-  const [tRegDisplayName, setTRegDisplayName] = useState('');
-  const [tRegCode, setTRegCode] = useState('');
+  const {
+    mode, designation, pin, username, password,
+    regDesignation, regPin, regPinConfirm, regStudentAName, regStudentBName, regClassCode,
+    tRegUsername, tRegPassword, tRegPasswordConfirm, tRegDisplayName, tRegCode,
+    setMode, setField, clearForm,
+  } = useLoginFormStore();
+
+  const setDesignation = (v: string) => setField('designation', v);
+  const setPin = (v: string) => setField('pin', v);
+  const setUsername = (v: string) => setField('username', v);
+  const setPassword = (v: string) => setField('password', v);
+  const setRegDesignation = (v: string) => setField('regDesignation', v);
+  const setRegPin = (v: string) => setField('regPin', v);
+  const setRegPinConfirm = (v: string) => setField('regPinConfirm', v);
+  const setRegStudentAName = (v: string) => setField('regStudentAName', v);
+  const setRegStudentBName = (v: string) => setField('regStudentBName', v);
+  const setRegClassCode = (v: string) => setField('regClassCode', v);
+  const setTRegUsername = (v: string) => setField('tRegUsername', v);
+  const setTRegPassword = (v: string) => setField('tRegPassword', v);
+  const setTRegPasswordConfirm = (v: string) => setField('tRegPasswordConfirm', v);
+  const setTRegDisplayName = (v: string) => setField('tRegDisplayName', v);
+  const setTRegCode = (v: string) => setField('tRegCode', v);
+
   const { login, loginTeacher, register, registerTeacher, loading, error } = useStudentStore();
 
   // Background music — autoplay blocked by browsers, so start on first interaction
@@ -100,6 +107,8 @@ export default function Login() {
           regStudentBName.trim() || undefined
         );
       }
+      // Clear form on successful login/register
+      clearForm();
     } catch {
       // Error handled in store
     }

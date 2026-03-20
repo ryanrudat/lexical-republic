@@ -5,7 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import { uploadVideo } from '../middleware/upload';
 import prisma from '../utils/prisma';
-import { io, getOnlineStudents } from '../socketServer';
+import { io, getOnlineStudents, purgeOnlineStudent } from '../socketServer';
 import { findAlternative } from '../data/activityPool';
 import { getWeekConfig } from '../data/week-configs';
 
@@ -804,6 +804,30 @@ router.patch('/students/:pairId/concern', async (req: Request, res: Response) =>
   }
 });
 
+// PATCH /api/teacher/students/:pairId/lane — Set student difficulty tier (1-3)
+router.patch('/students/:pairId/lane', async (req: Request, res: Response) => {
+  try {
+    const teacherId = getTeacherId(req)!;
+    const pairId = req.params.pairId as string;
+    const { lane } = req.body;
+    if (typeof lane !== 'number' || ![1, 2, 3].includes(lane)) {
+      res.status(400).json({ error: 'lane must be 1, 2, or 3' });
+      return;
+    }
+    if (!(await teacherOwnsPair(teacherId, pairId))) {
+      res.status(404).json({ error: 'Student not found' });
+      return;
+    }
+    await prisma.pair.update({ where: { id: pairId }, data: { lane } });
+    // Notify the student in real-time so their UI updates without re-login
+    io.to(`student:${pairId}`).emit('session:lane-changed', { lane });
+    res.json({ lane });
+  } catch (err) {
+    console.error('Teacher lane update error:', err);
+    res.status(500).json({ error: 'Failed to update lane' });
+  }
+});
+
 // DELETE /api/teacher/students/:studentId — Permanently delete a student (Pair or User) and all data
 router.delete('/students/:studentId', async (req: Request, res: Response) => {
   try {
@@ -828,6 +852,9 @@ router.delete('/students/:studentId', async (req: Request, res: Response) => {
         prisma.shiftResult.deleteMany({ where: { pairId: studentId } }),
         prisma.pair.delete({ where: { id: studentId } }),
       ]);
+      // Clean up in-memory tracking and notify teachers
+      purgeOnlineStudent(studentId);
+      io.to('teacher').emit('student:deleted', { userId: studentId });
       res.json({ deleted: true, type: 'pair' });
       return;
     }
@@ -845,6 +872,9 @@ router.delete('/students/:studentId', async (req: Request, res: Response) => {
         prisma.classEnrollment.deleteMany({ where: { userId: studentId } }),
         prisma.user.delete({ where: { id: studentId } }),
       ]);
+      // Clean up in-memory tracking and notify teachers
+      purgeOnlineStudent(studentId);
+      io.to('teacher').emit('student:deleted', { userId: studentId });
       res.json({ deleted: true, type: 'user' });
       return;
     }
@@ -884,6 +914,8 @@ router.delete('/students', async (req: Request, res: Response) => {
         prisma.shiftResult.deleteMany({ where: { pairId: pair.id } }),
         prisma.pair.delete({ where: { id: pair.id } }),
       ]);
+      purgeOnlineStudent(pair.id);
+      io.to('teacher').emit('student:deleted', { userId: pair.id });
     }
 
     // Delete all legacy students with cascade
@@ -898,6 +930,8 @@ router.delete('/students', async (req: Request, res: Response) => {
         prisma.classEnrollment.deleteMany({ where: { userId: stu.id } }),
         prisma.user.delete({ where: { id: stu.id } }),
       ]);
+      purgeOnlineStudent(stu.id);
+      io.to('teacher').emit('student:deleted', { userId: stu.id });
     }
 
     res.json({ deleted: true, pairsDeleted: allPairs.length, usersDeleted: allLegacyStudents.length });
