@@ -225,6 +225,14 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
     const { currentTaskIndex, taskProgress, weekConfig, taskGates } = get();
     if (!weekConfig || currentTaskIndex >= taskProgress.length) return;
 
+    // Flush any unpersisted concern score before skipping
+    const { concernScoreDelta, concernScorePersisted } = get();
+    const unpersisted = concernScoreDelta - concernScorePersisted;
+    if (unpersisted > 0) {
+      patchConcern(unpersisted).catch(() => {});
+      set({ concernScorePersisted: concernScoreDelta });
+    }
+
     // Persist: mark current task as complete (skipped) on server
     const taskConfig = weekConfig.tasks[currentTaskIndex];
     const shiftState = useShiftStore.getState();

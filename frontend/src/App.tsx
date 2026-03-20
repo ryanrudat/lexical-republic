@@ -24,6 +24,18 @@ export default function App() {
     refresh();
   }, [refresh]);
 
+  // Re-validate session when tab regains focus (e.g. Chromebook waking from sleep,
+  // student switching back after long background). Catches expired JWTs early.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        refresh();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [refresh]);
+
   // Connect student socket as soon as authenticated — makes them visible
   // in the teacher's Live Class Monitor immediately, not just when entering a shift.
   // Socket disconnects on logout (handled in studentStore).

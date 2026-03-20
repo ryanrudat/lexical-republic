@@ -54,4 +54,24 @@ client.interceptors.request.use((config) => {
   return config;
 });
 
+// Handle 401 (expired/invalid session) — clear stale token and redirect to login.
+// Excludes /auth endpoints: login 401 = bad credentials (handled by Login component),
+// /auth/me 401 = unauthenticated (handled by studentStore.refresh → React Router).
+client.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      const url = error.config?.url ?? '';
+      const isAuthEndpoint = url.startsWith('/auth/') || url.startsWith('/api/auth/');
+      if (!isAuthEndpoint) {
+        clearStoredToken();
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+      }
+    }
+    return Promise.reject(error);
+  },
+);
+
 export default client;
