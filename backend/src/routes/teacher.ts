@@ -1286,12 +1286,20 @@ router.get('/students/:studentId/shift-status', async (req: Request, res: Respon
       return;
     }
 
-    // Get missions for this week
-    const missions = await prisma.mission.findMany({
+    // Use WeekConfig as the authoritative task list — the Mission table may
+    // contain legacy storyboard entries (recap, briefing, grammar, etc.) that
+    // aren't part of the actual student shift.
+    const weekConfig = getWeekConfig(weekNumber);
+    const configTasks = weekConfig?.tasks ?? [];
+    const configTypes = new Set(configTasks.map(t => t.type as string));
+
+    // Get only missions that match the current config's task types
+    const allMissions = await prisma.mission.findMany({
       where: { weekId: week.id },
       orderBy: { orderIndex: 'asc' },
       select: { id: true, missionType: true, title: true, orderIndex: true },
     });
+    const missions = allMissions.filter(m => configTypes.has(m.missionType));
 
     // Get existing scores
     const existingScores = await prisma.missionScore.findMany({
@@ -1300,22 +1308,21 @@ router.get('/students/:studentId/shift-status', async (req: Request, res: Respon
     });
     const scoreMap = new Map(existingScores.map(s => [s.missionId, s]));
 
-    // Also try to get task labels from week config
-    const weekConfig = getWeekConfig(weekNumber);
-    const configTaskMap = new Map<string, string>(
-      (weekConfig?.tasks ?? []).map(t => [t.type as string, t.label])
-    );
-
-    const tasks = missions.map(m => {
-      const score = scoreMap.get(m.id);
-      const isComplete = score?.details &&
-        (score.details as Record<string, unknown>).status === 'complete';
-      return {
-        id: m.missionType,
-        label: configTaskMap.get(m.missionType) ?? m.missionType,
-        complete: !!isComplete,
-      };
-    });
+    // Build task list in WeekConfig order (not DB orderIndex) with labels from config
+    const configTaskMap = new Map(missions.map(m => [m.missionType, m]));
+    const tasks = configTasks
+      .filter(t => configTaskMap.has(t.type as string))
+      .map(t => {
+        const mission = configTaskMap.get(t.type as string)!;
+        const score = scoreMap.get(mission.id);
+        const isComplete = score?.details &&
+          (score.details as Record<string, unknown>).status === 'complete';
+        return {
+          id: t.type as string,
+          label: t.label,
+          complete: !!isComplete,
+        };
+      });
 
     const currentTaskIndex = tasks.findIndex(t => !t.complete);
 
@@ -1361,12 +1368,17 @@ router.post('/students/:studentId/task-command', async (req: Request, res: Respo
       return;
     }
 
-    // Get missions for this week (ordered by orderIndex)
-    const missions = await prisma.mission.findMany({
+    // Get missions for this week, filtered to only current WeekConfig task types
+    // (the Mission table may contain legacy storyboard entries)
+    const weekConfig = getWeekConfig(weekNumber);
+    const configTypes = new Set((weekConfig?.tasks ?? []).map(t => t.type as string));
+
+    const allMissions = await prisma.mission.findMany({
       where: { weekId: week.id },
       orderBy: { orderIndex: 'asc' },
       select: { id: true, missionType: true, orderIndex: true },
     });
+    const missions = allMissions.filter(m => configTypes.has(m.missionType));
 
     // Get existing scores for this student's missions
     const existingScores = await prisma.missionScore.findMany({
