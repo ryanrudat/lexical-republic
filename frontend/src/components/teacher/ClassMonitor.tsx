@@ -93,7 +93,7 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
   // Fetch shift status from backend when expanding an offline student
   const fetchedRef = useRef(new Set<string>());
   const loadOfflineStatus = useCallback((studentId: string) => {
-    if (fetchedRef.current.has(studentId) || statusLoading.has(studentId)) return;
+    if (fetchedRef.current.has(studentId)) return;
     fetchedRef.current.add(studentId);
     setStatusLoading((prev) => new Set(prev).add(studentId));
     fetchShiftStatus(studentId)
@@ -112,7 +112,7 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
           return next;
         });
       });
-  }, [statusLoading]);
+  }, []);
 
   // Re-fetch shift status after a task command (skip/reset/send-to) for offline students
   const refreshOfflineStatus = useCallback((studentId: string) => {
@@ -193,7 +193,7 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
       console.error('Task command failed:', err);
     }
     setConfirmAction(null);
-  }, [confirmAction, onlineStudents, refreshOfflineStatus]);
+  }, [confirmAction, onlineStudents, refreshOfflineStatus, loadStudents]);
 
   const actionLabels: Record<string, string> = {
     'skip-task': 'Skip Current Task',

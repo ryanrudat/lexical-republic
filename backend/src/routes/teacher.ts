@@ -1282,7 +1282,7 @@ router.get('/students/:studentId/shift-status', async (req: Request, res: Respon
       select: { id: true, title: true },
     });
     if (!week) {
-      res.json({ weekNumber, tasks: [], currentTaskIndex: -1 });
+      res.json({ weekNumber, weekTitle: null, tasks: [], currentTaskIndex: -1, totalTasks: 0, completedTasks: 0 });
       return;
     }
 

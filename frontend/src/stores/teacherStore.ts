@@ -69,8 +69,14 @@ export const useTeacherStore = create<TeacherState>((set) => ({
   onlineStudents: new Map(),
   lastKnownStatus: new Map(),
   setClassSnapshot: (students) =>
-    set({
-      onlineStudents: new Map(students.map((s) => [s.userId, s])),
+    set((state) => {
+      const onlineStudents = new Map(students.map((s) => [s.userId, s]));
+      // Clear lastKnownStatus for students that are now in the snapshot (back online)
+      const lk = new Map(state.lastKnownStatus);
+      for (const s of students) {
+        lk.delete(s.userId);
+      }
+      return { onlineStudents, lastKnownStatus: lk };
     }),
   upsertStudent: (student) =>
     set((state) => {
