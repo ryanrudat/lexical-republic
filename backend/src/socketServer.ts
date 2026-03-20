@@ -52,6 +52,11 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
       origin: allowedOrigins,
       credentials: true,
     },
+    // Increase timeouts to tolerate browser tab backgrounding.
+    // Browsers throttle timers in background tabs, causing default
+    // 20s pingTimeout to expire. 120s gives plenty of room.
+    pingInterval: 25000,
+    pingTimeout: 120000,
   });
 
   io.use((socket, next) => {

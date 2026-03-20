@@ -104,7 +104,13 @@ export const useStudentStore = create<StudentState>((set) => ({
   },
 
   refresh: async () => {
-    set({ loading: true });
+    // Only show loading screen on initial load (user not yet known).
+    // Re-validating an existing session should NOT set loading=true,
+    // because that unmounts the entire UI (including teacher socket).
+    const currentUser = useStudentStore.getState().user;
+    if (!currentUser) {
+      set({ loading: true });
+    }
     try {
       const user = await getMe();
       if (user.concernScore != null) {

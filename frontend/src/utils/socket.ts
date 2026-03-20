@@ -93,3 +93,15 @@ export function leaveWeekRoom(weekId: string) {
 export function getSocket(): Socket | null {
   return socket;
 }
+
+// Reconnect immediately when browser tab regains focus.
+// Browsers throttle backgrounded tabs, causing Socket.IO heartbeats to
+// time out and the server to drop the connection. Without this, the socket
+// stays in "connecting" state until Socket.IO's exponential backoff fires.
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && socket && !socket.connected) {
+      socket.connect();
+    }
+  });
+}
