@@ -58,11 +58,11 @@ Deprecated: `Vocabulary`, `StudentVocabulary`
 - `GET /api/shifts/weeks/:weekId/config` — week config for task queue (merges teacher overrides from Mission DB records into static WeekConfig, includes `taskGates` array from student's class)
 - `DELETE /api/shifts/weeks/:weekId/scores` — reset all MissionScore records for a week (used by teacher task controls)
 
-### Socket.IO Teacher Task Commands
-- Teacher dashboard emits `task-command` events via Socket.IO
-- Supported actions: `skip` (skip current task), `goToTask` (jump to specific task), `resetShift` (clear all progress), `resetTask` (restart current task)
-- All commands persist to server (MissionScore creation/deletion) before updating local Zustand state
-- Null weekConfig guard returns PEARL feedback instead of silent failure
+### Teacher Task Commands
+- **REST API** (works for online AND offline students): `POST /api/teacher/students/:studentId/task-command` — accepts `{ action, taskId? }`, persists directly to MissionScore/ShiftResult tables, also relays via socket for instant UI update on online students
+- Supported actions: `skip-task` (mark current task complete), `reset-task` (delete current task score), `reset-shift` (delete all scores + ShiftResult), `send-to-task` (mark preceding tasks complete, clear target and later)
+- Backend resolves student's current week and task position from DB (no client state needed)
+- **Legacy Socket.IO path** still works for online students: student client handles `session:task-command` events, persists via its own API calls
 
 ### Teacher routes (`backend/src/routes/teacher.ts`)
 - `GET /api/teacher/weeks` — week list + briefing config
@@ -77,6 +77,7 @@ Deprecated: `Vocabulary`, `StudentVocabulary`
 - `PATCH /api/teacher/students/:pairId/concern` — override pair concern score
 - `DELETE /api/teacher/students/:studentId` — cascade delete single student (Pair or User, 11+ related tables)
 - `DELETE /api/teacher/students` — bulk delete ALL students (iterates all pairs + legacy users)
+- `POST /api/teacher/students/:studentId/task-command` — REST-based task control (skip-task, reset-task, reset-shift, send-to-task), works for online and offline students
 
 ### Class routes (`backend/src/routes/classes.ts`)
 - `DELETE /api/classes/:classId` — cascade delete class (enrollments, week unlocks, harmony posts)

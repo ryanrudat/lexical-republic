@@ -197,6 +197,20 @@ export async function deleteAllStudents(): Promise<{ pairsDeleted: number; users
   return data as { pairsDeleted: number; usersDeleted: number };
 }
 
+export interface ShiftStatus {
+  weekNumber: number;
+  weekTitle?: string;
+  tasks: Array<{ id: string; label: string; complete: boolean }>;
+  currentTaskIndex: number;
+  totalTasks: number;
+  completedTasks: number;
+}
+
+export async function fetchShiftStatus(studentId: string): Promise<ShiftStatus> {
+  const { data } = await client.get(`/teacher/students/${studentId}/shift-status`);
+  return data as ShiftStatus;
+}
+
 export async function sendTaskCommand(
   studentId: string,
   action: 'skip-task' | 'reset-task' | 'reset-shift' | 'send-to-task',

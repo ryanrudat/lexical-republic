@@ -30,6 +30,8 @@ interface TeacherState {
   setSelectedClassId: (classId: string | null) => void;
 
   onlineStudents: Map<string, OnlineStudent>;
+  /** Preserves last-known status when students disconnect, so teacher can still see where they were */
+  lastKnownStatus: Map<string, OnlineStudent>;
   setClassSnapshot: (students: OnlineStudent[]) => void;
   upsertStudent: (student: OnlineStudent) => void;
   removeStudent: (userId: string) => void;
@@ -65,6 +67,7 @@ export const useTeacherStore = create<TeacherState>((set) => ({
   setSelectedClassId: (classId) => set({ selectedClassId: classId }),
 
   onlineStudents: new Map(),
+  lastKnownStatus: new Map(),
   setClassSnapshot: (students) =>
     set({
       onlineStudents: new Map(students.map((s) => [s.userId, s])),
@@ -73,13 +76,22 @@ export const useTeacherStore = create<TeacherState>((set) => ({
     set((state) => {
       const next = new Map(state.onlineStudents);
       next.set(student.userId, student);
-      return { onlineStudents: next };
+      // Clear from lastKnown since they're back online
+      const lk = new Map(state.lastKnownStatus);
+      lk.delete(student.userId);
+      return { onlineStudents: next, lastKnownStatus: lk };
     }),
   removeStudent: (userId) =>
     set((state) => {
       const next = new Map(state.onlineStudents);
+      // Save last-known status before removing
+      const lk = new Map(state.lastKnownStatus);
+      const current = state.onlineStudents.get(userId);
+      if (current) {
+        lk.set(userId, current);
+      }
       next.delete(userId);
-      return { onlineStudents: next };
+      return { onlineStudents: next, lastKnownStatus: lk };
     }),
 
   selectedCell: null,

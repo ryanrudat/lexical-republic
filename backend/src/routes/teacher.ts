@@ -1262,6 +1262,77 @@ router.get('/debug/uploads', (_req: Request, res: Response) => {
   res.json(result);
 });
 
+// ── Student shift status (works for offline students too) ─────────────────
+
+router.get('/students/:studentId/shift-status', async (req: Request, res: Response) => {
+  try {
+    const teacherId = getTeacherId(req)!;
+    const pairId = req.params.studentId as string;
+
+    if (!(await teacherOwnsPair(teacherId, pairId))) {
+      res.status(403).json({ error: 'Not your student' });
+      return;
+    }
+
+    const { getCurrentWeekNumberForPair } = await import('../utils/progression');
+    const weekNumber = await getCurrentWeekNumberForPair(pairId);
+
+    const week = await prisma.week.findFirst({
+      where: { weekNumber },
+      select: { id: true, title: true },
+    });
+    if (!week) {
+      res.json({ weekNumber, tasks: [], currentTaskIndex: -1 });
+      return;
+    }
+
+    // Get missions for this week
+    const missions = await prisma.mission.findMany({
+      where: { weekId: week.id },
+      orderBy: { orderIndex: 'asc' },
+      select: { id: true, missionType: true, title: true, orderIndex: true },
+    });
+
+    // Get existing scores
+    const existingScores = await prisma.missionScore.findMany({
+      where: { pairId, missionId: { in: missions.map(m => m.id) } },
+      select: { missionId: true, details: true },
+    });
+    const scoreMap = new Map(existingScores.map(s => [s.missionId, s]));
+
+    // Also try to get task labels from week config
+    const weekConfig = getWeekConfig(weekNumber);
+    const configTaskMap = new Map<string, string>(
+      (weekConfig?.tasks ?? []).map(t => [t.type as string, t.label])
+    );
+
+    const tasks = missions.map(m => {
+      const score = scoreMap.get(m.id);
+      const isComplete = score?.details &&
+        (score.details as Record<string, unknown>).status === 'complete';
+      return {
+        id: m.missionType,
+        label: configTaskMap.get(m.missionType) ?? m.missionType,
+        complete: !!isComplete,
+      };
+    });
+
+    const currentTaskIndex = tasks.findIndex(t => !t.complete);
+
+    res.json({
+      weekNumber,
+      weekTitle: week.title,
+      tasks,
+      currentTaskIndex,
+      totalTasks: tasks.length,
+      completedTasks: tasks.filter(t => t.complete).length,
+    });
+  } catch (err) {
+    console.error('Shift status error:', err);
+    res.status(500).json({ error: 'Failed to get shift status' });
+  }
+});
+
 // ── Teacher Task Command (works for online AND offline students) ──────────
 
 router.post('/students/:studentId/task-command', async (req: Request, res: Response) => {

@@ -29,7 +29,7 @@ Config-driven task queue. Each week has 4 tasks driven by static `WeekConfig` Ty
 - `WordMatch`: Both word and definition columns independently shuffled
 - `VocabClearance`: Item order + option order within each item shuffled, `correctIndex` remapped
 - `ErrorCorrectionDoc`: Dropdown options shuffled per error, `correctIndex` remapped
-- `ClozeFill`: Word bank shuffled via `useMemo` so correct answers don't appear in blank order
+- `ClozeFill`: Word bank shows full words (not truncated prefixes), shuffled via `useMemo` so correct answers don't appear in blank order
 
 **Touch support:** All interactive elements have `active:` Tailwind states for touchscreen Chromebooks (active:scale-95, active:bg-*, etc.)
 
@@ -95,13 +95,14 @@ Step navigation gated by completion. All steps support optional video via `StepV
 - Resets on new shift (different week key) or server restart
 
 ## Character Messaging System
-- `MessagingPanel` — slides from right (360px, z-[41]), inbox/thread navigation
-- `InboxView` — preview cards sorted most-recent-first with color dot, designation, preview, timestamp
-- `ThreadView` — full conversation: character message → reply options → student reply → typing indicator → character response
-- `MessageNotification` — toast stays until student clicks (body deep-links to thread, X dismisses)
+- `MessagingPanel` — slides from right (360px, z-[41]), inbox/conversation navigation
+- `InboxView` — messages grouped by character name into conversation threads; one card per character with message count badge, preview from latest message, and unread indicator
+- `ThreadView` — full conversation: character message → reply options → student reply → typing indicator → character response. When opened from grouped inbox, all messages from that character render in chronological order
+- `MessageNotification` — toast stays until student clicks (body opens full conversation with that character, X dismisses)
 - Messages triggered by `task_start`, `task_complete`, `shift_start` events from WeekConfig
 - Dedup: module-level `inFlightKeys` + backend `$transaction` + GET response dedup
 - Header icon layout: [Dictionary] [Messages] | [PEARL eye + label] (Ministry text and PEARL label hidden on mobile)
+- Store: `selectedConversation` (character name) for grouped view, `selectedMessageId` for legacy single-message navigation
 
 ## Harmony App (State Social Network)
 - Locked until Shift 1 completed (checks `ShiftResult` record)
@@ -134,7 +135,9 @@ Step navigation gated by completion. All steps support optional video via `StepV
 ## MonitorPlayer (Shared CRT Video Player)
 - **Single source of truth** for all video playback: `frontend/src/components/shared/MonitorPlayer.tsx`
 - Used by: WelcomeVideoModal, ShiftQueue task clip gate, PhaseClipPlayer, BriefingStep, StepVideoClip
-- **Retro CRT monitor frame**: Video plays inside vintage monitor image (`public/images/welcome-monitor.jpg`, 2744x1568)
+- **Retro CRT monitor frame**: Video plays inside vintage monitor image (`public/images/welcome-monitor.jpg`, 2744x1568, compressed to ~550KB)
+- **Loading state**: Shows "INITIALIZING DISPLAY..." text while monitor image loads, then fades in over 300ms
+- **Video preload**: `preload="metadata"` on video element for faster initial load
 - Screen positioned with `clip-path: polygon()` tracing the exact glossy black glass shape
 - CRT visual effects: scanline overlay, vignette edge blending (inset box-shadow), radial glare gradient
 - Seekable progress bar overlaid on the monitor's green LED strip
@@ -184,6 +187,7 @@ Step navigation gated by completion. All steps support optional video via `StepV
 - Shifts: welcome video upload + Shift Storyboard (per-task video upload, embed URL, hide/show toggle)
 - **ClassManager**: expandable students/weeks panels per class, delete class (cascade), remove individual students with confirmation dialogs
 - **ClassMonitor**: per-student delete button, bulk "Delete All Students" in header, both with destructive confirmation dialogs
+- **Task controls work for all students** (online and offline): Skip Task, Reset Task, Reset Shift use REST API (`POST /api/teacher/students/:studentId/task-command`) that persists directly to DB. Online students also get instant socket relay. Student cards are always expandable regardless of connection status.
 - **Student deletion cascade**: Pair → pairDictionaryProgress, missionScore, recording, pearlConversation, narrativeChoice, harmonyPost, harmonyCensureResponse, classEnrollment, characterMessage, citizen4488Interaction, shiftResult (11 related tables)
 
 ## OfficeView
@@ -219,7 +223,7 @@ Step navigation gated by completion. All steps support optional video via `StepV
 - **CRT scan line**: White horizontal line sweeps down the monitor screen every 6s (`crt-monitor-screen::after`), rendered behind app content (`z-index: 0`)
 - **Animated grid**: Cyan grid lines (`rgba(0, 229, 255, 0.03)`) drift slowly across the black surround
 - **CRT vignette**: Inset box-shadow darkens edges of the full terminal frame
-- **App tiles**: All 6 tiles (Office, Lexicon, Current Shift, Harmony, My File, Duty Roster) use custom PNG icons at 130% size with transparent backgrounds — no clipping, cyan CRT shows through
+- **App tiles**: All 6 tiles (Office, Lexicon, Current Shift, Harmony, My File, Duty Roster) use custom PNG icons at 240px width with transparent backgrounds — no clipping, cyan CRT shows through
 - **App icon files**: `office-icon.png`, `lexicon-icon.png`, `current-shift-icon.png`, `harmony-icon.png`, `my-file-icon.png` in `frontend/public/images/`
 - **Desktop text**: Dark teal tones (`#1A3035`, `#2A4A4E`, `#3A5A5E`) readable on cyan background
 

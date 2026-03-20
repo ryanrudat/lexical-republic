@@ -1,5 +1,6 @@
-import { useEffect, useState, useCallback } from 'react';
-import { fetchStudents, deleteStudent, deleteAllStudents, sendTaskCommand } from '../../api/teacher';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { fetchStudents, deleteStudent, deleteAllStudents, sendTaskCommand, fetchShiftStatus } from '../../api/teacher';
+import type { ShiftStatus } from '../../api/teacher';
 import { useTeacherStore } from '../../stores/teacherStore';
 import { getSocket } from '../../utils/socket';
 import { STEP_ORDER } from '../../types/shifts';
@@ -12,6 +13,7 @@ const stepLabel = (stepId: string) =>
 const WARN_TIME_MS = 5 * 60 * 1000;   // 5 min → yellow
 const ALERT_TIME_MS = 8 * 60 * 1000;  // 8 min → red
 const FAIL_ALERT_THRESHOLD = 2;        // 2 fails → red
+const AUTO_REFRESH_MS = 30_000;        // 30s auto-refresh
 
 type FlagLevel = 'ok' | 'warn' | 'alert';
 
@@ -42,7 +44,12 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
     taskLabel?: string;
   } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  // Cache of shift status fetched from backend for offline students
+  const [offlineStatus, setOfflineStatus] = useState<Map<string, ShiftStatus>>(new Map());
+  const [statusLoading, setStatusLoading] = useState<Set<string>>(new Set());
+
   const onlineStudents = useTeacherStore((s) => s.onlineStudents);
+  const lastKnownStatus = useTeacherStore((s) => s.lastKnownStatus);
   const socketStatus = useTeacherStore((s) => s.socketStatus);
   const registrationTick = useTeacherStore((s) => s.registrationTick);
   const classPaused = useTeacherStore((s) => s.classPaused);
@@ -60,6 +67,12 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
     loadStudents();
   }, [loadStudents, registrationTick]);
 
+  // Auto-refresh student list every 30 seconds to catch missed socket events
+  useEffect(() => {
+    const interval = setInterval(loadStudents, AUTO_REFRESH_MS);
+    return () => clearInterval(interval);
+  }, [loadStudents]);
+
   // Update time-on-task display every 30 seconds
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 30_000);
@@ -76,6 +89,53 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
     const interval = setInterval(() => setPauseElapsed(Date.now() - start), 1000);
     return () => clearInterval(interval);
   }, [classPaused]);
+
+  // Fetch shift status from backend when expanding an offline student
+  const fetchedRef = useRef(new Set<string>());
+  const loadOfflineStatus = useCallback((studentId: string) => {
+    if (fetchedRef.current.has(studentId) || statusLoading.has(studentId)) return;
+    fetchedRef.current.add(studentId);
+    setStatusLoading((prev) => new Set(prev).add(studentId));
+    fetchShiftStatus(studentId)
+      .then((status) => {
+        setOfflineStatus((prev) => {
+          const next = new Map(prev);
+          next.set(studentId, status);
+          return next;
+        });
+      })
+      .catch(() => {})
+      .finally(() => {
+        setStatusLoading((prev) => {
+          const next = new Set(prev);
+          next.delete(studentId);
+          return next;
+        });
+      });
+  }, [statusLoading]);
+
+  // Re-fetch shift status after a task command (skip/reset/send-to) for offline students
+  const refreshOfflineStatus = useCallback((studentId: string) => {
+    fetchedRef.current.delete(studentId);
+    setOfflineStatus((prev) => {
+      const next = new Map(prev);
+      next.delete(studentId);
+      return next;
+    });
+    // Small delay for the DB write to settle, then re-fetch
+    setTimeout(() => {
+      fetchedRef.current.add(studentId);
+      fetchShiftStatus(studentId)
+        .then((status) => {
+          setOfflineStatus((prev) => {
+            const next = new Map(prev);
+            next.set(studentId, status);
+            return next;
+          });
+        })
+        .catch(() => {});
+    }, 500);
+  }, []);
 
   const handlePause = () => {
     const sock = getSocket();
@@ -125,11 +185,15 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
     // REST API persists to DB + relays via socket to online students
     try {
       await sendTaskCommand(studentId, action as 'skip-task' | 'reset-task' | 'reset-shift' | 'send-to-task', taskId);
+      // If student is offline, refresh their cached status
+      if (!onlineStudents.has(studentId)) {
+        refreshOfflineStatus(studentId);
+      }
     } catch (err) {
       console.error('Task command failed:', err);
     }
     setConfirmAction(null);
-  }, [confirmAction]);
+  }, [confirmAction, onlineStudents, refreshOfflineStatus]);
 
   const actionLabels: Record<string, string> = {
     'skip-task': 'Skip Current Task',
@@ -148,11 +212,13 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
     );
   }
 
-  // Merge REST student list with real-time online data, sort online-first then by designation
+  // Merge REST student list with real-time online data + last-known status
   const merged = students
     .map((s) => ({
       ...s,
       online: onlineStudents.get(s.id) ?? null,
+      lastKnown: lastKnownStatus.get(s.id) ?? null,
+      offlineShift: offlineStatus.get(s.id) ?? null,
     }))
     .sort((a, b) => {
       if (a.online && !b.online) return -1;
@@ -305,13 +371,27 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
               ? 'border-amber-300 bg-amber-50/50'
               : 'border-slate-200';
           const isExpanded = expandedStudent === student.id;
+          const lk = student.lastKnown;
+          const shiftStatus = student.offlineShift;
+
+          // Determine task list for "Send to Task" — prefer online, fall back to fetched status
+          const taskList = student.online?.tasks && student.online.tasks.length > 0
+            ? student.online.tasks
+            : shiftStatus?.tasks ?? [];
+          const currentTaskId = student.online?.taskId
+            ?? (shiftStatus && shiftStatus.currentTaskIndex >= 0 ? shiftStatus.tasks[shiftStatus.currentTaskIndex]?.id : null);
 
           return (
             <div
               key={student.id}
               className={`rounded-xl border shadow-sm p-4 ${flagBorder} cursor-pointer`}
               onClick={() => {
-                setExpandedStudent(isExpanded ? null : student.id);
+                const nextExpanded = isExpanded ? null : student.id;
+                setExpandedStudent(nextExpanded);
+                // Auto-fetch shift status for offline students when expanding
+                if (nextExpanded && !student.online) {
+                  loadOfflineStatus(student.id);
+                }
               }}
             >
               <div className="flex items-start gap-3">
@@ -382,7 +462,29 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
                       )}
                     </div>
                   ) : (
-                    <div className="mt-1 text-xs text-slate-400">Offline</div>
+                    <div className="mt-1 space-y-0.5">
+                      <div className="text-xs text-slate-400">
+                        Offline
+                        {/* Show last-known shift/task from socket memory */}
+                        {lk?.weekNumber && (
+                          <span className="text-slate-500 ml-1">
+                            — last seen: Shift {lk.weekNumber}
+                            {lk.taskLabel && <>, {lk.taskLabel}</>}
+                          </span>
+                        )}
+                      </div>
+                      {/* Show DB-based progress if fetched */}
+                      {shiftStatus && (
+                        <div className="text-[11px] text-indigo-500">
+                          Shift {shiftStatus.weekNumber}: {shiftStatus.completedTasks}/{shiftStatus.totalTasks} tasks done
+                          {shiftStatus.currentTaskIndex >= 0 && shiftStatus.tasks[shiftStatus.currentTaskIndex] && (
+                            <span className="text-slate-500">
+                              {' '}— next: {shiftStatus.tasks[shiftStatus.currentTaskIndex].label}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   )}
 
                   <div className="mt-1.5 flex items-center gap-3 text-xs text-slate-400">
@@ -452,33 +554,46 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
                     </button>
                   </div>
 
-                  {/* Send to specific task — only if task list is available (online students) */}
-                  {student.online?.tasks && student.online.tasks.length > 0 && (
+                  {/* Send to specific task — works for BOTH online and offline students */}
+                  {taskList.length > 0 && (
                     <div className="mt-1">
-                      <div className="text-[10px] text-slate-400 mb-1">Send to task:</div>
+                      <div className="text-[10px] text-slate-400 mb-1">
+                        Send to task{!student.online && ' (from saved progress)'}:
+                      </div>
                       <div className="flex flex-wrap gap-1">
-                        {student.online.tasks.map((t) => (
-                          <button
-                            key={t.id}
-                            className={`px-2 py-0.5 text-[10px] rounded border transition-colors ${
-                              student.online?.taskId === t.id
-                                ? 'bg-indigo-100 text-indigo-700 border-indigo-300 font-semibold'
-                                : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
-                            }`}
-                            disabled={student.online?.taskId === t.id}
-                            onClick={() => setConfirmAction({
-                              studentId: student.id,
-                              designation: student.designation ?? '??',
-                              action: 'send-to-task',
-                              taskId: t.id,
-                              taskLabel: t.label,
-                            })}
-                          >
-                            {t.label}
-                          </button>
-                        ))}
+                        {taskList.map((t) => {
+                          const isCurrent = student.online
+                            ? student.online.taskId === t.id
+                            : currentTaskId === t.id;
+                          const isComplete = 'complete' in t && (t as { complete?: boolean }).complete;
+                          return (
+                            <button
+                              key={t.id}
+                              className={`px-2 py-0.5 text-[10px] rounded border transition-colors ${
+                                isCurrent
+                                  ? 'bg-indigo-100 text-indigo-700 border-indigo-300 font-semibold'
+                                  : isComplete
+                                  ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                                  : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
+                              }`}
+                              onClick={() => setConfirmAction({
+                                studentId: student.id,
+                                designation: student.designation ?? '??',
+                                action: 'send-to-task',
+                                taskId: t.id,
+                                taskLabel: t.label,
+                              })}
+                            >
+                              {isComplete && <span className="mr-0.5">&#10003;</span>}
+                              {t.label}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
+                  )}
+                  {!student.online && statusLoading.has(student.id) && taskList.length === 0 && (
+                    <div className="text-[10px] text-slate-400 animate-pulse">Loading task list...</div>
                   )}
 
                   {/* Clarity Minder: teacher↔student direct messaging */}
@@ -486,7 +601,7 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
                     <ClarityMinderThread
                       studentId={student.id}
                       designation={student.designation ?? '??'}
-                      weekNumber={student.online?.weekNumber ?? null}
+                      weekNumber={student.online?.weekNumber ?? lk?.weekNumber ?? shiftStatus?.weekNumber ?? null}
                     />
                   </div>
                 </div>
@@ -532,7 +647,9 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
             </p>
             {confirmAction.action !== 'delete-student' && confirmAction.action !== 'delete-all' && (
               <p className="text-xs text-slate-400">
-                The student will see a PEARL notification about this action.
+                {onlineStudents.has(confirmAction.studentId)
+                  ? 'The student will see a PEARL notification about this action.'
+                  : 'This will take effect when the student logs back in.'}
               </p>
             )}
             <div className="flex gap-2 justify-end pt-2">
