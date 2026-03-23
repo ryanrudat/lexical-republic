@@ -75,7 +75,8 @@ Deprecated: `Vocabulary`, `StudentVocabulary`
 - `DELETE /api/teacher/scores/:scoreId` — delete individual score
 - `DELETE /api/teacher/students/:pairId/weeks/:weekId/progress` — reset week progress (cascading delete)
 - `PATCH /api/teacher/students/:pairId/concern` — override pair concern score
-- `DELETE /api/teacher/students/:studentId` — cascade delete single student (Pair or User, 11+ related tables)
+- `PATCH /api/teacher/students/:pairId/lane` — set student difficulty tier (validates 1-3), emits `session:lane-changed` socket event for real-time update
+- `DELETE /api/teacher/students/:studentId` — cascade delete single student (Pair or User, 11+ related tables), emits `student:deleted` socket event + purges in-memory tracking
 - `DELETE /api/teacher/students` — bulk delete ALL students (iterates all pairs + legacy users)
 - `POST /api/teacher/students/:studentId/task-command` — REST-based task control (skip-task, reset-task, reset-shift, send-to-task), works for online and offline students
 
@@ -84,6 +85,7 @@ Deprecated: `Vocabulary`, `StudentVocabulary`
 - `DELETE /api/classes/:classId/students/:studentId` — remove student enrollment from class
 - `GET /api/classes/:classId/weeks/:weekId/task-gate` — read active gates (returns `taskGates: number[]`)
 - `PATCH /api/classes/:classId/weeks/:weekId/task-gate` — set gates (accepts `{ taskGates: number[] }`), broadcasts `session:gate-updated` to class room
+- `PATCH /api/classes/:classId` — update class name, active status, or `defaultLane` (1-3)
 
 ### Dictionary routes (`backend/src/routes/dictionary.ts`)
 - `GET /api/dictionary` — full word list with `translationZhTw`, `starred`, `chineseRevealed`

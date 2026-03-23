@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { TaskProps } from '../../../types/shiftQueue';
 import { useShiftQueueStore } from '../../../stores/shiftQueueStore';
+import { useStudentStore } from '../../../stores/studentStore';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -27,6 +28,12 @@ function shuffle<T>(arr: T[]): T[] {
 export default function VocabClearance({ config, onComplete }: TaskProps) {
   const rawItems = (config.items ?? []) as VocabItem[];
   const addConcern = useShiftQueueStore(s => s.addConcern);
+  const lane = useStudentStore(s => s.user?.lane ?? 2);
+
+  // Tier 1 (Guided): 3 attempts — more chances, concern only on final miss
+  // Tier 2 (Standard): 2 attempts — current behavior
+  // Tier 3 (Independent): 1 attempt — immediate lock on wrong answer
+  const maxAttempts = lane === 1 ? 3 : lane === 3 ? 1 : 2;
 
   // Shuffle item order and option order within each item on mount
   const items = useRef(
@@ -91,22 +98,27 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
         const newCount = correctCount + 1;
         setCorrectCount(newCount);
         advanceTimerRef.current = setTimeout(() => advanceToNext(newCount), 1200);
-      } else if (attempt === 1) {
+      } else if (attempt < maxAttempts) {
+        // Still has attempts left — eliminate wrong option, let them retry
         setShowResult(true);
-        addConcern(0.05);
+        // Tier 1: only add concern on final miss; Tier 2/3: every miss
+        if (lane !== 1) addConcern(0.05);
         advanceTimerRef.current = setTimeout(() => {
           setEliminatedOptions(prev => new Set(prev).add(optionIndex));
           setSelectedOption(null);
           setShowResult(false);
-          setAttempt(2);
+          setAttempt(prev => prev + 1);
         }, 800);
       } else {
+        // Final attempt missed — lock and advance
         setShowResult(true);
         addConcern(0.05);
-        advanceTimerRef.current = setTimeout(() => advanceToNext(correctCount), 1500);
+        // Tier 1: show correct answer longer (2s) for learning; others: 1.5s
+        const delay = lane === 1 ? 2500 : 1500;
+        advanceTimerRef.current = setTimeout(() => advanceToNext(correctCount), delay);
       }
     }, 300);
-  }, [showResult, selectedOption, eliminatedOptions, item, attempt, correctCount, addConcern, advanceToNext]);
+  }, [showResult, selectedOption, eliminatedOptions, item, attempt, maxAttempts, lane, correctCount, addConcern, advanceToNext]);
 
   if (!item) {
     return null;
@@ -158,7 +170,7 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
 
             if (isEliminated) {
               classes += 'border-[#E8E4DC] bg-[#FAFAF7] text-[#D4CFC6] line-through opacity-50';
-            } else if (showResult && isCorrectAnswer && (isSelected || attempt === 2)) {
+            } else if (showResult && isCorrectAnswer && (isSelected || attempt >= maxAttempts)) {
               classes += 'border-emerald-300 bg-emerald-50 text-emerald-700 font-medium';
             } else if (showResult && isSelected && !isCorrectAnswer) {
               classes += 'border-rose-300 bg-rose-50 text-rose-600';
@@ -188,13 +200,13 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
               <span className="text-xs text-emerald-600 font-medium tracking-wider">
                 Correct
               </span>
-            ) : attempt === 1 ? (
+            ) : attempt < maxAttempts ? (
               <span className="text-xs text-amber-600 tracking-wider">
-                Try again
+                Try again{lane === 1 && ` (${maxAttempts - attempt} left)`}
               </span>
             ) : (
               <span className="text-xs text-rose-500 tracking-wider">
-                Incorrect
+                Incorrect — answer: {item.options[item.correctIndex]}
               </span>
             )}
           </div>

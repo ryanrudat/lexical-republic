@@ -190,6 +190,33 @@ Step navigation gated by completion. All steps support optional video via `StepV
 - **Task controls work for all students** (online and offline): Skip Task, Reset Task, Reset Shift use REST API (`POST /api/teacher/students/:studentId/task-command`) that persists directly to DB. Online students also get instant socket relay. Student cards are always expandable regardless of connection status.
 - **Student deletion cascade**: Pair → pairDictionaryProgress, missionScore, recording, pearlConversation, narrativeChoice, harmonyPost, harmonyCensureResponse, classEnrollment, characterMessage, citizen4488Interaction, shiftResult (11 related tables)
 
+## Difficulty Tier System (Teacher-Controlled Lanes)
+Teachers can set student difficulty tiers (1=Guided, 2=Standard, 3=Independent) at per-student and per-class-default levels. Changes apply in real-time without student re-login.
+
+**Per-student control:** ClassMonitor expanded cards show a 3-button tier selector (Guided / Standard / Independent) with description of what each tier provides. Calls `PATCH /api/teacher/students/:pairId/lane`.
+
+**Per-class default:** ClassManager header shows G1/S2/I3 segmented toggle. New students registering with that class code inherit the class default lane. Stored as `Class.defaultLane` (migration: `20260320071340_add_class_default_lane`).
+
+**Real-time updates:** Backend emits `session:lane-changed` socket event to the student. Frontend `studentStore.setLane()` updates the cached user object immediately. PEARL bark: "CLASSIFICATION UPDATE: Your operational tier has been adjusted by a supervisor."
+
+**What tiers control:**
+- **Writing tasks** (ShiftReport, ContradictionReport, PriorityBriefing): Tier 1 gets sentence starters + Chinese word bank + 20-word min; Tier 3 gets bonus prompts + 40-word min + `requireNegative`
+- **Error Correction Doc**: Tier 1 gets sequential grammar hints via `laneHints`
+- **VocabClearance**: Tier 1 gets 3 attempts (concern only on final miss, 2.5s correct-answer display); Tier 2 gets 2 attempts; Tier 3 gets 1 attempt (immediate lock)
+- **AI evaluation**: Prompt includes lane context; unified pass threshold (avg >= 0.4) across all tiers
+- **WordMatch, ClozeFill, PrioritySort**: Not yet tiered (same for all students)
+
+## Login Form Persistence
+Login form state persisted in `loginFormStore.ts` (Zustand) so navigation away from `/login` doesn't reset partially filled fields. Form clears only on successful login/register.
+
+## Student Deletion Socket Cleanup
+When a student is deleted (single or bulk), backend now:
+1. Calls `purgeOnlineStudent()` to clear in-memory `onlineStudents` + `entitySockets` + `disconnectTimers` maps
+2. Emits `student:deleted` socket event to teacher room
+3. Frontend `useTeacherSocket` listens for `student:deleted` and calls `purgeStudent()` which clears both `onlineStudents` AND `lastKnownStatus` maps
+
+Previously, deleted students persisted as "Offline" cards in ClassMonitor due to stale `lastKnownStatus` entries.
+
 ## OfficeView
 - PEARL 3D Sphere: R3F Canvas (`frontend/src/components/office/PearlSphere3D.tsx`)
   - SwirlSphere (GLSL shader, animated vortex), VideoFace (brightness-threshold shader), GlassShell (transparent highlight)
