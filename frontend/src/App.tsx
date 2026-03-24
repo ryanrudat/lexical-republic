@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useStudentStore } from './stores/studentStore';
 import Login from './pages/Login';
 import TeacherDashboard from './pages/TeacherDashboard';
@@ -14,11 +14,13 @@ import { usePearlStore } from './stores/pearlStore';
 import { useMessagingStore } from './stores/messagingStore';
 import type { CharacterMessage, ThreadEntry } from './types/shiftQueue';
 import WelcomeVideoModal from './components/welcome/WelcomeVideoModal';
+import { useSeasonStore } from './stores/seasonStore';
 
 export default function App() {
   const { user, loading, refresh } = useStudentStore();
   const [, forceBootRefresh] = useState(0);
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     refresh();
@@ -121,6 +123,14 @@ export default function App() {
         }
       };
 
+      const onShiftChanged = async (data: { weekNumber: number }) => {
+        const pearl = usePearlStore.getState();
+        useShiftQueueStore.getState().reset();
+        await useSeasonStore.getState().loadSeason();
+        navigate(`/shift/${data.weekNumber}`, { replace: true });
+        pearl.triggerBark('notice', `SUPERVISOR OVERRIDE: Transfer directive received. Report to Shift ${data.weekNumber}.`);
+      };
+
       // Load all existing messages on login so inbox is populated immediately
       void useMessagingStore.getState().loadMessages();
 
@@ -130,6 +140,7 @@ export default function App() {
       sock.on('session:task-command', onTaskCommand);
       sock.on('session:lane-changed', onLaneChanged);
       sock.on('session:gate-updated', onGateUpdated);
+      sock.on('session:shift-changed', onShiftChanged);
       sock.on('session:clarity-message', onClarityMessage);
 
       return () => {
@@ -139,10 +150,11 @@ export default function App() {
         sock.off('session:task-command', onTaskCommand);
         sock.off('session:lane-changed', onLaneChanged);
         sock.off('session:gate-updated', onGateUpdated);
+        sock.off('session:shift-changed', onShiftChanged);
         sock.off('session:clarity-message', onClarityMessage);
       };
     }
-  }, [user?.id, user?.role, user?.designation, user?.displayName]);
+  }, [user?.id, user?.role, user?.designation, user?.displayName, navigate]);
 
   if (loading) {
     return (

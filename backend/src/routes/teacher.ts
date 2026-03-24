@@ -1503,4 +1503,199 @@ router.post('/students/:studentId/task-command', async (req: Request, res: Respo
   }
 });
 
+// ── Move Student / Class to Shift ──────────────────────────────────
+
+/** Core logic: move a single student to a target week. Returns the weekNumber. */
+async function moveOnePairToShift(pairId: string, targetWeekNumber: number) {
+  const { getCurrentWeekNumberForPair } = await import('../utils/progression');
+  const currentWeek = await getCurrentWeekNumberForPair(pairId);
+
+  // Find all Week records we may need
+  const allWeeks = await prisma.week.findMany({
+    where: { weekNumber: { gte: Math.min(currentWeek, targetWeekNumber), lte: Math.max(currentWeek, targetWeekNumber) } },
+    select: { id: true, weekNumber: true },
+  });
+  const weekByNumber = new Map(allWeeks.map(w => [w.weekNumber, w]));
+  const targetWeek = weekByNumber.get(targetWeekNumber);
+  if (!targetWeek) throw new Error(`Week record not found for weekNumber ${targetWeekNumber}`);
+
+  if (targetWeekNumber > currentWeek) {
+    // Moving FORWARD — mark skipped weeks as complete, reset target
+    for (let wn = currentWeek; wn < targetWeekNumber; wn++) {
+      const w = weekByNumber.get(wn);
+      if (!w) continue;
+      await prisma.shiftResult.upsert({
+        where: { pairId_weekNumber: { pairId, weekNumber: wn } },
+        create: { pairId, weekNumber: wn, completedAt: new Date() },
+        update: { completedAt: new Date() },
+      });
+    }
+    // Delete MissionScores for target week (fresh start)
+    const targetMissions = await prisma.mission.findMany({
+      where: { weekId: targetWeek.id },
+      select: { id: true },
+    });
+    if (targetMissions.length > 0) {
+      await prisma.missionScore.deleteMany({
+        where: { pairId, missionId: { in: targetMissions.map(m => m.id) } },
+      });
+    }
+    // Marker ShiftResult for target (completedAt = null)
+    await prisma.shiftResult.upsert({
+      where: { pairId_weekNumber: { pairId, weekNumber: targetWeekNumber } },
+      create: { pairId, weekNumber: targetWeekNumber, completedAt: null },
+      update: { completedAt: null },
+    });
+  } else if (targetWeekNumber < currentWeek) {
+    // Moving BACKWARD — delete data from target onward
+    const weeksToReset = await prisma.week.findMany({
+      where: { weekNumber: { gte: targetWeekNumber } },
+      select: { id: true, weekNumber: true },
+    });
+    const weekIds = weeksToReset.map(w => w.id);
+    const weekNumbers = weeksToReset.map(w => w.weekNumber);
+
+    // Delete MissionScores for all missions in these weeks
+    const missions = await prisma.mission.findMany({
+      where: { weekId: { in: weekIds } },
+      select: { id: true },
+    });
+    if (missions.length > 0) {
+      await prisma.missionScore.deleteMany({
+        where: { pairId, missionId: { in: missions.map(m => m.id) } },
+      });
+    }
+    // Delete ShiftResults for these weeks
+    await prisma.shiftResult.deleteMany({
+      where: { pairId, weekNumber: { in: weekNumbers } },
+    });
+    // Marker ShiftResult for target
+    await prisma.shiftResult.create({
+      data: { pairId, weekNumber: targetWeekNumber, completedAt: null },
+    });
+  } else {
+    // Same week — reset shift + create marker
+    const missions = await prisma.mission.findMany({
+      where: { weekId: targetWeek.id },
+      select: { id: true },
+    });
+    if (missions.length > 0) {
+      await prisma.missionScore.deleteMany({
+        where: { pairId, missionId: { in: missions.map(m => m.id) } },
+      });
+    }
+    await prisma.shiftResult.deleteMany({
+      where: { pairId, weekNumber: targetWeekNumber },
+    });
+    await prisma.shiftResult.create({
+      data: { pairId, weekNumber: targetWeekNumber, completedAt: null },
+    });
+  }
+}
+
+// POST /api/teacher/students/:studentId/move-to-shift
+router.post('/students/:studentId/move-to-shift', async (req: Request, res: Response) => {
+  try {
+    const teacherId = getTeacherId(req)!;
+    const pairId = req.params.studentId as string;
+    const { weekNumber } = req.body as { weekNumber: number };
+
+    if (typeof weekNumber !== 'number' || weekNumber < 1 || weekNumber > 18) {
+      res.status(400).json({ error: 'weekNumber must be 1-18' });
+      return;
+    }
+    if (!getWeekConfig(weekNumber)) {
+      res.status(400).json({ error: `Shift ${weekNumber} has no content configured` });
+      return;
+    }
+    if (!(await teacherOwnsPair(teacherId, pairId))) {
+      res.status(403).json({ error: 'Not your student' });
+      return;
+    }
+
+    // Auto-unlock target + all prior weeks for the student's class
+    const enrollment = await prisma.classEnrollment.findFirst({
+      where: { pairId },
+      select: { classId: true },
+    });
+    if (enrollment) {
+      const weeksToUnlock = await prisma.week.findMany({
+        where: { weekNumber: { lte: weekNumber } },
+        select: { id: true },
+      });
+      for (const w of weeksToUnlock) {
+        await prisma.classWeekUnlock.upsert({
+          where: { classId_weekId: { classId: enrollment.classId, weekId: w.id } },
+          create: { classId: enrollment.classId, weekId: w.id },
+          update: {},
+        });
+      }
+    }
+
+    await moveOnePairToShift(pairId, weekNumber);
+
+    io.to(`student:${pairId}`).emit('session:shift-changed', { weekNumber });
+    res.json({ success: true, weekNumber });
+  } catch (err) {
+    console.error('Move to shift error:', err);
+    res.status(500).json({ error: 'Failed to move student to shift' });
+  }
+});
+
+// POST /api/teacher/classes/:classId/move-to-shift
+router.post('/classes/:classId/move-to-shift', async (req: Request, res: Response) => {
+  try {
+    const teacherId = getTeacherId(req)!;
+    const classId = req.params.classId as string;
+    const { weekNumber } = req.body as { weekNumber: number };
+
+    if (typeof weekNumber !== 'number' || weekNumber < 1 || weekNumber > 18) {
+      res.status(400).json({ error: 'weekNumber must be 1-18' });
+      return;
+    }
+    if (!getWeekConfig(weekNumber)) {
+      res.status(400).json({ error: `Shift ${weekNumber} has no content configured` });
+      return;
+    }
+    const teacherClassIds = await getTeacherClassIds(teacherId);
+    if (!teacherClassIds.includes(classId)) {
+      res.status(403).json({ error: 'Not your class' });
+      return;
+    }
+
+    // Auto-unlock target + all prior weeks for the class
+    const weeksToUnlock = await prisma.week.findMany({
+      where: { weekNumber: { lte: weekNumber } },
+      select: { id: true },
+    });
+    for (const w of weeksToUnlock) {
+      await prisma.classWeekUnlock.upsert({
+        where: { classId_weekId: { classId, weekId: w.id } },
+        create: { classId, weekId: w.id },
+        update: {},
+      });
+    }
+
+    // Get all enrolled students
+    const enrollments = await prisma.classEnrollment.findMany({
+      where: { classId, pairId: { not: null } },
+      select: { pairId: true },
+    });
+    const pairIds = enrollments.map(e => e.pairId).filter((id): id is string => id !== null);
+
+    // Move each student
+    for (const pid of pairIds) {
+      await moveOnePairToShift(pid, weekNumber);
+    }
+
+    // Notify all online students in the class
+    io.to(`class:${classId}`).emit('session:shift-changed', { weekNumber });
+
+    res.json({ success: true, weekNumber, studentsAffected: pairIds.length });
+  } catch (err) {
+    console.error('Class move to shift error:', err);
+    res.status(500).json({ error: 'Failed to move class to shift' });
+  }
+});
+
 export default router;

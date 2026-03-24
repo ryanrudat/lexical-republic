@@ -52,6 +52,18 @@ router.get('/season', async (req: Request, res: Response) => {
       unlockedWeekIds = new Set(unlocks.map((u) => u.weekId));
     }
 
+    // Fetch ShiftResult records to supplement clockedOut check
+    // (teacher-initiated moves create ShiftResult with completedAt but no MissionScores)
+    const shiftResults = await prisma.shiftResult.findMany({
+      where: ctx.scoreFilter,
+      select: { weekNumber: true, completedAt: true },
+    });
+    const completedWeeks = new Set(
+      shiftResults
+        .filter(sr => sr.completedAt !== null)
+        .map(sr => sr.weekNumber)
+    );
+
     const arcs = await prisma.arc.findMany({
       orderBy: { orderIndex: 'asc' },
       include: {
@@ -91,7 +103,7 @@ router.get('/season', async (req: Request, res: Response) => {
               m.missionScores.some(
                 (s) => (s.details as any)?.status === 'complete'
               )
-          ),
+          ) || completedWeeks.has(week.weekNumber),
           isUnlocked: unlockedWeekIds === null ? true : unlockedWeekIds.has(week.id),
         };
       })

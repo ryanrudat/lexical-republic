@@ -84,7 +84,8 @@ Week 1 stays as-is. Weeks 2+ should prioritize TOEIC alignment in `targetWords`.
 - Week 1: present-simple errors (arrive/arrives, describe/describes, submit/submits)
 - Week 2: past-simple-vs-present errors (notice/noticed, remove/removed, update/updated)
 - Week 3: modal errors (should maintains/maintain, must to complete/complete, can identifies/identify)
-- Weeks 4+ fall back to AI generation or generic templates
+- Weeks 4-6: planned (8 items each, defined in `Dplan/Weeks_04_06_Shift_Plan.md`) — past tense + sequencing (W4), modals + because-clauses (W5), mixed review (W6)
+- Weeks 7+ fall back to AI generation or generic templates
 
 **Feed seed posts** in `harmonyFeed.ts`: 6 for week 1, 3 for week 2, 3 for week 3 (including one Citizen-4488 each)
 
@@ -107,9 +108,19 @@ Do not finalize story questions until episode scripts are approved. Keep each lo
 - **TOEIC alignment is the primary filter** for selecting `targetWords` each week — pick from TOEIC word lists first, then supplement with world-building vocabulary as needed for narrative
 - Script readability: clips use mostly known words; new words introduced in controlled repetition
 
+### Weeks 4-6 content status (planned, not yet built)
+Full shift plan with narrative, vocabulary, task sequences, Canva scripts, dictionary words, and Harmony censure items defined in `Dplan/Weeks_04_06_Shift_Plan.md`. Summary:
+
+- **Week 4: Evidence Board** — Sequencing words + simple past. Students build timelines from evidence fragments; one fragment gets reclassified mid-task. 10 TOEIC words (arrange, collect, examine, indicate, locate, organize, present, record, select, verify).
+- **Week 5: Wellness Check** — Must/should + emotion adjectives + because-clauses. Wellness Language Guidelines require approved emotional vocabulary; student self-assessment gets forwarded to supervisor. 10 TOEIC words (concern, effort, express, improve, observe, reduce, respond, suggest, support, value).
+- **Week 6: Act I Clock-Out** — Mixed review of all W1-5 grammar. Full compliance audit, M.K. asks "What's the pattern?", Director-7 reviews, file flashes "RUN." Clearance elevated to Steward. 10 TOEIC words (achieve, adjust, conduct, establish, evaluate, perform, prepare, produce, summarize, transfer).
+
+Citizen-4488 arc across W4-6: self-censorship deepens from constructing compliant narratives (W4) through forced positive framing (W5) to active awareness of self-censorship (W6).
+
 ### Current content reality check
 - Much weekly narrative content is still seeded placeholder copy from `backend/prisma/seed.ts`
 - Week 1-3 authored lesson packages are in script-first classroom format
+- Weeks 4-6 fully planned but not yet built as WeekConfig files
 - Treat seed content as temporary scaffolding, not final script
 
 ## 50-Minute Hybrid Class Structure (planned)

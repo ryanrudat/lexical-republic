@@ -1,6 +1,6 @@
 # The Lexical Republic — Project Instructions
 
-Last updated: 2026-03-23
+Last updated: 2026-03-24
 
 ## Vision
 The Lexical Republic is a dystopian ESL learning game where Taiwanese Grade 10 students (A2-B1) learn English through 18 weekly "Shifts" inside an authoritarian language-control world.
@@ -20,7 +20,7 @@ Story and learning are coupled: grammar, listening, speaking, and writing tasks 
 ### Key Paths
 - Backend: `backend/` (Express 5 + TypeScript + Prisma + PostgreSQL)
 - Frontend: `frontend/` (Vite + React + TypeScript + Tailwind + Zustand)
-- Week configs: `backend/src/data/week-configs/week1.ts`, `week2.ts`, `week3.ts`
+- Week configs: `backend/src/data/week-configs/week1.ts`, `week2.ts`, `week3.ts` (weeks 4-6 planned in `Dplan/Weeks_04_06_Shift_Plan.md`)
 - Dplan docs: `Dplan/`
 - External canon: `/Users/ryanrudat/Desktop/Dplan/`
 
@@ -42,13 +42,13 @@ Story and learning are coupled: grammar, listening, speaking, and writing tasks 
 - [World, Story & Characters](docs/world-and-story.md) — canon, characters, content pipeline, narrative planning
 
 ## Next Work
-- Write Weeks 4-6 full script packs using fixed media timeline.
-- Define per-week vocabulary ladders (TOEIC target words vs world-building words) for all 18 shifts.
-- Full scripted dialogue pass for all character beats (especially Weeks 4-18).
+- Build Weeks 4-6 WeekConfig files from `Dplan/Weeks_04_06_Shift_Plan.md` (full narrative, vocabulary, task sequences, and Canva scripts planned).
+- Seed dictionary entries for Weeks 4-6 (30 words defined in shift plan).
+- Seed Harmony static censure items for Weeks 4-6 (24 items defined in shift plan).
+- Define per-week vocabulary ladders (TOEIC target words vs world-building words) for Weeks 7-18.
+- Full scripted dialogue pass for all character beats (especially Weeks 7-18).
 - Custom domain setup for student-friendly URLs (optional).
 - Persistent file storage for Railway (S3/R2) — currently uses Railway volume; redeploys preserve files but volume loss would delete all uploads.
-- Expand dictionary seed data beyond Weeks 1-3 (currently 49 words, target ~120+ across 18 weeks).
-- Expand Harmony static censure content beyond Weeks 1-3 (currently 8 items per week for weeks 1-3; weeks 4+ use AI generation or generic templates).
 - Lane auto-promote/demote evaluation after each shift (deferred to Phase B; manual teacher lane control is live).
 - Hybrid class model app changes — compact intake_form mode, `teacherLed` task gating flag (multi-gate system implemented: `taskGates Int[]` supports multiple simultaneous gates), teacher "advance to Station Work" signal in dashboard.
 - Printable Ministry materials — Vocabulary Cards, Evidence Board memos, Priority Board case cards, Conversation Frame cards.

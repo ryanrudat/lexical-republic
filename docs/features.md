@@ -190,6 +190,28 @@ Step navigation gated by completion. All steps support optional video via `StepV
 - **Task controls work for all students** (online and offline): Skip Task, Reset Task, Reset Shift use REST API (`POST /api/teacher/students/:studentId/task-command`) that persists directly to DB. Online students also get instant socket relay. Student cards are always expandable regardless of connection status.
 - **Student deletion cascade**: Pair → pairDictionaryProgress, missionScore, recording, pearlConversation, narrativeChoice, harmonyPost, harmonyCensureResponse, classEnrollment, characterMessage, citizen4488Interaction, shiftResult (11 related tables)
 
+## Move Student/Class to Shift (Teacher Shift Control)
+Teachers can move individual students or entire classes to any shift that has content (currently Weeks 1-3).
+
+**Per-student:** ClassMonitor expanded cards show a "Move to Shift" button row below Difficulty Tier. Current shift highlighted in indigo. Clicking a shift opens confirmation dialog explaining that progress from that shift onward will be reset.
+
+**Per-class:** ClassMonitor header has a "Move Class to Shift" toggle that reveals a shift selector row. Confirmation warns that ALL students will be moved and progress reset.
+
+**Backend endpoints:**
+- `POST /api/teacher/students/:studentId/move-to-shift` — moves one student
+- `POST /api/teacher/classes/:classId/move-to-shift` — moves all enrolled students
+
+**Move mechanics:**
+- **Forward move:** Creates `ShiftResult` records with `completedAt` for skipped weeks + marker `ShiftResult` (completedAt=null) at target week for correct `getCurrentWeekNumberForPair()` result. Deletes target week MissionScores for fresh start.
+- **Backward move:** Deletes all `ShiftResult` and `MissionScore` records from target week onward. Creates marker ShiftResult at target.
+- **Same week:** Resets the shift (deletes scores + ShiftResult, creates marker).
+- **Auto-unlock:** Target week + all prior weeks auto-unlocked in `ClassWeekUnlock` for the class.
+- **Validation:** Rejects moves to weeks without `WeekConfig` content.
+
+**Real-time push:** `session:shift-changed` socket event navigates online students to the new shift immediately. PEARL bark: "SUPERVISOR OVERRIDE: Transfer directive received. Report to Shift N."
+
+**Season endpoint fix:** `GET /api/shifts/season` now checks `ShiftResult.completedAt` in addition to MissionScore for `clockedOut` status, so teacher-skipped weeks correctly show as completed.
+
 ## Difficulty Tier System (Teacher-Controlled Lanes)
 Teachers can set student difficulty tiers (1=Guided, 2=Standard, 3=Independent) at per-student and per-class-default levels. Changes apply in real-time without student re-login.
 

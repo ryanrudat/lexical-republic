@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { fetchStudents, deleteStudent, deleteAllStudents, sendTaskCommand, fetchShiftStatus, setStudentLane } from '../../api/teacher';
+import { fetchStudents, deleteStudent, deleteAllStudents, sendTaskCommand, fetchShiftStatus, setStudentLane, moveStudentToShift, moveClassToShift } from '../../api/teacher';
 import type { ShiftStatus } from '../../api/teacher';
 import { useTeacherStore } from '../../stores/teacherStore';
 import { getSocket } from '../../utils/socket';
@@ -39,10 +39,12 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
   const [confirmAction, setConfirmAction] = useState<{
     studentId: string;
     designation: string;
-    action: 'skip-task' | 'reset-task' | 'reset-shift' | 'send-to-task' | 'delete-student' | 'delete-all';
+    action: 'skip-task' | 'reset-task' | 'reset-shift' | 'send-to-task' | 'delete-student' | 'delete-all' | 'move-to-shift' | 'move-class-to-shift';
     taskId?: string;
     taskLabel?: string;
+    weekNumber?: number;
   } | null>(null);
+  const [showClassShiftSelector, setShowClassShiftSelector] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   // Cache of shift status fetched from backend for offline students
   const [offlineStatus, setOfflineStatus] = useState<Map<string, ShiftStatus>>(new Map());
@@ -182,6 +184,36 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
       return;
     }
 
+    // Move-to-shift actions
+    if (action === 'move-to-shift' && confirmAction.weekNumber) {
+      try {
+        await moveStudentToShift(studentId, confirmAction.weekNumber);
+        loadStudents();
+        // Clear cached offline status so it refreshes
+        setOfflineStatus(prev => {
+          const next = new Map(prev);
+          next.delete(studentId);
+          return next;
+        });
+      } catch (err) {
+        console.error('Move to shift failed:', err);
+      }
+      setConfirmAction(null);
+      return;
+    }
+    if (action === 'move-class-to-shift' && confirmAction.weekNumber && selectedClassId) {
+      try {
+        await moveClassToShift(selectedClassId, confirmAction.weekNumber);
+        loadStudents();
+        setOfflineStatus(new Map());
+        setShowClassShiftSelector(false);
+      } catch (err) {
+        console.error('Class move to shift failed:', err);
+      }
+      setConfirmAction(null);
+      return;
+    }
+
     // REST API persists to DB + relays via socket to online students
     try {
       await sendTaskCommand(studentId, action as 'skip-task' | 'reset-task' | 'reset-shift' | 'send-to-task', taskId);
@@ -193,7 +225,7 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
       console.error('Task command failed:', err);
     }
     setConfirmAction(null);
-  }, [confirmAction, onlineStudents, refreshOfflineStatus, loadStudents]);
+  }, [confirmAction, onlineStudents, refreshOfflineStatus, loadStudents, selectedClassId]);
 
   const actionLabels: Record<string, string> = {
     'skip-task': 'Skip Current Task',
@@ -202,7 +234,12 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
     'send-to-task': 'Send to Task',
     'delete-student': 'Permanently Delete Student',
     'delete-all': 'Delete ALL Students',
+    'move-to-shift': 'Move to Shift',
+    'move-class-to-shift': 'Move Class to Shift',
   };
+
+  // Available shifts (only weeks with content)
+  const AVAILABLE_SHIFTS = [1, 2, 3];
 
   if (loading && students.length === 0) {
     return (
@@ -264,7 +301,38 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
             Paused for {formatElapsed(pauseElapsed)}
           </span>
         )}
+        {students.length > 0 && (
+          <button
+            onClick={() => setShowClassShiftSelector(v => !v)}
+            className={`px-3 py-2 text-xs rounded-lg border transition-colors ${
+              showClassShiftSelector
+                ? 'bg-indigo-100 text-indigo-700 border-indigo-300'
+                : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+            }`}
+          >
+            Move Class to Shift
+          </button>
+        )}
       </div>
+      {showClassShiftSelector && (
+        <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-4 py-2">
+          <span className="text-xs text-slate-500 mr-1">Move all students to:</span>
+          {AVAILABLE_SHIFTS.map((wn) => (
+            <button
+              key={wn}
+              className="px-3 py-1 text-xs rounded-md border bg-white text-slate-600 border-slate-200 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 transition-colors"
+              onClick={() => setConfirmAction({
+                studentId: '',
+                designation: '',
+                action: 'move-class-to-shift',
+                weekNumber: wn,
+              })}
+            >
+              Shift {wn}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -639,6 +707,38 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
                     </p>
                   </div>
 
+                  {/* Move to Shift */}
+                  <div className="mt-2 pt-2 border-t border-slate-200">
+                    <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                      Move to Shift
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {AVAILABLE_SHIFTS.map((wn) => {
+                        const studentWeek = student.online?.weekNumber ?? lk?.weekNumber ?? shiftStatus?.weekNumber ?? 1;
+                        const isCurrent = studentWeek === wn;
+                        return (
+                          <button
+                            key={wn}
+                            className={`px-2.5 py-1 text-[11px] rounded-md border transition-colors ${
+                              isCurrent
+                                ? 'bg-indigo-100 text-indigo-700 border-indigo-300 font-semibold'
+                                : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100 hover:text-slate-700'
+                            }`}
+                            onClick={() => setConfirmAction({
+                              studentId: student.id,
+                              designation: student.designation ?? '??',
+                              action: 'move-to-shift',
+                              weekNumber: wn,
+                            })}
+                          >
+                            {isCurrent && <span className="mr-0.5">&#9679;</span>}
+                            Shift {wn}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   {/* Clarity Minder: teacher↔student direct messaging */}
                   <div className="mt-2 pt-2 border-t border-slate-200">
                     <ClarityMinderThread
@@ -678,6 +778,14 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
                 <>
                   Permanently delete <span className="font-semibold text-red-600">{confirmAction.designation}</span> and all their scores, recordings, and progress? This cannot be undone.
                 </>
+              ) : confirmAction.action === 'move-class-to-shift' ? (
+                <>
+                  Move <span className="font-semibold text-indigo-600">ALL {students.length} students</span> to <span className="font-semibold">Shift {confirmAction.weekNumber}</span>? Progress from Shift {confirmAction.weekNumber} onward will be reset for every student.
+                </>
+              ) : confirmAction.action === 'move-to-shift' ? (
+                <>
+                  Move <span className="font-semibold">{confirmAction.designation}</span> to <span className="font-semibold text-indigo-600">Shift {confirmAction.weekNumber}</span>? Progress from Shift {confirmAction.weekNumber} onward will be reset.
+                </>
               ) : (
                 <>
                   {actionLabels[confirmAction.action]} for <span className="font-semibold">{confirmAction.designation}</span>
@@ -690,7 +798,9 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
             </p>
             {confirmAction.action !== 'delete-student' && confirmAction.action !== 'delete-all' && (
               <p className="text-xs text-slate-400">
-                {onlineStudents.has(confirmAction.studentId)
+                {confirmAction.action === 'move-class-to-shift'
+                  ? 'Online students will be redirected immediately.'
+                  : onlineStudents.has(confirmAction.studentId)
                   ? 'The student will see a PEARL notification about this action.'
                   : 'This will take effect when the student logs back in.'}
               </p>

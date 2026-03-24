@@ -227,6 +227,14 @@ export async function sendTaskCommand(
   await client.post(`/teacher/students/${studentId}/task-command`, { action, taskId });
 }
 
+export async function moveStudentToShift(studentId: string, weekNumber: number): Promise<void> {
+  await client.post(`/teacher/students/${studentId}/move-to-shift`, { weekNumber });
+}
+
+export async function moveClassToShift(classId: string, weekNumber: number): Promise<void> {
+  await client.post(`/teacher/classes/${classId}/move-to-shift`, { weekNumber });
+}
+
 // ── Class Management ───────────────────────────────────────────
 
 export interface ClassInfo {
