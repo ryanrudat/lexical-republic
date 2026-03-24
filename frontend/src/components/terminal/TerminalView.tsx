@@ -17,8 +17,6 @@ import PearlPanel from '../pearl/PearlPanel';
 import DictionarySidebar from '../dictionary/DictionarySidebar';
 import DictionaryIcon from '../dictionary/DictionaryIcon';
 import SystemAuditOverlay from '../shift/SystemAuditOverlay';
-import MessagingPanel from '../messaging/MessagingPanel';
-import MessageNotification from '../messaging/MessageNotification';
 import MessageBadge from '../messaging/MessageBadge';
 import { useMessagingStore } from '../../stores/messagingStore';
 
@@ -205,9 +203,6 @@ export default function TerminalView() {
       />
 
       <DictionarySidebar />
-
-      <MessagingPanel />
-      <MessageNotification />
 
       {/* System Audit Overlay — triggers at concern score 100 */}
       <SystemAuditOverlay />

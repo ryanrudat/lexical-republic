@@ -1352,7 +1352,7 @@ router.get('/students/:studentId/shift-status', async (req: Request, res: Respon
         const isComplete = score?.details &&
           (score.details as Record<string, unknown>).status === 'complete';
         return {
-          id: t.type as string,
+          id: t.id,
           label: t.label,
           complete: !!isComplete,
         };
@@ -1405,7 +1405,11 @@ router.post('/students/:studentId/task-command', async (req: Request, res: Respo
     // Get missions for this week, filtered to only current WeekConfig task types
     // (the Mission table may contain legacy storyboard entries)
     const weekConfig = getWeekConfig(weekNumber);
-    const configTypes = new Set((weekConfig?.tasks ?? []).map(t => t.type as string));
+    const configTasks = weekConfig?.tasks ?? [];
+    const configTypes = new Set(configTasks.map(t => t.type as string));
+    // Map config task id → missionType (e.g. "word_match_w2" → "word_match")
+    // so send-to-task works when frontend sends config id instead of raw type
+    const configIdToType = new Map(configTasks.map(t => [t.id, t.type as string]));
 
     const allMissions = await prisma.mission.findMany({
       where: { weekId: week.id },
@@ -1466,8 +1470,9 @@ router.post('/students/:studentId/task-command', async (req: Request, res: Respo
           res.status(400).json({ error: 'taskId required for send-to-task' });
           return;
         }
-        // Find target mission by missionType matching the taskId
-        const targetIdx = missions.findIndex(m => m.missionType === taskId);
+        // Translate config id (e.g. "word_match_w2") to missionType (e.g. "word_match")
+        const targetType = configIdToType.get(taskId) ?? taskId;
+        const targetIdx = missions.findIndex(m => m.missionType === targetType);
         if (targetIdx < 0) {
           res.status(404).json({ error: `Task "${taskId}" not found in week ${weekNumber}` });
           return;

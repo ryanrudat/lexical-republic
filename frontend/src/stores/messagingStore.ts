@@ -57,6 +57,16 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
       // Also refresh unread count
       const { count } = await getUnreadCount();
       set({ unreadCount: count });
+      // Show notification for most recent unread thread message (teacher direct message)
+      // so students see a toast even if the message arrived while offline
+      if (!get().activeNotification) {
+        const unreadThread = [...messages]
+          .filter(m => !m.isRead && m.replyType === 'thread')
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+        if (unreadThread) {
+          set({ activeNotification: { message: unreadThread } });
+        }
+      }
     } catch {
       set({ loading: false });
     }

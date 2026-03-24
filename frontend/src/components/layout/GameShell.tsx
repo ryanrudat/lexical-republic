@@ -3,6 +3,8 @@ import { useViewStore } from '../../stores/viewStore';
 import ViewTransition from './ViewTransition';
 import PearlAnnouncement from '../pearl/PearlAnnouncement';
 import PauseOverlay from '../session/PauseOverlay';
+import MessagingPanel from '../messaging/MessagingPanel';
+import MessageNotification from '../messaging/MessageNotification';
 import type { ViewMode, TerminalApp } from '../../types/views';
 
 const OfficeView = lazy(() => import('../office/OfficeView'));
@@ -47,6 +49,8 @@ export default function GameShell({ initialView, initialApp }: GameShellProps) {
       <ViewTransition />
       <PearlAnnouncement />
       <PauseOverlay />
+      <MessagingPanel />
+      <MessageNotification />
     </div>
   );
 }

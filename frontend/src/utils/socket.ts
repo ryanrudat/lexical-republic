@@ -27,11 +27,13 @@ export function onSocketStatus(fn: StatusListener): () => void {
 export function connectSocket(query?: { designation?: string; displayName?: string }): Socket {
   if (socket?.connected) return socket;
 
-  // If we have a stale disconnected socket, clean it up
+  // If we have a stale disconnected socket, reconnect it instead of
+  // destroying it — removeAllListeners() would wipe event handlers
+  // registered by App.tsx (session:clarity-message, session:task-command, etc.)
   if (socket) {
-    socket.removeAllListeners();
-    socket.disconnect();
-    socket = null;
+    notifyStatus('connecting');
+    socket.connect();
+    return socket;
   }
 
   notifyStatus('connecting');
