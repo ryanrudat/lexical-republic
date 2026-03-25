@@ -41,7 +41,7 @@ export async function transcribeRecording(
   formData.append('audio', blob, 'recording.webm');
 
   const { data } = await client.post(`/recordings/${recordingId}/transcribe`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+    headers: { 'Content-Type': undefined },
   });
   return data;
 }

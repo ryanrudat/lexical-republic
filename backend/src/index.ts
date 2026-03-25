@@ -3,6 +3,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
@@ -31,6 +32,15 @@ const allowedOrigins = (process.env.FRONTEND_ORIGIN || 'http://localhost:3000')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
+
+// Ensure upload directories exist at startup (not just on first upload)
+const briefingPath = path.join(uploadPath, 'briefings');
+for (const dir of [uploadPath, briefingPath]) {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+    console.log(`[Lexical Republic] Created upload dir: ${dir}`);
+  }
+}
 
 const httpServer = initSocketServer(app, allowedOrigins);
 

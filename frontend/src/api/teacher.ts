@@ -102,9 +102,7 @@ export async function uploadWeekBriefingVideo(
     ? `/teacher/weeks/${weekId}/briefing/video`
     : `/teacher/weeks/${weekId}/briefing/video/${slot}`;
   const { data } = await client.post(endpoint, formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
+    headers: { 'Content-Type': undefined },
   });
   return {
     uploadedVideoUrl: data.uploadedVideoUrl,
@@ -407,7 +405,7 @@ export async function uploadStepVideo(
   const { data } = await client.post(
     `/teacher/weeks/${weekId}/steps/${missionType}/video`,
     formData,
-    { headers: { 'Content-Type': 'multipart/form-data' } }
+    { headers: { 'Content-Type': undefined } }
   );
   return {
     videoClipUrl: data.videoClipUrl,

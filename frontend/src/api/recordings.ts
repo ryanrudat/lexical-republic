@@ -7,7 +7,7 @@ export async function uploadRecording(blob: Blob, duration: number, missionId?: 
   if (missionId) formData.append('missionId', missionId);
 
   const { data } = await client.post('/recordings', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+    headers: { 'Content-Type': undefined },
   });
   return data.recording;
 }

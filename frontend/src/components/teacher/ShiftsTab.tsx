@@ -45,7 +45,7 @@ export default function ShiftsTab() {
       const formData = new FormData();
       formData.append('video', videoFile);
       await client.post('/dictionary/welcome-video', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: { 'Content-Type': undefined },
       });
       setVideoUploadStatus('Uploaded successfully');
       setVideoFile(null);
