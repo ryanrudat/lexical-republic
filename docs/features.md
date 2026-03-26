@@ -95,10 +95,12 @@ Step navigation gated by completion. All steps support optional video via `StepV
 - Resets on new shift (different week key) or server restart
 
 ## Character Messaging System
-- `MessagingPanel` — slides from right (360px, z-[41]), inbox/conversation navigation
+- `MessagingPanel` + `MessageNotification` — rendered in **GameShell** (visible in both OfficeView and TerminalView). Panel slides from right (360px, z-[41]), inbox/conversation navigation.
+- `MessageBadge` — remains in TerminalView header (unread count on message icon)
 - `InboxView` — messages grouped by character name into conversation threads; one card per character with message count badge, preview from latest message, and unread indicator
 - `ThreadView` — full conversation: character message → reply options → student reply → typing indicator → character response. When opened from grouped inbox, all messages from that character render in chronological order
 - `MessageNotification` — toast stays until student clicks (body opens full conversation with that character, X dismisses)
+- **Login notification**: On `loadMessages`, if there are unread thread messages (Clarity Minder) and no active notification, the most recent unread thread triggers a toast — so students see teacher messages even if they arrived while offline
 - Messages triggered by `task_start`, `task_complete`, `shift_start` events from WeekConfig
 - Dedup: module-level `inFlightKeys` + backend `$transaction` + GET response dedup
 - Header icon layout: [Dictionary] [Messages] | [PEARL eye + label] (Ministry text and PEARL label hidden on mobile)
@@ -187,7 +189,8 @@ Step navigation gated by completion. All steps support optional video via `StepV
 - Shifts: welcome video upload + Shift Storyboard (per-task video upload, embed URL, hide/show toggle)
 - **ClassManager**: expandable students/weeks panels per class, delete class (cascade), remove individual students with confirmation dialogs
 - **ClassMonitor**: per-student delete button, bulk "Delete All Students" in header, both with destructive confirmation dialogs
-- **Task controls work for all students** (online and offline): Skip Task, Reset Task, Reset Shift use REST API (`POST /api/teacher/students/:studentId/task-command`) that persists directly to DB. Online students also get instant socket relay. Student cards are always expandable regardless of connection status.
+- **Task controls work for all students** (online and offline): Skip Task, Reset Task, Reset Shift, Send to Task use REST API (`POST /api/teacher/students/:studentId/task-command`) that persists directly to DB. Online students also get instant socket relay. Student cards are always expandable regardless of connection status.
+- **Send to Task**: Works for all shifts (1-3). Backend translates config task IDs (e.g. `word_match_w2`) to mission types (e.g. `word_match`) via `configIdToType` map. Shift-status endpoint returns config `id` (not `type`) so online and offline students use the same identifiers.
 - **Student deletion cascade**: Pair → pairDictionaryProgress, missionScore, recording, pearlConversation, narrativeChoice, harmonyPost, harmonyCensureResponse, classEnrollment, characterMessage, citizen4488Interaction, shiftResult (11 related tables)
 
 ## Move Student/Class to Shift (Teacher Shift Control)
@@ -275,6 +278,11 @@ Previously, deleted students persisted as "Offline" cards in ClassMonitor due to
 - **App tiles**: All 6 tiles (Office, Lexicon, Current Shift, Harmony, My File, Duty Roster) use custom PNG icons at 240px width with transparent backgrounds — no clipping, cyan CRT shows through
 - **App icon files**: `office-icon.png`, `lexicon-icon.png`, `current-shift-icon.png`, `harmony-icon.png`, `my-file-icon.png` in `frontend/public/images/`
 - **Desktop text**: Dark teal tones (`#1A3035`, `#2A4A4E`, `#3A5A5E`) readable on cyan background
+
+## File Upload System
+- **Content-Type**: All FormData uploads use `Content-Type: undefined` so the browser auto-generates the correct `multipart/form-data; boundary=...` header. Setting it explicitly strips the boundary and breaks multer parsing in production.
+- **Startup directory creation**: Backend creates `uploads/` and `uploads/briefings/` at startup (not lazily on first upload), preventing errors on fresh Railway volume mounts.
+- **Multer limits**: Video uploads: 150MB (`MAX_VIDEO_FILE_SIZE`). Audio uploads: 10MB (`MAX_FILE_SIZE`). Welcome video: 200MB.
 
 ## Voice Log Quality Gate
 - Requires at least one rubric item checked AND successful recording upload

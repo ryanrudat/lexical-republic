@@ -6,6 +6,7 @@
 - Auth via JWT in HTTP-only cookies + Bearer token fallback (Safari ITP)
 - Major route groups: `/api/auth`, `/api/shifts`, `/api/recordings`, `/api/pearl`, `/api/harmony`, `/api/teacher`, `/api/vocabulary`, `/api/ai`, `/api/classes`, `/api/dictionary`, `/api/sessions`, `/api/submissions`, `/api/messages`
 - Socket.IO for real-time teacher dashboard (student activity tracking, briefing stage broadcasts). Student socket connects on login (App.tsx). Socket auth supports both cookie and `auth.token` Bearer fallback.
+- Socket reconnection: `connectSocket()` reuses stale sockets via `socket.connect()` instead of destroying and recreating them, preserving event listeners registered by App.tsx (session:clarity-message, session:task-command, etc.)
 - AI services (fail-open): OpenAI direct API (GPT-4.1-mini default) for grammar checking and PEARL contextual barks, Azure Whisper for transcription
 - Shared OpenAI client: `backend/src/utils/openai.ts` — lazy-init singleton, exports `getOpenAI()` and `OPENAI_MODEL`
 
@@ -45,6 +46,7 @@ Deprecated: `Vocabulary`, `StudentVocabulary`
 - **Volume**: 5 GB persistent disk mounted at `/data/uploads` on backend service
   - Stores briefing videos (`/data/uploads/briefings/`) and student audio recordings
   - `BRIEFING_URL_PREFIX = '/uploads/briefings'` — DB stores relative URLs, `express.static('/uploads', uploadPath)` serves files
+  - Upload directories created at backend startup (`uploads/` + `uploads/briefings/`)
 - **Key env vars** (backend):
   - `UPLOAD_DIR` = `/data/uploads`
   - `OPENAI_API_KEY`, `OPENAI_MODEL` (optional, defaults to `gpt-4.1-mini`)
