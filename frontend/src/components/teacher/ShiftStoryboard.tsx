@@ -137,6 +137,28 @@ export default function ShiftStoryboard({ weekId, classId }: ShiftStoryboardProp
     }
   };
 
+  const handleUploadDismissalVideo = async (step: StoryboardStep, file: File) => {
+    if (!data) return;
+    try {
+      await uploadStepVideo(data.weekId, step.missionType, file, 'dismissal');
+      flashSaved(step.missionType);
+      await load();
+    } catch {
+      setError('Failed to upload dismissal video');
+    }
+  };
+
+  const handleRemoveDismissalVideo = async (step: StoryboardStep) => {
+    if (!data) return;
+    try {
+      await updateStepActivity(data.weekId, step.missionType, { removeDismissalVideo: true });
+      flashSaved(step.missionType);
+      await load();
+    } catch {
+      setError('Failed to remove dismissal video');
+    }
+  };
+
   const handleEmbedUrlChange = async (step: StoryboardStep, embedUrl: string) => {
     if (!data) return;
     try {
@@ -261,6 +283,8 @@ export default function ShiftStoryboard({ weekId, classId }: ShiftStoryboardProp
             onUploadVideo={(file) => handleUploadStepVideo(step, file)}
             onEmbedUrlChange={(url) => handleEmbedUrlChange(step, url)}
             onToggleHidden={(hidden) => handleToggleHidden(step, hidden)}
+            onUploadDismissalVideo={(file) => handleUploadDismissalVideo(step, file)}
+            onRemoveDismissalVideo={() => handleRemoveDismissalVideo(step)}
           />
           {/* Gate insertion point between steps */}
           {classId && i < data.steps.length - 1 && (
@@ -284,6 +308,8 @@ interface StoryboardCardProps {
   onUploadVideo: (file: File) => void;
   onEmbedUrlChange: (embedUrl: string) => void;
   onToggleHidden: (hidden: boolean) => void;
+  onUploadDismissalVideo: (file: File) => void;
+  onRemoveDismissalVideo: () => void;
 }
 
 function StoryboardCard({
@@ -293,6 +319,8 @@ function StoryboardCard({
   onUploadVideo,
   onEmbedUrlChange,
   onToggleHidden,
+  onUploadDismissalVideo,
+  onRemoveDismissalVideo,
 }: StoryboardCardProps) {
   return (
     <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
@@ -321,6 +349,13 @@ function StoryboardCard({
           onRemove={onRemoveVideo}
           onEmbedUrlChange={onEmbedUrlChange}
           onToggleHidden={onToggleHidden}
+        />
+
+        {/* Dismissal video section */}
+        <DismissalVideoSection
+          step={step}
+          onUpload={onUploadDismissalVideo}
+          onRemove={onRemoveDismissalVideo}
         />
       </div>
     </div>
@@ -464,6 +499,61 @@ function StepVideoSection({
             Cancel
           </button>
         </div>
+      )}
+    </div>
+  );
+}
+
+function DismissalVideoSection({
+  step,
+  onUpload,
+  onRemove,
+}: {
+  step: StoryboardStep;
+  onUpload: (file: File) => void;
+  onRemove: () => void;
+}) {
+  const hasDismissal = !!step.dismissalClipFilename;
+
+  return (
+    <div className="space-y-2 pt-1 border-t border-slate-100 mt-2">
+      <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">
+        Dismissal Video <span className="normal-case text-slate-400">(plays after task completion)</span>
+      </span>
+
+      {hasDismissal && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <span className="text-sm truncate flex-1 text-slate-600">
+              {step.dismissalClipFilename}
+            </span>
+            <button
+              onClick={onRemove}
+              className="text-xs font-medium text-red-500 hover:text-red-600 transition-colors px-2 py-1"
+            >
+              Remove
+            </button>
+          </div>
+          <div className="max-w-md">
+            <MonitorPlayer src={resolveUploadUrl(step.dismissalClipUrl)} />
+          </div>
+        </div>
+      )}
+
+      {!hasDismissal && (
+        <label className="inline-block text-xs font-medium px-3 py-1.5 border border-slate-300 text-slate-600 hover:text-indigo-600 hover:border-indigo-300 transition-colors cursor-pointer rounded-lg">
+          + Upload Dismissal Video
+          <input
+            type="file"
+            accept="video/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) onUpload(file);
+              e.target.value = '';
+            }}
+          />
+        </label>
       )}
     </div>
   );

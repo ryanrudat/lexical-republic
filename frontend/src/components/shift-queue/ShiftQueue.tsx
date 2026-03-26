@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useShiftQueueStore } from '../../stores/shiftQueueStore';
 import { useMessagingStore } from '../../stores/messagingStore';
 import { useShiftStore } from '../../stores/shiftStore';
@@ -7,6 +7,7 @@ import { resolveUploadUrl } from '../../api/client';
 import TaskCard from './TaskCard';
 import ShiftClosing from './ShiftClosing';
 import MonitorPlayer from '../shared/MonitorPlayer';
+import DismissalBroadcast from './DismissalBroadcast';
 import IntakeForm from './tasks/IntakeForm';
 import WordMatch from './tasks/WordMatch';
 import ClozeFill from './tasks/ClozeFill';
@@ -58,6 +59,12 @@ export default function ShiftQueue() {
   const [watchingClip, setWatchingClip] = useState(false);
   const [showSkip, setShowSkip] = useState(false);
   const skipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Dismissal broadcast state (clipAfter)
+  const [dismissalState, setDismissalState] = useState<'idle' | 'flash' | 'playing' | 'outro'>('idle');
+  const dismissalUrlRef = useRef<string>('');
+  const [showDismissalSkip, setShowDismissalSkip] = useState(false);
+  const pendingTriggerRef = useRef<{ taskId: string; weekNumber: number } | null>(null);
 
   // When task changes, check if it has a clip to play first
   useEffect(() => {
@@ -127,9 +134,37 @@ export default function ShiftQueue() {
 
   const handleComplete = async (score: number, details?: Record<string, unknown>) => {
     if (!currentTask || !weekConfig) return;
+
+    // Capture clipAfter BEFORE completeTask advances the index
+    const afterUrl = currentTask.clipAfter
+      ? resolveUploadUrl(currentTask.clipAfter)
+      : '';
+    const completedTaskId = currentTask.id;
+
     await completeTask(currentTask.id, score, details);
-    triggerMessage('task_complete', { taskId: currentTask.id, weekNumber }, weekConfig);
+
+    if (afterUrl) {
+      // DELAY character message triggers until dismissal completes
+      dismissalUrlRef.current = afterUrl;
+      pendingTriggerRef.current = { taskId: completedTaskId, weekNumber };
+      setDismissalState('flash');
+    } else {
+      // No dismissal video — fire messages immediately
+      triggerMessage('task_complete', { taskId: completedTaskId, weekNumber }, weekConfig);
+    }
   };
+
+  const handleDismissalComplete = useCallback(() => {
+    setDismissalState('idle');
+    setShowDismissalSkip(false);
+    dismissalUrlRef.current = '';
+
+    // Fire deferred task_complete message triggers NOW
+    if (pendingTriggerRef.current && weekConfig) {
+      triggerMessage('task_complete', pendingTriggerRef.current, weekConfig);
+      pendingTriggerRef.current = null;
+    }
+  }, [weekConfig, triggerMessage]);
 
   const handleClipDone = () => {
     setWatchingClip(false);
@@ -145,6 +180,21 @@ export default function ShiftQueue() {
           Loading module...
         </div>
       </div>
+    );
+  }
+
+  // Dismissal broadcast overlay (clipAfter)
+  if (dismissalState !== 'idle') {
+    return (
+      <DismissalBroadcast
+        state={dismissalState as 'flash' | 'playing' | 'outro'}
+        videoUrl={dismissalUrlRef.current}
+        showSkip={showDismissalSkip}
+        onStateChange={setDismissalState}
+        onSkipReady={() => setShowDismissalSkip(true)}
+        onComplete={handleDismissalComplete}
+        onSkip={handleDismissalComplete}
+      />
     );
   }
 

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { TaskProps } from '../../../types/shiftQueue';
 import { useShiftQueueStore } from '../../../stores/shiftQueueStore';
 import { useStudentStore } from '../../../stores/studentStore';
@@ -24,6 +24,7 @@ interface DiffZone {
   diffId: string;
   memoAText: string;
   memoBText: string;
+  removedAfterText?: string;
   classification: string;
 }
 
@@ -41,7 +42,14 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
   const user = useStudentStore(s => s.user);
   const lane = user?.lane ?? 2;
 
-  const [phase, setPhase] = useState<'compare' | 'classify' | 'write' | 'done'>('compare');
+  const requiredDiffCount = lane === 1 ? 3 : lane === 2 ? 4 : differences.length;
+
+  // Per-lane minWords override (falls back to top-level writingMinWords)
+  const laneConfig = writingLane[String(lane)] as Record<string, unknown> | undefined;
+  const effectiveMinWords = typeof laneConfig?.minWords === 'number' ? laneConfig.minWords : writingMinWords;
+
+  const autoAdvancedRef = useRef(false);
+  const [phase, setPhase] = useState<'compare' | 'classify' | 'write' | 'submitting' | 'done'>('compare');
   const [foundDiffs, setFoundDiffs] = useState<Set<string>>(new Set());
   const [classifications, setClassifications] = useState<Record<string, string>>({});
   const [writingText, setWritingText] = useState('');
@@ -57,13 +65,14 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
       } else {
         next.add(diffId);
       }
-      // Auto-advance when all differences found
-      if (next.size === differences.length) {
+      // Auto-advance when required differences found (guard against multiple fires)
+      if (next.size >= requiredDiffCount && !autoAdvancedRef.current) {
+        autoAdvancedRef.current = true;
         setTimeout(() => setPhase('classify'), 600);
       }
       return next;
     });
-  }, [differences.length]);
+  }, [requiredDiffCount]);
 
   // ── Classify phase handlers ───────────────────────────────────
 
@@ -98,20 +107,23 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
     }
   }, [addConcern]);
 
-  const finishTask = useCallback(() => {
-    const correctCount = differences.filter(
-      d => foundDiffs.has(d.diffId) && classifications[d.diffId] === d.classification
-    ).length;
-    const score = correctCount / Math.max(differences.length, 1);
-    onComplete(score, {
-      type: 'contradiction_report',
-      diffsFound: foundDiffs.size,
-      diffsTotal: differences.length,
-      correctClassifications: correctCount,
-      writingText,
-    });
-    setPhase('done');
-  }, [differences, foundDiffs, classifications, writingText, onComplete]);
+  const handleSubmit = useCallback(() => {
+    setPhase('submitting');
+    setTimeout(() => {
+      const correctCount = differences.filter(
+        d => foundDiffs.has(d.diffId) && classifications[d.diffId] === d.classification
+      ).length;
+      const score = correctCount / Math.max(requiredDiffCount, 1);
+      onComplete(Math.min(score, 1), {
+        type: 'contradiction_report',
+        diffsFound: foundDiffs.size,
+        diffsRequired: requiredDiffCount,
+        diffsTotal: differences.length,
+        correctClassifications: correctCount,
+        writingText,
+      });
+    }, 1500);
+  }, [differences, foundDiffs, classifications, writingText, onComplete, requiredDiffCount]);
 
   // ── Render: Memo card ─────────────────────────────────────────
 
@@ -124,9 +136,24 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
     const sideDiffs = differences.map(d => ({
       diffId: d.diffId,
       text: side === 'A' ? d.memoAText : d.memoBText,
+      removedAfterText: d.removedAfterText,
     })).filter(d => d.text && bodyText.includes(d.text));
 
-    if (sideDiffs.length === 0) {
+    // For side B, collect removed-sentence diffs that need [...] placeholders
+    const removedDiffs = side === 'B'
+      ? differences.filter(d =>
+          d.memoBText === '[Sentence removed]' &&
+          d.removedAfterText &&
+          bodyText.includes(d.removedAfterText)
+        ).map(d => ({
+          diffId: d.diffId,
+          anchorText: d.removedAfterText!,
+          anchorIdx: bodyText.indexOf(d.removedAfterText!),
+          insertAfter: true,
+        }))
+      : [];
+
+    if (sideDiffs.length === 0 && removedDiffs.length === 0) {
       bodySegments.push({ text: bodyText, diffId: null, isHighlighted: false });
     } else {
       // Sort diffs by position in text
@@ -137,6 +164,22 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
 
       let cursor = 0;
       for (const diff of sorted) {
+        // Check if any removed-sentence placeholder should appear before this diff
+        for (const rd of removedDiffs) {
+          const insertPos = rd.anchorIdx + rd.anchorText.length;
+          if (insertPos > cursor && insertPos <= diff.idx) {
+            if (insertPos > cursor) {
+              bodySegments.push({ text: bodyText.slice(cursor, insertPos), diffId: null, isHighlighted: false });
+            }
+            bodySegments.push({
+              text: ' [...] ',
+              diffId: rd.diffId,
+              isHighlighted: highlightedDiffIds.has(rd.diffId),
+            });
+            cursor = insertPos;
+          }
+        }
+
         if (diff.idx > cursor) {
           bodySegments.push({ text: bodyText.slice(cursor, diff.idx), diffId: null, isHighlighted: false });
         }
@@ -147,6 +190,23 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
         });
         cursor = diff.idx + diff.text.length;
       }
+
+      // Check for any remaining removed-sentence placeholders after last diff
+      for (const rd of removedDiffs) {
+        const insertPos = rd.anchorIdx + rd.anchorText.length;
+        if (insertPos >= cursor) {
+          if (insertPos > cursor) {
+            bodySegments.push({ text: bodyText.slice(cursor, insertPos), diffId: null, isHighlighted: false });
+          }
+          bodySegments.push({
+            text: ' [...] ',
+            diffId: rd.diffId,
+            isHighlighted: highlightedDiffIds.has(rd.diffId),
+          });
+          cursor = insertPos;
+        }
+      }
+
       if (cursor < bodyText.length) {
         bodySegments.push({ text: bodyText.slice(cursor), diffId: null, isHighlighted: false });
       }
@@ -190,6 +250,7 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
               if (!seg.diffId) {
                 return <span key={i}>{seg.text}</span>;
               }
+              const isPlaceholder = seg.text.trim() === '[...]';
               return (
                 <span
                   key={i}
@@ -198,7 +259,9 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
                   className={`cursor-pointer rounded px-0.5 transition-colors ${
                     seg.isHighlighted
                       ? 'bg-emerald-100 text-emerald-700'
-                      : 'hover:bg-sky-50 underline decoration-dotted decoration-[#D4CFC6]'
+                      : isPlaceholder
+                        ? 'hover:bg-sky-50 underline decoration-dashed decoration-[#D4CFC6] text-[#9CA3AF]'
+                        : 'hover:bg-sky-50 underline decoration-dotted decoration-[#D4CFC6]'
                   }`}
                   onClick={() => toggleDiff(seg.diffId!)}
                   onKeyDown={e => {
@@ -240,7 +303,7 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
 
         <div className="text-center">
           <span className="font-ibm-mono text-[10px] text-[#9CA3AF]">
-            {foundDiffs.size} / {differences.length} differences identified
+            {foundDiffs.size} / {requiredDiffCount} differences identified
           </span>
         </div>
       </div>
@@ -251,7 +314,6 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
 
   function renderClassifyPhase() {
     const classifyOptions = [
-      { value: 'minor_correction', label: 'Minor correction' },
       { value: 'information_changed', label: 'Information changed' },
       { value: 'information_removed', label: 'Information removed' },
     ];
@@ -334,7 +396,7 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
           text={writingText}
           onChange={setWritingText}
           targetWords={weekConfig.targetWords}
-          minWords={writingMinWords}
+          minWords={effectiveMinWords}
           placeholder="Begin your analysis here..."
         />
 
@@ -352,7 +414,7 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
           <div className="pt-2 text-center">
             <button
               className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700"
-              onClick={finishTask}
+              onClick={handleSubmit}
             >
               Complete Report
             </button>
@@ -372,6 +434,7 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
           {phase === 'compare' && 'Phase 1: Comparison'}
           {phase === 'classify' && 'Phase 2: Classification'}
           {phase === 'write' && 'Phase 3: Analysis'}
+          {phase === 'submitting' && 'Submitting Report...'}
           {phase === 'done' && 'Report Complete'}
         </span>
       </div>
@@ -380,6 +443,14 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
         {phase === 'compare' && renderComparePhase()}
         {phase === 'classify' && renderClassifyPhase()}
         {phase === 'write' && renderWritePhase()}
+        {phase === 'submitting' && (
+          <div className="text-center py-12">
+            <div className="w-10 h-10 mx-auto border-2 border-sky-400 border-t-transparent rounded-full animate-spin mb-4" />
+            <span className="font-ibm-mono text-[10px] text-[#8B8578] tracking-[0.3em] uppercase animate-pulse">
+              P.E.A.R.L. is reviewing your report...
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

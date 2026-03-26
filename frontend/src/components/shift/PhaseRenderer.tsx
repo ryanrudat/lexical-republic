@@ -3,7 +3,6 @@ import type { PhaseConfig } from '../../types/sessions';
 
 // Lazy-load activity components
 const D1StructuredWriting = lazy(() => import('../activities/D1StructuredWriting'));
-const D2DocumentCompare = lazy(() => import('../activities/D2DocumentCompare'));
 const D5AudioLog = lazy(() => import('../activities/D5AudioLog'));
 
 // Existing step components (used for settle, grammar_toeic, debrief)
@@ -38,13 +37,6 @@ export default function PhaseRenderer({ phase, onComplete }: PhaseRendererProps)
       return (
         <Suspense fallback={loading}>
           <D1StructuredWriting phaseConfig={phase} onComplete={onComplete} />
-        </Suspense>
-      );
-
-    case 'd2_document_compare':
-      return (
-        <Suspense fallback={loading}>
-          <D2DocumentCompare phaseConfig={phase} onComplete={onComplete} />
         </Suspense>
       );
 

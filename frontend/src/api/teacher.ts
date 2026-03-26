@@ -356,6 +356,8 @@ export interface StoryboardStep {
   videoClipFilename: string;
   videoClipEmbedUrl: string;
   videoClipHidden: boolean;
+  dismissalClipUrl: string;
+  dismissalClipFilename: string;
   // Briefing-specific
   episodeTitle?: string;
   episodeSubtitle?: string;
@@ -390,7 +392,7 @@ export async function fetchWeekStoryboard(weekId: string): Promise<StoryboardDat
 export async function updateStepActivity(
   weekId: string,
   missionType: string,
-  payload: { activityId?: string; reset?: boolean; removeVideo?: boolean; videoClipEmbedUrl?: string; videoClipHidden?: boolean }
+  payload: { activityId?: string; reset?: boolean; removeVideo?: boolean; removeDismissalVideo?: boolean; videoClipEmbedUrl?: string; videoClipHidden?: boolean }
 ): Promise<void> {
   await client.patch(`/teacher/weeks/${weekId}/steps/${missionType}`, payload);
 }
@@ -398,17 +400,19 @@ export async function updateStepActivity(
 export async function uploadStepVideo(
   weekId: string,
   missionType: string,
-  file: File
+  file: File,
+  slot?: 'primary' | 'dismissal',
 ): Promise<{ videoClipUrl: string; videoClipFilename: string }> {
   const formData = new FormData();
   formData.append('video', file);
-  const { data } = await client.post(
-    `/teacher/weeks/${weekId}/steps/${missionType}/video`,
-    formData,
-    { headers: { 'Content-Type': undefined } }
-  );
+  const url = slot && slot !== 'primary'
+    ? `/teacher/weeks/${weekId}/steps/${missionType}/video?slot=${slot}`
+    : `/teacher/weeks/${weekId}/steps/${missionType}/video`;
+  const { data } = await client.post(url, formData, {
+    headers: { 'Content-Type': undefined },
+  });
   return {
-    videoClipUrl: data.videoClipUrl,
-    videoClipFilename: data.videoClipFilename,
+    videoClipUrl: data.videoClipUrl || data.dismissalClipUrl,
+    videoClipFilename: data.videoClipFilename || data.dismissalClipFilename,
   };
 }

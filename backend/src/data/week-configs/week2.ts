@@ -237,6 +237,7 @@ export const WEEK_2_CONFIG: WeekConfig = {
             label: "Error reporters",
             memoAText: "Three associates noticed that certain records contained errors.",
             memoBText: "[Sentence removed]",
+            removedAfterText: "The review included data from 612 citizen files.",
             classification: "information_removed",
           },
           {
@@ -251,6 +252,7 @@ export const WEEK_2_CONFIG: WeekConfig = {
             label: "Comparison instruction",
             memoAText: "If you notice any differences between versions, file a Contradiction Report through standard channels.",
             memoBText: "[Sentence removed]",
+            removedAfterText: "This document supersedes all previous versions.",
             classification: "information_removed",
           },
         ],

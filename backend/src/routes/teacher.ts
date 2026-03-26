@@ -1058,6 +1058,10 @@ router.get('/weeks/:weekId/storyboard', async (req: Request, res: Response) => {
         videoClipEmbedUrl: teacherOverride && typeof teacherOverride.videoClipEmbedUrl === 'string'
           ? teacherOverride.videoClipEmbedUrl : '',
         videoClipHidden: teacherOverride?.videoClipHidden === true,
+        dismissalClipUrl: teacherOverride && typeof teacherOverride.dismissalClipUrl === 'string'
+          ? teacherOverride.dismissalClipUrl : '',
+        dismissalClipFilename: teacherOverride && typeof teacherOverride.dismissalClipFilename === 'string'
+          ? teacherOverride.dismissalClipFilename : '',
       };
     });
 
@@ -1079,10 +1083,11 @@ router.patch('/weeks/:weekId/steps/:missionType', async (req: Request, res: Resp
   try {
     const weekId = req.params.weekId as string;
     const missionType = req.params.missionType as string;
-    const { activityId, reset, removeVideo, videoClipEmbedUrl, videoClipHidden } = req.body as {
+    const { activityId, reset, removeVideo, removeDismissalVideo, videoClipEmbedUrl, videoClipHidden } = req.body as {
       activityId?: string;
       reset?: boolean;
       removeVideo?: boolean;
+      removeDismissalVideo?: boolean;
       videoClipEmbedUrl?: string;
       videoClipHidden?: boolean;
     };
@@ -1121,6 +1126,20 @@ router.patch('/weeks/:weekId/steps/:missionType', async (req: Request, res: Resp
         data: { config: updatedConfig as Prisma.InputJsonValue },
       });
       res.json({ status: 'video_removed', missionId: mission.id });
+      return;
+    }
+
+    if (removeDismissalVideo) {
+      // Remove dismissal video fields from override
+      const { dismissalClipUrl: _d, dismissalClipFilename: _df, ...restOverride } = existingOverride;
+      const updatedConfig = Object.keys(restOverride).length > 0
+        ? { ...existingConfig, teacherOverride: restOverride }
+        : (() => { const { teacherOverride: _, ...clean } = existingConfig; return clean; })();
+      await prisma.mission.update({
+        where: { id: mission.id },
+        data: { config: updatedConfig as Prisma.InputJsonValue },
+      });
+      res.json({ status: 'dismissal_video_removed', missionId: mission.id });
       return;
     }
 
@@ -1204,14 +1223,26 @@ router.post('/weeks/:weekId/steps/:missionType/video', uploadVideo.single('video
       return;
     }
 
+    // Support slot parameter: 'primary' (default) or 'dismissal'
+    const slot = (req.query.slot as string) || 'primary';
+    const fieldMap: Record<string, { urlKey: string; filenameKey: string }> = {
+      primary: { urlKey: 'videoClipUrl', filenameKey: 'videoClipFilename' },
+      dismissal: { urlKey: 'dismissalClipUrl', filenameKey: 'dismissalClipFilename' },
+    };
+    const fields = fieldMap[slot];
+    if (!fields) {
+      res.status(400).json({ error: "slot must be 'primary' or 'dismissal'" });
+      return;
+    }
+
     const existingConfig = safeConfig(mission.config);
     const existingOverride = (existingConfig.teacherOverride || {}) as Record<string, unknown>;
-    const videoClipUrl = `${BRIEFING_URL_PREFIX}/${req.file.filename}`;
+    const clipUrl = `${BRIEFING_URL_PREFIX}/${req.file.filename}`;
 
     const newOverride = {
       ...existingOverride,
-      videoClipUrl,
-      videoClipFilename: req.file.originalname,
+      [fields.urlKey]: clipUrl,
+      [fields.filenameKey]: req.file.originalname,
     };
 
     await prisma.mission.update({
@@ -1227,8 +1258,8 @@ router.post('/weeks/:weekId/steps/:missionType/video', uploadVideo.single('video
     res.status(201).json({
       status: 'video_uploaded',
       missionId: mission.id,
-      videoClipUrl,
-      videoClipFilename: req.file.originalname,
+      [fields.urlKey]: clipUrl,
+      [fields.filenameKey]: req.file.originalname,
     });
   } catch (err) {
     console.error('Teacher step video upload error:', err);

@@ -345,11 +345,18 @@ router.get('/weeks/:weekId/config', async (req: Request, res: Response) => {
       const mission = missions.find(m => m.missionType === task.type);
       if (!mission) return task;
       const missionConfig = mission.config as Record<string, unknown> | null;
-      const teacherOverride = missionConfig?.teacherOverride;
-      if (teacherOverride && typeof teacherOverride === 'object') {
-        return { ...task, config: { ...task.config, teacherOverride } };
-      }
-      return task;
+      const teacherOverride = missionConfig?.teacherOverride as Record<string, unknown> | undefined;
+      if (!teacherOverride || typeof teacherOverride !== 'object') return task;
+
+      // Populate clipAfter from dismissal upload
+      const dismissalUrl = typeof teacherOverride.dismissalClipUrl === 'string'
+        ? teacherOverride.dismissalClipUrl : '';
+
+      return {
+        ...task,
+        clipAfter: dismissalUrl || task.clipAfter || '',
+        config: { ...task.config, teacherOverride },
+      };
     });
 
     // Look up task gates for the student's class

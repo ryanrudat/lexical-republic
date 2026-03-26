@@ -2,6 +2,9 @@
 
 export type TaskType =
   | "intake_form"
+  | "word_match"
+  | "cloze_fill"
+  | "word_sort"
   | "vocab_clearance"
   | "document_review"
   | "shift_report"

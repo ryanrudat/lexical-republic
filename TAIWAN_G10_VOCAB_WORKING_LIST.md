@@ -31,12 +31,14 @@ Reference links:
   - "I can complete this task..."
 
 ### Week 2: The Memo That Wasn't There
-- Known: `today`, `yesterday`, `record`, `check`
-- New: `contradiction`, `missing`, `notice`, `revision`
+- Grammar target: past simple vs. present simple
+- Target words (assessed, 10): notice, compare, replace, update, request, remove, change, include, require, inform
+- Receptive words (not assessed): contradiction, revision, memo, verified, difference, official, original, accurate, discrepancy, dispatch
+- Proscribed word introduced: wonder (reclassified to Grey)
 - Functional frames:
-  - "Yesterday it said..., today it says..."
-  - "There is a contradiction between..."
-  - "The latest revision shows..."
+  - "Yesterday the memo said..., today it says..."
+  - "The original included..., the revision now says..."
+  - "Associates were not informed of changes."
 
 ### Week 3: Clarity Bay Intake
 - Known: `help`, `question`, `line`, `message`
