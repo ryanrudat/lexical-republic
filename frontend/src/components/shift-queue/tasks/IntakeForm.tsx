@@ -219,20 +219,22 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
     return (
       <div className="space-y-3">
         {c.title && (
-          <h3 className="font-ibm-mono text-[10px] tracking-[0.15em] uppercase text-[#8B8578] mb-2">
+          <h3 className="font-ibm-mono text-sm font-semibold tracking-[0.15em] uppercase text-[#2C3340] mb-2">
             {c.title}
           </h3>
         )}
 
         {c.from && (
-          <p className="font-ibm-mono text-[10px] text-[#9CA3AF] tracking-wider">
+          <p className="font-ibm-mono text-xs text-[#6B7280] tracking-wider">
             From: {c.from}
           </p>
         )}
 
-        <p className="font-ibm-mono text-[10px] text-[#B8B3AA] italic">
-          Read carefully. You will be asked about this information.
-        </p>
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          <p className="font-ibm-mono text-xs text-amber-800 font-medium">
+            Read carefully. You will be asked about this information.
+          </p>
+        </div>
 
         <div className="bg-[#FAFAF7] border border-[#E8E4DC] rounded-xl p-4 space-y-3">
           {(c.paragraphs ?? []).map((para, i) => (
