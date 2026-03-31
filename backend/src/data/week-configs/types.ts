@@ -160,9 +160,14 @@ export interface ComprehensionQuestion {
 // ─── Contradiction Types ───────────────────────────────────────
 
 export interface ContradictionConfig {
-  memoA: MemoConfig;
-  memoB: MemoConfig;
+  memo: MemoConfig;
+  memoRevised: MemoConfig;
   differences: DifferenceConfig[];
+  recallQuestions: RecallQuestion[];
+  pearlSwapMessage: string;
+  writingPrompt: string;
+  writingMinWords: number;
+  writingLane: Record<string, unknown>;
 }
 
 export interface MemoConfig {
@@ -179,9 +184,16 @@ export interface MemoConfig {
 export interface DifferenceConfig {
   diffId: string;
   label: string;
-  memoAText: string;
-  memoBText: string;
-  classification: "minor_correction" | "information_changed" | "information_removed";
+  originalText: string;
+  revisedText: string;
+  classification: "information_changed" | "information_removed";
+}
+
+export interface RecallQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correctIndex: number;
 }
 
 // ─── Priority Sort Types ───────────────────────────────────────

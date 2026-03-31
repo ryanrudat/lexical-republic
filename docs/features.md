@@ -18,7 +18,7 @@ Config-driven task queue. Each week has 4 tasks driven by static `WeekConfig` Ty
 - Branching: `ClarityQueueApp.tsx` checks `weekConfig?.shiftType === 'queue'` before falling through to PhaseRunner
 - Stores: `shiftQueueStore` (task progress, concern delta), `messagingStore` (character messages, notifications)
 
-**Task types:** `intake_form`, `vocab_clearance`, `document_review`, `contradiction_report`, `shift_report`, `word_match`, `word_sort`, `priority_briefing`, `priority_sort`, `cloze_fill`
+**Task types (TypeScript union):** `intake_form`, `word_match`, `cloze_fill`, `word_sort`, `vocab_clearance`, `document_review`, `contradiction_report`, `shift_report`, `priority_briefing`, `priority_sort`, `evidence_assembly`, `custom`
 
 **IntakeForm card types:** `personal_info`, `briefing`, `intake_questions`, `status_review`, `writing`, `acknowledgment`
 - `briefing` card: read-only orientation memo with paragraphs + "I have read this document" button. Provides input before comprehension questions (correct SLA sequencing).
@@ -38,6 +38,7 @@ Config-driven task queue. Each week has 4 tasks driven by static `WeekConfig` Ty
 - `WritingEvaluator` — 3-attempt system: full eval → relaxed threshold → auto-pass. Calls `POST /api/submissions/evaluate`
 - `TaskCard` — stamp animation wrapper (idle → completing → stamped), light theme with emerald completion state
 - `LaneScaffolding` — lane-aware scaffolding (L1: sentence starters + word bank, L2: word list, L3: bonus question)
+- `DismissalBroadcast` — three-stage post-task overlay (red flash → video playback → green transition + "HAVE A HAPPY DAY" text). Triggered by `clipAfter` on any task config. Defers character message triggers until sequence completes.
 
 **Writing evaluation:**
 - Frontend sends `content`, `phaseId`, `activityType`, with `grammarTarget`/`targetVocab`/`lane` in `metadata`
@@ -136,7 +137,7 @@ Step navigation gated by completion. All steps support optional video via `StepV
 
 ## MonitorPlayer (Shared CRT Video Player)
 - **Single source of truth** for all video playback: `frontend/src/components/shared/MonitorPlayer.tsx`
-- Used by: WelcomeVideoModal, ShiftQueue task clip gate, PhaseClipPlayer, BriefingStep, StepVideoClip
+- Used by: WelcomeVideoModal, ShiftQueue task clip gate, DismissalBroadcast, PhaseClipPlayer, BriefingStep, StepVideoClip, ShiftStoryboard previews
 - **Retro CRT monitor frame**: Video plays inside vintage monitor image (`public/images/welcome-monitor.jpg`, 2744x1568, compressed to ~550KB)
 - **Loading state**: Shows "INITIALIZING DISPLAY..." text while monitor image loads, then fades in over 300ms
 - **Video preload**: `preload="metadata"` on video element for faster initial load
@@ -168,6 +169,16 @@ Step navigation gated by completion. All steps support optional video via `StepV
 - **Movie theater mode**: When a task has a video clip, students see a full-screen black overlay with the CRT monitor centered — no header, progress bar, or PEARL bar visible during playback
 - **Skip button**: Appears after 3 seconds; auto-skip after 2s if video fails to load
 - **Seed preservation**: Re-running seed preserves existing teacherOverride data on Mission records
+
+### Dismissal Video System (clipAfter)
+- **Two upload slots per step**: Primary video (`videoClipUrl`, plays before task) and dismissal video (`dismissalClipUrl`, plays after task completion)
+- **Upload endpoint**: `POST /api/teacher/weeks/:weekId/steps/:missionType/video?slot=dismissal` stores dismissal video in `teacherOverride.dismissalClipUrl`
+- **Auto-population**: `GET /api/shifts/weeks/:weekId/config` maps `teacherOverride.dismissalClipUrl` → `task.clipAfter` at serve time — no hardcoded URLs in WeekConfig
+- **Teacher dashboard**: Each storyboard step shows a "Dismissal Video" section below the primary video, with upload/preview/remove controls
+- **DismissalBroadcast component** (`frontend/src/components/shift-queue/DismissalBroadcast.tsx`): Three stages — red flash (2s) → video playback in MonitorPlayer → green color transition + "HAVE A HAPPY DAY" text (3s)
+- **Deferred message triggers**: Character messages (`task_complete`) are held in `pendingTriggerRef` during dismissal and fired after the sequence completes
+- **Graceful fallback**: If no dismissal video is uploaded, task completes normally. If video fails to load, MonitorPlayer's auto-skip (2s) chains through to the outro
+- **Reusable**: Any future week can use the pattern by uploading a dismissal video to the relevant task's slot
 
 ## Task Gating (Teacher Pace Control)
 - **Multiple simultaneous gates**: `taskGates Int[]` on `ClassWeekUnlock` — empty array = all unlocked (default), `[1,3]` = students gated before tasks 1 and 3
@@ -225,7 +236,8 @@ Teachers can set student difficulty tiers (1=Guided, 2=Standard, 3=Independent) 
 **Real-time updates:** Backend emits `session:lane-changed` socket event to the student. Frontend `studentStore.setLane()` updates the cached user object immediately. PEARL bark: "CLASSIFICATION UPDATE: Your operational tier has been adjusted by a supervisor."
 
 **What tiers control:**
-- **Writing tasks** (ShiftReport, ContradictionReport, PriorityBriefing): Tier 1 gets sentence starters + Chinese word bank + 20-word min; Tier 3 gets bonus prompts + 40-word min + `requireNegative`
+- **Writing tasks** (ShiftReport, ContradictionReport, PriorityBriefing): Tier 1 gets sentence starters + Chinese word bank + per-lane minWords (e.g. 30); Tier 3 gets bonus prompts + higher minWords (e.g. 55) + `requireNegative`
+- **ContradictionReport diff requirements**: Tier 1 must find 3/5 diffs, Tier 2 must find 4/5, Tier 3 must find all 5. Scoring denominator matches lane requirement (capped at 100%). Classification options: `information_changed` and `information_removed` only. Removed sentences show tappable `[...]` placeholders on the revised memo (anchored via `removedAfterText` in config). Submitting phase shows "P.E.A.R.L. is reviewing your report..." spinner (1.5s) before completion.
 - **Error Correction Doc**: Tier 1 gets sequential grammar hints via `laneHints`
 - **VocabClearance**: Tier 1 gets 3 attempts (concern only on final miss, 2.5s correct-answer display); Tier 2 gets 2 attempts; Tier 3 gets 1 attempt (immediate lock)
 - **AI evaluation**: Prompt includes lane context; unified pass threshold (avg >= 0.4) across all tiers

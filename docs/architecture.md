@@ -57,7 +57,7 @@ Deprecated: `Vocabulary`, `StudentVocabulary`
 ## Backend Endpoints
 
 ### Shift routes (`backend/src/routes/shifts.ts`)
-- `GET /api/shifts/weeks/:weekId/config` — week config for task queue (merges teacher overrides from Mission DB records into static WeekConfig, includes `taskGates` array from student's class)
+- `GET /api/shifts/weeks/:weekId/config` — week config for task queue (merges teacher overrides from Mission DB records into static WeekConfig, populates `clipAfter` from `teacherOverride.dismissalClipUrl`, includes `taskGates` array from student's class)
 - `DELETE /api/shifts/weeks/:weekId/scores` — reset all MissionScore records for a week (used by teacher task controls)
 
 ### Teacher Task Commands
@@ -69,8 +69,8 @@ Deprecated: `Vocabulary`, `StudentVocabulary`
 ### Teacher routes (`backend/src/routes/teacher.ts`)
 - `GET /api/teacher/weeks` — week list + briefing config
 - `GET /api/teacher/weeks/:weekId/storyboard` — shift storyboard (derived from WeekConfig tasks, auto-creates missing Mission records)
-- `PATCH /api/teacher/weeks/:weekId/steps/:missionType` — update step: swap activity, set embed URL, toggle `videoClipHidden`, remove video, reset override
-- `POST /api/teacher/weeks/:weekId/steps/:missionType/video` — upload video clip for storyboard step (stored in `uploads/briefings/`)
+- `PATCH /api/teacher/weeks/:weekId/steps/:missionType` — update step: swap activity, set embed URL, toggle `videoClipHidden`, remove video, remove dismissal video (`removeDismissalVideo`), reset override
+- `POST /api/teacher/weeks/:weekId/steps/:missionType/video` — upload video clip for storyboard step (stored in `uploads/briefings/`). Supports `?slot=primary` (default, plays before task) or `?slot=dismissal` (plays after task via `clipAfter`)
 - `PATCH /api/teacher/weeks/:weekId/briefing` — update briefing config (`embedUrl`, `episodeTitle`, `episodeSubtitle`, `fallbackText`)
 - `PATCH /api/teacher/dictionary/:wordId` — edit dictionary word fields
 - `PATCH /api/teacher/scores/:scoreId` — edit individual score

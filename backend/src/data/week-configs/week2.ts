@@ -15,9 +15,84 @@ export const WEEK_2_CONFIG: WeekConfig = {
   ],
 
   // ── Tasks ────────────────────────────────────────────────────────
+  // Sequence: Input → Recognition → Guided Practice → Classification → Assessment → Analysis+Production
+  // Follows SLA pedagogy: comprehensible input first, then practice, then production
 
   tasks: [
-    // 1. Word Match — pure recognition, first encounter with new vocabulary
+    // 1. Memo Briefing — comprehensible input, first encounter with target words in context
+    //    clipBefore: teacher-uploaded briefing video plays first (movie theater mode)
+    {
+      id: "memo_briefing_w2",
+      type: "intake_form",
+      location: "Briefing Room",
+      label: "Priority Briefing",
+      config: {
+        cards: [
+          // Card 1: Read the memo — pure input, no interaction
+          {
+            type: "briefing",
+            title: "INCOMING DOCUMENT — READ CAREFULLY",
+            from: "Regional Oversight Division",
+            paragraphs: [
+              "INTERNAL MEMO 000328 — Department of Clarity",
+              "Date: March 3 | FROM: Regional Oversight Division | TO: All Associates | RE: Monthly Activity Review — Clarity Bay Sector 7",
+              "This memo is to inform all associates of changes to monthly operations.",
+              "Section 1: The Department noticed problems in citizen activity records last week. The team completed a full review. The review included data from 847 citizen files. Three associates compared the old records with the new records. They found that some information was not correct. The Department updated these files and replaced the old information with correct information.",
+              "Section 2: New rules now require supervisor approval before you can look at old records. Associates must submit a written request before viewing records older than five years. If you notice any differences between this memo and earlier versions, please report them through standard channels.",
+              "This document replaces all earlier versions. Do not remove this memo from the office.",
+            ],
+          },
+          // Card 2: Comprehension check — proves they processed the input
+          {
+            type: "intake_questions",
+            title: "Memo Comprehension Check",
+            questions: [
+              {
+                key: "q1",
+                label: "What did the Department find in the citizen activity records?",
+                options: [
+                  "The records were too old",
+                  "Some information was not correct",
+                  "There were too many files",
+                  "The records were missing",
+                ],
+                correctIndex: 1,
+              },
+              {
+                key: "q2",
+                label: "How many citizen files did the review include?",
+                options: ["400", "612", "847", "1000"],
+                correctIndex: 2,
+              },
+              {
+                key: "q3",
+                label: "What must associates do before viewing old records?",
+                options: [
+                  "Ask a friend",
+                  "Wait five years",
+                  "Submit a written request",
+                  "Remove the old records",
+                ],
+                correctIndex: 2,
+              },
+              {
+                key: "q4",
+                label: "What should you do if you notice differences between memo versions?",
+                options: [
+                  "Ignore them",
+                  "Report them through standard channels",
+                  "Remove the old version",
+                  "Change the new version",
+                ],
+                correctIndex: 1,
+              },
+            ],
+          },
+        ],
+      },
+    },
+
+    // 2. Word Match — vocabulary recognition, now grounded in memo context
     {
       id: "word_match_w2",
       type: "word_match",
@@ -40,40 +115,40 @@ export const WEEK_2_CONFIG: WeekConfig = {
       },
     },
 
-    // 2. Cloze Fill — Memo 14 (original), recognition in context
+    // 3. Cloze Fill — guided recall of memo content using target vocabulary
     {
       id: "cloze_fill_w2",
       type: "cloze_fill",
       location: "Records Office",
       label: "Document Verification",
       config: {
-        title: "INTERNAL MEMO 14 — DEPARTMENT OF CLARITY",
+        title: "INTERNAL MEMO 000328 — DEPARTMENT OF CLARITY",
         from: "Regional Oversight Division",
         passage:
-          "This memo is to {0} all associates of the following updates to monthly operations. Please {1} any differences between this document and previous versions.\n\nSection 1: The Department {2} a full review of citizen activity records last week. The review {3} data from 847 citizen files. Three associates {4} that certain records contained errors. The Department {5} these files and {6} the original entries with corrected versions.\n\nSection 2: Effective immediately, archive access {7} supervisor approval. Associates must {8} a written {9} before viewing records older than five years.\n\nThis document supersedes all previous versions. If you {10} any differences between versions, file a Contradiction Report through standard channels.",
+          "This memo is to {0} all associates of {1} to monthly operations.\n\nSection 1: The Department {2} problems in citizen activity records last week. The team completed a full review. The review {3} data from 847 citizen files. Three associates {4} the old records with the new records. They found that some information was not correct. The Department {5} these files and {6} the old information with correct information.\n\nSection 2: New rules now {7} supervisor approval. Associates must {8} a written {9} before viewing old records. If you {10} any differences, please report them.",
         blanks: [
           { index: 0, correctWord: "inform" },
-          { index: 1, correctWord: "notice" },
-          { index: 2, correctWord: "completed" },
+          { index: 1, correctWord: "changes" },
+          { index: 2, correctWord: "noticed" },
           { index: 3, correctWord: "included" },
-          { index: 4, correctWord: "noticed" },
+          { index: 4, correctWord: "compared" },
           { index: 5, correctWord: "updated" },
           { index: 6, correctWord: "replaced" },
-          { index: 7, correctWord: "requires" },
+          { index: 7, correctWord: "require" },
           { index: 8, correctWord: "submit" },
           { index: 9, correctWord: "request" },
           { index: 10, correctWord: "notice" },
         ],
         wordBank: [
-          "inform", "notice", "completed", "included", "noticed",
-          "updated", "replaced", "requires", "submit", "request",
-          "notice", "removed", "compared",
+          "inform", "changes", "noticed", "included", "compared",
+          "updated", "replaced", "require", "submit", "request",
+          "notice", "removed",
         ],
         pearlBarkOnComplete: "Document verified. Proceed to Archive Classification.",
       },
     },
 
-    // 3. Word Sort — sort past vs. present forms, grammar target
+    // 4. Word Sort — grammar classification, past vs present forms
     {
       id: "word_sort_w2",
       type: "word_sort",
@@ -109,9 +184,9 @@ export const WEEK_2_CONFIG: WeekConfig = {
       },
     },
 
-    // 4. Vocab Clearance — TOEIC Part 5 style, past/present mix
+    // 5. Vocab Clearance — TOEIC Part 5 assessment
     {
-      id: "vocab_clearance",
+      id: "vocab_clearance_w2",
       type: "vocab_clearance",
       location: "Clearance Terminal",
       label: "Vocabulary Clearance",
@@ -191,73 +266,116 @@ export const WEEK_2_CONFIG: WeekConfig = {
       },
     },
 
-    // 5. Contradiction Report — compare Memo 14 vs Memo 14-R, full production
+    // 6. Contradiction Report — real-time memo swap + recall + classify + write
+    //    Students see Memo 000328 again, then it changes before their eyes.
+    //    Recall questions (no going back), then classify + write (both shown).
     {
-      id: "contradiction_report",
+      id: "contradiction_report_w2",
       type: "contradiction_report",
       label: "Contradiction Report",
       location: "Review Station",
       config: {
-        memoA: {
-          title: "INTERNAL MEMO 14",
+        memo: {
+          title: "INTERNAL MEMO 000328",
           department: "Department of Clarity",
           date: "March 3",
           from: "Regional Oversight Division",
           to: "All Associates",
           re: "Monthly Activity Review — Clarity Bay Sector 7",
-          body: "This memo is to inform all associates of the following updates to monthly operations. Please notice any differences between this document and previous versions. Section 1: The Department completed a full review of citizen activity records last week. The review included data from 847 citizen files. Three associates noticed that certain records contained errors. The Department updated these files and replaced the original entries with corrected versions. Section 2: Effective immediately, archive access requires supervisor approval. Associates must submit a written request before viewing records older than five years. This document supersedes all previous versions. If you notice any differences between versions, file a Contradiction Report through standard channels.",
+          body: "This memo is to inform all associates of changes to monthly operations.\n\nSection 1: The Department noticed problems in citizen activity records last week. The team completed a full review. The review included data from 847 citizen files. Three associates compared the old records with the new records. They found that some information was not correct. The Department updated these files and replaced the old information with correct information.\n\nSection 2: New rules now require supervisor approval before you can look at old records. Associates must submit a written request before viewing records older than five years. If you notice any differences between this memo and earlier versions, please report them through standard channels.\n\nThis document replaces all earlier versions. Do not remove this memo from the office.",
         },
-        memoB: {
-          title: "INTERNAL MEMO 14-R (REVISED)",
+        memoRevised: {
+          title: "INTERNAL MEMO 000328-R (REVISED)",
           department: "Department of Clarity",
           date: "March 10",
           from: "Regional Oversight Division",
           to: "All Associates",
           re: "Monthly Activity Review — Clarity Bay Sector 7",
           reviewedBy: "CA-19 — Lena Park",
-          body: "This memo is to inform all associates of the following updates to monthly operations. Please notice any differences between this document and previous versions. Section 1: The Department completed a routine review of citizen activity records last week. The review included data from 612 citizen files. The Department updated these files and replaced the original entries with corrected versions. Section 2: Effective immediately, archive access requires supervisor approval. Associates must submit a written request before viewing records older than three years. This document supersedes all previous versions.",
+          body: "This memo is to inform all associates of changes to monthly operations.\n\nSection 1: The Department noticed problems in citizen activity records last week. The team completed a routine review. The review included data from 612 citizen files. The Department updated these files and replaced the old information with correct information.\n\nSection 2: New rules now require supervisor approval before you can look at old records. Associates must submit a written request before viewing records older than three years.\n\nThis document replaces all earlier versions.",
         },
         differences: [
           {
             diffId: "diff_1",
             label: "Review scope",
-            memoAText: "full review",
-            memoBText: "routine review",
+            originalText: "full review",
+            revisedText: "routine review",
             classification: "information_changed",
           },
           {
             diffId: "diff_2",
             label: "File count",
-            memoAText: "847 citizen files",
-            memoBText: "612 citizen files",
+            originalText: "847 citizen files",
+            revisedText: "612 citizen files",
             classification: "information_changed",
           },
           {
             diffId: "diff_3",
-            label: "Error reporters",
-            memoAText: "Three associates noticed that certain records contained errors.",
-            memoBText: "[Sentence removed]",
-            removedAfterText: "The review included data from 612 citizen files.",
+            label: "Associates who found errors",
+            originalText: "Three associates compared the old records with the new records. They found that some information was not correct.",
+            revisedText: "[Removed]",
             classification: "information_removed",
           },
           {
             diffId: "diff_4",
-            label: "Archive access period",
-            memoAText: "older than five years",
-            memoBText: "older than three years",
+            label: "Record age requirement",
+            originalText: "older than five years",
+            revisedText: "older than three years",
             classification: "information_changed",
           },
           {
             diffId: "diff_5",
-            label: "Comparison instruction",
-            memoAText: "If you notice any differences between versions, file a Contradiction Report through standard channels.",
-            memoBText: "[Sentence removed]",
-            removedAfterText: "This document supersedes all previous versions.",
+            label: "Reporting instruction",
+            originalText: "If you notice any differences between this memo and earlier versions, please report them through standard channels.",
+            revisedText: "[Removed]",
             classification: "information_removed",
           },
         ],
+        recallQuestions: [
+          {
+            id: "recall_1",
+            question: "What type of review did the original memo describe?",
+            options: ["routine review", "full review", "quick review", "special review"],
+            correctIndex: 1,
+          },
+          {
+            id: "recall_2",
+            question: "How many citizen files were in the original review?",
+            options: ["612", "700", "847", "1000"],
+            correctIndex: 2,
+          },
+          {
+            id: "recall_3",
+            question: "What happened to the sentence about three associates who compared the records?",
+            options: [
+              "It was changed",
+              "It stayed the same",
+              "It was removed",
+              "New information was added",
+            ],
+            correctIndex: 2,
+          },
+          {
+            id: "recall_4",
+            question: "In the original, how old must records be before you need supervisor approval?",
+            options: ["three years", "five years", "seven years", "ten years"],
+            correctIndex: 1,
+          },
+          {
+            id: "recall_5",
+            question: "What instruction about noticing differences was removed from the revised memo?",
+            options: [
+              "Ask your supervisor for help",
+              "Report differences through standard channels",
+              "Compare the memo with a friend",
+              "Remove the old version immediately",
+            ],
+            correctIndex: 1,
+          },
+        ],
+        pearlSwapMessage: "Attention, Citizen. A routine document update has been applied to Memo 000328. The current version is always the correct version. Please continue your work.",
         writingPrompt:
-          "Compare Memo 14 (Original) and Memo 14-R (Revised). For each difference you found, describe what changed. Use past simple for the original version and present simple for the current version.",
+          "Describe the differences between Memo 000328 (Original) and Memo 000328-R (Revised). What did the original say? What does the revised version say now? Use past simple for the original and present simple for the revised version.",
         writingMinWords: 40,
         writingLane: {
           "1": {
@@ -266,9 +384,9 @@ export const WEEK_2_CONFIG: WeekConfig = {
             wordBankChinese: true,
             pearlHints: [
               "\"The original memo included _______. The revised memo now says _______.\"",
-              "\"Yesterday, the report informed associates that _______. Today, it states _______.\"",
-              "\"The Department removed _______ from the original. The updated version does not include this information.\"",
-              "\"I noticed that the original version required _______. The revision changed this to _______.\"",
+              "\"Yesterday, the report informed associates that _______. Today, it says _______.\"",
+              "\"The Department removed _______ from the original. The updated version does not include this.\"",
+              "\"I noticed that the original required _______. The revision changed this to _______.\"",
               "\"The earlier memo compared _______ and _______. The new version replaced this section.\"",
             ],
           },
@@ -276,44 +394,7 @@ export const WEEK_2_CONFIG: WeekConfig = {
           "3": {
             minWords: 55,
             bonusQuestion:
-              "Did the revision add information or remove it? What did the original include that the revision does not?",
-          },
-        },
-      },
-    },
-
-    // 6. Shift Report — end-of-shift written reflection
-    {
-      id: "shift_report",
-      type: "shift_report",
-      label: "Shift Report",
-      location: "Reporting Desk",
-      config: {
-        prompt:
-          "Describe what you found during today's contradiction review. What did the original memo include? What does the revision say now? What was removed or replaced? Use as many target words as possible.",
-        minWords: 45,
-        lane: {
-          "1": {
-            minWords: 30,
-            sentenceStarters: true,
-            wordBankChinese: true,
-            pearlHints: [
-              "Start with a past simple sentence about the original memo.",
-              "Then write a present simple sentence about the revised memo.",
-              "Describe what changed between the two versions.",
-            ],
-            guidedQuestions: [
-              "What did the original memo include?",
-              "What does the revised memo say now?",
-              "What changed between the two versions?",
-              "Were associates informed of the changes?",
-            ],
-          },
-          "2": { minWords: 45, wordListVisible: true },
-          "3": {
-            minWords: 60,
-            bonusQuestion:
-              "What does it mean for associates who relied on the original information? Why might the Ministry remove the instruction to compare documents?",
+              "Did the revision add information or remove it? What did the original include that the revision does not? Why might the Ministry remove the instruction to report differences?",
           },
         },
       },
@@ -328,9 +409,9 @@ export const WEEK_2_CONFIG: WeekConfig = {
       characterName: "Chad",
       designation: "CA-31",
       triggerType: "task_start",
-      triggerConfig: { taskId: "contradiction_report" },
+      triggerConfig: { taskId: "contradiction_report_w2" },
       messageText:
-        "Hey! You're the new associate right? CA-something? I'm Chad — CA-31. Well, technically I started three weeks before you but they fast-tracked my orientation because my uncle works in Administrative Division. Anyway, these contradiction reports? Super easy. I usually finish mine in like five minutes. Just compare the dates and you're done. Oh, and don't worry about the footer text on 14-R. Nobody reads that part. Don't overthink it 😎",
+        "Hey! You're the new associate right? CA-something? I'm Chad — CA-31. Well, technically I started three weeks before you but they fast-tracked my orientation because my uncle works in Administrative Division. Anyway, these contradiction reports? Super easy. I usually finish mine in like five minutes. Just compare the dates and you're done. Don't overthink it 😎",
       replyType: "canned",
       replyOptions: [
         {
@@ -359,7 +440,7 @@ export const WEEK_2_CONFIG: WeekConfig = {
       characterName: "Ivan",
       designation: "CA-22",
       triggerType: "task_start",
-      triggerConfig: { taskId: "contradiction_report" },
+      triggerConfig: { taskId: "contradiction_report_w2" },
       messageText:
         "Have you seen the two memos? I compared them during my shift. Some of the changes don't make sense. Why would they remove information? Betty says revisions are normal but... I don't know.",
       replyType: "canned",
@@ -374,7 +455,7 @@ export const WEEK_2_CONFIG: WeekConfig = {
           text: "I noticed the same thing. Some information was removed.",
           isCompliant: false,
           responseText:
-            "Right? The original included more data. And that sentence about associates who noticed errors — it's just gone. Like it never existed. But maybe I'm overthinking this.",
+            "Right? The original included more data. And that sentence about associates who found errors — it's just gone. Like it never existed. But maybe I'm overthinking this.",
         },
         {
           text: "What did Betty say exactly?",
@@ -390,7 +471,7 @@ export const WEEK_2_CONFIG: WeekConfig = {
       characterName: "M.K.",
       designation: "",
       triggerType: "task_complete",
-      triggerConfig: { taskId: "contradiction_report" },
+      triggerConfig: { taskId: "contradiction_report_w2" },
       messageText:
         "Two versions. One replaces the other. Ask yourself which direction the changes go. Do they add information, or remove it.",
       replyType: "canned",
@@ -413,12 +494,12 @@ export const WEEK_2_CONFIG: WeekConfig = {
       ],
     },
 
-    // Betty / WA-14 — appears on completion of shift_report
+    // Betty / WA-14 — appears on completion of contradiction_report (replaces old shift_report trigger)
     {
       characterName: "Betty",
       designation: "WA-14",
       triggerType: "task_complete",
-      triggerConfig: { taskId: "shift_report" },
+      triggerConfig: { taskId: "contradiction_report_w2" },
       messageText:
         "I see you completed your discrepancy review! You know, revisions happen because leadership is always improving our records. That's what good organizations do, sugar — they update! The current version is always the correct version. Easy as pie!",
       replyType: "canned",
