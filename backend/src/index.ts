@@ -35,12 +35,18 @@ const allowedOrigins = (process.env.FRONTEND_ORIGIN || 'http://localhost:3000')
 
 // Ensure upload directories exist at startup (not just on first upload)
 const briefingPath = path.join(uploadPath, 'briefings');
-for (const dir of [uploadPath, briefingPath]) {
+const welcomePath = path.join(uploadPath, 'welcome');
+for (const dir of [uploadPath, briefingPath, welcomePath]) {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
     console.log(`[Lexical Republic] Created upload dir: ${dir}`);
   }
 }
+console.log(`[Lexical Republic] __dirname: ${__dirname}`);
+console.log(`[Lexical Republic] UPLOAD_DIR env: ${process.env.UPLOAD_DIR || '(not set, using "uploads")'}`);
+console.log(`[Lexical Republic] Resolved upload path: ${uploadPath}`);
+console.log(`[Lexical Republic] Upload dir exists: ${fs.existsSync(uploadPath)}`);
+console.log(`[Lexical Republic] Briefings dir exists: ${fs.existsSync(briefingPath)}`);
 
 const httpServer = initSocketServer(app, allowedOrigins);
 
@@ -67,7 +73,22 @@ app.use('/uploads', express.static(uploadPath));
 
 // Health check
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  const briefingFiles = fs.existsSync(briefingPath)
+    ? fs.readdirSync(briefingPath).slice(0, 10)
+    : [];
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uploads: {
+      __dirname,
+      uploadPath,
+      briefingPath,
+      uploadDirExists: fs.existsSync(uploadPath),
+      briefingDirExists: fs.existsSync(briefingPath),
+      briefingFileCount: briefingFiles.length,
+      briefingFiles,
+    },
+  });
 });
 
 // Routes
