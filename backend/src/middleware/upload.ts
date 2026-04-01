@@ -12,12 +12,17 @@ function ensureDirExists(dirPath: string) {
   }
 }
 
+/** Resolve upload base dir from UPLOAD_DIR env — same logic as dictionary.ts and index.ts */
+function resolveUploadBase(): string {
+  const raw = process.env.UPLOAD_DIR || 'uploads';
+  return path.isAbsolute(raw) ? raw : path.resolve(__dirname, '../../', raw);
+}
+
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
-    const uploadDir = process.env.UPLOAD_DIR || 'uploads';
-    const resolved = path.isAbsolute(uploadDir) ? uploadDir : path.resolve(__dirname, '../../', uploadDir);
-    ensureDirExists(resolved);
-    cb(null, resolved);
+    const dir = resolveUploadBase();
+    ensureDirExists(dir);
+    cb(null, dir);
   },
   filename: (_req, file, cb) => {
     const ext = path.extname(file.originalname) || '.webm';
@@ -39,14 +44,11 @@ export const uploadAudio = multer({
 
 const videoStorage = multer.diskStorage({
   destination: (_req, _file, cb) => {
-    // Read env at request time, not import time
-    const uploadDir = process.env.UPLOAD_DIR || 'uploads';
-    const base = path.isAbsolute(uploadDir) ? uploadDir : path.resolve(__dirname, '../../', uploadDir);
-    const briefingDir = process.env.BRIEFING_UPLOAD_DIR || path.join(base, 'briefings');
-    const resolved = path.isAbsolute(briefingDir) ? briefingDir : path.resolve(__dirname, '../../', briefingDir);
-    console.log(`[upload.ts v2] UPLOAD_DIR=${uploadDir}, resolved briefing dir=${resolved}`);
-    ensureDirExists(resolved);
-    cb(null, resolved);
+    // Always derive from UPLOAD_DIR — ignore BRIEFING_UPLOAD_DIR to avoid path mismatches
+    const dir = path.join(resolveUploadBase(), 'briefings');
+    console.log(`[upload.ts v3] video destination: ${dir}`);
+    ensureDirExists(dir);
+    cb(null, dir);
   },
   filename: (_req, file, cb) => {
     const ext = path.extname(file.originalname) || '.mp4';
