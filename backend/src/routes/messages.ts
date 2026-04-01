@@ -74,8 +74,15 @@ router.post('/', async (req: Request, res: Response) => {
     };
 
     const message = await prisma.$transaction(async (tx) => {
+      // Primary dedup: exact match on character+trigger+week+taskId
       const existing = await tx.characterMessage.findFirst({ where: dedupWhere });
       if (existing) return existing;
+
+      // Fallback dedup: same character+week+text (catches mismatched taskId)
+      const textMatch = await tx.characterMessage.findFirst({
+        where: { pairId, weekNumber, characterName, triggerType, messageText },
+      });
+      if (textMatch) return textMatch;
 
       return tx.characterMessage.create({
         data: {

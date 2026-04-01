@@ -93,7 +93,9 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
           m.characterName === config.characterName &&
           m.triggerType === triggerType &&
           m.weekNumber === context.weekNumber &&
-          (m.triggerConfig as Record<string, unknown>)?.taskId === context.taskId
+          // Match if taskId is the same OR if the message text is identical
+          ((m.triggerConfig as Record<string, unknown>)?.taskId === context.taskId ||
+           m.messageText === config.messageText)
       );
       if (exists) continue;
 
