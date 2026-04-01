@@ -44,9 +44,10 @@ Deprecated: `Vocabulary`, `StudentVocabulary`
   - Only env var: `VITE_API_BASE_URL=https://lexical-republic-production.up.railway.app/api`
 - **PostgreSQL**: Railway-managed, connected via `${{Postgres.DATABASE_URL}}`
 - **Volume**: 5 GB persistent disk mounted at `/data/uploads` on backend service
-  - Stores briefing videos (`/data/uploads/briefings/`) and student audio recordings
+  - Stores briefing videos (`/data/uploads/briefings/`), welcome video (`/data/uploads/welcome/`), and student audio recordings
   - `BRIEFING_URL_PREFIX = '/uploads/briefings'` — DB stores relative URLs, `express.static('/uploads', uploadPath)` serves files
-  - Upload directories created at backend startup (`uploads/` + `uploads/briefings/`)
+  - Upload directories created at backend startup (`uploads/` + `uploads/briefings/` + `uploads/welcome/`)
+  - **Critical**: multer `destination` callbacks read `process.env.UPLOAD_DIR` at request time (not import time) to ensure the Railway volume path is used. Module-level constants evaluated before env injection caused files to write to ephemeral `/app/uploads/` instead of persistent `/data/uploads/`.
 - **Key env vars** (backend):
   - `UPLOAD_DIR` = `/data/uploads`
   - `OPENAI_API_KEY`, `OPENAI_MODEL` (optional, defaults to `gpt-4.1-mini`)

@@ -112,7 +112,7 @@ Step navigation gated by completion. All steps support optional video via `StepV
 - `MessageNotification` — toast stays until student clicks (body opens full conversation with that character, X dismisses)
 - **Login notification**: On `loadMessages`, if there are unread thread messages (Clarity Minder) and no active notification, the most recent unread thread triggers a toast — so students see teacher messages even if they arrived while offline
 - Messages triggered by `task_start`, `task_complete`, `shift_start` events from WeekConfig
-- Dedup: module-level `inFlightKeys` + backend `$transaction` + GET response dedup
+- Dedup (3 layers): module-level `inFlightKeys` + backend `$transaction` + GET response dedup. Both frontend and backend include `messageText` fallback match to prevent duplicates when `triggerConfig.taskId` JSON path match fails across sessions.
 - Header icon layout: [Dictionary] [Messages] | [PEARL eye + label] (Ministry text and PEARL label hidden on mobile)
 - Store: `selectedConversation` (character name) for grouped view, `selectedMessageId` for legacy single-message navigation
 
