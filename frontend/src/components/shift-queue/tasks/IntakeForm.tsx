@@ -5,7 +5,6 @@ import { useShiftQueueStore } from '../../../stores/shiftQueueStore';
 import TargetWordHighlighter from './shared/TargetWordHighlighter';
 import WritingEvaluator from './shared/WritingEvaluator';
 import type { EvalResult } from './shared/WritingEvaluator';
-import BureauStamp from './shared/BureauStamp';
 import AuthorizationToast from './shared/AuthorizationToast';
 
 // ─── Types ───────────────────────────────────────────────────────

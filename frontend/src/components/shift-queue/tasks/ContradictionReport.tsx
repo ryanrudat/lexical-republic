@@ -6,7 +6,7 @@ import TargetWordHighlighter from './shared/TargetWordHighlighter';
 import WritingEvaluator from './shared/WritingEvaluator';
 import type { EvalResult } from './shared/WritingEvaluator';
 import LaneScaffolding from './shared/LaneScaffolding';
-import BureauStamp, { StampChoice } from './shared/BureauStamp';
+import { StampChoice } from './shared/BureauStamp';
 import AuthorizationToast from './shared/AuthorizationToast';
 
 // ─── Types ───────────────────────────────────────────────────────
