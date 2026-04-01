@@ -2,7 +2,7 @@
 export const STEP_ORDER = [
   { id: 'recap', label: 'Shift Start', location: 'intake' },
   { id: 'briefing', label: 'Briefing', location: 'broadcast' },
-  { id: 'grammar', label: 'Language Desk', location: 'language-lab' },
+  { id: 'grammar', label: 'Compliance Desk', location: 'language-lab' },
   { id: 'listening', label: 'Evidence', location: 'evidence-desk' },
   { id: 'voice_log', label: 'Voice Booth', location: 'voice-booth' },
   { id: 'case_file', label: 'Case File', location: 'filing-desk' },
@@ -12,7 +12,7 @@ export const STEP_ORDER = [
 export const LOCATIONS = [
   { id: 'intake', label: 'Shift Start', hint: 'Start and close your shift' },
   { id: 'broadcast', label: 'Broadcast', hint: 'Episode video and directives' },
-  { id: 'language-lab', label: 'Language Lab', hint: 'Grammar and vocabulary control' },
+  { id: 'language-lab', label: 'Compliance Desk', hint: 'Grammar and vocabulary compliance' },
   { id: 'evidence-desk', label: 'Evidence Desk', hint: 'Listening and proof selection' },
   { id: 'voice-booth', label: 'Voice Booth', hint: 'Speaking rehearsal and recording' },
   { id: 'filing-desk', label: 'Filing Desk', hint: 'Write official case reports' },

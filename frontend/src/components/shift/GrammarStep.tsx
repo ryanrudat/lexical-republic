@@ -8,11 +8,11 @@ import StepVideoClip from './shared/StepVideoClip';
 import { useBarkContext } from '../../hooks/useBarkContext';
 
 const MASTERY_LABELS: Record<MasteryState, { label: string; color: string }> = {
-  new: { label: 'NEW', color: 'text-white/40' },
-  learning: { label: 'LEARNING', color: 'text-neon-cyan' },
-  practicing: { label: 'PRACTICING', color: 'text-neon-mint/70' },
-  mastered: { label: 'MASTERED', color: 'text-neon-mint' },
-  struggling: { label: 'NEEDS REVIEW', color: 'text-neon-pink' },
+  new: { label: 'NEW', color: 'text-[#9CA3AF]' },
+  learning: { label: 'LEARNING', color: 'text-sky-600' },
+  practicing: { label: 'PRACTICING', color: 'text-amber-600' },
+  mastered: { label: 'MASTERED', color: 'text-emerald-600' },
+  struggling: { label: 'NEEDS REVIEW', color: 'text-rose-600' },
 };
 
 interface GrammarStepProps {
@@ -111,12 +111,12 @@ export default function GrammarStep({ phaseConfig, onPhaseComplete }: GrammarSte
     <div className="space-y-6">
       <StoryBeatCard storyBeat={storyBeat} />
 
-      <StepVideoClip config={(mission?.config || {}) as Record<string, unknown>} stepLabel="Language Lab" />
+      <StepVideoClip config={(mission?.config || {}) as Record<string, unknown>} stepLabel="Compliance Desk" />
 
       {/* Progress bar */}
-      <div className="bg-white/10 h-2 rounded-full overflow-hidden">
+      <div className="bg-[#E8E4DC] h-2 rounded-full overflow-hidden">
         <div
-          className="h-full bg-neon-mint/70 transition-all duration-500"
+          className="h-full bg-sky-500 transition-all duration-500"
           style={{ width: `${progress * 100}%` }}
         />
       </div>
@@ -129,7 +129,7 @@ export default function GrammarStep({ phaseConfig, onPhaseComplete }: GrammarSte
             return (
               <span
                 key={m.target}
-                className={`ios-glass-pill px-2 py-0.5 text-[10px] font-ibm-mono tracking-wider ${info.color}`}
+                className={`px-2 py-0.5 text-[10px] font-ibm-mono tracking-wider border border-[#D4CFC6] rounded-full bg-[#FAFAF7] ${info.color}`}
                 title={`${m.target}: ${m.correct}/${m.attempts} correct, streak ${m.streak}`}
               >
                 {m.target.replace(/-/g, ' ')} — {info.label}
@@ -140,18 +140,18 @@ export default function GrammarStep({ phaseConfig, onPhaseComplete }: GrammarSte
       )}
 
       {stepDone ? (
-        <div className="text-center font-ibm-mono text-xs text-neon-mint tracking-wider animate-pulse py-8 ios-text-glow-mint">
+        <div className="text-center font-ibm-mono text-xs text-emerald-600 tracking-wider animate-pulse py-8">
           COMPLETE
         </div>
       ) : doc ? (
-        <div className="ios-glass-card p-6">
+        <div className="bg-white border border-[#D4CFC6] rounded-2xl p-6 shadow-sm">
           {/* Prompt */}
-          <p className="font-ibm-mono text-xs text-neon-cyan/70 tracking-wider mb-3">
+          <p className="font-ibm-mono text-xs text-sky-600 tracking-wider mb-3">
             {doc.prompt}
           </p>
 
           {/* Sentence with blank */}
-          <p className="font-ibm-sans text-[17px] text-white/90 mb-6 leading-relaxed">
+          <p className="font-ibm-sans text-[17px] text-[#2C3340] mb-6 leading-relaxed">
             {doc.text}
           </p>
 
@@ -167,17 +167,17 @@ export default function GrammarStep({ phaseConfig, onPhaseComplete }: GrammarSte
                   key={idx}
                   onClick={() => !showFeedback && setSelectedOption(idx)}
                   disabled={showFeedback}
-                  className={`w-full text-left px-4 py-2.5 rounded-lg font-ibm-mono text-sm transition-all border ${
+                  className={`w-full text-left px-4 py-2.5 rounded-lg text-sm transition-all border-2 ${
                     correctAfterSubmit
-                      ? 'bg-neon-mint/10 border-neon-mint/40 text-neon-mint'
+                      ? 'bg-emerald-50 border-emerald-400 text-emerald-800'
                       : wrongAfterSubmit
-                      ? 'bg-neon-pink/10 border-neon-pink/40 text-neon-pink'
+                      ? 'bg-rose-50 border-rose-300 text-rose-700'
                       : isSelected
-                      ? 'bg-neon-cyan/10 border-neon-cyan/40 text-neon-cyan'
-                      : 'bg-white/5 border-white/10 text-white/75 hover:border-white/20'
+                      ? 'bg-sky-50 border-sky-400 text-sky-800'
+                      : 'bg-[#FAFAF7] border-[#E8E4DC] text-[#4B5563] hover:border-sky-300'
                   }`}
                 >
-                  <span className="mr-2 text-white/30">{String.fromCharCode(65 + idx)}.</span>
+                  <span className="mr-2 text-[#9CA3AF]">{String.fromCharCode(65 + idx)}.</span>
                   {option}
                 </button>
               );
@@ -188,8 +188,8 @@ export default function GrammarStep({ phaseConfig, onPhaseComplete }: GrammarSte
           {showFeedback && (
             <div className={`mb-4 p-3 rounded-lg font-ibm-mono text-xs tracking-wider border ${
               isCorrect
-                ? 'bg-neon-mint/10 border-neon-mint/20 text-neon-mint'
-                : 'bg-neon-pink/10 border-neon-pink/20 text-neon-pink'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                : 'bg-rose-50 border-rose-200 text-rose-700'
             }`}>
               {isCorrect ? 'CORRECT — Well done, Citizen.' : `INCORRECT — The correct answer is: ${doc.options[doc.correctIndex]}`}
             </div>
@@ -202,8 +202,8 @@ export default function GrammarStep({ phaseConfig, onPhaseComplete }: GrammarSte
               disabled={selectedOption === null}
               className={`w-full py-3 rounded-full font-ibm-mono text-xs uppercase tracking-[0.25em] transition-all ${
                 selectedOption !== null
-                  ? 'ios-glass-pill-action text-neon-cyan hover:shadow-[0_0_16px_rgba(0,229,255,0.2)]'
-                  : 'ios-glass-pill text-white/25 cursor-not-allowed'
+                  ? 'bg-sky-600 text-white hover:bg-sky-700 active:scale-[0.98]'
+                  : 'bg-[#E8E4DC] text-[#B8B3AA] cursor-not-allowed'
               }`}
             >
               Submit Answer
@@ -211,7 +211,7 @@ export default function GrammarStep({ phaseConfig, onPhaseComplete }: GrammarSte
           ) : (
             <button
               onClick={handleNext}
-              className="w-full py-3 rounded-full font-ibm-mono text-xs uppercase tracking-[0.25em] ios-glass-pill-action text-neon-cyan hover:shadow-[0_0_16px_rgba(0,229,255,0.2)] transition-all"
+              className="w-full py-3 rounded-full font-ibm-mono text-xs uppercase tracking-[0.25em] bg-sky-600 text-white hover:bg-sky-700 active:scale-[0.98] transition-all"
             >
               {completedCount + 1 >= requiredCount || currentDoc >= documents.length - 1 ? 'Complete Grammar' : 'Next Document'}
             </button>

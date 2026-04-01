@@ -6,6 +6,7 @@ import TargetWordHighlighter from './shared/TargetWordHighlighter';
 import WritingEvaluator from './shared/WritingEvaluator';
 import type { EvalResult } from './shared/WritingEvaluator';
 import LaneScaffolding from './shared/LaneScaffolding';
+import BureauStamp, { StampChoice } from './shared/BureauStamp';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -241,15 +242,12 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
           Review Memo 000328 — Read carefully before continuing
         </h3>
 
-        {renderMemoCard(effectiveMemo, 'CURRENT DOCUMENT')}
+        <div className="animate-doc-slide-in">
+          {renderMemoCard(effectiveMemo, 'CURRENT DOCUMENT')}
+        </div>
 
-        <div className="pt-2 text-center">
-          <button
-            className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 active:scale-95 transition-all"
-            onClick={handleReadComplete}
-          >
-            I have read this document
-          </button>
+        <div className="pt-2">
+          <BureauStamp variant="reviewed" onStamp={handleReadComplete} />
         </div>
       </div>
     );
@@ -381,26 +379,26 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
   // ── Render: Classify phase ──────────────────────────────────────
 
   function renderClassifyPhase() {
-    const classifyOptions = [
-      { value: 'information_changed', label: 'Information was changed' },
-      { value: 'information_removed', label: 'Information was removed' },
-    ];
-
     return (
       <div className="space-y-4">
         <h3 className="font-ibm-mono text-xs tracking-wider uppercase text-[#8B8578] text-center">
-          Classify each difference between the original and revised memo
+          Stamp each difference — was it changed or removed?
         </h3>
 
         {/* Both memos side by side for reference */}
-        <div className="flex flex-col md:flex-row gap-4">
-          {renderMemoCard(effectiveMemo, 'ORIGINAL — March 3')}
-          {renderMemoCard(effectiveMemoRevised, 'REVISED — March 10')}
-        </div>
+        <details className="bg-[#FAFAF7] border border-[#E8E4DC] rounded-xl" open>
+          <summary className="px-4 py-2 cursor-pointer font-ibm-mono text-[10px] text-[#8B8578] tracking-wider uppercase">
+            Reference: Both memo versions
+          </summary>
+          <div className="px-4 pb-3 flex flex-col md:flex-row gap-4">
+            {renderMemoCard(effectiveMemo, 'ORIGINAL — March 3')}
+            {renderMemoCard(effectiveMemoRevised, 'REVISED — March 10')}
+          </div>
+        </details>
 
-        {/* Classification cards */}
+        {/* Classification cards with stamp choices */}
         {effectiveDifferences.map((diff, i) => (
-          <div key={diff.diffId} className="bg-white border border-[#E8E4DC] rounded-xl p-4 space-y-3">
+          <div key={diff.diffId} className="animate-doc-slide-up bg-white border border-[#E8E4DC] rounded-xl p-4 space-y-3" style={{ animationDelay: `${i * 100}ms` }}>
             <p className="font-ibm-mono text-[10px] text-[#B8B3AA] tracking-wider uppercase">
               Difference {i + 1}: {diff.label}
             </p>
@@ -423,27 +421,29 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
               </div>
             </div>
 
-            <select
-              className="w-full bg-white border border-[#D4CFC6] rounded-lg px-3 py-2 text-sm text-[#4B5563] focus:outline-none focus:ring-2 focus:ring-sky-400"
-              value={classifications[diff.diffId] ?? ''}
-              onChange={e => setClassification(diff.diffId, e.target.value)}
-            >
-              <option value="">-- Classify this difference --</option>
-              {classifyOptions.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
+            {/* Stamp choice replaces dropdown */}
+            <StampChoice
+              options={[
+                { variant: 'changed', label: 'CHANGED' },
+                { variant: 'removed', label: 'REMOVED' },
+              ]}
+              selected={
+                classifications[diff.diffId] === 'information_changed' ? 'changed'
+                  : classifications[diff.diffId] === 'information_removed' ? 'removed'
+                  : null
+              }
+              onChoice={(v) => setClassification(diff.diffId, v === 'changed' ? 'information_changed' : 'information_removed')}
+            />
           </div>
         ))}
 
-        <div className="pt-2 text-center">
-          <button
-            className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 disabled:opacity-40 active:scale-95 transition-all"
+        <div className="pt-2">
+          <BureauStamp
+            variant="filed"
+            label="FILE REPORT"
+            onStamp={submitClassifications}
             disabled={!allClassified}
-            onClick={submitClassifications}
-          >
-            Submit Classifications
-          </button>
+          />
         </div>
       </div>
     );
@@ -500,13 +500,8 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
         />
 
         {writingPassed && (
-          <div className="pt-2 text-center">
-            <button
-              className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 active:scale-95 transition-all"
-              onClick={handleSubmit}
-            >
-              Complete Report
-            </button>
+          <div className="pt-2">
+            <BureauStamp variant="filed" label="FILE REPORT" onStamp={handleSubmit} />
           </div>
         )}
       </div>

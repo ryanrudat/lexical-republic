@@ -6,9 +6,10 @@ interface Props {
   word: DictionaryWord;
   expanded: boolean;
   onToggle: () => void;
+  variant?: 'target' | 'worldBuilding';
 }
 
-export default function DictionaryWordCard({ word, expanded, onToggle }: Props) {
+export default function DictionaryWordCard({ word, expanded, onToggle, variant = 'target' }: Props) {
   const { updateNotes, families, toggleStarred, revealChinese, selectWord } = useDictionaryStore();
   const [notes, setNotes] = useState(word.studentNotes);
   const [saveIndicator, setSaveIndicator] = useState<string | null>(null);
@@ -16,6 +17,7 @@ export default function DictionaryWordCard({ word, expanded, onToggle }: Props) 
   const prevMasteredRef = useRef(false);
   const [pulseGold, setPulseGold] = useState(false);
 
+  const isWB = variant === 'worldBuilding';
   const masteryPercent = Math.round(word.mastery * 100);
   const isMastered = word.mastery >= 1.0;
   const isProscribed = word.status === 'proscribed';
@@ -55,18 +57,22 @@ export default function DictionaryWordCard({ word, expanded, onToggle }: Props) 
     ? 'var(--dict-red)'
     : isRecovered
       ? 'var(--dict-amber)'
-      : 'var(--dict-green)';
+      : isWB
+        ? 'var(--dict-border-light)'
+        : 'var(--dict-accent)';
   const accentColor = isProscribed
     ? 'var(--dict-red)'
     : isRecovered
       ? 'var(--dict-amber)'
-      : 'var(--dict-green)';
+      : isWB
+        ? 'var(--dict-text-meta)'
+        : 'var(--dict-accent)';
 
   // Proscribed card
   if (isProscribed && !isRecovered) {
     return (
       <div
-        className="transition-colors relative"
+        className="transition-colors relative rounded-lg"
         style={{
           borderLeft: `3px solid var(--dict-red)`,
           background: expanded ? 'var(--dict-red-dim)' : 'transparent',
@@ -77,7 +83,7 @@ export default function DictionaryWordCard({ word, expanded, onToggle }: Props) 
             <span className="font-ibm-mono text-sm font-semibold" style={{ color: 'var(--dict-red)' }}>
               {word.word}
             </span>
-            <span className="font-ibm-mono text-[9px] ml-2 uppercase" style={{ color: 'var(--dict-text-dim)' }}>
+            <span className="font-ibm-mono text-[9px] ml-2 uppercase" style={{ color: 'var(--dict-text-meta)' }}>
               {word.partOfSpeech}
             </span>
           </div>
@@ -87,7 +93,7 @@ export default function DictionaryWordCard({ word, expanded, onToggle }: Props) 
         </button>
         {expanded && (
           <div className="px-3 pb-3 space-y-2 border-t" style={{ borderColor: 'var(--dict-border)' }}>
-            <p className="font-source-serif text-[13px] line-through pt-2" style={{ color: 'var(--dict-text-dim)' }}>
+            <p className="font-source-serif text-[13px] line-through pt-2" style={{ color: 'var(--dict-text-meta)' }}>
               {word.definition}
             </p>
             <p className="font-ibm-mono text-[10px] tracking-wider" style={{ color: 'var(--dict-red)' }}>
@@ -96,14 +102,14 @@ export default function DictionaryWordCard({ word, expanded, onToggle }: Props) 
             {family && (
               <div className="flex flex-wrap gap-1 mt-1">
                 {family.members.map((m) => (
-                  <span key={m} className="px-1.5 py-0.5 text-[10px] font-ibm-mono border opacity-30"
-                    style={{ borderColor: 'var(--dict-border)', color: 'var(--dict-text-dim)' }}>
+                  <span key={m} className="px-1.5 py-0.5 text-[10px] font-ibm-mono border opacity-30 rounded"
+                    style={{ borderColor: 'var(--dict-border)', color: 'var(--dict-text-meta)' }}>
                     {m}
                   </span>
                 ))}
               </div>
             )}
-            <p className="font-source-serif text-[11px] italic mt-2" style={{ color: 'var(--dict-text-dim)' }}>
+            <p className="font-source-serif text-[11px] italic mt-2" style={{ color: 'var(--dict-text-meta)' }}>
               The Party thanks you for not needing it.
             </p>
           </div>
@@ -114,7 +120,7 @@ export default function DictionaryWordCard({ word, expanded, onToggle }: Props) 
 
   return (
     <div
-      className="transition-all relative"
+      className={`transition-all relative rounded-lg ${isWB ? '' : ''}`}
       style={{
         borderLeft: `3px solid ${borderColor}`,
         background: expanded ? 'var(--dict-surface)' : 'transparent',
@@ -122,7 +128,7 @@ export default function DictionaryWordCard({ word, expanded, onToggle }: Props) 
       }}
     >
       {/* Collapsed header */}
-      <button onClick={onToggle} className="w-full text-left px-3 py-2.5 flex items-center gap-3">
+      <button onClick={onToggle} className={`w-full text-left px-3 flex items-center gap-3 ${isWB ? 'py-1.5' : 'py-2.5'}`}>
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2">
             {isRecovered && (
@@ -130,20 +136,31 @@ export default function DictionaryWordCard({ word, expanded, onToggle }: Props) 
                 RECOVERED
               </span>
             )}
-            <span className="font-ibm-mono text-sm font-semibold" style={{ color: accentColor }}>
+            <span
+              className={`font-ibm-mono font-semibold ${isWB ? 'text-xs' : 'text-sm'}`}
+              style={{ color: accentColor }}
+            >
               {word.word}
             </span>
-            <span className="font-ibm-mono text-[9px] uppercase" style={{ color: 'var(--dict-text-dim)' }}>
+            <span className="font-ibm-mono text-[9px] uppercase" style={{ color: 'var(--dict-text-meta)' }}>
               {word.partOfSpeech}
             </span>
+            {isWB && (
+              <span
+                className="font-ibm-mono text-[7px] tracking-wider uppercase px-1 py-px rounded border"
+                style={{ borderColor: 'var(--dict-border-light)', color: 'var(--dict-text-label)' }}
+              >
+                WB
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2 mt-0.5">
             {word.phonetic && (
-              <span className="font-ibm-mono text-[10px]" style={{ color: 'var(--dict-text-dim)' }}>
+              <span className="font-ibm-mono text-[10px]" style={{ color: 'var(--dict-text-meta)' }}>
                 {word.phonetic}
               </span>
             )}
-            <span className="font-ibm-mono text-[9px]" style={{ color: 'var(--dict-text-dim)' }}>
+            <span className="font-ibm-mono text-[9px]" style={{ color: 'var(--dict-text-meta)' }}>
               W{word.weekIntroduced}
             </span>
           </div>
@@ -153,14 +170,14 @@ export default function DictionaryWordCard({ word, expanded, onToggle }: Props) 
         <button
           onClick={(e) => { e.stopPropagation(); toggleStarred(word.id); }}
           className="shrink-0 text-sm transition-colors"
-          style={{ color: word.starred ? 'var(--dict-gold)' : 'var(--dict-text-dim)' }}
+          style={{ color: word.starred ? 'var(--dict-gold)' : 'var(--dict-text-label)' }}
         >
           {word.starred ? '\u2605' : '\u2606'}
         </button>
 
         {/* Mini mastery bar */}
         <div className="w-10 shrink-0">
-          <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--dict-surface)' }}>
+          <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--dict-border-light)' }}>
             <div
               className="h-full rounded-full transition-all"
               style={{
@@ -169,7 +186,7 @@ export default function DictionaryWordCard({ word, expanded, onToggle }: Props) 
                   ? 'linear-gradient(90deg, var(--dict-gold-dim), var(--dict-gold))'
                   : isRecovered
                     ? 'linear-gradient(90deg, var(--dict-amber-dim), var(--dict-amber))'
-                    : 'var(--dict-green)',
+                    : 'var(--dict-accent)',
               }}
             />
           </div>
@@ -178,7 +195,7 @@ export default function DictionaryWordCard({ word, expanded, onToggle }: Props) 
         <span
           className="font-ibm-mono text-xs transition-transform"
           style={{
-            color: 'var(--dict-text-dim)',
+            color: 'var(--dict-text-label)',
             transform: expanded ? 'rotate(90deg)' : 'rotate(0)',
           }}
         >
@@ -188,11 +205,11 @@ export default function DictionaryWordCard({ word, expanded, onToggle }: Props) 
 
       {/* Expanded detail */}
       {expanded && (
-        <div className="px-3 pb-3 space-y-3 border-t" style={{ borderColor: 'var(--dict-border)' }}>
+        <div className="px-3 pb-3 space-y-3 border-t" style={{ borderColor: 'var(--dict-border-light)' }}>
           {/* Definition */}
           <div className="pt-2">
             <p className="font-source-serif text-[13px] leading-relaxed" style={{ color: 'var(--dict-text)' }}>
-              <span className="italic" style={{ color: 'var(--dict-text-dim)' }}>
+              <span className="italic" style={{ color: 'var(--dict-text-meta)' }}>
                 ({word.partOfSpeech})
               </span>{' '}
               {word.definition}
@@ -223,7 +240,7 @@ export default function DictionaryWordCard({ word, expanded, onToggle }: Props) 
 
           {/* Example sentence */}
           {word.exampleSentence && (
-            <p className="font-source-serif text-[12px] italic leading-relaxed" style={{ color: 'var(--dict-text-dim)' }}>
+            <p className="font-source-serif text-[12px] italic leading-relaxed" style={{ color: 'var(--dict-text-meta)' }}>
               &ldquo;{word.exampleSentence}&rdquo;
             </p>
           )}
@@ -253,7 +270,7 @@ export default function DictionaryWordCard({ word, expanded, onToggle }: Props) 
                         ? accentColor
                         : 'var(--dict-text-dim)',
                       background: m.toLowerCase() === word.word.toLowerCase()
-                        ? 'var(--dict-surface)'
+                        ? 'var(--dict-accent-light)'
                         : 'transparent',
                     }}
                   >
@@ -286,11 +303,11 @@ export default function DictionaryWordCard({ word, expanded, onToggle }: Props) 
               }}
             />
             <div className="flex justify-between mt-0.5">
-              <span className="font-ibm-mono text-[9px]" style={{ color: 'var(--dict-text-dim)' }}>
+              <span className="font-ibm-mono text-[9px]" style={{ color: 'var(--dict-text-meta)' }}>
                 {notes.length}/500
               </span>
               {saveIndicator && (
-                <span className="font-ibm-mono text-[9px]" style={{ color: 'var(--dict-green-dim)' }}>
+                <span className="font-ibm-mono text-[9px]" style={{ color: 'var(--dict-accent)' }}>
                   {saveIndicator}
                 </span>
               )}
@@ -307,7 +324,7 @@ export default function DictionaryWordCard({ word, expanded, onToggle }: Props) 
                 {isMastered && '\u2605 '}{masteryPercent}%
               </span>
             </div>
-            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--dict-surface)' }}>
+            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--dict-border-light)' }}>
               <div
                 className="h-full rounded-full transition-all duration-500"
                 style={{
@@ -316,7 +333,7 @@ export default function DictionaryWordCard({ word, expanded, onToggle }: Props) 
                     ? 'linear-gradient(90deg, var(--dict-gold-dim), var(--dict-gold))'
                     : isRecovered
                       ? 'linear-gradient(90deg, var(--dict-amber-dim), var(--dict-amber))'
-                      : 'linear-gradient(90deg, var(--dict-green-dark), var(--dict-green))',
+                      : 'linear-gradient(90deg, #7DD3FC, #0284C7)',
                 }}
               />
             </div>

@@ -16,7 +16,7 @@ export default function StepNav({ interactive = true }: StepNavProps) {
     firstIncompleteIndex === -1 ? STEP_ORDER.length - 1 : firstIncompleteIndex;
 
   return (
-    <div className="bg-ios-bg/60 backdrop-blur-sm border-b border-white/10 px-6 py-3">
+    <div className="bg-[#EDEAE4] border-y border-[#D4CFC6] px-6 py-3">
       <div className="flex items-center justify-center gap-1 max-w-2xl mx-auto">
         {STEP_ORDER.map((step, idx) => {
           const progress = weekProgress.find(p => p.stepId === step.id);
@@ -34,24 +34,24 @@ export default function StepNav({ interactive = true }: StepNavProps) {
                 {/* Dot */}
                 <div className={`w-3 h-3 rounded-full transition-all ${
                   isLocked
-                    ? 'bg-white/15'
+                    ? 'bg-[#C8C3BA]'
                     :
                   isComplete
-                    ? 'bg-neon-mint shadow-[0_0_6px_rgba(105,240,174,0.3)]'
+                    ? 'bg-emerald-500 shadow-[0_0_6px_rgba(52,211,153,0.4)]'
                     : isActive
-                    ? 'bg-neon-cyan shadow-[0_0_8px_rgba(0,229,255,0.4)] scale-125'
-                    : 'bg-white/15 group-hover:bg-white/25'
+                    ? 'bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.4)] scale-125'
+                    : 'bg-[#B8B3AA] group-hover:bg-[#9E998F]'
                 }`} />
                 {/* Label */}
                 <span className={`font-ibm-mono text-[11px] tracking-wider transition-colors ${
                   isLocked
-                    ? 'text-white/15'
+                    ? 'text-[#B8B3AA]'
                     :
                   isComplete
-                    ? 'text-neon-mint/60'
+                    ? 'text-emerald-700'
                     : isActive
-                    ? 'text-neon-cyan'
-                    : 'text-white/30 group-hover:text-white/50'
+                    ? 'text-sky-700 font-semibold'
+                    : 'text-[#6B7280] group-hover:text-[#4B5563]'
                 }`}>
                   {step.label}
                 </span>
@@ -59,7 +59,7 @@ export default function StepNav({ interactive = true }: StepNavProps) {
               {/* Connector line */}
               {idx < STEP_ORDER.length - 1 && (
                 <div className={`w-6 h-px mx-1 mt-[-10px] ${
-                  isComplete ? 'bg-neon-mint/30' : 'bg-white/10'
+                  isComplete ? 'bg-emerald-400' : 'bg-[#C8C3BA]'
                 }`} />
               )}
             </div>

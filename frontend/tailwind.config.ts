@@ -111,8 +111,18 @@ export default {
         'resist-shake': 'resistShake 0.4s ease-in-out',
         'queue-tick': 'queueTick 0.3s ease-out',
         'scan-line': 'scanLine 2s ease-in-out infinite',
+        'doc-slide-in': 'docSlideIn 0.5s cubic-bezier(0.16,1,0.3,1) forwards',
+        'doc-slide-up': 'docSlideUp 0.4s cubic-bezier(0.16,1,0.3,1) both',
       },
       keyframes: {
+        docSlideIn: {
+          from: { opacity: '0', transform: 'translateX(40px) rotate(1deg)' },
+          to: { opacity: '1', transform: 'translateX(0) rotate(0deg)' },
+        },
+        docSlideUp: {
+          from: { opacity: '0', transform: 'translateY(30px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
         flicker: {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.8' },

@@ -204,7 +204,7 @@ export default function ClarityQueueApp() {
         </div>
       ) : currentWeek && weekConfig?.shiftType === 'queue' ? (
         // ── Queue-based runner (WeekConfig exists with shiftType=queue) ──
-        <div className="flex-1 flex flex-col bg-[#F5F1EB]">
+        <div className="flex-1 flex flex-col bg-[#F5F1EB] min-h-full">
           <div className="text-center py-5 px-6 border-b border-[#D4CFC6]">
             <span className="font-ibm-mono text-[10px] text-[#8B8578] tracking-[0.3em] uppercase">
               Shift {currentWeek.weekNumber}
@@ -219,44 +219,44 @@ export default function ClarityQueueApp() {
         </div>
       ) : currentWeek && sessionConfig ? (
         // ── Phase-based runner (SessionConfig exists) ──
-        <>
+        <div className="flex-1 flex flex-col bg-white min-h-full">
           {/* Week header */}
-          <div className="text-center py-4 px-6 border-b border-white/10">
+          <div className="text-center py-4 px-6 border-b border-[#D4CFC6]">
             <div className="flex items-center justify-center gap-3 mb-1">
-              <span className="font-ibm-mono text-xs text-white/50 tracking-wider">
+              <span className="font-ibm-mono text-xs text-[#8B8578] tracking-wider">
                 SHIFT {currentWeek.weekNumber}
               </span>
             </div>
-            <h1 className="font-special-elite text-xl text-white/90 tracking-wider ios-text-glow">
+            <h1 className="font-special-elite text-xl text-[#2C3340] tracking-wider">
               {currentWeek.title}
             </h1>
           </div>
 
           <PhaseRunner />
-        </>
+        </div>
       ) : currentWeek ? (
         // ── Legacy 7-step runner (no SessionConfig) ──
-        <>
+        <div className="flex-1 flex flex-col bg-white min-h-full">
           {/* Week header */}
-          <div className="text-center py-4 px-6 border-b border-white/10">
+          <div className="text-center py-4 px-6 border-b border-[#D4CFC6]">
             <div className="flex items-center justify-center gap-3 mb-1">
-              <span className="font-ibm-mono text-xs text-white/50 tracking-wider">
+              <span className="font-ibm-mono text-xs text-[#8B8578] tracking-wider">
                 SHIFT {currentWeek.weekNumber}
               </span>
             </div>
-            <h1 className="font-special-elite text-xl text-white/90 tracking-wider ios-text-glow">
+            <h1 className="font-special-elite text-xl text-[#2C3340] tracking-wider">
               {currentWeek.title}
             </h1>
             {currentWeek.description && (
-              <p className="font-ibm-mono text-xs text-white/40 mt-1 tracking-wider max-w-lg mx-auto">
+              <p className="font-ibm-mono text-xs text-[#6B7280] mt-1 tracking-wider max-w-lg mx-auto">
                 {currentWeek.description}
               </p>
             )}
           </div>
 
           {GUIDED_STUDENT_MODE ? (
-            <div className="border-b border-white/10 px-6 py-1.5 text-center">
-              <p className="font-ibm-mono text-xs text-neon-cyan/70 tracking-wider">
+            <div className="border-b border-[#D4CFC6] px-6 py-1.5 text-center">
+              <p className="font-ibm-mono text-xs text-sky-600 tracking-wider">
                 {currentStepLabel}
               </p>
             </div>
@@ -275,7 +275,7 @@ export default function ClarityQueueApp() {
             <Suspense
               fallback={
                 <div className="flex items-center justify-center py-12">
-                  <div className="font-ibm-mono text-neon-cyan text-xs animate-pulse tracking-[0.2em]">
+                  <div className="font-ibm-mono text-sky-600 text-xs animate-pulse tracking-[0.2em]">
                     LOADING MODULE...
                   </div>
                 </div>
@@ -284,7 +284,7 @@ export default function ClarityQueueApp() {
               <StepComponent />
             </Suspense>
           </div>
-        </>
+        </div>
       ) : null}
     </div>
   );

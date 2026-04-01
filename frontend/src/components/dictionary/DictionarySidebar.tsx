@@ -38,6 +38,7 @@ export default function DictionarySidebar() {
   const searchRef = useRef<HTMLInputElement>(null);
   const [expandedWordId, setExpandedWordId] = useState<string | null>(null);
   const selectedWordId = useDictionaryStore((s) => s.selectedWordId);
+  const [collapsedWBGroups, setCollapsedWBGroups] = useState<Set<string>>(new Set());
 
   // Load dictionary on first open
   useEffect(() => {
@@ -147,6 +148,18 @@ export default function DictionarySidebar() {
 
   const hasProscribed = words.some((w) => w.status === 'proscribed');
 
+  const toggleWBGroup = (groupLabel: string) => {
+    setCollapsedWBGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupLabel)) {
+        next.delete(groupLabel);
+      } else {
+        next.add(groupLabel);
+      }
+      return next;
+    });
+  };
+
   return (
     <>
       {/* Dark overlay */}
@@ -159,15 +172,19 @@ export default function DictionarySidebar() {
       )}
 
       <div
-        className={`dict-panel fixed top-0 left-0 h-full z-[40] transition-all duration-500 ease-out ${
+        className={`dict-panel fixed top-0 left-0 h-full z-[40] rounded-r-2xl transition-all duration-500 ease-out ${
           isOpen
             ? 'translate-x-0 opacity-100'
             : '-translate-x-full opacity-0 pointer-events-none'
         }`}
-        style={{ width: '380px', background: 'var(--dict-panel)' }}
+        style={{
+          width: '380px',
+          background: 'var(--dict-bg)',
+          borderTop: '3px solid var(--dict-accent)',
+        }}
       >
-        <div className="h-full flex flex-col relative" style={{ zIndex: 3 }}>
-          {/* Title block with gold certificate border */}
+        <div className="h-full flex flex-col">
+          {/* Title block */}
           <div
             className="px-4 pt-4 pb-3 border-b relative"
             style={{ borderColor: 'var(--dict-border)' }}
@@ -176,24 +193,18 @@ export default function DictionarySidebar() {
             <button
               onClick={close}
               className="absolute top-3 right-3 w-6 h-6 flex items-center justify-center transition-colors"
-              style={{ color: 'var(--dict-text-dim)' }}
+              style={{ color: 'var(--dict-text-meta)' }}
             >
               <span className="font-ibm-mono text-lg">{'\u2715'}</span>
             </button>
 
-            {/* Gold border frame */}
-            <div
-              className="border rounded-sm px-3 py-2 text-center"
-              style={{
-                borderColor: 'var(--dict-gold-dim)',
-                background: 'var(--dict-gold-glow)',
-              }}
-            >
+            {/* Header */}
+            <div className="text-center">
               <h3
-                className="font-ibm-mono text-[11px] tracking-[0.25em] uppercase font-semibold"
-                style={{ color: 'var(--dict-gold)' }}
+                className="font-special-elite text-sm tracking-[0.2em] uppercase"
+                style={{ color: 'var(--dict-text)' }}
               >
-                THE PARTY LEXICAL DICTIONARY
+                The Party Lexical Dictionary
               </h3>
               <p
                 className="font-ibm-mono text-[9px] tracking-wider mt-1"
@@ -210,13 +221,13 @@ export default function DictionarySidebar() {
           {/* Search bar */}
           <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--dict-border)' }}>
             <div
-              className="flex items-center gap-2 px-2.5 py-1.5 rounded"
+              className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg"
               style={{
                 background: 'var(--dict-surface)',
                 border: '1px solid var(--dict-border)',
               }}
             >
-              <span className="text-[10px] shrink-0" style={{ color: 'var(--dict-green-dim)' }}>
+              <span className="text-[10px] shrink-0" style={{ color: 'var(--dict-text-meta)' }}>
                 {'\u{1F50D}'}
               </span>
               <input
@@ -225,14 +236,14 @@ export default function DictionarySidebar() {
                 value={searchQuery}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search vocabulary..."
-                className="flex-1 font-ibm-mono text-[12px] bg-transparent outline-none placeholder:opacity-30"
+                className="flex-1 font-ibm-mono text-[12px] bg-transparent outline-none placeholder:opacity-40"
                 style={{ color: 'var(--dict-text)' }}
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearch('')}
                   className="text-[10px] font-ibm-mono"
-                  style={{ color: 'var(--dict-text-dim)' }}
+                  style={{ color: 'var(--dict-text-meta)' }}
                 >
                   {'\u2715'}
                 </button>
@@ -259,9 +270,9 @@ export default function DictionarySidebar() {
                   }}
                   className="appearance-none font-ibm-mono text-[9px] tracking-wider uppercase px-2 py-0.5 rounded-full border cursor-pointer outline-none"
                   style={{
-                    background: typeof filter === 'number' ? 'var(--dict-green-dark)' : 'transparent',
-                    borderColor: typeof filter === 'number' ? 'var(--dict-green-dim)' : 'var(--dict-border)',
-                    color: typeof filter === 'number' ? 'var(--dict-green)' : 'var(--dict-text-dim)',
+                    background: typeof filter === 'number' ? 'var(--dict-accent-light)' : 'transparent',
+                    borderColor: typeof filter === 'number' ? 'var(--dict-accent)' : 'var(--dict-border)',
+                    color: typeof filter === 'number' ? 'var(--dict-accent)' : 'var(--dict-text-dim)',
                     paddingRight: '1rem',
                   }}
                 >
@@ -326,7 +337,7 @@ export default function DictionarySidebar() {
               <div className="flex items-center justify-center py-12">
                 <div
                   className="font-ibm-mono text-xs animate-pulse tracking-[0.2em]"
-                  style={{ color: 'var(--dict-green)' }}
+                  style={{ color: 'var(--dict-accent)' }}
                 >
                   LOADING LEXICON...
                 </div>
@@ -340,7 +351,7 @@ export default function DictionarySidebar() {
                   <button
                     onClick={loadDictionary}
                     className="mt-2 font-ibm-mono text-[10px] tracking-wider transition-colors"
-                    style={{ color: 'var(--dict-green-dim)' }}
+                    style={{ color: 'var(--dict-accent)' }}
                   >
                     RETRY
                   </button>
@@ -354,46 +365,110 @@ export default function DictionarySidebar() {
               </div>
             ) : (
               <div className="px-3 py-2 space-y-4">
-                {groupedWords.map(({ label, words: groupWords }) => (
-                  <div key={label}>
-                    <div
-                      className="flex items-center gap-2 mb-2 sticky top-0 py-1 z-[1]"
-                      style={{ background: 'var(--dict-panel)' }}
-                    >
-                      <div className="w-1 h-1" style={{ background: 'var(--dict-green-dim)' }} />
-                      <span
-                        className="font-ibm-mono text-[10px] tracking-[0.2em] uppercase"
-                        style={{ color: 'var(--dict-text-dim)' }}
+                {groupedWords.map(({ label, words: groupWords }) => {
+                  const targetWords = groupWords.filter((w) => !w.isWorldBuilding);
+                  const wbWords = groupWords.filter((w) => w.isWorldBuilding);
+                  const wbCollapsed = !collapsedWBGroups.has(label); // collapsed by default
+
+                  return (
+                    <div key={label}>
+                      {/* Group header */}
+                      <div
+                        className="flex items-center gap-2 mb-2 sticky top-0 py-1 z-[1]"
+                        style={{ background: 'var(--dict-bg)' }}
                       >
-                        {label}
-                      </span>
-                      <div className="flex-1 h-px" style={{ background: 'var(--dict-border)' }} />
-                      <span className="font-ibm-mono text-[9px]" style={{ color: 'var(--dict-text-dim)' }}>
-                        {groupWords.length}
-                      </span>
-                    </div>
-                    <div className="space-y-1">
-                      {groupWords.map((w) => (
-                        <DictionaryWordCard
-                          key={w.id}
-                          word={w}
-                          expanded={expandedWordId === w.id}
-                          onToggle={() => {
-                            setExpandedWordId(expandedWordId === w.id ? null : w.id);
-                            selectWord(expandedWordId === w.id ? null : w.id);
-                          }}
+                        <div
+                          className="w-1.5 h-1.5 rounded-full"
+                          style={{ background: 'var(--dict-accent)' }}
                         />
-                      ))}
+                        <span
+                          className="font-ibm-mono text-[10px] tracking-[0.2em] uppercase font-medium"
+                          style={{ color: 'var(--dict-text-dim)' }}
+                        >
+                          {label}
+                        </span>
+                        <div className="flex-1 h-px" style={{ background: 'var(--dict-border)' }} />
+                        <span className="font-ibm-mono text-[9px]" style={{ color: 'var(--dict-text-meta)' }}>
+                          {groupWords.length}
+                        </span>
+                      </div>
+
+                      {/* Target words */}
+                      {targetWords.length > 0 && (
+                        <div className="space-y-1">
+                          {targetWords.map((w) => (
+                            <DictionaryWordCard
+                              key={w.id}
+                              word={w}
+                              variant="target"
+                              expanded={expandedWordId === w.id}
+                              onToggle={() => {
+                                setExpandedWordId(expandedWordId === w.id ? null : w.id);
+                                selectWord(expandedWordId === w.id ? null : w.id);
+                              }}
+                            />
+                          ))}
+                        </div>
+                      )}
+
+                      {/* World-building words (collapsible) */}
+                      {wbWords.length > 0 && (
+                        <div className="mt-2">
+                          <button
+                            onClick={() => toggleWBGroup(label)}
+                            className="flex items-center gap-1.5 w-full py-1 group"
+                          >
+                            <span
+                              className="font-ibm-mono text-[8px] transition-transform"
+                              style={{
+                                color: 'var(--dict-text-label)',
+                                transform: wbCollapsed ? 'rotate(0)' : 'rotate(90deg)',
+                              }}
+                            >
+                              {'\u25B6'}
+                            </span>
+                            <span
+                              className="font-ibm-mono text-[9px] tracking-[0.15em] uppercase"
+                              style={{ color: 'var(--dict-text-label)' }}
+                            >
+                              REPUBLIC TERMS
+                            </span>
+                            <span
+                              className="font-ibm-mono text-[9px]"
+                              style={{ color: 'var(--dict-text-label)' }}
+                            >
+                              ({wbWords.length})
+                            </span>
+                            <div className="flex-1 h-px" style={{ background: 'var(--dict-border-light)' }} />
+                          </button>
+                          {!wbCollapsed && (
+                            <div className="space-y-0.5 mt-1">
+                              {wbWords.map((w) => (
+                                <DictionaryWordCard
+                                  key={w.id}
+                                  word={w}
+                                  variant="worldBuilding"
+                                  expanded={expandedWordId === w.id}
+                                  onToggle={() => {
+                                    setExpandedWordId(expandedWordId === w.id ? null : w.id);
+                                    selectWord(expandedWordId === w.id ? null : w.id);
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
 
           {/* Footer */}
           <div className="px-4 py-2 border-t" style={{ borderColor: 'var(--dict-border)' }}>
-            <p className="font-ibm-mono text-[9px] tracking-wider text-center" style={{ color: 'var(--dict-text-dim)' }}>
+            <p className="font-ibm-mono text-[9px] tracking-wider text-center" style={{ color: 'var(--dict-text-label)' }}>
               Party Lexical Dictionary v1.0 &mdash; Ministry Approved
             </p>
           </div>
@@ -414,13 +489,13 @@ function FilterPill({
   label: string;
   accentColor?: string;
 }) {
-  const color = accentColor || 'var(--dict-green)';
+  const color = accentColor || 'var(--dict-accent)';
   return (
     <button
       onClick={onClick}
       className="shrink-0 px-2 py-0.5 font-ibm-mono text-[9px] tracking-wider uppercase rounded-full border transition-colors"
       style={{
-        background: active ? `color-mix(in srgb, ${color} 15%, transparent)` : 'transparent',
+        background: active ? `color-mix(in srgb, ${color} 12%, var(--dict-surface))` : 'transparent',
         borderColor: active ? color : 'var(--dict-border)',
         color: active ? color : 'var(--dict-text-dim)',
       }}

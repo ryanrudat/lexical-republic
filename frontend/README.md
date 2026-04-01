@@ -64,7 +64,7 @@ Duty Roster (`duty-roster`) is hidden in guided mode.
 Each shift has 7 ordered steps:
 1. Shift Start (`recap`)
 2. Briefing (`briefing`)
-3. Language Desk (`grammar`)
+3. Compliance Desk (`grammar`)
 4. Evidence (`listening`)
 5. Voice Booth (`voice_log`)
 6. Case File (`case_file`)

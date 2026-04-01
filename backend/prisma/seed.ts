@@ -376,7 +376,7 @@ function createDefaultWeekMissions(week: WeekSeed): MissionSeed[] {
           : createDefaultGrammarDocuments(week.weekNumber),
         storyBeat: {
           beatTitle: 'Desk Operations',
-          location: 'Language Lab',
+          location: 'Compliance Desk',
           objective: 'Apply grammar rules under operational pressure.',
           speaker: story.speaker,
           line: 'Accuracy protects the Republic. Sloppy edits create avoidable confusion.',
@@ -2086,7 +2086,7 @@ async function main() {
         {
           id: 'phase-w1-1',
           type: 'grammar_toeic',
-          label: 'Language Lab',
+          label: 'Compliance Desk',
           location: 'language-lab',
           minutes: 4,
           missionId: 'mission-phase-w1-1',
@@ -2230,7 +2230,7 @@ async function main() {
         {
           id: 'phase-w2-1',
           type: 'grammar_toeic',
-          label: 'Language Lab',
+          label: 'Compliance Desk',
           location: 'language-lab',
           minutes: 4,
           missionId: 'mission-phase-w2-1',
@@ -2412,7 +2412,7 @@ async function main() {
         {
           id: 'phase-w3-1',
           type: 'grammar_toeic',
-          label: 'Language Lab',
+          label: 'Compliance Desk',
           location: 'language-lab',
           minutes: 4,
           missionId: 'mission-phase-w3-1',
@@ -2539,7 +2539,7 @@ async function main() {
             title: 'Pressure Choice Beat',
             embedUrl: null,
             uploadPath: null,
-            fallbackText: 'Fast work can hide mistakes. Confidence matters. Hesitation spreads doubt. Priority queue updated. Continue to Language Desk.',
+            fallbackText: 'Fast work can hide mistakes. Confidence matters. Hesitation spreads doubt. Priority queue updated. Continue to Compliance Desk.',
           },
           dictionaryLocked: false,
           config: {

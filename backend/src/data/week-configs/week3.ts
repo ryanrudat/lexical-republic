@@ -63,7 +63,7 @@ export const WEEK_3_CONFIG: WeekConfig = {
     {
       id: "vocab_clearance",
       type: "vocab_clearance",
-      location: "Language Lab",
+      location: "Compliance Desk",
       label: "Vocabulary Clearance",
       config: {
         items: [

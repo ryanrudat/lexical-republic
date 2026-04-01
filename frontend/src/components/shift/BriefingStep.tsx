@@ -199,7 +199,7 @@ export default function BriefingStep() {
 
     updateStepStatus('briefing', 'complete', details);
     await submitMissionScore(mission.id, finalScore, details);
-    triggerBark('success', 'Briefing sequence complete. Proceeding to Language Desk.');
+    triggerBark('success', 'Briefing sequence complete. Proceeding to Compliance Desk.');
     setTimeout(() => nextStep(), 2000);
   };
 
@@ -330,7 +330,7 @@ export default function BriefingStep() {
             const finalScore = checks.length === 0 ? 1 : activityScore;
             updateStepStatus('briefing', 'complete', { answers: activityAnswers, score: finalScore });
             await submitMissionScore(mission.id, finalScore, { status: 'complete', answers: activityAnswers, score: finalScore });
-            triggerBark('success', 'Briefing acknowledged. Proceeding to Language Desk.');
+            triggerBark('success', 'Briefing acknowledged. Proceeding to Compliance Desk.');
             setTimeout(() => nextStep(), 1500);
           }}
           className="w-full py-3 rounded-full font-ibm-mono text-xs uppercase tracking-[0.25em] transition-all ios-glass-pill-action text-neon-cyan hover:shadow-[0_0_16px_rgba(0,229,255,0.2)]"

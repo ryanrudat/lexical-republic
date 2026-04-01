@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { useViewStore } from '../../stores/viewStore';
-import PearlMessageStrip from '../pearl/PearlMessageStrip';
 import { useStudentStore } from '../../stores/studentStore';
 import { GUIDED_STUDENT_MODE } from '../../config/runtimeFlags';
 
@@ -39,9 +38,6 @@ export default function TerminalAppFrame({ title, children }: TerminalAppFramePr
       <div className="flex-1 overflow-auto ios-scroll crt-monitor-screen">
         <div className="relative z-[1]">{children}</div>
       </div>
-
-      {/* PEARL strip at bottom */}
-      <PearlMessageStrip />
     </div>
   );
 }

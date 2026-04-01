@@ -23,7 +23,7 @@ export default function LocationTabs({ interactive = true }: LocationTabsProps) 
   };
 
   return (
-    <div className="bg-ios-bg/40 backdrop-blur-sm border-b border-white/10">
+    <div className="border-b border-[#E8E4DC]">
       <div className="flex items-center justify-center gap-1 px-6 py-2 max-w-3xl mx-auto">
         {LOCATIONS.map(loc => {
           const isActive = activeLocationId === loc.id;
@@ -40,19 +40,19 @@ export default function LocationTabs({ interactive = true }: LocationTabsProps) 
               disabled={!interactive}
               className={`flex flex-col items-center px-3 py-1.5 rounded-full transition-all border ${
                 isActive
-                  ? 'ios-glass-pill border-neon-cyan/30 bg-neon-cyan/5'
-                  : 'border-transparent hover:bg-white/5'
+                  ? 'border-sky-400 bg-sky-50'
+                  : 'border-transparent hover:bg-[#FAFAF7]'
               }`}
             >
               <span className={`font-ibm-mono text-xs tracking-wider ${
-                isActive ? 'text-neon-cyan' :
-                allComplete ? 'text-neon-mint/60' :
-                'text-white/40'
+                isActive ? 'text-sky-700 font-medium' :
+                allComplete ? 'text-emerald-600' :
+                'text-[#8B8578]'
               }`}>
                 {loc.label}
               </span>
               {isActive && (
-                <span className="font-ibm-mono text-[10px] text-white/30 tracking-wider mt-0.5">
+                <span className="font-ibm-mono text-[10px] text-[#9CA3AF] tracking-wider mt-0.5">
                   {loc.hint}
                 </span>
               )}

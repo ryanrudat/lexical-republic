@@ -5,6 +5,7 @@ import { useShiftQueueStore } from '../../../stores/shiftQueueStore';
 import TargetWordHighlighter from './shared/TargetWordHighlighter';
 import WritingEvaluator from './shared/WritingEvaluator';
 import type { EvalResult } from './shared/WritingEvaluator';
+import BureauStamp from './shared/BureauStamp';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -236,7 +237,8 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
           </p>
         </div>
 
-        <div className="bg-[#FAFAF7] border border-[#E8E4DC] rounded-xl p-4 space-y-3">
+        {/* Document slides in from the right like it's being placed on a desk */}
+        <div className="animate-doc-slide-in bg-[#FAFAF7] border border-[#E8E4DC] rounded-xl p-4 space-y-3 shadow-sm">
           {(c.paragraphs ?? []).map((para, i) => (
             <p key={i} className="text-sm text-[#4B5563] leading-relaxed">
               {para}
@@ -244,13 +246,8 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
           ))}
         </div>
 
-        <div className="pt-4">
-          <button
-            className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 active:bg-sky-800 active:scale-[0.98] transition-colors"
-            onClick={advanceCard}
-          >
-            I have read this document
-          </button>
+        <div className="pt-4 flex justify-center">
+          <BureauStamp variant="received" onStamp={advanceCard} />
         </div>
       </div>
     );
@@ -260,73 +257,126 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
     const questions = c.questions ?? [];
     const allCorrect = questions.length > 0 && questions.every(q => questionLocked[q.key]);
 
+    // Find current question index (first unlocked)
+    const currentQIndex = questions.findIndex(q => !questionLocked[q.key]);
+    const lockedCount = questions.filter(q => questionLocked[q.key]).length;
+    const activeQ = currentQIndex >= 0 ? questions[currentQIndex] : null;
+
+    // When answer is selected
+    const handleOptionTap = (q: IntakeQuestion, optionIndex: number) => {
+      if (questionLocked[q.key]) return;
+
+      setQuestionAnswers(prev => ({ ...prev, [q.key]: optionIndex }));
+
+      if (optionIndex === q.correctIndex) {
+        // Correct — lock and auto-advance after delay
+        setQuestionLocked(prev => ({ ...prev, [q.key]: true }));
+      }
+    };
+
     return (
-      <div className="space-y-3">
-        {c.title && (
-          <h3 className="font-ibm-mono text-[10px] tracking-[0.15em] uppercase text-[#8B8578] mb-4">
-            {c.title}
-          </h3>
-        )}
-
-        {questions.map(q => {
-          const hasAnswer = Object.prototype.hasOwnProperty.call(questionAnswers, q.key);
-          const selected = questionAnswers[q.key];
-          const isLocked = questionLocked[q.key];
-          const isWrong = hasAnswer && selected !== q.correctIndex && !isLocked;
-
-          return (
-            <div key={q.key} className="bg-[#FAFAF7] border border-[#E8E4DC] rounded-xl p-3">
-              <span className="font-ibm-mono text-[10px] text-[#9CA3AF] tracking-wider uppercase block mb-1">
-                {q.label}
-              </span>
-              <select
-                className={`w-full text-sm bg-white border rounded-lg px-3 py-2 focus:outline-none focus:ring-1 transition-colors ${
-                  isLocked
-                    ? 'border-emerald-300 text-emerald-700 bg-emerald-50'
-                    : isWrong
-                    ? 'border-rose-300 text-rose-600 bg-rose-50'
-                    : 'border-[#D4CFC6] text-[#2C3340] focus:ring-sky-400'
+      <div className="space-y-4">
+        {/* Header with progress */}
+        <div className="text-center space-y-2">
+          <p className="font-ibm-mono text-[10px] text-[#B8B3AA] tracking-widest uppercase">
+            Verification {Math.min(lockedCount + 1, questions.length)} of {questions.length}
+          </p>
+          {/* Progress dots */}
+          <div className="flex justify-center gap-2">
+            {questions.map((q, i) => (
+              <div
+                key={q.key}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  questionLocked[q.key]
+                    ? 'w-8 bg-emerald-400'
+                    : i === currentQIndex
+                      ? 'w-8 bg-sky-400'
+                      : 'w-4 bg-[#E8E4DC]'
                 }`}
-                value={hasAnswer ? selected : ''}
-                disabled={isLocked}
-                onChange={e => {
-                  const val = e.target.value;
-                  if (val === '') return;
-                  const idx = parseInt(val, 10);
-                  setQuestionAnswers(prev => ({ ...prev, [q.key]: idx }));
-                  if (idx === q.correctIndex) {
-                    setQuestionLocked(prev => ({ ...prev, [q.key]: true }));
-                  }
-                }}
-              >
-                <option value="">-- Select --</option>
-                {q.options.map((opt, i) => (
-                  <option key={i} value={i}>{opt}</option>
-                ))}
-              </select>
-              {isLocked && (
-                <span className="text-[10px] text-emerald-600 mt-1 block font-medium">
-                  &#10003; Correct
-                </span>
-              )}
-              {isWrong && (
-                <span className="text-[10px] text-rose-500 mt-1 block">
-                  Not quite — try again
-                </span>
-              )}
-            </div>
-          );
-        })}
-
-        <div className="pt-4">
-          <button
-            className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 active:bg-sky-800 active:scale-[0.98] disabled:opacity-40 transition-colors"
-            disabled={!allCorrect}
-            onClick={advanceCard}
-          >
-            Continue
-          </button>
+              />
+            ))}
+          </div>
         </div>
+
+        {/* Active question or completion */}
+        {activeQ ? (
+          <div key={activeQ.key} className="animate-fadeIn space-y-4">
+            {/* Question */}
+            <div className="text-center px-4">
+              <p className="text-base text-[#2C3340] font-medium leading-relaxed">
+                {activeQ.label}
+              </p>
+            </div>
+
+            {/* Tappable option cards */}
+            <div className="grid grid-cols-1 gap-2.5">
+              {activeQ.options.map((opt, oi) => {
+                const isSelected = questionAnswers[activeQ.key] === oi;
+                const isLocked = questionLocked[activeQ.key];
+                const isCorrect = isSelected && isLocked;
+                const isWrong = isSelected && !isLocked && questionAnswers[activeQ.key] !== undefined;
+
+                return (
+                  <button
+                    key={oi}
+                    className={`w-full text-left px-4 py-3 rounded-xl border-2 text-sm transition-all duration-200 ${
+                      isCorrect
+                        ? 'border-emerald-400 bg-emerald-50 text-emerald-800 scale-[1.02]'
+                        : isWrong
+                          ? 'border-rose-300 bg-rose-50 text-rose-700 animate-[shake_0.3s_ease-in-out]'
+                          : isSelected
+                            ? 'border-sky-400 bg-sky-50 text-sky-800'
+                            : 'border-[#E8E4DC] bg-white text-[#4B5563] hover:border-sky-300 hover:bg-sky-50/50 active:scale-[0.98]'
+                    } ${isLocked ? 'pointer-events-none' : ''}`}
+                    onClick={() => handleOptionTap(activeQ, oi)}
+                    disabled={isLocked}
+                  >
+                    <span className="flex items-center gap-3">
+                      <span className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs font-medium ${
+                        isCorrect
+                          ? 'border-emerald-400 bg-emerald-400 text-white'
+                          : isWrong
+                            ? 'border-rose-300 bg-rose-100 text-rose-600'
+                            : isSelected
+                              ? 'border-sky-400 bg-sky-400 text-white'
+                              : 'border-[#D4CFC6] text-[#9CA3AF]'
+                      }`}>
+                        {isCorrect ? '\u2713' : String.fromCharCode(65 + oi)}
+                      </span>
+                      <span>{opt}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Wrong answer feedback */}
+            {questionAnswers[activeQ.key] !== undefined && !questionLocked[activeQ.key] && (
+              <p className="text-center text-xs text-rose-500 font-ibm-mono animate-fadeIn">
+                Not quite — try again, Citizen.
+              </p>
+            )}
+          </div>
+        ) : allCorrect ? (
+          /* All verified — stamp to continue */
+          <div className="text-center py-6 space-y-4 animate-fadeIn">
+            <p className="font-ibm-mono text-xs text-emerald-700 tracking-wider uppercase">
+              All answers correct — stamp to verify
+            </p>
+            <BureauStamp variant="verified" onStamp={advanceCard} />
+          </div>
+        ) : null}
+
+        {/* Shake animation */}
+        <style>{`
+          @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-4px); }
+            40% { transform: translateX(4px); }
+            60% { transform: translateX(-3px); }
+            80% { transform: translateX(3px); }
+          }
+        `}</style>
       </div>
     );
   }

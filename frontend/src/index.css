@@ -276,38 +276,38 @@ body.view-terminal {
    iOS-DYSTOPIA GLASS UTILITIES
    ═══════════════════════════════════════════ */
 .ios-glass-card {
-  background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(0,229,255,0.04) 100%);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 1rem;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06);
-}
-
-.ios-glass-card-strong {
-  background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(0,229,255,0.06) 100%);
-  border: 1px solid rgba(255,255,255,0.18);
+  background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(0,229,255,0.08) 100%);
+  border: 1px solid rgba(255,255,255,0.25);
   border-radius: 1rem;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12);
+}
+
+.ios-glass-card-strong {
+  background: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(0,229,255,0.10) 100%);
+  border: 1px solid rgba(255,255,255,0.30);
+  border-radius: 1rem;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15);
 }
 
 .ios-glass-pill {
-  background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%);
-  border: 1px solid rgba(255,255,255,0.12);
+  background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.08) 100%);
+  border: 1px solid rgba(255,255,255,0.22);
   border-radius: 9999px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .ios-glass-pill-action {
-  background: linear-gradient(135deg, rgba(0,229,255,0.15) 0%, rgba(0,229,255,0.08) 100%);
-  border: 1px solid rgba(0,229,255,0.3);
+  background: linear-gradient(135deg, rgba(0,229,255,0.22) 0%, rgba(0,229,255,0.12) 100%);
+  border: 1px solid rgba(0,229,255,0.4);
   border-radius: 9999px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  box-shadow: 0 0 12px rgba(0,229,255,0.15);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 0 16px rgba(0,229,255,0.2);
 }
 
 .ios-glass-pill-danger {
@@ -614,48 +614,61 @@ body.view-terminal {
   background: rgba(0,229,255,0.4);
 }
 
+/* ─── PEARL Dynamic Island ─── */
+.pearl-island {
+  display: flex;
+  align-items: center;
+  border: 1px solid;
+  border-radius: 9999px;
+  overflow: hidden;
+  padding: 4px 0;
+  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              min-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 0.3s ease,
+              border-color 0.3s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.pearl-island-content-in {
+  animation: islandContentIn 0.25s ease-out;
+}
+@keyframes islandContentIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 /* ═══════════════════════════════════════════
    REDUCED MOTION
    ═══════════════════════════════════════════ */
 /* ─── Dictionary Panel ─── */
 .dict-panel {
-  --dict-bg: #0a0f0a;
-  --dict-panel: #0d1a0d;
-  --dict-surface: rgba(0, 40, 0, 0.4);
-  --dict-border: #1a3d1a;
-  --dict-green: #00ff88;
-  --dict-green-dim: #00cc6a;
-  --dict-green-dark: #003d1f;
-  --dict-text: #b8e6c8;
-  --dict-text-dim: #5a8a6a;
-  --dict-gold: #d4a847;
-  --dict-gold-dim: #a88636;
-  --dict-gold-glow: rgba(212, 168, 71, 0.15);
-  --dict-red: #cc3333;
-  --dict-red-dim: rgba(204, 51, 51, 0.15);
-  --dict-amber: #ffb347;
-  --dict-amber-dim: rgba(255, 179, 71, 0.1);
+  --dict-bg: #F5F1EB;
+  --dict-panel: #FAFAF7;
+  --dict-surface: #FFFFFF;
+  --dict-border: #D4CFC6;
+  --dict-border-light: #E8E4DC;
+  --dict-accent: #0284C7;
+  --dict-accent-light: #E0F2FE;
+  --dict-text: #2C3340;
+  --dict-text-body: #4B5563;
+  --dict-text-dim: #8B8578;
+  --dict-text-label: #B8B3AA;
+  --dict-text-meta: #9CA3AF;
+  --dict-gold: #D97706;
+  --dict-gold-dim: #B45309;
+  --dict-gold-glow: rgba(217, 119, 6, 0.1);
+  --dict-red: #E11D48;
+  --dict-red-dim: rgba(225, 29, 72, 0.06);
+  --dict-amber: #D97706;
+  --dict-amber-dim: rgba(217, 119, 6, 0.06);
+  box-shadow: 4px 0 24px rgba(0,0,0,0.3), inset 0 0 0 1px var(--dict-border);
 }
-.dict-panel::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.4) 100%);
-  pointer-events: none;
-  z-index: 1;
+.dict-panel::-webkit-scrollbar-thumb {
+  background: #B8B3AA;
+  border-radius: 3px;
 }
-.dict-panel::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    transparent 0px,
-    transparent 2px,
-    rgba(0, 255, 136, 0.03) 2px,
-    rgba(0, 255, 136, 0.03) 4px
-  );
-  pointer-events: none;
-  z-index: 2;
+.dict-panel::-webkit-scrollbar-thumb:hover {
+  background: #8B8578;
 }
 
 /* ─── ShiftQueue Stamp Animation ─────────────────────────────── */

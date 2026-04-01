@@ -21,10 +21,11 @@ interface Props {
 }
 
 export default function DictionaryStats({ words }: Props) {
-  const totalWords = words.length;
-  const masteredCount = words.filter((w) => w.mastery >= 1.0).length;
-  const avgMastery = totalWords > 0
-    ? words.reduce((sum, w) => sum + w.mastery, 0) / totalWords
+  const targetWords = words.filter((w) => !w.isWorldBuilding);
+  const wbCount = words.length - targetWords.length;
+  const masteredCount = targetWords.filter((w) => w.mastery >= 1.0).length;
+  const avgMastery = targetWords.length > 0
+    ? targetWords.reduce((sum, w) => sum + w.mastery, 0) / targetWords.length
     : 0;
   const rank = getRank(masteredCount);
 
@@ -35,11 +36,11 @@ export default function DictionaryStats({ words }: Props) {
           className="font-ibm-mono text-[10px] tracking-wider uppercase"
           style={{ color: 'var(--dict-text-dim)' }}
         >
-          {totalWords} WORDS &middot; {masteredCount} MASTERED
+          {targetWords.length} TARGET{wbCount > 0 ? ` \u00B7 ${wbCount} REPUBLIC` : ''} &middot; {masteredCount} MASTERED
         </span>
         <div
           className="w-[60px] h-[6px] rounded-full overflow-hidden"
-          style={{ background: 'var(--dict-surface)' }}
+          style={{ background: 'var(--dict-border-light)' }}
         >
           <div
             className="h-full rounded-full transition-all duration-500"
@@ -47,7 +48,7 @@ export default function DictionaryStats({ words }: Props) {
               width: `${Math.round(avgMastery * 100)}%`,
               background: avgMastery >= 1
                 ? 'linear-gradient(90deg, var(--dict-gold-dim), var(--dict-gold))'
-                : 'linear-gradient(90deg, var(--dict-green-dark), var(--dict-green))',
+                : 'linear-gradient(90deg, #7DD3FC, #0284C7)',
             }}
           />
         </div>

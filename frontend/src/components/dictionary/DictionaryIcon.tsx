@@ -29,20 +29,20 @@ export default function DictionaryIcon({ variant = 'terminal' }: Props) {
         <svg width="32" height="36" viewBox="0 0 24 28" fill="none">
           {/* Book cover */}
           <rect x="2" y="2" width="18" height="24" rx="2"
-            fill={isOffice ? '#2a2520' : '#0d1a0d'}
-            stroke={isOffice ? '#a88636' : '#00cc6a'}
+            fill={isOffice ? '#2a2520' : '#1A1A1A'}
+            stroke={isOffice ? '#a88636' : '#C9944A'}
             strokeWidth="1.5"
           />
           {/* Book spine */}
           <line x1="6" y1="2" x2="6" y2="26"
-            stroke={isOffice ? '#a88636' : '#00cc6a'}
+            stroke={isOffice ? '#a88636' : '#C9944A'}
             strokeWidth="1"
             opacity="0.5"
           />
           {/* Seal circle */}
           <circle cx="13" cy="14" r="4"
             fill="none"
-            stroke={isOffice ? '#d4a847' : '#00ff88'}
+            stroke={isOffice ? '#d4a847' : '#D4A847'}
             strokeWidth="0.8"
             opacity="0.6"
           />
@@ -52,19 +52,19 @@ export default function DictionaryIcon({ variant = 'terminal' }: Props) {
             fontSize="6"
             fontFamily="IBM Plex Mono"
             fontWeight="600"
-            fill={isOffice ? '#d4a847' : '#00ff88'}
+            fill={isOffice ? '#d4a847' : '#D4A847'}
             opacity="0.8"
           >
             L
           </text>
         </svg>
 
-        {/* Green glow pulse */}
+        {/* Gold glow pulse */}
         {!isOpen && (
           <div
             className="absolute inset-0 rounded animate-pulse"
             style={{
-              boxShadow: `0 0 8px ${isOffice ? 'rgba(212,168,71,0.3)' : 'rgba(0,255,136,0.3)'}`,
+              boxShadow: '0 0 8px rgba(212,168,71,0.3)',
               animationDuration: '2s',
             }}
           />
@@ -76,8 +76,8 @@ export default function DictionaryIcon({ variant = 'terminal' }: Props) {
         <div
           className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full font-ibm-mono text-[9px] font-bold"
           style={{
-            background: isOffice ? '#d4a847' : '#00cc6a',
-            color: '#0a0f0a',
+            background: '#D4A847',
+            color: '#1A1A1A',
           }}
         >
           {wordCount}

@@ -4,7 +4,7 @@
 Student-facing location labels map directly to learning purpose:
 - `Shift Intake`
 - `Broadcast`
-- `Language Lab`
+- `Compliance Desk`
 - `Evidence Desk`
 - `Voice Booth`
 - `Filing Desk`

@@ -18,6 +18,7 @@ import DictionarySidebar from '../dictionary/DictionarySidebar';
 import DictionaryIcon from '../dictionary/DictionaryIcon';
 import SystemAuditOverlay from '../shift/SystemAuditOverlay';
 import MessageBadge from '../messaging/MessageBadge';
+import PearlMessageStrip from '../pearl/PearlMessageStrip';
 import { useMessagingStore } from '../../stores/messagingStore';
 
 const APP_CONFIG = {
@@ -194,6 +195,13 @@ export default function TerminalView() {
 
         {/* Taskbar */}
         <TerminalTaskbar />
+      </div>
+
+      {/* PEARL Dynamic Island — floats at top center, always visible */}
+      <div className="absolute top-[52px] left-0 right-0 z-20 flex justify-center pointer-events-none">
+        <div className="pointer-events-auto">
+          <PearlMessageStrip variant="island" />
+        </div>
       </div>
 
       <PearlPanel

@@ -37,6 +37,7 @@ Config-driven task queue. Each week has 4 tasks driven by static `WeekConfig` Ty
 - `TargetWordHighlighter` — word status chips (emerald=used, neutral=unused), progress bar, Porter Stemmer matching (inflected forms accepted)
 - `WritingEvaluator` — 3-attempt system: full eval → relaxed threshold → auto-pass. Calls `POST /api/submissions/evaluate`
 - `TaskCard` — stamp animation wrapper (idle → completing → stamped), light theme with emerald completion state
+- `BureauStamp` — Papers Please-inspired stamp button with press-down, impact shake, random rotation (-4° to 4°), ink bloom, flash, and ministry seal watermark. Double-line official frame. Variants: confirm, verified, received, reviewed, filed, changed, removed, deny. Compact mode for inline choices.
 - `LaneScaffolding` — lane-aware scaffolding (L1: sentence starters + word bank, L2: word list, L3: bonus question)
 - `DismissalBroadcast` — three-stage post-task overlay (red flash → video playback → green transition + "HAVE A HAPPY DAY" text). Triggered by `clipAfter` on any task config. Defers character message triggers until sequence completes.
 
@@ -57,22 +58,30 @@ Step navigation gated by completion. All steps support optional video via `StepV
 
 ## Party Lexical Dictionary
 - Terminal-only sidebar (slides from LEFT, `z-[40]`), dark overlay behind (`z-[39]`)
-- DictionaryIcon: book-shape SVG (32x36) in terminal header with green glow pulse, gold badge
+- **Cream/warm palette** (matches shift queue aesthetic) — bg=#F5F1EB, sky-600 accent, paper shadow for depth against dark terminal
+- Sky-600 top accent stripe, rounded-r-2xl, `font-special-elite` title
+- DictionaryIcon: book-shape SVG (32x36) in terminal header with gold glow pulse, gold badge
 - Lexicon tile on terminal desktop grid
-- Own CSS variable system: `.dict-panel` class with `--dict-*` tokens
+- Own CSS variable system: `.dict-panel` class with `--dict-*` tokens (cream palette, no green CRT)
 - Fonts: Source Serif 4 (definitions), Noto Sans TC (Chinese translations)
-- Three card variants based on `word.status`:
-  - **Approved** (green): mastery bar, Chinese toggle (one-way), notes, family chips, TOEIC
-  - **Proscribed** (red, week 10+): struck-through definition, "REMOVED FOR COLLECTIVE SAFETY"
+- **Target/world-building word separation**: Target words (TOEIC) shown prominently; world-building words collapsed under "REPUBLIC TERMS" toggle per group (collapsed by default)
+- Word card `variant` prop: `target` (full prominence, sky-600 accent) vs `worldBuilding` (muted, compact, "WB" badge)
+- Three status variants:
+  - **Approved** (sky-600): mastery bar, Chinese toggle (one-way), notes, family chips, TOEIC
+  - **Proscribed** (rose, week 10+): struck-through definition, "REMOVED FOR COLLECTIVE SAFETY"
   - **Recovered** (amber, week 10+): restored definition, amber mastery bar
 - Filter tabs: ALL / WEEK / MASTERED / STARRED / BY FAMILY / BY TOEIC / PROSCRIBED (hidden until week 10)
 - Rank ribbon: Lexical Trainee → Associate → Officer → Commander → Director
 - Starred words and Chinese reveal persisted to DB
-- Stats ribbon: word count, mastered count, mini mastery meter, rank title
+- Stats ribbon: target count, world-building count, mastered count (target words only), mini mastery meter, rank title
 
 ## PEARL System
 - Visually anchored in terminal header with persistent eye + state label
-- Bottom message strip is one-way ambient messaging (no student chat input)
+- **Dynamic Island** broadcast pill floats at top center of terminal view (absolute positioned, no layout shift)
+  - Idle: compact pill showing "P.E.A.R.L. BROADCAST" with pulsing green dot
+  - Active bark: smoothly expands to show message with typewriter effect, bark-type-tinted background
+  - Auto-contracts when bark expires
+  - Always visible on terminal (desktop + all apps)
 - PEARL panel available via eye click
 
 **AI Contextual Barks:**

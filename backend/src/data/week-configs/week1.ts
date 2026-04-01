@@ -95,7 +95,7 @@ export const WEEK_1_CONFIG: WeekConfig = {
     {
       id: "word_match",
       type: "word_match",
-      location: "Language Lab",
+      location: "Compliance Desk",
       label: "Language Authorization Check",
       config: {
         pairs: [
@@ -142,7 +142,7 @@ export const WEEK_1_CONFIG: WeekConfig = {
     {
       id: "vocab_clearance",
       type: "vocab_clearance",
-      location: "Language Lab",
+      location: "Compliance Desk",
       label: "Vocabulary Clearance",
       config: {
         items: [
