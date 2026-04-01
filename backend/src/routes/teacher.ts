@@ -56,8 +56,6 @@ async function teacherOwnsScore(teacherId: string, scoreId: string): Promise<boo
   }
   return false;
 }
-const UPLOAD_DIR = process.env.UPLOAD_DIR || 'uploads';
-const BRIEFING_UPLOAD_DIR = process.env.BRIEFING_UPLOAD_DIR || path.join(UPLOAD_DIR, 'briefings');
 // URL prefix for stored video paths — always relative, served by express.static('/uploads')
 const BRIEFING_URL_PREFIX = '/uploads/briefings';
 type VideoSlot = 'primary' | 'clipA' | 'clipB';

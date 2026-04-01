@@ -3,12 +3,17 @@ import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR || 'uploads';
 const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || '10485760', 10);
 const MAX_VIDEO_FILE_SIZE = parseInt(process.env.MAX_VIDEO_FILE_SIZE || '157286400', 10); // 150MB
-const BRIEFING_UPLOAD_DIR = process.env.BRIEFING_UPLOAD_DIR || path.join(UPLOAD_DIR, 'briefings');
 
-function resolveDir(dir: string): string {
+/** Resolve upload directory at call time (not import time) so env vars are available */
+function getUploadDir(): string {
+  const dir = process.env.UPLOAD_DIR || 'uploads';
+  return path.isAbsolute(dir) ? dir : path.resolve(__dirname, '../../', dir);
+}
+
+function getBriefingDir(): string {
+  const dir = process.env.BRIEFING_UPLOAD_DIR || path.join(getUploadDir(), 'briefings');
   return path.isAbsolute(dir) ? dir : path.resolve(__dirname, '../../', dir);
 }
 
@@ -20,7 +25,7 @@ function ensureDirExists(dirPath: string) {
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
-    const resolved = resolveDir(UPLOAD_DIR);
+    const resolved = getUploadDir();
     ensureDirExists(resolved);
     cb(null, resolved);
   },
@@ -44,7 +49,7 @@ export const uploadAudio = multer({
 
 const videoStorage = multer.diskStorage({
   destination: (_req, _file, cb) => {
-    const resolved = resolveDir(BRIEFING_UPLOAD_DIR);
+    const resolved = getBriefingDir();
     ensureDirExists(resolved);
     cb(null, resolved);
   },
