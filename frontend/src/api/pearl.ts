@@ -44,6 +44,10 @@ export interface PearlChatContext {
   grammarTarget?: string;
   targetWords?: string[];
   stepId?: string;
+  isWritingNudge?: boolean;
+  writingPrompt?: string;
+  studentWritingSoFar?: string;
+  taskNarrativeContext?: string;
 }
 
 export async function sendPearlChat(

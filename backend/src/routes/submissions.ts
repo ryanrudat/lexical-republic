@@ -18,6 +18,8 @@ interface EvaluationRequest {
     targetVocab?: string[];
     missionId?: string;
     lane?: number;
+    writingPrompt?: string;
+    taskContext?: string;
   };
 }
 
@@ -88,7 +90,10 @@ router.post('/evaluate', requirePair, async (req: Request, res: Response) => {
     if (openai) {
       try {
         const systemPrompt = buildEvaluationPrompt(weekNumber, activityType, metadata);
-        const userMessage = `Student submission (${activityType}, Week ${weekNumber}):\n\n${content}\n\nTarget vocabulary: ${targetVocab.join(', ')}\nVocabulary used: ${vocabUsed.join(', ')}\nVocabulary missed: ${vocabMissed.join(', ')}`;
+        const writingPromptLine = metadata?.writingPrompt
+          ? `\nWRITING PROMPT GIVEN TO STUDENT: ${metadata.writingPrompt}\n`
+          : '';
+        const userMessage = `Student submission (${activityType}, Week ${weekNumber}):\n${writingPromptLine}\nSTUDENT'S WRITING:\n${content}\n\nTarget vocabulary: ${targetVocab.join(', ')}\nVocabulary used: ${vocabUsed.join(', ')}\nVocabulary missed: ${vocabMissed.join(', ')}`;
 
         const completion = await openai.chat.completions.create(
           {
@@ -345,8 +350,15 @@ function checkCoherence(content: string): {
 function buildEvaluationPrompt(
   weekNumber: number,
   activityType: string,
-  metadata?: { grammarTarget?: string; targetVocab?: string[]; lane?: number }
+  metadata?: { grammarTarget?: string; targetVocab?: string[]; lane?: number; writingPrompt?: string; taskContext?: string }
 ): string {
+  const promptSection = metadata?.writingPrompt
+    ? `\nWRITING PROMPT GIVEN TO STUDENT:\n"${metadata.writingPrompt}"\n`
+    : '';
+  const contextSection = metadata?.taskContext
+    ? `- Task context: ${metadata.taskContext}`
+    : '';
+
   return `You are PEARL (Programmatic Educational Assistant for Regulated Language), an AI overseer in a dystopian bureaucratic world called the Lexicon Republic. You evaluate student language submissions with precision and in-character feedback.
 
 CONTEXT:
@@ -354,13 +366,19 @@ CONTEXT:
 - Activity type: ${activityType}
 - Grammar target: ${metadata?.grammarTarget || 'general accuracy'}
 - Student lane (1=support, 2=standard, 3=challenge): ${metadata?.lane || 2}
-
+${contextSection}
+${promptSection}
 EVALUATION CRITERIA:
 1. Grammar (0.0-1.0): Focus on the week's grammar target. For A2-B1 learners, reward correct usage rather than penalizing minor errors. Score below 0.3 if sentences are grammatically broken or nonsensical.
 2. Vocabulary (0.0-1.0): Check target vocabulary usage IN MEANINGFUL CONTEXT (not just presence). Simply listing words or inserting them into nonsense sentences should score below 0.2. Higher score for natural, varied integration of more target words.
-3. Task completion (0.0-1.0): The student is asked to write 3-5 sentences using as many target words as possible. Score based on: (a) sentence count — at least 3 sentences required, (b) number of distinct target words used naturally in sentences, (c) coherent English writing (not word salad). Score 0.0-0.2 for gibberish or fewer than 2 sentences. Score 0.3-0.5 for 2-3 sentences with few target words. Score 0.6+ for 3-5 coherent sentences with good target word coverage.
+3. Relevance (0.0-1.0): Does the student's writing ADDRESS THE WRITING PROMPT and make sense in context? Score based on:
+   - 0.0-0.2: Content has no connection to the writing prompt; random or off-topic sentences
+   - 0.3-0.5: Partially addresses the prompt but misses key aspects or is mostly generic
+   - 0.6-0.8: Addresses the prompt with reasonable coverage and some specific detail
+   - 0.9-1.0: Fully addresses all aspects of the prompt with specific, relevant detail
+   If no writing prompt is provided, score based on general coherence and whether the writing forms a meaningful, connected response (not disconnected sentences).
 
-IMPORTANT: Do NOT be lenient with nonsensical, random, or clearly non-effort submissions. A student who writes word salad or gibberish incorporating target words should receive scores below 0.3 across all criteria.
+IMPORTANT: Do NOT be lenient with nonsensical, random, or clearly non-effort submissions. A student who writes word salad or gibberish incorporating target words should receive scores below 0.3 across all criteria. A student who writes coherent sentences that completely ignore the writing prompt should score below 0.3 on relevance.
 
 RESPONSE FORMAT (JSON):
 {
@@ -368,8 +386,8 @@ RESPONSE FORMAT (JSON):
   "grammarNotes": ["specific observation about grammar usage"],
   "vocabScore": 0.0-1.0,
   "taskScore": 0.0-1.0,
-  "taskNotes": "brief task completion assessment",
-  "pearlFeedback": "In-character PEARL response. Ministry-bureaucratic tone. Reference vocabulary compliance as a metric. Never use grades or percentages — use Ministry language like 'detected', 'filed', 'compliance level'. 2-3 sentences max."
+  "taskNotes": "brief relevance assessment — does the writing address the prompt?",
+  "pearlFeedback": "In-character PEARL response. Ministry-bureaucratic tone. Reference vocabulary compliance as a metric. If relevance is low, mention that the report does not address the assigned topic. Never use grades or percentages — use Ministry language like 'detected', 'filed', 'compliance level'. 2-3 sentences max."
 }
 
 Be encouraging but maintain the dystopian bureaucratic tone. Students are A2-B1 level Taiwanese Grade 10 learners.`;

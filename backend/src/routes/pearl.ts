@@ -259,6 +259,10 @@ interface PearlChatContext {
   grammarTarget?: string;
   targetWords?: string[];
   stepId?: string;
+  isWritingNudge?: boolean;
+  writingPrompt?: string;
+  studentWritingSoFar?: string;
+  taskNarrativeContext?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -333,6 +337,36 @@ const QUIZ_TASK_TYPES = new Set([
 ]);
 
 function buildTaskContextMessage(ctx: PearlChatContext): string {
+  // ── Writing nudge mode: specialized context for guiding student writing ──
+  if (ctx.isWritingNudge) {
+    const lines: string[] = [
+      'THE STUDENT IS REQUESTING WRITING GUIDANCE.',
+      '',
+    ];
+    if (ctx.writingPrompt) lines.push(`WRITING PROMPT GIVEN TO STUDENT: "${ctx.writingPrompt}"`);
+    if (ctx.taskNarrativeContext) lines.push(`TASK CONTEXT: ${ctx.taskNarrativeContext}`);
+    if (ctx.targetWords?.length) lines.push(`TARGET VOCABULARY (suggest these if unused): ${ctx.targetWords.join(', ')}`);
+    if (ctx.grammarTarget) lines.push(`GRAMMAR FOCUS: ${ctx.grammarTarget}`);
+    lines.push('');
+    if (ctx.studentWritingSoFar) {
+      lines.push('WHAT THE STUDENT HAS WRITTEN SO FAR:');
+      lines.push(`"${ctx.studentWritingSoFar}"`);
+      lines.push('');
+    }
+    lines.push('YOUR ROLE: Give a brief, directional nudge to help the student improve or continue their writing.');
+    lines.push('RULES FOR NUDGES:');
+    lines.push('- NEVER write sentences, phrases, or complete thoughts for the student');
+    lines.push('- NEVER give specific phrases to copy');
+    lines.push('- DO point out what they might be missing from the prompt');
+    lines.push('- DO ask guiding questions ("What happened when you first arrived?")');
+    lines.push('- DO remind them of relevant target vocabulary they have not used yet');
+    lines.push('- DO suggest areas to expand ("Your report mentions checking in but does not describe what you observed.")');
+    lines.push('- Keep it to 2-3 sentences max');
+    lines.push('- Stay in PEARL\'s bureaucratic voice');
+    return lines.join('\n');
+  }
+
+  // ── Standard task context ──
   const isQuizTask = ctx.taskType && QUIZ_TASK_TYPES.has(ctx.taskType);
 
   const lines: string[] = [
@@ -508,7 +542,8 @@ router.post('/chat', authenticate, async (req: Request, res: Response) => {
     if (!reply) throw new Error('Empty AI response');
 
     // Layer 4: Post-response filter — replace response if it leaks quiz answers
-    if (responseLeaksAnswer(reply, taskContext ?? undefined)) {
+    // Skip for writing nudges — PEARL needs to reference target vocab as hints
+    if (!taskContext?.isWritingNudge && responseLeaksAnswer(reply, taskContext ?? undefined)) {
       console.log('[PEARL] Layer 4 blocked leaked answer in response');
       res.json({ reply: randomLeakedReplacement(), isDegraded: false });
       return;

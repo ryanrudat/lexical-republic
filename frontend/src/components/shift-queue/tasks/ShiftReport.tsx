@@ -111,6 +111,8 @@ export default function ShiftReport({ config, weekConfig, onComplete }: TaskProp
           grammarTarget={weekConfig.grammarTarget}
           targetVocab={weekConfig.targetWords}
           lane={lane}
+          writingPrompt={prompt}
+          taskContext={`Week ${weekConfig.weekNumber} shift report. The student completed their shift tasks and is writing a report about their experience.`}
           onResult={handleResult}
           disabled={fullText.split(/\s+/).filter(Boolean).length < Math.floor(minWords * 0.5)}
         />

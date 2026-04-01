@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import client from '../../../../api/client';
+import { sendPearlChat } from '../../../../api/pearl';
 import { getSocket } from '../../../../utils/socket';
 
 export interface EvalResult {
@@ -9,6 +10,7 @@ export interface EvalResult {
   vocabUsed?: string[];
   vocabMissed?: string[];
   taskScore?: number;
+  taskNotes?: string;
   pearlFeedback?: string;
   isDegraded?: boolean;
 }
@@ -22,7 +24,11 @@ interface WritingEvaluatorProps {
   lane: number;
   onResult: (result: EvalResult, attempt: number) => void;
   disabled?: boolean;
+  writingPrompt?: string;
+  taskContext?: string;
 }
+
+const MAX_NUDGES = 3;
 
 export default function WritingEvaluator({
   text,
@@ -33,10 +39,17 @@ export default function WritingEvaluator({
   lane,
   onResult,
   disabled,
+  writingPrompt,
+  taskContext,
 }: WritingEvaluatorProps) {
   const [attempt, setAttempt] = useState(1);
   const [evaluating, setEvaluating] = useState(false);
   const [lastResult, setLastResult] = useState<EvalResult | null>(null);
+
+  // Nudge state
+  const [nudgeText, setNudgeText] = useState<string | null>(null);
+  const [nudgeLoading, setNudgeLoading] = useState(false);
+  const [nudgeCount, setNudgeCount] = useState(0);
 
   async function evaluate() {
     setEvaluating(true);
@@ -57,7 +70,14 @@ export default function WritingEvaluator({
           weekNumber,
           phaseId: 'shift_queue',
           activityType: 'writing',
-          metadata: { grammarTarget, targetVocab, missionId, lane },
+          metadata: {
+            grammarTarget,
+            targetVocab,
+            missionId,
+            lane,
+            writingPrompt,
+            taskContext,
+          },
         });
 
         const data = response.data;
@@ -70,6 +90,7 @@ export default function WritingEvaluator({
             vocabUsed: data.vocabUsed,
             vocabMissed: data.vocabMissed,
             taskScore: data.taskScore,
+            taskNotes: data.taskNotes,
             pearlFeedback: data.pearlFeedback,
             isDegraded: data.isDegraded,
           };
@@ -83,6 +104,7 @@ export default function WritingEvaluator({
             vocabUsed: data.vocabUsed,
             vocabMissed: data.vocabMissed,
             taskScore: data.taskScore,
+            taskNotes: data.taskNotes,
             pearlFeedback: data.pearlFeedback,
             isDegraded: data.isDegraded,
           };
@@ -93,6 +115,7 @@ export default function WritingEvaluator({
       const currentAttempt = attempt;
       if (!result.passed) {
         setAttempt(prev => prev + 1);
+        setNudgeCount(0); // reset nudge count for new attempt
         const sock = getSocket();
         if (sock?.connected) {
           sock.emit('student:task-update', { taskId: missionId ?? 'writing', taskLabel: 'Writing', failCount: currentAttempt });
@@ -102,6 +125,7 @@ export default function WritingEvaluator({
     } catch {
       const currentAttempt = attempt;
       setAttempt(prev => prev + 1);
+      setNudgeCount(0);
       const result: EvalResult = {
         passed: false,
         grammarScore: 0,
@@ -116,23 +140,94 @@ export default function WritingEvaluator({
     }
   }
 
+  const handleNudge = useCallback(async () => {
+    if (nudgeLoading || nudgeCount >= MAX_NUDGES) return;
+    setNudgeLoading(true);
+    try {
+      const resp = await sendPearlChat(
+        'Help me with my writing.',
+        [],
+        {
+          weekNumber,
+          taskType: 'shift_report',
+          taskLabel: 'Writing Task',
+          grammarTarget,
+          targetWords: targetVocab,
+          isWritingNudge: true,
+          writingPrompt,
+          studentWritingSoFar: text,
+          taskNarrativeContext: taskContext,
+        },
+      );
+      setNudgeText(resp.reply);
+      setNudgeCount(prev => prev + 1);
+    } catch {
+      setNudgeText('Guidance systems temporarily unavailable. Continue writing, Citizen.');
+    } finally {
+      setNudgeLoading(false);
+    }
+  }, [nudgeLoading, nudgeCount, weekNumber, grammarTarget, targetVocab, writingPrompt, text, taskContext]);
+
+  const hasText = text.trim().length > 0;
+
   return (
-    <div className="flex flex-col items-start gap-2">
-      <button
-        className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 disabled:opacity-40 transition-colors"
-        disabled={disabled || evaluating}
-        onClick={evaluate}
-      >
-        {evaluating ? (
-          <span className="animate-pulse">Evaluating...</span>
-        ) : (
-          `Submit (Attempt ${attempt}/3)`
-        )}
-      </button>
+    <div className="flex flex-col items-start gap-3">
+      <div className="flex items-center gap-3">
+        <button
+          className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 disabled:opacity-40 transition-colors"
+          disabled={disabled || evaluating}
+          onClick={evaluate}
+        >
+          {evaluating ? (
+            <span className="animate-pulse">Evaluating...</span>
+          ) : (
+            `Submit (Attempt ${attempt}/3)`
+          )}
+        </button>
+
+        <button
+          className="px-4 py-2.5 rounded-xl border border-[#D4CFC6] text-[#8B8578] text-xs font-medium tracking-wider hover:border-sky-400 hover:text-sky-600 disabled:opacity-30 transition-colors"
+          disabled={!hasText || nudgeLoading || nudgeCount >= MAX_NUDGES}
+          onClick={handleNudge}
+          title={nudgeCount >= MAX_NUDGES ? 'Maximum guidance reached' : 'Ask PEARL for a writing hint'}
+        >
+          {nudgeLoading ? (
+            <span className="animate-pulse">Consulting...</span>
+          ) : nudgeCount >= MAX_NUDGES ? (
+            'Guidance Limit Reached'
+          ) : (
+            `Request Guidance (${MAX_NUDGES - nudgeCount} left)`
+          )}
+        </button>
+      </div>
+
+      {/* Nudge display */}
+      {nudgeText && (
+        <div className="w-full bg-[#FAFAF7] border border-[#D4CFC6] rounded-xl p-3">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-sky-500" />
+            <span className="font-ibm-mono text-[9px] text-[#8B8578] tracking-[0.2em] uppercase">
+              P.E.A.R.L. Guidance
+            </span>
+          </div>
+          <p className="text-xs text-[#4B5563] leading-relaxed">
+            {nudgeText}
+          </p>
+        </div>
+      )}
+
+      {/* Evaluation feedback */}
       {lastResult && !lastResult.passed && lastResult.pearlFeedback && (
-        <p className="text-rose-500 text-xs mt-1">
-          {lastResult.pearlFeedback}
-        </p>
+        <div className="w-full bg-rose-50 border border-rose-200 rounded-xl p-3">
+          <p className="text-xs text-rose-600 leading-relaxed">
+            {lastResult.pearlFeedback}
+          </p>
+          {lastResult.taskNotes && (
+            <p className="text-[10px] text-rose-400 mt-1 font-ibm-mono tracking-wider">
+              {lastResult.taskNotes}
+            </p>
+          )}
+        </div>
       )}
     </div>
   );

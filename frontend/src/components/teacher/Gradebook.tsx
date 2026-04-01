@@ -42,11 +42,10 @@ function computeCell(
       (ms.mission.missionType === 'clock_out' || ms.mission.missionType === 'shift_report')
   );
 
-  // Calculate average from scored tasks
-  const scoredTasks = weekScores.filter(ms => ms.score > 0);
-  const avg = scoredTasks.length > 0
-    ? scoredTasks.reduce((sum, ms) => sum + ms.score, 0) / scoredTasks.length
-    : null;
+  // Calculate average across ALL tasks in the week (incomplete = 0)
+  const totalTasks = week.taskTypes?.length ?? STEP_ORDER.length;
+  const totalScore = weekScores.reduce((sum, ms) => sum + ms.score, 0);
+  const avg = totalTasks > 0 ? totalScore / totalTasks : null;
 
   if (!isComplete) {
     return { state: 'blue', avgScore: avg, scores: weekScores };

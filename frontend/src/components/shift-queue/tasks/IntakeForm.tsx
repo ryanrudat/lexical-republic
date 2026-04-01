@@ -6,6 +6,7 @@ import TargetWordHighlighter from './shared/TargetWordHighlighter';
 import WritingEvaluator from './shared/WritingEvaluator';
 import type { EvalResult } from './shared/WritingEvaluator';
 import BureauStamp from './shared/BureauStamp';
+import AuthorizationToast from './shared/AuthorizationToast';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -246,8 +247,8 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
           ))}
         </div>
 
-        <div className="pt-4 flex justify-center">
-          <BureauStamp variant="received" onStamp={advanceCard} />
+        <div className="pt-4">
+          <AuthorizationToast variant="received" onAuthorize={advanceCard} />
         </div>
       </div>
     );
@@ -358,12 +359,12 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
             )}
           </div>
         ) : allCorrect ? (
-          /* All verified — stamp to continue */
-          <div className="text-center py-6 space-y-4 animate-fadeIn">
+          /* All verified — authorize to continue */
+          <div className="text-center py-4 space-y-3 animate-fadeIn">
             <p className="font-ibm-mono text-xs text-emerald-700 tracking-wider uppercase">
-              All answers correct — stamp to verify
+              All answers verified
             </p>
-            <BureauStamp variant="verified" onStamp={advanceCard} />
+            <AuthorizationToast variant="verified" onAuthorize={advanceCard} />
           </div>
         ) : null}
 

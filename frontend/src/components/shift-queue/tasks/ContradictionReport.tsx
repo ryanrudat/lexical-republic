@@ -7,6 +7,7 @@ import WritingEvaluator from './shared/WritingEvaluator';
 import type { EvalResult } from './shared/WritingEvaluator';
 import LaneScaffolding from './shared/LaneScaffolding';
 import BureauStamp, { StampChoice } from './shared/BureauStamp';
+import AuthorizationToast from './shared/AuthorizationToast';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -247,7 +248,7 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
         </div>
 
         <div className="pt-2">
-          <BureauStamp variant="reviewed" onStamp={handleReadComplete} />
+          <AuthorizationToast variant="received" onAuthorize={handleReadComplete} />
         </div>
       </div>
     );
@@ -438,10 +439,9 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
         ))}
 
         <div className="pt-2">
-          <BureauStamp
+          <AuthorizationToast
             variant="filed"
-            label="FILE REPORT"
-            onStamp={submitClassifications}
+            onAuthorize={submitClassifications}
             disabled={!allClassified}
           />
         </div>
@@ -495,13 +495,15 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
           grammarTarget={weekConfig.grammarTarget}
           targetVocab={weekConfig.targetWords}
           lane={lane}
+          writingPrompt={writingPrompt}
+          taskContext={`Week ${weekConfig.weekNumber} contradiction analysis. The student compared document "${effectiveMemo?.title || 'memo'}" with a revised version and found ${effectiveDifferences.length} differences. They are writing an analysis of what changed.`}
           onResult={handleWritingResult}
           disabled={!writingText.trim()}
         />
 
         {writingPassed && (
           <div className="pt-2">
-            <BureauStamp variant="filed" label="FILE REPORT" onStamp={handleSubmit} />
+            <AuthorizationToast variant="filed" onAuthorize={handleSubmit} />
           </div>
         )}
       </div>
