@@ -1235,6 +1235,23 @@ router.post('/weeks/:weekId/steps/:missionType/video', uploadVideo.single('video
       return;
     }
 
+    // Log multer file info for debugging
+    console.log('[Video Upload] multer file:', {
+      filename: req.file.filename,
+      destination: req.file.destination,
+      path: req.file.path,
+      size: req.file.size,
+    });
+
+    // Verify the file actually exists on disk
+    const fileExists = fs.existsSync(req.file.path);
+    console.log(`[Video Upload] File exists at ${req.file.path}: ${fileExists}`);
+
+    // Also check what's in the briefings directory
+    const briefingDir = path.resolve(req.file.destination);
+    const dirContents = fs.existsSync(briefingDir) ? fs.readdirSync(briefingDir) : [];
+    console.log(`[Video Upload] Briefings dir contents (${briefingDir}):`, dirContents);
+
     const existingConfig = safeConfig(mission.config);
     const existingOverride = (existingConfig.teacherOverride || {}) as Record<string, unknown>;
     const clipUrl = `${BRIEFING_URL_PREFIX}/${req.file.filename}`;
@@ -1260,6 +1277,12 @@ router.post('/weeks/:weekId/steps/:missionType/video', uploadVideo.single('video
       missionId: mission.id,
       [fields.urlKey]: clipUrl,
       [fields.filenameKey]: req.file.originalname,
+      _debug: {
+        multerDest: req.file.destination,
+        multerPath: req.file.path,
+        fileExistsOnDisk: fileExists,
+        briefingDirContents: dirContents,
+      },
     });
   } catch (err) {
     console.error('Teacher step video upload error:', err);
