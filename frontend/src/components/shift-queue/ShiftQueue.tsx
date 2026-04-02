@@ -19,7 +19,38 @@ import PriorityBriefing from './tasks/PriorityBriefing';
 import PrioritySort from './tasks/PrioritySort';
 import ShiftReport from './tasks/ShiftReport';
 import TaskGateOverlay from './TaskGateOverlay';
-import type { TaskProps } from '../../types/shiftQueue';
+import type { TaskProps, BridgingBriefing } from '../../types/shiftQueue';
+
+/** Bridging briefing overlay for condensed-route students who skipped weeks */
+function BridgingBriefingOverlay({ briefing, onDismiss }: { briefing: BridgingBriefing; onDismiss: () => void }) {
+  return (
+    <div className="flex flex-col gap-4 animate-fade-in">
+      <div className="bg-white rounded-xl border border-[#D4CFC6] p-5 shadow-sm">
+        <div className="flex items-center gap-2 mb-1">
+          <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+          <span className="font-ibm-mono text-[10px] tracking-[0.15em] text-[#8B8578] uppercase">
+            Inter-Shift Briefing
+          </span>
+        </div>
+        <h3 className="text-sm font-semibold text-[#2C3340] mb-0.5">{briefing.title}</h3>
+        <p className="text-[10px] text-[#8B8578] mb-3 font-ibm-mono">From: {briefing.from}</p>
+        <div className="space-y-2.5">
+          {briefing.paragraphs.map((p, i) => (
+            <p key={i} className="text-xs text-[#4B5563] leading-relaxed">{p}</p>
+          ))}
+        </div>
+        <div className="mt-4 pt-3 border-t border-[#E8E4DC] flex justify-end">
+          <button
+            onClick={onDismiss}
+            className="text-[10px] font-ibm-mono tracking-[0.15em] uppercase px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors active:scale-95"
+          >
+            Proceed to Shift
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const TASK_REGISTRY: Record<string, React.ComponentType<TaskProps>> = {
   intake_form: IntakeForm,
@@ -54,6 +85,14 @@ export default function ShiftQueue() {
   const currentTask = weekConfig?.tasks[currentTaskIndex] ?? null;
   const messagesReadyRef = useRef(false);
   const lastTriggeredTaskRef = useRef<string | null>(null);
+
+  // Bridging briefing gate — show once per shift load for condensed-route students
+  const [briefingDismissed, setBriefingDismissed] = useState(false);
+
+  // Reset briefing dismissed state when week changes
+  useEffect(() => {
+    setBriefingDismissed(false);
+  }, [weekConfig?.weekNumber]);
 
   // Video clip gate — show clip before task, then reveal task
   const [watchingClip, setWatchingClip] = useState(false);
@@ -180,6 +219,16 @@ export default function ShiftQueue() {
           Loading module...
         </div>
       </div>
+    );
+  }
+
+  // Bridging briefing overlay (condensed route — context for skipped weeks)
+  if (weekConfig.bridgingBriefing && !briefingDismissed && currentTaskIndex === 0) {
+    return (
+      <BridgingBriefingOverlay
+        briefing={weekConfig.bridgingBriefing}
+        onDismiss={() => setBriefingDismissed(true)}
+      />
     );
   }
 

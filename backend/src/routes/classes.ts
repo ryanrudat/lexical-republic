@@ -86,6 +86,7 @@ router.post('/', async (req: Request, res: Response) => {
       name: cls.name,
       joinCode: cls.joinCode,
       isActive: cls.isActive,
+      narrativeRoute: cls.narrativeRoute,
       createdAt: cls.createdAt,
     });
   } catch (err) {

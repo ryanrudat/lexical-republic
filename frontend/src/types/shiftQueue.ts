@@ -23,6 +23,12 @@ export interface TaskProgress {
   details?: Record<string, unknown>;
 }
 
+export interface BridgingBriefing {
+  title: string;
+  from: string;
+  paragraphs: string[];
+}
+
 export interface WeekConfig {
   shiftType: "queue";
   weekNumber: number;
@@ -31,6 +37,7 @@ export interface WeekConfig {
   previousWords: string[];
   tasks: TaskConfig[];
   taskGates?: number[];
+  bridgingBriefing?: BridgingBriefing | null;
   harmonyConfig: HarmonyConfig;
   characterMessages: CharacterMessageConfig[];
   narrativeHook: { title: string; body: string; borderColor: string };

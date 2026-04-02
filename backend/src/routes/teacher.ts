@@ -1676,8 +1676,10 @@ router.post('/students/:studentId/move-to-shift', async (req: Request, res: Resp
       where: { pairId },
       select: { classId: true, class: { select: { narrativeRoute: true } } },
     });
+    let routeWeeks: number[] | null = null;
     if (enrollment) {
       const route = getNarrativeRoute(enrollment.class?.narrativeRoute);
+      routeWeeks = route.weeks;
       if (!route.weeks.includes(weekNumber)) {
         res.status(400).json({
           error: `Shift ${weekNumber} is not in the "${route.label}" route for this class`,
@@ -1686,10 +1688,13 @@ router.post('/students/:studentId/move-to-shift', async (req: Request, res: Resp
       }
     }
 
-    // Auto-unlock target + all prior weeks for the student's class
+    // Auto-unlock target + all prior weeks that are in the narrative route
     if (enrollment) {
+      const routeWeeksUpToTarget = routeWeeks
+        ? routeWeeks.filter((wn) => wn <= weekNumber)
+        : Array.from({ length: weekNumber }, (_, i) => i + 1);
       const weeksToUnlock = await prisma.week.findMany({
-        where: { weekNumber: { lte: weekNumber } },
+        where: { weekNumber: { in: routeWeeksUpToTarget } },
         select: { id: true },
       });
       for (const w of weeksToUnlock) {
@@ -1737,7 +1742,11 @@ router.post('/classes/:classId/move-to-shift', async (req: Request, res: Respons
       where: { id: classId },
       select: { narrativeRoute: true },
     });
-    const route = getNarrativeRoute(cls?.narrativeRoute);
+    if (!cls) {
+      res.status(404).json({ error: 'Class not found' });
+      return;
+    }
+    const route = getNarrativeRoute(cls.narrativeRoute);
     if (!route.weeks.includes(weekNumber)) {
       res.status(400).json({
         error: `Shift ${weekNumber} is not in the "${route.label}" route for this class`,
@@ -1745,9 +1754,10 @@ router.post('/classes/:classId/move-to-shift', async (req: Request, res: Respons
       return;
     }
 
-    // Auto-unlock target + all prior weeks for the class
+    // Auto-unlock target + all prior weeks that are in the narrative route
+    const routeWeeksUpToTarget = route.weeks.filter((wn) => wn <= weekNumber);
     const weeksToUnlock = await prisma.week.findMany({
-      where: { weekNumber: { lte: weekNumber } },
+      where: { weekNumber: { in: routeWeeksUpToTarget } },
       select: { id: true },
     });
     for (const w of weeksToUnlock) {
