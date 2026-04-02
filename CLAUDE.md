@@ -1,6 +1,6 @@
 # The Lexical Republic — Project Instructions
 
-Last updated: 2026-03-27
+Last updated: 2026-04-02
 
 ## Vision
 The Lexical Republic is a dystopian ESL learning game where Taiwanese Grade 10 students (A2-B1) learn English through 18 weekly "Shifts" inside an authoritarian language-control world.
@@ -35,6 +35,7 @@ Story and learning are coupled: grammar, listening, speaking, and writing tasks 
 - **ALL OfficeView overlays** must use image-space percentages + `imageToViewport()` — never fixed viewport CSS percentages.
 - **NEVER change the PEARL sphere colors/style** unless explicitly asked.
 - **Vocabulary is TOEIC-first** — `targetWords` in each WeekConfig should prioritize TOEIC-aligned words; world-building/story words are layered in through narrative context. Week 1 is locked as-is (narrative-first exception).
+- **pOS digital-first interactions** — task confirmations use `AuthorizationToast` (PEARL eye + progress ring + checkmark), NOT physical rubber stamps. The OS is the authority, not a bureaucrat with a stamp.
 
 ## Detail Files
 - [Architecture & Deployment](docs/architecture.md) — stack, data model, deployment, routing, endpoints

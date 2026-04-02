@@ -37,17 +37,20 @@ Config-driven task queue. Each week has 4 tasks driven by static `WeekConfig` Ty
 - `TargetWordHighlighter` — word status chips (emerald=used, neutral=unused), progress bar, Porter Stemmer matching (inflected forms accepted)
 - `WritingEvaluator` — 3-attempt system: full eval → relaxed threshold → auto-pass. Calls `POST /api/submissions/evaluate`
 - `TaskCard` — stamp animation wrapper (idle → completing → stamped), light theme with emerald completion state
-- `BureauStamp` — Papers Please-inspired stamp button with press-down, impact shake, random rotation (-4° to 4°), ink bloom, flash, and ministry seal watermark. Double-line official frame. Variants: confirm, verified, received, reviewed, filed, changed, removed, deny. Compact mode for inline choices.
+- `AuthorizationToast` — pOS-native digital confirmation replacing physical stamp metaphor. PEARL eye image (`pearl-eye-glow.png`, 128x128 retina) with radial transparency fade, SVG progress ring animation (1.2s), and checkmark pop on completion. Variants: received ("Submission Received"), verified ("Verification Complete"), filed ("Report Filed"), authorized ("Authorization Granted"), processed ("Processing Complete"). Custom button labels supported. Used in IntakeForm (briefing + questions) and ContradictionReport (read complete + filing).
+- `BureauStamp` — Legacy stamp button, still used for `StampChoice` (two-stamp classification in ContradictionReport CHANGED/REMOVED). Variants: confirm, verified, received, reviewed, filed, changed, removed, deny. Compact mode for inline choices.
 - `LaneScaffolding` — lane-aware scaffolding (L1: sentence starters + word bank, L2: word list, L3: bonus question)
 - `DismissalBroadcast` — three-stage post-task overlay (red flash → video playback → green transition + "HAVE A HAPPY DAY" text). Triggered by `clipAfter` on any task config. Defers character message triggers until sequence completes.
 
 **Writing evaluation:**
-- Frontend sends `content`, `phaseId`, `activityType`, with `grammarTarget`/`targetVocab`/`lane` in `metadata`
+- Frontend sends `content`, `phaseId`, `activityType`, with `grammarTarget`/`targetVocab`/`lane`/`writingPrompt`/`taskContext` in `metadata`
 - Backend: `POST /api/submissions/evaluate` — Layer 1 auto-checks (word count, vocab usage) + Layer 2 AI rubric (fail-open)
+- **Context-aware relevance scoring**: AI evaluator receives the actual writing prompt and task context, scoring 3 dimensions: grammar, vocabulary, and **relevance** (does writing address the prompt?). Off-topic sentences with target words score low on relevance. `taskScore`/`taskNotes` fields carry relevance data (backward compatible).
 - Vocabulary matching uses Porter Stemmer on both frontend (`frontend/src/utils/stemmer.ts`) and backend (`backend/src/utils/stemmer.ts`)
 - Student writing persisted in `MissionScore.details` JSON blob
 - Writing prompts are vocabulary-focused ("Use 3-5 sentences using as many target words as possible"), not content-recall
 - Lane 1 guided questions use vocabulary-pairing exercises ("Write a sentence using 'arrive' and 'check'")
+- **PEARL writing nudges**: "Request Guidance" button in WritingEvaluator sends student's current text + prompt to `POST /api/pearl/chat` with `isWritingNudge: true`. PEARL gives directional hints ("What happened when you arrived?") without writing for the student. Max 3 nudges per attempt, counts toward 20/shift PEARL rate limit. Layer 4 post-filter relaxed for nudges (target vocab allowed in responses).
 
 **Dictionary word gating:** Words gated by student progress (MissionScore/ShiftResult), not ClassWeekUnlock.
 
@@ -204,7 +207,7 @@ Step navigation gated by completion. All steps support optional video via `StepV
 - Briefing Setup: episode title/subtitle, Canva/embed URL, fallback text
 - Now Showing sequence: `clip_a → activity → clip_b`
 - Clip-specific media inputs (upload or embed URL)
-- Grades: per-student drill-down, inline score editing, writing viewer, week reset, concern override (dual ShiftQueue/PhaseRunner support)
+- Grades: per-student drill-down, inline score editing, writing viewer, week reset, concern override (dual ShiftQueue/PhaseRunner support). **Average calculated across all tasks in the week** (incomplete tasks count as 0), not just scored tasks.
 - Dictionary: editable word table (inline edit → PATCH save)
 - Shifts: welcome video upload + Shift Storyboard (per-task video upload, embed URL, hide/show toggle)
 - **ClassManager**: expandable students/weeks panels per class, delete class (cascade), remove individual students with confirmation dialogs
@@ -293,7 +296,7 @@ Previously, deleted students persisted as "Offline" cards in ClassMonitor due to
 ## Terminal Desktop Visual Design
 - **Background**: Pure black (`#000000`) surround with near-black header/taskbar bezels
 - **Monitor screen**: Muted cyan CRT gradient (`#8EBCC1` → `#95C2C6` → `#82B0B5`) via `crt-monitor-screen` CSS class — applied to both desktop and app frame content areas
-- **CRT scan line**: White horizontal line sweeps down the monitor screen every 6s (`crt-monitor-screen::after`), rendered behind app content (`z-index: 0`)
+- **CRT scan line**: White horizontal line sweeps down the monitor screen every 6s (`crt-monitor-screen::after`), rendered behind app content (`z-index: -1`). TerminalAppFrame content wrapper uses `relative` (no z-index) so `fixed` overlays like video clip gate participate in the parent stacking context correctly.
 - **Animated grid**: Cyan grid lines (`rgba(0, 229, 255, 0.03)`) drift slowly across the black surround
 - **CRT vignette**: Inset box-shadow darkens edges of the full terminal frame
 - **App tiles**: All 6 tiles (Office, Lexicon, Current Shift, Harmony, My File, Duty Roster) use custom PNG icons at 240px width with transparent backgrounds — no clipping, cyan CRT shows through

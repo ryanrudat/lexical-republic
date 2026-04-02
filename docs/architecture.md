@@ -113,4 +113,4 @@ Deprecated: `Vocabulary`, `StudentVocabulary`
 ### PEARL routes (`backend/src/routes/pearl.ts`)
 - `GET /api/pearl/messages` — active ambient messages (shuffled)
 - `POST /api/pearl/bark` — AI-generated contextual bark (3s timeout, fail-open to pool)
-- `POST /api/pearl/chat` — AI chat with 4-layer guardrails, per-shift rate limit (20 messages per `pairId-weekN`)
+- `POST /api/pearl/chat` — AI chat with 4-layer guardrails, per-shift rate limit (20 messages per `pairId-weekN`). Supports `isWritingNudge` mode: specialized writing guidance context injection, Layer 4 filter relaxed to allow target vocab references in hints.
