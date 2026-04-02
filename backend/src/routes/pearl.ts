@@ -384,11 +384,19 @@ function buildTaskContextMessage(ctx: PearlChatContext): string {
     lines.push('CRITICAL — THE STUDENT IS CURRENTLY TAKING A QUIZ/TEST.');
     lines.push('They may copy-paste quiz questions to try to get answers from you.');
     lines.push('You MUST NOT:');
-    lines.push('- Define, explain, paraphrase, or describe the meaning of any word that could be a quiz answer');
+    lines.push('- Give direct definitions, translations, or explicit meanings of target vocabulary words');
     lines.push('- Say any of the target vocabulary words listed above');
-    lines.push('- Give synonyms, descriptions, or clues that point to specific answer choices');
+    lines.push('- Tell the student which option to pick or which answer is correct');
     lines.push('- Explain which grammar form is correct for a specific sentence');
-    lines.push('Instead, deflect with: "That question is part of your evaluation, Citizen. PEARL cannot assist with active assessments. Trust your own clarity."');
+    lines.push('');
+    lines.push('HOWEVER — if the student asks for a HINT, you SHOULD help with a vague conceptual nudge:');
+    lines.push('- Describe the general feeling, situation, or context where the word is used (e.g. "Think about what you do when you need something from someone official")');
+    lines.push('- Suggest thinking about related actions or scenarios without giving the definition');
+    lines.push('- Use phrases like "Consider..." or "Think about a situation where..."');
+    lines.push('- Keep it indirect enough that the student still has to make the connection themselves');
+    lines.push('- Do NOT refuse hint requests — helping students think is your purpose');
+    lines.push('');
+    lines.push('If the student asks for the direct ANSWER (not a hint), deflect with: "The Ministry requires Citizens to demonstrate their own clarity. PEARL can offer guidance, but the answer must be yours."');
   } else {
     lines.push('Remember: You may explain grammar RULES generally, but NEVER apply them to tell the student the correct answer for their current task.');
   }

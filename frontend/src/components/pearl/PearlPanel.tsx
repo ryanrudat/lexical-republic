@@ -43,14 +43,14 @@ export default function PearlPanel({ open, onClose, variant = 'chrome' }: PearlP
   const isCrt = variant === 'crt';
 
   // Variant-specific styles
-  const panelBg = isCrt ? 'bg-ios-bg/95' : 'bg-retro-warm-gray/95';
+  const panelBg = isCrt ? 'bg-ios-bg/95' : 'bg-retro-warm-gray';
   const panelBorder = isCrt ? 'border-white/10' : 'border-chrome-mid';
   const titleColor = isCrt ? 'text-neon-cyan ios-text-glow' : 'text-retro-warm-wood';
   const subtitleColor = isCrt ? 'text-white/40' : 'text-chrome-dark/50';
   const statusDot = isCrt ? 'bg-neon-mint' : 'bg-neon-mint';
   const statusText = isCrt ? 'text-neon-cyan/70' : 'text-chrome-dark/60';
-  const textColor = isCrt ? 'text-white/70' : 'text-retro-warm-wood/70';
-  const accentColor = isCrt ? 'text-neon-cyan' : 'text-pearl-iris';
+  const textColor = isCrt ? 'text-white/70' : 'text-retro-warm-wood/90';
+  const accentColor = isCrt ? 'text-neon-cyan' : 'text-emerald-700';
   const closeColor = isCrt ? 'text-white/40 hover:text-neon-pink' : 'text-chrome-dark/40 hover:text-neon-pink';
   const barkBorder = isCrt ? 'border-white/10' : 'border-chrome-mid/50';
   const footerText = isCrt ? 'text-white/20' : 'text-chrome-dark/30';
@@ -59,7 +59,7 @@ export default function PearlPanel({ open, onClose, variant = 'chrome' }: PearlP
   // Chat-specific styles
   const chatBubbleUser = isCrt
     ? 'bg-neon-cyan/15 border-neon-cyan/30 text-white/90'
-    : 'bg-pearl-iris/10 border-pearl-iris/30 text-retro-warm-wood';
+    : 'bg-emerald-50 border-emerald-300 text-retro-warm-wood';
   const chatBubblePearl = isCrt
     ? 'bg-white/5 border-white/10 text-white/80'
     : 'bg-white/50 border-chrome-mid text-retro-warm-wood/90';
@@ -68,7 +68,7 @@ export default function PearlPanel({ open, onClose, variant = 'chrome' }: PearlP
     : 'bg-white/60 border-chrome-mid text-retro-warm-wood placeholder:text-chrome-dark/30';
   const sendBtnActive = isCrt
     ? 'bg-neon-cyan/20 text-neon-cyan hover:bg-neon-cyan/30'
-    : 'bg-pearl-iris/15 text-pearl-iris hover:bg-pearl-iris/25';
+    : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200';
   const sendBtnDisabled = isCrt
     ? 'bg-white/5 text-white/20'
     : 'bg-chrome-mid/20 text-chrome-dark/20';
@@ -161,9 +161,9 @@ export default function PearlPanel({ open, onClose, variant = 'chrome' }: PearlP
                       PEARL
                     </span>
                     <div className="flex items-center gap-1">
-                      <span className={`inline-block w-1.5 h-1.5 rounded-full ${isCrt ? 'bg-neon-cyan' : 'bg-pearl-iris'} animate-pulse`} />
-                      <span className={`inline-block w-1.5 h-1.5 rounded-full ${isCrt ? 'bg-neon-cyan' : 'bg-pearl-iris'} animate-pulse`} style={{ animationDelay: '0.2s' }} />
-                      <span className={`inline-block w-1.5 h-1.5 rounded-full ${isCrt ? 'bg-neon-cyan' : 'bg-pearl-iris'} animate-pulse`} style={{ animationDelay: '0.4s' }} />
+                      <span className={`inline-block w-1.5 h-1.5 rounded-full ${isCrt ? 'bg-neon-cyan' : 'bg-emerald-500'} animate-pulse`} />
+                      <span className={`inline-block w-1.5 h-1.5 rounded-full ${isCrt ? 'bg-neon-cyan' : 'bg-emerald-500'} animate-pulse`} style={{ animationDelay: '0.2s' }} />
+                      <span className={`inline-block w-1.5 h-1.5 rounded-full ${isCrt ? 'bg-neon-cyan' : 'bg-emerald-500'} animate-pulse`} style={{ animationDelay: '0.4s' }} />
                     </div>
                   </div>
                 </div>
@@ -184,8 +184,8 @@ export default function PearlPanel({ open, onClose, variant = 'chrome' }: PearlP
           {recentBarks.length > 0 && (
             <div className="mt-4">
               <div className="flex items-center gap-2 mb-2">
-                <div className={`w-1 h-1 ${isCrt ? 'bg-neon-cyan' : 'bg-pearl-iris'}`} />
-                <span className={`font-ibm-mono text-[10px] ${isCrt ? 'text-neon-cyan/60' : 'text-pearl-iris/60'} tracking-[0.2em] uppercase`}>
+                <div className={`w-1 h-1 ${isCrt ? 'bg-neon-cyan' : 'bg-emerald-600'}`} />
+                <span className={`font-ibm-mono text-[10px] ${isCrt ? 'text-neon-cyan/60' : 'text-emerald-700/60'} tracking-[0.2em] uppercase`}>
                   Recent Messages
                 </span>
               </div>
