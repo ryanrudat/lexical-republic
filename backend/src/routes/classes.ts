@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { authenticate, requireRole } from '../middleware/auth';
 import prisma from '../utils/prisma';
 import { io } from '../socketServer';
+import { VALID_ROUTE_IDS } from '../data/narrative-routes';
 
 const router = Router();
 
@@ -114,6 +115,7 @@ router.get('/', async (req: Request, res: Response) => {
         isActive: c.isActive,
         harmonyOpen: c.harmonyOpen,
         defaultLane: c.defaultLane,
+        narrativeRoute: c.narrativeRoute,
         studentCount: c._count.enrollments,
         unlockedWeekIds: c.weekUnlocks.map((u) => u.weekId),
         createdAt: c.createdAt,
@@ -217,7 +219,9 @@ router.patch('/:classId', async (req: Request, res: Response) => {
   try {
     const classId = req.params.classId as string;
     const teacherId = req.user!.userId;
-    const { name, isActive, defaultLane } = req.body as { name?: string; isActive?: boolean; defaultLane?: number };
+    const { name, isActive, defaultLane, narrativeRoute } = req.body as {
+      name?: string; isActive?: boolean; defaultLane?: number; narrativeRoute?: string;
+    };
 
     // Verify ownership
     const existing = await prisma.class.findUnique({ where: { id: classId } });
@@ -231,10 +235,16 @@ router.patch('/:classId', async (req: Request, res: Response) => {
       return;
     }
 
+    if (narrativeRoute !== undefined && !VALID_ROUTE_IDS.includes(narrativeRoute)) {
+      res.status(400).json({ error: `narrativeRoute must be one of: ${VALID_ROUTE_IDS.join(', ')}` });
+      return;
+    }
+
     const updates: Record<string, unknown> = {};
     if (typeof name === 'string' && name.trim()) updates.name = name.trim();
     if (typeof isActive === 'boolean') updates.isActive = isActive;
     if (typeof defaultLane === 'number') updates.defaultLane = defaultLane;
+    if (typeof narrativeRoute === 'string') updates.narrativeRoute = narrativeRoute;
 
     if (Object.keys(updates).length === 0) {
       res.status(400).json({ error: 'No valid fields to update' });
@@ -252,6 +262,7 @@ router.patch('/:classId', async (req: Request, res: Response) => {
       joinCode: cls.joinCode,
       isActive: cls.isActive,
       defaultLane: cls.defaultLane,
+      narrativeRoute: cls.narrativeRoute,
     });
   } catch (err) {
     console.error('Update class error:', err);

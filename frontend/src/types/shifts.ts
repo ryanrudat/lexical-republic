@@ -53,6 +53,7 @@ export interface SeasonResponse {
   title: string;
   subtitle: string;
   weeks: WeekSummary[];
+  narrativeRoute?: string;
 }
 
 export interface MissionScore {

@@ -3,6 +3,7 @@ import { authenticate, getPairId } from '../middleware/auth';
 import { isPairPayload } from '../utils/jwt';
 import prisma from '../utils/prisma';
 import { getWeekConfig } from '../data/week-configs';
+import { getNarrativeRoute } from '../data/narrative-routes';
 
 const router = Router();
 router.use(authenticate);
@@ -39,18 +40,28 @@ router.get('/season', async (req: Request, res: Response) => {
   try {
     const ctx = getAuthContext(req);
 
-    // Determine student's class and unlocked weeks
+    // Determine student's class, unlocked weeks, and narrative route
     let unlockedWeekIds: Set<string> | null = null;
+    let narrativeRouteId: string = 'full';
     const enrollment = await prisma.classEnrollment.findFirst({
       where: ctx.enrollmentWhere,
     });
     if (enrollment) {
-      const unlocks = await prisma.classWeekUnlock.findMany({
-        where: { classId: enrollment.classId },
-        select: { weekId: true },
-      });
+      const [unlocks, cls] = await Promise.all([
+        prisma.classWeekUnlock.findMany({
+          where: { classId: enrollment.classId },
+          select: { weekId: true },
+        }),
+        prisma.class.findUnique({
+          where: { id: enrollment.classId },
+          select: { narrativeRoute: true },
+        }),
+      ]);
       unlockedWeekIds = new Set(unlocks.map((u) => u.weekId));
+      narrativeRouteId = cls?.narrativeRoute ?? 'full';
     }
+    const narrativeRoute = getNarrativeRoute(narrativeRouteId);
+    const routeWeekSet = new Set(narrativeRoute.weeks);
 
     // Fetch ShiftResult records to supplement clockedOut check
     // (teacher-initiated moves create ShiftResult with completedAt but no MissionScores)
@@ -109,10 +120,14 @@ router.get('/season', async (req: Request, res: Response) => {
       })
     );
 
+    // Filter weeks to only those in the active narrative route
+    const filteredWeeks = weeks.filter((w) => routeWeekSet.has(w.weekNumber));
+
     res.json({
       title: 'Approved Shift Rotation',
-      subtitle: '18 Shifts \u2022 50 minutes each \u2022 Ministry-assigned',
-      weeks,
+      subtitle: `${filteredWeeks.length} Shifts \u2022 50 minutes each \u2022 Ministry-assigned`,
+      weeks: filteredWeeks,
+      narrativeRoute: narrativeRouteId,
     });
   } catch (err) {
     console.error('Season fetch error:', err);
@@ -359,21 +374,32 @@ router.get('/weeks/:weekId/config', async (req: Request, res: Response) => {
       };
     });
 
-    // Look up task gates for the student's class
+    // Look up task gates + narrative route for the student's class
     const ctx = getAuthContext(req);
     const enrollment = await prisma.classEnrollment.findFirst({
       where: ctx.enrollmentWhere,
     });
     let taskGates: number[] = [];
+    let bridgingBriefing = null;
     if (enrollment) {
-      const unlock = await prisma.classWeekUnlock.findUnique({
-        where: { classId_weekId: { classId: enrollment.classId, weekId } },
-        select: { taskGates: true },
-      });
+      const [unlock, cls] = await Promise.all([
+        prisma.classWeekUnlock.findUnique({
+          where: { classId_weekId: { classId: enrollment.classId, weekId } },
+          select: { taskGates: true },
+        }),
+        prisma.class.findUnique({
+          where: { id: enrollment.classId },
+          select: { narrativeRoute: true },
+        }),
+      ]);
       taskGates = unlock?.taskGates ?? [];
+
+      // Inject bridging briefing if this week follows skipped weeks in the route
+      const route = getNarrativeRoute(cls?.narrativeRoute ?? 'full');
+      bridgingBriefing = route.bridgingBriefings[week.weekNumber] ?? null;
     }
 
-    res.json({ ...config, tasks: enrichedTasks, taskGates });
+    res.json({ ...config, tasks: enrichedTasks, taskGates, bridgingBriefing });
   } catch (err) {
     console.error('Week config fetch error:', err);
     res.status(500).json({ error: 'Failed to fetch week config' });

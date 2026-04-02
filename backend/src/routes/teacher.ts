@@ -8,6 +8,7 @@ import prisma from '../utils/prisma';
 import { io, getOnlineStudents, purgeOnlineStudent } from '../socketServer';
 import { findAlternative } from '../data/activityPool';
 import { getWeekConfig } from '../data/week-configs';
+import { getNarrativeRoute } from '../data/narrative-routes';
 
 const router = Router();
 router.use(authenticate, requireRole('teacher'));
@@ -1670,11 +1671,22 @@ router.post('/students/:studentId/move-to-shift', async (req: Request, res: Resp
       return;
     }
 
-    // Auto-unlock target + all prior weeks for the student's class
+    // Validate target week is in the student's class narrative route
     const enrollment = await prisma.classEnrollment.findFirst({
       where: { pairId },
-      select: { classId: true },
+      select: { classId: true, class: { select: { narrativeRoute: true } } },
     });
+    if (enrollment) {
+      const route = getNarrativeRoute(enrollment.class?.narrativeRoute);
+      if (!route.weeks.includes(weekNumber)) {
+        res.status(400).json({
+          error: `Shift ${weekNumber} is not in the "${route.label}" route for this class`,
+        });
+        return;
+      }
+    }
+
+    // Auto-unlock target + all prior weeks for the student's class
     if (enrollment) {
       const weeksToUnlock = await prisma.week.findMany({
         where: { weekNumber: { lte: weekNumber } },
@@ -1717,6 +1729,19 @@ router.post('/classes/:classId/move-to-shift', async (req: Request, res: Respons
     const teacherClassIds = await getTeacherClassIds(teacherId);
     if (!teacherClassIds.includes(classId)) {
       res.status(403).json({ error: 'Not your class' });
+      return;
+    }
+
+    // Validate target week is in the class narrative route
+    const cls = await prisma.class.findUnique({
+      where: { id: classId },
+      select: { narrativeRoute: true },
+    });
+    const route = getNarrativeRoute(cls?.narrativeRoute);
+    if (!route.weeks.includes(weekNumber)) {
+      res.status(400).json({
+        error: `Shift ${weekNumber} is not in the "${route.label}" route for this class`,
+      });
       return;
     }
 

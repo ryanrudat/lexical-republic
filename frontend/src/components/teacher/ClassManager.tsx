@@ -10,6 +10,7 @@ import {
   fetchClassDetail,
   fetchWeekBriefings,
   setClassDefaultLane,
+  setNarrativeRoute,
 } from '../../api/teacher';
 import type { ClassInfo, ClassStudent, WeekBriefingSetting } from '../../api/teacher';
 
@@ -224,6 +225,32 @@ export default function ClassManager({ classes, onRefresh, onSelectClass }: Prop
                           }}
                         >
                           {labels[tier - 1]}{tier}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {/* Narrative route selector */}
+                  <div className="flex items-center gap-0.5 border border-slate-200 rounded-md overflow-hidden" title="Narrative route — Full (18 shifts) or Condensed (9 shifts)">
+                    {([
+                      { id: 'full', label: 'Full', desc: 'Full Narrative — 18 shifts' },
+                      { id: 'condensed', label: 'Short', desc: 'Condensed Narrative — 9 shifts' },
+                    ] as const).map((route) => {
+                      const isCurrent = (cls.narrativeRoute ?? 'full') === route.id;
+                      return (
+                        <button
+                          key={route.id}
+                          className={`text-[10px] px-1.5 py-1 font-medium transition-colors ${
+                            isCurrent
+                              ? 'bg-sky-600 text-white'
+                              : 'bg-white text-slate-400 hover:bg-slate-50 hover:text-slate-600'
+                          }`}
+                          title={route.desc}
+                          onClick={() => {
+                            if (isCurrent) return;
+                            void setNarrativeRoute(cls.id, route.id).then(() => onRefresh());
+                          }}
+                        >
+                          {route.label}
                         </button>
                       );
                     })}

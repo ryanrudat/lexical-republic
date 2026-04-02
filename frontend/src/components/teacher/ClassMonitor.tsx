@@ -6,6 +6,7 @@ import { getSocket } from '../../utils/socket';
 import { STEP_ORDER } from '../../types/shifts';
 import type { StudentSummary } from '../../types/shifts';
 import ClarityMinderThread from './ClarityMinderThread';
+import { getAvailableShifts } from '../../data/narrative-routes';
 
 const stepLabel = (stepId: string) =>
   STEP_ORDER.find((s) => s.id === stepId)?.label ?? stepId;
@@ -30,7 +31,7 @@ function formatElapsed(ms: number): string {
   return `${Math.floor(totalSec / 60)}m`;
 }
 
-export default function ClassMonitor({ classId }: { classId?: string | null }) {
+export default function ClassMonitor({ classId, narrativeRoute }: { classId?: string | null; narrativeRoute?: string }) {
   const [students, setStudents] = useState<StudentSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(Date.now());
@@ -238,8 +239,8 @@ export default function ClassMonitor({ classId }: { classId?: string | null }) {
     'move-class-to-shift': 'Move Class to Shift',
   };
 
-  // Available shifts (only weeks with content)
-  const AVAILABLE_SHIFTS = [1, 2, 3];
+  // Available shifts — derived from narrative route, filtered to built content
+  const AVAILABLE_SHIFTS = getAvailableShifts(narrativeRoute);
 
   if (loading && students.length === 0) {
     return (

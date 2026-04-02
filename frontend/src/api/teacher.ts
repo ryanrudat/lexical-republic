@@ -194,6 +194,10 @@ export async function setClassDefaultLane(classId: string, defaultLane: number):
   await client.patch(`/classes/${classId}`, { defaultLane });
 }
 
+export async function setNarrativeRoute(classId: string, narrativeRoute: string): Promise<void> {
+  await client.patch(`/classes/${classId}`, { narrativeRoute });
+}
+
 export async function deleteStudent(studentId: string): Promise<void> {
   await client.delete(`/teacher/students/${studentId}`);
 }
@@ -242,6 +246,7 @@ export interface ClassInfo {
   isActive: boolean;
   harmonyOpen: boolean;
   defaultLane: number;
+  narrativeRoute: string;
   studentCount: number;
   unlockedWeekIds: string[];
   createdAt: string;

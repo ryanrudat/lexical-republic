@@ -175,7 +175,10 @@ export default function TeacherDashboard() {
           )}
           {activeTab === 'class' && (
             <div ref={monitorRef}>
-              <ClassMonitor classId={selectedClassId} />
+              <ClassMonitor
+                classId={selectedClassId}
+                narrativeRoute={classes.find((c) => c.id === selectedClassId)?.narrativeRoute}
+              />
             </div>
           )}
           {activeTab === 'grades' && <Gradebook classId={selectedClassId} />}
