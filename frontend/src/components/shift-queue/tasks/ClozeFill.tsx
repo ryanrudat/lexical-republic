@@ -1,5 +1,7 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { usePearlStore } from '../../../stores/pearlStore';
+import { useShiftQueueStore } from '../../../stores/shiftQueueStore';
+import { useStudentStore } from '../../../stores/studentStore';
 import { useTapOrDrag } from './shared/useTapOrDrag';
 import type { TaskProps } from '../../../types/shiftQueue';
 
@@ -16,11 +18,20 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
   const from = config.from as string | undefined;
   const pearlBark = config.pearlBarkOnComplete as string | undefined;
 
+  const addConcern = useShiftQueueStore(s => s.addConcern);
+  const lane = useStudentStore(s => s.user?.lane ?? 2);
+
+  // Tier 1 (Guided): 3 attempts — more chances, concern only on final miss
+  // Tier 2 (Standard): 2 attempts — default
+  // Tier 3 (Independent): 1 attempt — immediate auto-fill on wrong
+  const maxAttempts = lane === 1 ? 3 : lane === 3 ? 1 : 2;
+
   const [placements, setPlacements] = useState<Record<number, string>>({});
   const [locked, setLocked] = useState<Set<number>>(new Set());
   const [wrongFlash, setWrongFlash] = useState<number | null>(null);
   const [firstTryCorrect, setFirstTryCorrect] = useState<Set<number>>(new Set());
   const [attempted, setAttempted] = useState<Set<number>>(new Set());
+  const [attemptCounts, setAttemptCounts] = useState<Record<number, number>>({});
 
   const { selectedId, selectItem, clearSelection } = useTapOrDrag();
 
@@ -82,13 +93,30 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
           setFirstTryCorrect((prev) => new Set(prev).add(blankIndex));
         }
       } else {
-        setWrongFlash(blankIndex);
+        const newCount = (attemptCounts[blankIndex] ?? 0) + 1;
+        setAttemptCounts(prev => ({ ...prev, [blankIndex]: newCount }));
         setAttempted((prev) => new Set(prev).add(blankIndex));
-        setTimeout(() => setWrongFlash(null), 400);
+
+        // Tier 1: concern only on final miss; Tier 2/3: every miss
+        if (lane !== 1) addConcern(0.05);
+
+        if (newCount >= maxAttempts) {
+          // Max attempts reached — auto-fill with correct word
+          if (lane === 1) addConcern(0.05);
+          setWrongFlash(blankIndex);
+          setTimeout(() => {
+            setWrongFlash(null);
+            setPlacements((prev) => ({ ...prev, [blankIndex]: blank.correctWord }));
+            setLocked((prev) => new Set(prev).add(blankIndex));
+          }, lane === 1 ? 1500 : 800);
+        } else {
+          setWrongFlash(blankIndex);
+          setTimeout(() => setWrongFlash(null), 400);
+        }
       }
       clearSelection();
     },
-    [blanks, locked, attempted, clearSelection],
+    [blanks, locked, attempted, attemptCounts, maxAttempts, lane, addConcern, clearSelection],
   );
 
   const handleBlankClick = useCallback(

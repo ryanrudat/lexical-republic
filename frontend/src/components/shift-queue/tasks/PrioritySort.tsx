@@ -84,7 +84,9 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
     }
 
     if (wrongCount > 0) {
-      addConcern(wrongCount * 0.1);
+      // Tier 1 (Guided): gentler penalty; Tier 3 (Independent): stricter
+      const concernPerWrong = lane === 1 ? 0.05 : lane === 3 ? 0.15 : 0.1;
+      addConcern(wrongCount * concernPerWrong);
     }
 
     setSortResults(results);

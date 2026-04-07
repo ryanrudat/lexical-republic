@@ -1,5 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { usePearlStore } from '../../../stores/pearlStore';
+import { useShiftQueueStore } from '../../../stores/shiftQueueStore';
+import { useStudentStore } from '../../../stores/studentStore';
 import type { TaskProps } from '../../../types/shiftQueue';
 
 interface Pair {
@@ -20,6 +22,14 @@ export default function WordMatch({ config, onComplete }: TaskProps) {
   const pairs = (config.pairs as Pair[]) || [];
   const pearlBark = config.pearlBarkOnComplete as string | undefined;
 
+  const addConcern = useShiftQueueStore(s => s.addConcern);
+  const lane = useStudentStore(s => s.user?.lane ?? 2);
+
+  // Tier 1 (Guided): 3 attempts — more chances, concern only on final miss
+  // Tier 2 (Standard): 2 attempts — default
+  // Tier 3 (Independent): 1 attempt — immediate auto-resolve on wrong
+  const maxAttempts = lane === 1 ? 3 : lane === 3 ? 1 : 2;
+
   // Shuffle both columns independently on mount
   const shuffledWords = useRef(shuffle(pairs)).current;
   const shuffledDefs = useRef(shuffle(pairs)).current;
@@ -30,28 +40,26 @@ export default function WordMatch({ config, onComplete }: TaskProps) {
   const [correctFlash, setCorrectFlash] = useState<string | null>(null);
   const [firstTryCorrect, setFirstTryCorrect] = useState<Set<string>>(new Set());
   const [attempted, setAttempted] = useState<Set<string>>(new Set());
+  const [attemptCounts, setAttemptCounts] = useState<Record<string, number>>({});
 
   const hasCompleted = useRef(false);
 
-  const checkCompletion = useCallback(
-    (newMatched: Set<string>, newFirstTryCorrect: Set<string>) => {
-      if (newMatched.size === pairs.length && !hasCompleted.current) {
-        hasCompleted.current = true;
-        const score = newFirstTryCorrect.size / pairs.length;
-        if (pearlBark) {
-          usePearlStore.getState().triggerBark('success', pearlBark);
-        }
-        setTimeout(() => {
-          onComplete(score, {
-            type: 'word_match',
-            correct: newFirstTryCorrect.size,
-            total: pairs.length,
-          });
-        }, 1000);
-      }
-    },
-    [pairs.length, pearlBark, onComplete],
-  );
+  // Render-time completion detection (same pattern as ClozeFill)
+  const allMatched = matched.size === pairs.length;
+  if (allMatched && !hasCompleted.current) {
+    hasCompleted.current = true;
+    const score = firstTryCorrect.size / pairs.length;
+    if (pearlBark) {
+      usePearlStore.getState().triggerBark('success', pearlBark);
+    }
+    setTimeout(() => {
+      onComplete(score, {
+        type: 'word_match',
+        correct: firstTryCorrect.size,
+        total: pairs.length,
+      });
+    }, 1000);
+  }
 
   const handleWordClick = useCallback(
     (word: string) => {
@@ -72,24 +80,50 @@ export default function WordMatch({ config, onComplete }: TaskProps) {
         newMatched.add(defWord);
         setMatched(newMatched);
 
-        const newFirstTryCorrect = new Set(firstTryCorrect);
         if (!attempted.has(word)) {
-          newFirstTryCorrect.add(word);
-          setFirstTryCorrect(newFirstTryCorrect);
+          setFirstTryCorrect((prev) => new Set(prev).add(word));
         }
 
         setSelectedWord(null);
         setTimeout(() => setCorrectFlash(null), 500);
-        checkCompletion(newMatched, newFirstTryCorrect);
       } else {
-        setWrongFlash(defWord);
+        const newCount = (attemptCounts[word] ?? 0) + 1;
+        setAttemptCounts(prev => ({ ...prev, [word]: newCount }));
         setAttempted((prev) => new Set(prev).add(word));
-        usePearlStore.getState().triggerBark('incorrect', 'Incorrect match. Review the definition and try again.');
-        setTimeout(() => setWrongFlash(null), 500);
-        setSelectedWord(null);
+
+        // Tier 1: concern only on final miss; Tier 2/3: every miss
+        if (lane !== 1) addConcern(0.05);
+
+        if (newCount >= maxAttempts) {
+          // Max attempts reached — flash wrong, then auto-resolve with correct match
+          if (lane === 1) addConcern(0.05);
+          setWrongFlash(defWord);
+          setSelectedWord(null);
+          setTimeout(() => {
+            setWrongFlash(null);
+            // Use functional updaters so auto-resolve is never stale
+            setCorrectFlash(word);
+            setMatched(prev => new Set(prev).add(word));
+            // Tier 1: show correct match longer for learning; others: shorter
+            const flashDuration = lane === 1 ? 2000 : 1000;
+            setTimeout(() => setCorrectFlash(null), flashDuration);
+          }, 500);
+        } else {
+          setWrongFlash(defWord);
+          usePearlStore
+            .getState()
+            .triggerBark(
+              'incorrect',
+              lane === 1
+                ? `Incorrect match. ${maxAttempts - newCount} attempt${maxAttempts - newCount > 1 ? 's' : ''} remaining.`
+                : 'Incorrect match. Review the definition and try again.',
+            );
+          setTimeout(() => setWrongFlash(null), 500);
+          setSelectedWord(null);
+        }
       }
     },
-    [matched, firstTryCorrect, attempted, checkCompletion],
+    [matched, attempted, attemptCounts, maxAttempts, lane, addConcern],
   );
 
   const handleDefClick = useCallback(
@@ -107,7 +141,6 @@ export default function WordMatch({ config, onComplete }: TaskProps) {
     [tryMatch],
   );
 
-  const allMatched = matched.size === pairs.length;
   const progress = matched.size / pairs.length;
 
   return (
