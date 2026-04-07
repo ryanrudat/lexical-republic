@@ -38,10 +38,30 @@ export default function TerminalView() {
   const eyeState = usePearlStore((s) => s.eyeState);
   const concernScore = useSessionStore((s) => s.concernScore);
   const [pearlOpen, setPearlOpen] = useState(false);
-  const handleHome = useCallback(() => {
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+
+  const doExit = useCallback(() => {
+    setShowExitConfirm(false);
     returnToDesktop();
     navigate('/', { replace: true });
   }, [returnToDesktop, navigate]);
+
+  const handleHome = useCallback(() => {
+    if (terminalApp === 'clarity-queue') {
+      setShowExitConfirm(true);
+    } else {
+      returnToDesktop();
+      navigate('/', { replace: true });
+    }
+  }, [terminalApp, returnToDesktop, navigate]);
+
+  const handleAppClose = useCallback(() => {
+    if (terminalApp === 'clarity-queue') {
+      setShowExitConfirm(true);
+    } else {
+      returnToDesktop();
+    }
+  }, [terminalApp, returnToDesktop]);
 
   const eyeStateLabel: Record<typeof eyeState, string> = {
     welcoming: 'Welcoming',
@@ -183,6 +203,7 @@ export default function TerminalView() {
         ) : (
           <TerminalAppFrame
             title={APP_CONFIG[terminalApp as keyof typeof APP_CONFIG]?.title || 'Application'}
+            onClose={handleAppClose}
           >
             {(() => {
               const config = APP_CONFIG[terminalApp as keyof typeof APP_CONFIG];
@@ -214,6 +235,43 @@ export default function TerminalView() {
 
       {/* System Audit Overlay — triggers at concern score 100 */}
       <SystemAuditOverlay />
+
+      {/* Confirm exit shift overlay */}
+      {showExitConfirm && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowExitConfirm(false)}
+        >
+          <div
+            className="max-w-sm w-full mx-6 rounded-xl border border-[#D4CFC6] bg-[#FAFAF7] p-6 shadow-xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <p className="font-ibm-mono text-[10px] text-sky-500 tracking-[0.2em] uppercase mb-3">
+              P.E.A.R.L.
+            </p>
+            <p className="text-sm text-[#2C3340] leading-relaxed mb-1 font-medium">
+              Leave current shift?
+            </p>
+            <p className="text-xs text-[#6B7280] leading-relaxed mb-5">
+              Your completed tasks are saved, but any work on the current task will be lost.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowExitConfirm(false)}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-[#D4CFC6] bg-white text-xs font-medium tracking-wider text-[#4B5563] hover:border-sky-300 active:bg-sky-50 active:scale-[0.98] transition-all"
+              >
+                Stay
+              </button>
+              <button
+                onClick={doExit}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-rose-200 bg-rose-50 text-xs font-medium tracking-wider text-rose-600 hover:bg-rose-100 active:scale-[0.98] transition-all"
+              >
+                Leave Shift
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

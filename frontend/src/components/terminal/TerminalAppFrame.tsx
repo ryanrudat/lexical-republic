@@ -6,9 +6,10 @@ import { GUIDED_STUDENT_MODE } from '../../config/runtimeFlags';
 interface TerminalAppFrameProps {
   title: string;
   children: ReactNode;
+  onClose?: () => void;
 }
 
-export default function TerminalAppFrame({ title, children }: TerminalAppFrameProps) {
+export default function TerminalAppFrame({ title, children, onClose }: TerminalAppFrameProps) {
   const terminalApp = useViewStore((s) => s.terminalApp);
   const returnToDesktop = useViewStore((s) => s.returnToDesktop);
   const user = useStudentStore((s) => s.user);
@@ -26,7 +27,7 @@ export default function TerminalAppFrame({ title, children }: TerminalAppFramePr
           </span>
         </div>
         <button
-          onClick={returnToDesktop}
+          onClick={onClose ?? returnToDesktop}
           disabled={guidedLockedInShift}
           className="font-ibm-mono text-xs text-[#6B5D45] hover:text-red-400 transition-colors"
         >
