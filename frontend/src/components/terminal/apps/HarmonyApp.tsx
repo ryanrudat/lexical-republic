@@ -976,39 +976,13 @@ export default function HarmonyApp() {
       {/* First-time onboarding */}
       {showOnboarding && <HarmonyOnboarding onDismiss={dismissOnboarding} />}
 
-      {/* Tabs */}
-      <div className="flex gap-1 px-4 py-2 bg-[#EFEBE4] border-b border-[#D4CFC6]">
-        <button
-          onClick={() => setTab('feed')}
-          className={`flex-1 py-2 rounded-lg text-[11px] font-semibold tracking-[0.1em] uppercase transition-all ${
-            activeTab === 'feed'
-              ? 'bg-white text-[#2C3340] shadow-sm border border-[#D4CFC6]'
-              : 'text-[#8B8578] hover:text-[#4B5563] hover:bg-white/40'
-          }`}
-        >
-          Feed
-        </button>
-        <button
-          onClick={() => setTab('censure')}
-          className={`flex-1 py-2 rounded-lg text-[11px] font-semibold tracking-[0.1em] uppercase transition-all ${
-            activeTab === 'censure'
-              ? 'bg-white text-[#2C3340] shadow-sm border border-[#D4CFC6]'
-              : 'text-[#8B8578] hover:text-[#4B5563] hover:bg-white/40'
-          }`}
-        >
-          Review Queue
-          {censureStats.total - censureStats.completed > 0 && (
-            <span className="ml-1.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold bg-rose-500 text-white">
-              {censureStats.total - censureStats.completed}
-            </span>
-          )}
-        </button>
-      </div>
+      {/* Tabs — government portal navigation */}
+      <HarmonyTabs activeTab={activeTab} setTab={setTab} censureStats={censureStats} ministryCount={posts.filter(p => p.postType === 'bulletin' || p.postType === 'pearl_tip').length} />
 
       {/* Tab content */}
-      {activeTab === 'feed' ? (
+      {activeTab === 'feed' && (
         <FeedTab
-          posts={posts}
+          posts={posts.filter(p => p.postType === 'feed' || !p.postType)}
           focusWords={focusWords}
           recentWords={recentWords}
           deepReviewWords={deepReviewWords}
@@ -1020,7 +994,21 @@ export default function HarmonyApp() {
           onCensure={handleCensure}
           onDelete={deletePost}
         />
-      ) : (
+      )}
+      {activeTab === 'ministry' && (
+        <MinistryTab
+          posts={posts.filter(p => p.postType === 'bulletin' || p.postType === 'pearl_tip')}
+          loading={loading}
+        />
+      )}
+      {activeTab === 'sector' && (
+        <SectorTab
+          posts={posts.filter(p => p.postType === 'community_notice' || p.postType === 'sector_report')}
+          loading={loading}
+          onOpenThread={openThread}
+        />
+      )}
+      {activeTab === 'censure' && (
         <CensureQueue />
       )}
     </div>
@@ -1172,33 +1160,187 @@ function FeedTab({
           </div>
         )}
 
-        {posts.map((post) => {
-          // Component registry: route each post type to its card
-          switch (post.postType) {
-            case 'bulletin':
-              return <HarmonyBulletin key={post.id} post={post} />;
-            case 'pearl_tip':
-              return <HarmonyPearlTip key={post.id} post={post} />;
-            case 'community_notice':
-              return <HarmonyNoticeCard key={post.id} post={post} onOpenThread={onOpenThread} />;
-            case 'sector_report':
-              return <HarmonySectorReport key={post.id} post={post} />;
-            default:
-              return (
-                <PostCard
-                  key={post.id}
-                  post={post}
-                  focusWords={focusWords}
-                  recentWords={recentWords}
-                  deepReviewWords={deepReviewWords}
-                  onOpenThread={onOpenThread}
-                  onCensure={onCensure}
-                  onDelete={onDelete}
-                />
-              );
-          }
-        })}
+        {posts.map((post) => (
+          <PostCard
+            key={post.id}
+            post={post}
+            focusWords={focusWords}
+            recentWords={recentWords}
+            deepReviewWords={deepReviewWords}
+            onOpenThread={onOpenThread}
+            onCensure={onCensure}
+            onDelete={onDelete}
+          />
+        ))}
       </div>
     </>
+  );
+}
+
+/* ─── Tab Bar ───────────────────────────────────────────────────── */
+
+function HarmonyTabs({
+  activeTab,
+  setTab,
+  censureStats,
+  ministryCount,
+}: {
+  activeTab: string;
+  setTab: (tab: 'feed' | 'ministry' | 'sector' | 'censure') => void;
+  censureStats: { total: number; completed: number };
+  ministryCount: number;
+}) {
+  const tabs: { key: 'feed' | 'ministry' | 'sector' | 'censure'; label: string; badge?: number; badgeColor?: string }[] = [
+    { key: 'feed', label: 'Feed' },
+    { key: 'ministry', label: 'Ministry', badge: ministryCount > 0 ? ministryCount : undefined, badgeColor: 'bg-sky-500' },
+    { key: 'sector', label: 'Sector' },
+    { key: 'censure', label: 'Review', badge: censureStats.total - censureStats.completed > 0 ? censureStats.total - censureStats.completed : undefined, badgeColor: 'bg-rose-500' },
+  ];
+
+  return (
+    <div className="flex gap-1 px-3 py-2 bg-[#EFEBE4] border-b border-[#D4CFC6]">
+      {tabs.map((tab) => (
+        <button
+          key={tab.key}
+          onClick={() => setTab(tab.key)}
+          className={`flex-1 py-1.5 rounded-lg text-[10px] font-semibold tracking-[0.08em] uppercase transition-all ${
+            activeTab === tab.key
+              ? 'bg-white text-[#2C3340] shadow-sm border border-[#D4CFC6]'
+              : 'text-[#8B8578] hover:text-[#4B5563] hover:bg-white/40'
+          }`}
+        >
+          {tab.label}
+          {tab.badge && (
+            <span className={`ml-1 inline-flex items-center justify-center min-w-[14px] h-3.5 px-1 rounded-full text-[8px] font-bold ${tab.badgeColor} text-white`}>
+              {tab.badge}
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ─── Ministry Tab ──────────────────────────────────────────────── */
+
+function MinistryTab({
+  posts,
+  loading,
+}: {
+  posts: HarmonyPost[];
+  loading: boolean;
+}) {
+  const bulletins = posts.filter(p => p.postType === 'bulletin');
+  const tips = posts.filter(p => p.postType === 'pearl_tip');
+
+  return (
+    <div className="flex-1 overflow-auto">
+      {/* Section header */}
+      <div className="px-4 py-3 border-b border-sky-200/30">
+        <p className="text-[10px] text-sky-700/50 tracking-[0.2em] uppercase font-semibold">
+          Ministry Dispatches
+        </p>
+        <p className="text-[9px] text-[#B8B3AA] mt-0.5">
+          Official bulletins and language guidance from P.E.A.R.L.
+        </p>
+      </div>
+
+      {loading && posts.length === 0 && (
+        <div className="text-xs text-sky-700/50 animate-pulse text-center py-8 tracking-wider">
+          LOADING DISPATCHES...
+        </div>
+      )}
+
+      {!loading && posts.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-[11px] text-[#9CA3AF] tracking-wider">
+            No dispatches have been issued for this shift.
+          </p>
+          <p className="text-[10px] text-[#B8B3AA] mt-1">
+            Ministry bulletins appear as you progress.
+          </p>
+        </div>
+      )}
+
+      {/* Bulletins first */}
+      {bulletins.map((post) => (
+        <HarmonyBulletin key={post.id} post={post} />
+      ))}
+
+      {/* PEARL tips */}
+      {tips.length > 0 && bulletins.length > 0 && (
+        <div className="px-4 py-2 border-t border-[#E8E4DC]">
+          <p className="text-[9px] text-emerald-600/50 tracking-[0.15em] uppercase">
+            P.E.A.R.L. Language Guidance
+          </p>
+        </div>
+      )}
+      {tips.map((post) => (
+        <HarmonyPearlTip key={post.id} post={post} />
+      ))}
+    </div>
+  );
+}
+
+/* ─── Sector Tab ────────────────────────────────────────────────── */
+
+function SectorTab({
+  posts,
+  loading,
+  onOpenThread,
+}: {
+  posts: HarmonyPost[];
+  loading: boolean;
+  onOpenThread: (postId: string) => void;
+}) {
+  const notices = posts.filter(p => p.postType === 'community_notice');
+  const reports = posts.filter(p => p.postType === 'sector_report');
+
+  return (
+    <div className="flex-1 overflow-auto">
+      {/* Section header */}
+      <div className="px-4 py-3 border-b border-amber-200/30">
+        <p className="text-[10px] text-amber-600/50 tracking-[0.2em] uppercase font-semibold">
+          Sector Board
+        </p>
+        <p className="text-[9px] text-[#B8B3AA] mt-0.5">
+          Community notices, schedules, and sector reports.
+        </p>
+      </div>
+
+      {loading && posts.length === 0 && (
+        <div className="text-xs text-amber-600/50 animate-pulse text-center py-8 tracking-wider">
+          LOADING SECTOR NOTICES...
+        </div>
+      )}
+
+      {!loading && posts.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-[11px] text-[#9CA3AF] tracking-wider">
+            No sector notices for this shift.
+          </p>
+          <p className="text-[10px] text-[#B8B3AA] mt-1">
+            Community updates appear as new shifts begin.
+          </p>
+        </div>
+      )}
+
+      {/* Notices first */}
+      {notices.map((post) => (
+        <HarmonyNoticeCard key={post.id} post={post} onOpenThread={onOpenThread} />
+      ))}
+
+      {/* Sector reports */}
+      {reports.length > 0 && notices.length > 0 && (
+        <div className="px-4 py-2 border-t border-[#E8E4DC]">
+          <p className="text-[9px] text-[#8B8578]/50 tracking-[0.15em] uppercase">
+            Sector Performance Data
+          </p>
+        </div>
+      )}
+      {reports.map((post) => (
+        <HarmonySectorReport key={post.id} post={post} />
+      ))}
+    </div>
   );
 }

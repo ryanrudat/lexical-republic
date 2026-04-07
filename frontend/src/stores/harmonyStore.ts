@@ -12,7 +12,7 @@ import {
   submitBulletinResponse,
 } from '../api/harmony';
 
-type HarmonyTab = 'feed' | 'censure';
+type HarmonyTab = 'feed' | 'ministry' | 'sector' | 'censure';
 
 interface HarmonyState {
   // Feed
