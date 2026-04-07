@@ -101,14 +101,16 @@ Deprecated: `Vocabulary`, `StudentVocabulary`
 - `PATCH /api/dictionary/:wordId/chinese-revealed` — set chineseRevealed=true (one-way)
 
 ### Harmony routes (`backend/src/routes/harmony.ts`)
-- `GET /api/harmony/posts` — feed posts (locked until Shift 1 completed, triggers lazy generation)
-- `POST /api/harmony/posts` — create student post
-- `DELETE /api/harmony/posts/:id` — delete post (own posts only for students, cascade: replies → censure responses → post)
+- `GET /api/harmony/posts` — all feed-tab content types (feed, bulletin, pearl_tip, community_notice, sector_report), sorted by type priority. Triggers lazy generation. Returns `postType`, `bulletinData`, 3-tier vocab words.
+- `POST /api/harmony/posts` — create student post (auto-approved after 2-5s; orphaned pending posts swept on next GET)
+- `DELETE /api/harmony/posts/:id` — delete post (cascade: replies → censure responses → post)
 - `GET /api/harmony/posts/:id/replies` — fetch replies for a post
 - `POST /api/harmony/posts/:id/replies` — create reply
-- `POST /api/harmony/posts/:id/censure` — approve/correct/flag a post
-- `GET /api/harmony/censure-queue` — censure queue items (locked until Shift 1 completed, triggers lazy generation)
-- `POST /api/harmony/censure-queue/:id/respond` — submit censure response (action + selectedIndex)
+- `POST /api/harmony/posts/:id/censure` — approve/correct/flag a post (logs Citizen4488Interaction)
+- `GET /api/harmony/censure-queue` — censure items scoped to route weeks, up to 3 review items by lowest mastery, returns `isReview` flag
+- `POST /api/harmony/censure-queue/:id/respond` — submit censure response. Differentiated mastery: +0.05 current-week, +0.03 review.
+- `POST /api/harmony/bulletins/:id/respond` — bulletin comprehension MCQ check (ephemeral, no DB write)
+- Phase C planned: `GET /api/harmony/archives?section=vocabulary|timeline|bulletins`, `GET /api/harmony/has-new`
 
 ### PEARL routes (`backend/src/routes/pearl.ts`)
 - `GET /api/pearl/messages` — active ambient messages (shuffled)

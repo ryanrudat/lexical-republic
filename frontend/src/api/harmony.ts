@@ -1,5 +1,23 @@
 import client from './client';
 
+export type HarmonyPostType =
+  | 'feed'
+  | 'bulletin'
+  | 'pearl_tip'
+  | 'community_notice'
+  | 'sector_report';
+
+export interface BulletinQuestion {
+  question: string;
+  options: string[];
+  correctIndex: number;
+}
+
+export interface BulletinResponseResult {
+  isCorrect: boolean;
+  correctIndex: number;
+}
+
 export interface HarmonyPost {
   id: string;
   designation: string;
@@ -10,6 +28,11 @@ export interface HarmonyPost {
   createdAt: string;
   isOwn: boolean;
   weekNumber: number | null;
+  postType: HarmonyPostType;
+  bulletinData: {
+    refNumber: string;
+    questions: BulletinQuestion[];
+  } | null;
 }
 
 export interface HarmonyReply {
@@ -25,7 +48,8 @@ export interface HarmonyFeedResponse {
   posts: HarmonyPost[];
   currentWeekNumber: number;
   focusWords: string[];
-  reviewWords: string[];
+  recentWords: string[];
+  deepReviewWords: string[];
 }
 
 export interface CensureItem {
@@ -46,6 +70,7 @@ export interface CensureItem {
   reviewed: boolean;
   wasCorrect: boolean | null;
   studentAction: string | null;
+  isReview: boolean;
 }
 
 export interface CensureQueueResponse {
@@ -108,5 +133,17 @@ export async function censurePost(
   weekNumber: number,
 ): Promise<{ success: boolean; action: string }> {
   const { data } = await client.post(`/harmony/posts/${postId}/censure`, { action, weekNumber });
+  return data;
+}
+
+export async function submitBulletinResponse(
+  postId: string,
+  questionIndex: number,
+  selectedIndex: number,
+): Promise<BulletinResponseResult> {
+  const { data } = await client.post(`/harmony/bulletins/${postId}/respond`, {
+    questionIndex,
+    selectedIndex,
+  });
   return data;
 }

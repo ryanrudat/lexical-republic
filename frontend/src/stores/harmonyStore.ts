@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { HarmonyPost, HarmonyReply, CensureItem } from '../api/harmony';
+import type { HarmonyPost, HarmonyReply, CensureItem, BulletinResponseResult } from '../api/harmony';
 import {
   fetchHarmonyPosts,
   createHarmonyPost,
@@ -9,6 +9,7 @@ import {
   censurePost as censurePostApi,
   fetchCensureQueue,
   submitCensureResponse,
+  submitBulletinResponse,
 } from '../api/harmony';
 
 type HarmonyTab = 'feed' | 'censure';
@@ -18,7 +19,8 @@ interface HarmonyState {
   posts: HarmonyPost[];
   currentWeekNumber: number;
   focusWords: string[];
-  reviewWords: string[];
+  recentWords: string[];
+  deepReviewWords: string[];
   loading: boolean;
   error: string | null;
   locked: boolean;
@@ -35,6 +37,9 @@ interface HarmonyState {
   censureStats: { total: number; completed: number };
   censureLoading: boolean;
 
+  // Bulletin comprehension (session-only)
+  bulletinAnswers: Record<string, Record<number, boolean>>;
+
   // Actions
   setTab: (tab: HarmonyTab) => void;
   loadPosts: () => Promise<void>;
@@ -46,13 +51,15 @@ interface HarmonyState {
   deletePost: (postId: string) => Promise<void>;
   censurePost: (postId: string, action: 'approve' | 'correct' | 'flag', weekNumber: number) => Promise<void>;
   respondToCensure: (postId: string, action: string, selectedIndex: number) => Promise<{ isCorrect: boolean; correction: string | null; explanation: string | null } | null>;
+  respondToBulletin: (postId: string, questionIndex: number, selectedIndex: number) => Promise<BulletinResponseResult | null>;
 }
 
 export const useHarmonyStore = create<HarmonyState>((set, get) => ({
   posts: [],
   currentWeekNumber: 1,
   focusWords: [],
-  reviewWords: [],
+  recentWords: [],
+  deepReviewWords: [],
   loading: false,
   error: null,
   locked: false,
@@ -63,6 +70,7 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
   repliesLoading: false,
 
   activeTab: 'feed',
+  bulletinAnswers: {},
   censureItems: [],
   censureStats: { total: 0, completed: 0 },
   censureLoading: false,
@@ -77,7 +85,8 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
         posts: feed.posts,
         currentWeekNumber: feed.currentWeekNumber,
         focusWords: feed.focusWords,
-        reviewWords: feed.reviewWords,
+        recentWords: feed.recentWords,
+        deepReviewWords: feed.deepReviewWords,
         locked: feed.locked,
         lockMessage: feed.lockMessage ?? null,
         loading: false,
@@ -115,6 +124,8 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
         createdAt: new Date().toISOString(),
         isOwn: true,
         weekNumber: currentWeekNumber,
+        postType: 'feed',
+        bulletinData: null,
       };
       set({ posts: [pendingPost, ...posts] });
 
@@ -202,7 +213,7 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
       set({
         censureItems: censureItems.map((item) =>
           item.id === postId
-            ? { ...item, reviewed: true, wasCorrect: result.isCorrect, studentAction: action }
+            ? { ...item, reviewed: true, wasCorrect: result.isCorrect, studentAction: 'answer' }
             : item,
         ),
         censureStats: { ...censureStats, completed: censureStats.completed + 1 },
@@ -210,6 +221,26 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
       return result;
     } catch {
       set({ error: 'Failed to submit response' });
+      return null;
+    }
+  },
+
+  respondToBulletin: async (postId, questionIndex, selectedIndex) => {
+    try {
+      const result = await submitBulletinResponse(postId, questionIndex, selectedIndex);
+      const { bulletinAnswers } = get();
+      set({
+        bulletinAnswers: {
+          ...bulletinAnswers,
+          [postId]: {
+            ...(bulletinAnswers[postId] ?? {}),
+            [questionIndex]: result.isCorrect,
+          },
+        },
+      });
+      return result;
+    } catch {
+      set({ error: 'Failed to submit bulletin response' });
       return null;
     }
   },

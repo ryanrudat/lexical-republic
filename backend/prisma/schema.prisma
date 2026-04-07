@@ -389,8 +389,9 @@ model HarmonyPost {
   classId     String?
   class       Class?        @relation(fields: [classId], references: [id])
   postType    String        @default("feed")
-  censureData Json?
-  isGenerated Boolean       @default(false)
+  censureData  Json?
+  bulletinData Json?
+  isGenerated  Boolean       @default(false)
   createdAt   DateTime      @default(now())
 
   censureResponses HarmonyCensureResponse[]

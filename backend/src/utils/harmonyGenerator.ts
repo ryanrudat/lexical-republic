@@ -2,13 +2,37 @@ import prisma from './prisma';
 import { getOpenAI, OPENAI_MODEL } from './openai';
 import { getWeekConfig } from '../data/week-configs';
 import { getStoryPlan } from '../data/storyPlans';
+import { getRouteWeeks } from '../data/narrative-routes';
+import { getHarmonyCharacters, getCharacterPhase } from '../data/harmonyCharacters';
+import { getLocationsForWeek, getRegulationsForWeek, WEEKLY_CULTURE } from '../data/harmonyWorldBible';
+import { STATIC_BULLETINS } from '../data/harmonyBulletins';
+import { STATIC_PEARL_TIPS } from '../data/harmonyPearlTips';
+import { STATIC_COMMUNITY_NOTICES, STATIC_SECTOR_REPORTS } from '../data/harmonyCommunityContent';
+import type { NarrativeRouteId } from '../data/narrative-routes';
+import type { BulletinQuestion } from '../data/harmonyBulletins';
+
+/** In-flight generation promises per classId — prevents duplicate concurrent generation. */
+const generationLocks = new Map<string, Promise<void>>();
+
+/** Target counts per content type. */
+const DEFAULT_CONTENT_COUNTS: Record<string, number> = {
+  feed: 5,
+  bulletin: 1,
+  pearl_tip: 1,
+  community_notice: 2,
+  sector_report: 1,
+  censure_grammar: 2,
+  censure_vocab: 2,
+  censure_replace: 1,
+};
 
 interface GeneratedPost {
   authorLabel: string;
   content: string;
-  postType: 'feed' | 'censure_grammar' | 'censure_vocab' | 'censure_replace';
+  postType: string;
   pearlNote: string | null;
   censureData: Record<string, unknown> | null;
+  bulletinData?: { refNumber: string; questions: BulletinQuestion[] } | null;
 }
 
 /**
@@ -27,21 +51,33 @@ function getVocabContext(weekNumber: number) {
 }
 
 /**
- * Collects all review words from week 1 to weekNumber-1,
- * to be used in censure queue items for spaced review.
+ * Collects all review words from prior route-weeks only.
+ * Condensed students don't get words from weeks they skipped.
  */
-function getAllReviewWords(weekNumber: number): string[] {
+function getAllReviewWords(weekNumber: number, routeId: string = 'full'): string[] {
+  const routeWeeks = getRouteWeeks(routeId);
   const words: string[] = [];
-  for (let w = 1; w < weekNumber; w++) {
+  for (const w of routeWeeks) {
+    if (w >= weekNumber) break;
     const ctx = getVocabContext(w);
     words.push(...ctx.targetWords);
   }
   return [...new Set(words)];
 }
 
-function buildGenerationPrompt(weekNumber: number): string {
+function buildGenerationPrompt(weekNumber: number, routeId: string = 'full'): string {
   const { targetWords, previousWords, grammarTarget } = getVocabContext(weekNumber);
-  const allReview = getAllReviewWords(weekNumber);
+  const allReview = getAllReviewWords(weekNumber, routeId);
+
+  // World bible enrichment
+  const locations = getLocationsForWeek(weekNumber);
+  const regulations = getRegulationsForWeek(weekNumber);
+  const culture = WEEKLY_CULTURE[weekNumber];
+  const characters = getHarmonyCharacters();
+  const characterContext = characters.map(c => {
+    const phase = getCharacterPhase(c, weekNumber, routeId as NarrativeRouteId);
+    return `- ${c.id} (${c.role}): Mood: "${phase.mood}". ${phase.promptFragment}`;
+  }).join('\n');
 
   return `You are generating social media posts for "Harmony" — the state-controlled social network in a dystopian world called the Lexical Republic. Citizens post about their daily work processing government documents.
 
@@ -49,7 +85,12 @@ WORLD CONTEXT:
 - Citizens work as Clarity Associates processing language documents for the Ministry
 - All posts are monitored by PEARL (the AI overseer) and the Ministry
 - The tone is "forced happy" dystopian — citizens sound compliant, polite, and obedient on the surface
-- Citizen-4488 is a recurring character whose posts hint at something wrong (missing neighbors, removed activities) but always end reassuring themselves everything is fine
+- Locations: ${locations.map(l => l.name).join(', ')}
+- Active regulations: ${regulations.map(r => r.code).join(', ')}
+- This week's slogan: "${culture?.slogan ?? 'Harmony Through Clarity'}"
+
+CHARACTER VOICES (generate one feed post per character where possible):
+${characterContext}
 
 WEEK ${weekNumber} CONTEXT:
 - Grammar target: ${grammarTarget}
@@ -135,66 +176,160 @@ IMPORTANT:
 }
 
 /**
- * Generate Harmony posts for a specific week + class using OpenAI.
- * Returns the generated posts or falls back to minimal static posts.
+ * Collect pre-written static content for new post types (bulletins, tips, notices, reports).
+ * Also includes existing static censure items and feed fallbacks.
+ */
+function buildStaticPosts(weekNumber: number): GeneratedPost[] {
+  const posts: GeneratedPost[] = [];
+
+  // Bulletins
+  for (const b of STATIC_BULLETINS[weekNumber] ?? []) {
+    posts.push({
+      authorLabel: b.authorLabel,
+      content: b.content,
+      postType: 'bulletin',
+      pearlNote: b.pearlNote,
+      censureData: null,
+      bulletinData: { refNumber: b.refNumber, questions: b.questions },
+    });
+  }
+
+  // PEARL tips
+  for (const t of STATIC_PEARL_TIPS[weekNumber] ?? []) {
+    posts.push({
+      authorLabel: t.authorLabel,
+      content: t.content,
+      postType: 'pearl_tip',
+      pearlNote: t.pearlNote,
+      censureData: null,
+      bulletinData: null,
+    });
+  }
+
+  // Community notices
+  for (const n of STATIC_COMMUNITY_NOTICES[weekNumber] ?? []) {
+    posts.push({
+      authorLabel: n.authorLabel,
+      content: n.content,
+      postType: 'community_notice',
+      pearlNote: n.pearlNote,
+      censureData: null,
+      bulletinData: null,
+    });
+  }
+
+  // Sector reports
+  for (const r of STATIC_SECTOR_REPORTS[weekNumber] ?? []) {
+    posts.push({
+      authorLabel: r.authorLabel,
+      content: r.content,
+      postType: 'sector_report',
+      pearlNote: r.pearlNote,
+      censureData: null,
+      bulletinData: null,
+    });
+  }
+
+  // Static censure items (weeks 1-3)
+  for (const c of STATIC_CENSURE_ITEMS[weekNumber] ?? []) {
+    posts.push(c);
+  }
+
+  return posts;
+}
+
+/**
+ * Generate Harmony posts for a specific week + class.
+ * Uses per-type counting: loads static content first, then AI-generates any remaining needs.
  */
 export async function generateHarmonyPosts(
   weekNumber: number,
   classId: string,
+  routeId: string = 'full',
 ): Promise<void> {
-  // Check censure and feed items separately so we can fill in what's missing
-  const [existingCensure, existingFeed] = await Promise.all([
-    prisma.harmonyPost.count({
-      where: { weekNumber, classId, postType: { not: 'feed' } },
-    }),
-    prisma.harmonyPost.count({
-      where: { weekNumber, classId, postType: 'feed' },
-    }),
-  ]);
+  // Count existing posts by type for this week+class
+  const existingCounts = await prisma.harmonyPost.groupBy({
+    by: ['postType'],
+    where: { weekNumber, classId },
+    _count: true,
+  });
+  const countMap = new Map(existingCounts.map(e => [e.postType, e._count]));
 
-  const needsCensure = existingCensure < 5;
-  const needsFeed = existingFeed < 4;
-
-  if (!needsCensure && !needsFeed) return; // Already populated
-
-  const openai = getOpenAI();
-  let posts: GeneratedPost[];
-
-  if (openai) {
-    try {
-      const prompt = buildGenerationPrompt(weekNumber);
-      const completion = await openai.chat.completions.create({
-        model: OPENAI_MODEL,
-        messages: [
-          { role: 'system', content: prompt },
-          { role: 'user', content: `Generate Harmony posts for Week ${weekNumber}.` },
-        ],
-        response_format: { type: 'json_object' },
-        temperature: 0.8,
-        max_tokens: 3000,
-      });
-
-      const raw = completion.choices[0]?.message?.content;
-      if (!raw) throw new Error('Empty AI response');
-
-      const parsed = JSON.parse(raw);
-      posts = Array.isArray(parsed.posts) ? parsed.posts : [];
-
-      if (posts.length === 0) throw new Error('No posts in AI response');
-    } catch (err) {
-      console.error('Harmony AI generation failed, using fallback:', err);
-      posts = buildFallbackPosts(weekNumber);
+  // Determine which types still need content
+  const needed: Record<string, number> = {};
+  for (const [type, target] of Object.entries(DEFAULT_CONTENT_COUNTS)) {
+    const existing = countMap.get(type) ?? 0;
+    if (existing < target) {
+      needed[type] = target - existing;
     }
-  } else {
-    posts = buildFallbackPosts(weekNumber);
   }
 
-  // Only insert post types that are still needed
-  let inserted = 0;
-  for (const post of posts) {
-    if (post.postType === 'feed' && !needsFeed) continue;
-    if (post.postType !== 'feed' && !needsCensure) continue;
+  if (Object.keys(needed).length === 0) return; // All types populated
 
+  // 1. Load static content first
+  const staticPosts = buildStaticPosts(weekNumber);
+
+  // Track what static content satisfies
+  const remaining = { ...needed };
+  const toInsert: GeneratedPost[] = [];
+
+  for (const post of staticPosts) {
+    if ((remaining[post.postType] ?? 0) > 0) {
+      toInsert.push(post);
+      remaining[post.postType]!--;
+    }
+  }
+
+  // 2. AI-generate anything still needed (feed posts + censure items primarily)
+  const needsAI = Object.values(remaining).some(n => n > 0);
+  if (needsAI) {
+    const openai = getOpenAI();
+    if (openai) {
+      try {
+        const prompt = buildGenerationPrompt(weekNumber, routeId);
+        const completion = await openai.chat.completions.create({
+          model: OPENAI_MODEL,
+          messages: [
+            { role: 'system', content: prompt },
+            { role: 'user', content: `Generate Harmony posts for Week ${weekNumber}.` },
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.8,
+          max_tokens: 3000,
+        });
+
+        const raw = completion.choices[0]?.message?.content;
+        if (!raw) throw new Error('Empty AI response');
+
+        const parsed = JSON.parse(raw);
+        const aiPosts: GeneratedPost[] = Array.isArray(parsed.posts)
+          ? parsed.posts.map((p: any) => ({ ...p, bulletinData: null }))
+          : [];
+
+        for (const post of aiPosts) {
+          if ((remaining[post.postType] ?? 0) > 0) {
+            toInsert.push(post);
+            remaining[post.postType]!--;
+          }
+        }
+      } catch (err) {
+        console.error('Harmony AI generation failed, using fallback:', err);
+      }
+    }
+
+    // 3. Final fallback for any still-needed feed/censure posts
+    const fallbackPosts = buildFallbackPosts(weekNumber);
+    for (const post of fallbackPosts) {
+      if ((remaining[post.postType] ?? 0) > 0) {
+        toInsert.push(post);
+        remaining[post.postType]!--;
+      }
+    }
+  }
+
+  // Insert all collected posts
+  let inserted = 0;
+  for (const post of toInsert) {
     await prisma.harmonyPost.create({
       data: {
         authorLabel: post.authorLabel,
@@ -203,9 +338,10 @@ export async function generateHarmonyPosts(
         status: 'approved',
         pearlNote: post.pearlNote,
         censureData: (post.censureData ?? undefined) as any,
+        bulletinData: (post.bulletinData ?? undefined) as any,
         weekNumber,
         classId,
-        isGenerated: true,
+        isGenerated: !staticPosts.includes(post),
       },
     });
     inserted++;
@@ -783,12 +919,31 @@ function buildFallbackPosts(weekNumber: number): GeneratedPost[] {
 /**
  * Ensure posts exist for all weeks up to and including the given week.
  * Called lazily when a student opens Harmony.
+ * Uses an in-memory lock per classId to prevent duplicate concurrent generation.
  */
 export async function ensureHarmonyPostsExist(
   currentWeekNumber: number,
   classId: string,
+  routeId: string = 'full',
 ): Promise<void> {
-  for (let w = 1; w <= currentWeekNumber; w++) {
-    await generateHarmonyPosts(w, classId);
+  const existing = generationLocks.get(classId);
+  if (existing) {
+    await existing;
+    return;
   }
+
+  const work = (async () => {
+    try {
+      const routeWeeks = getRouteWeeks(routeId);
+      const visibleWeeks = routeWeeks.filter(w => w <= currentWeekNumber);
+      for (const w of visibleWeeks) {
+        await generateHarmonyPosts(w, classId, routeId);
+      }
+    } finally {
+      generationLocks.delete(classId);
+    }
+  })();
+
+  generationLocks.set(classId, work);
+  await work;
 }

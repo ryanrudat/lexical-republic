@@ -5,7 +5,7 @@
 - Terminal view is the primary learning interface.
 - Active terminal apps in guided mode: `clarity-queue`, `harmony`, `my-file`
 - `duty-roster` hidden in guided mode; visible in free-roam mode. Shows instruction text ("Choose an unlocked shift to start. Complete each shift in order to unlock the next one.").
-- Harmony locked until Shift 1 is completed (checks `ShiftResult` record, not `currentWeekNumber`).
+- Harmony locked until teacher opens it for the class (`harmonyOpen` toggle in ClassManager).
 - Terminal header `HOME` button returns to terminal desktop and navigates to `/`.
 - Terminal desktop tiles (in order): Office, Lexicon, Current Shift, Duty Roster, Harmony, My File.
 - Students are guided (not free-roam) in the current phase.
@@ -120,32 +120,51 @@ Step navigation gated by completion. All steps support optional video via `StepV
 - Store: `selectedConversation` (character name) for grouped view, `selectedMessageId` for legacy single-message navigation
 
 ## Harmony App (State Social Network)
-- Locked until Shift 1 completed (checks `ShiftResult` record)
-- Two tabs: **Feed** (citizen posts) and **Censure Queue** (language correction exercises)
-- Content accumulates across shifts — queries scoped by `weekNumber: { lte: currentWeekNumber }`
+- Locked until teacher opens Harmony for the class (`harmonyOpen` toggle)
+- Two tabs: **Feed** (multi-type content) and **Review Queue** (language correction exercises). Third tab (**Archives**) planned for Phase C.
+- Content accumulates across shifts — queries scoped by narrative route weeks (full or condensed)
+- Route-aware: condensed-route students only see content from their 9-week route, never skipped weeks
 
-**Feed:**
-- AI-generated + seed + student posts, sorted newest-first
+**Feed (5 content types via component registry):**
+- `feed` — AI-generated + seed + student citizen posts (default `PostCard`)
+- `bulletin` — Ministry Bulletins with inline comprehension MCQs (`HarmonyBulletin.tsx`, sky-blue card)
+- `pearl_tip` — PEARL grammar tips disguised as communication policy (`HarmonyPearlTip.tsx`, emerald card)
+- `community_notice` — Lost & found, events, menus, transit updates (`HarmonyNoticeCard.tsx`, amber card)
+- `sector_report` — Weekly department statistics (`HarmonySectorReport.tsx`, gray data card)
+- Posts sorted by type priority: bulletins first → tips → reports → notices → feed
 - Citizen-4488 recurring character with escalating narrative across weeks
 - Students can delete their own posts (cascade: replies → censure responses → post)
-- Tappable highlighted vocabulary words show "Target word" / "Review word" tooltips
+- 3-tier vocabulary highlighting: Focus (sky, current week), Recent (amber, previous 2 route-weeks), Deep Review (gray, older route-weeks)
 - Citizen-4488 posts have Approve/Flag interaction buttons
 
-**Censure Queue (language exercises):**
-- Three types: `censure_grammar` (verb form), `censure_vocab` (word meaning MCQ), `censure_replace` (fill-in-blank)
+**Review Queue (language exercises):**
+- Three censure types: `censure_grammar` (verb form), `censure_vocab` (word meaning MCQ), `censure_replace` (fill-in-blank)
 - Error word highlighted in post text (pink pill for grammar, cyan for vocab, amber brackets for replace)
-- Question prompt names the specific error word: `Find the correct form of "arrives":`
 - Options shuffled via Fisher-Yates with index mapping back to original for validation
-- Post-answer feedback: correct option (green + checkmark), wrong pick (red + X), others dimmed
+- Cumulative review: up to 3 items from older weeks selected by lowest mastery, tagged "REVIEW"
+- Differentiated mastery scoring: +0.05 for current-week items, +0.03 for review items
 - Neon stamp overlay (`ResultOverlay`): large check or X renders for 3.5 seconds after submission
 - Tab badge shows unreviewed item count (pink pill)
 
 **Content generation pipeline:**
 - `ensureHarmonyPostsExist()` called lazily when student opens Harmony
-- Checks censure (<5) and feed (<4) thresholds separately per week per class
-- Static hand-written censure items for weeks 1-3 (`STATIC_CENSURE_ITEMS` in `harmonyGenerator.ts`): 8 items each (3 grammar + 3 vocab + 2 replace)
-- AI generation via OpenAI when available, falls back to static + template content
-- Seed feed posts in `backend/src/data/harmonyFeed.ts` for weeks 1-3
+- Per-type counting via `prisma.harmonyPost.groupBy({ by: ['postType'] })` with `DEFAULT_CONTENT_COUNTS` targets
+- Static content loaded first from 5 data files (bulletins, tips, notices, reports, censure items), then AI fills remaining
+- AI prompts enriched with world bible (locations, regulations, weekly slogans) and per-character arc phases via `getCharacterPhase()`
+- Generation lock (`Map<string, Promise<void>>`) prevents concurrent duplicate generation per class
+- Route-aware: only generates for weeks in the class's narrative route
+
+**World-building data (Phase B):**
+- `harmonyWorldBible.ts` — 8 locations, 5 Ministry regulations, weekly culture/slogans
+- `harmonyCharacters.ts` — 5 NPC characters with 3-phase arcs + condensed-route overrides
+- `harmonyBulletins.ts` — pre-written bulletins with comprehension MCQs (weeks 1-3)
+- `harmonyPearlTips.ts` — grammar rules as communication policy (weeks 1-3)
+- `harmonyCommunityContent.ts` — notices + sector reports (weeks 1-3)
+
+**Bulletin comprehension:**
+- `POST /api/harmony/bulletins/:id/respond` — ephemeral answer check (no DB write)
+- Frontend tracks answers in session-only `bulletinAnswers` store state
+- "Test Understanding" expands inline MCQs with shuffled options and green/red feedback
 
 ## MonitorPlayer (Shared CRT Video Player)
 - **Single source of truth** for all video playback: `frontend/src/components/shared/MonitorPlayer.tsx`

@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../utils/prisma';
-import { authenticate } from '../middleware/auth';
+import { authenticate, getPairId } from '../middleware/auth';
 import { getOpenAI, OPENAI_MODEL } from '../utils/openai';
 
 const router = Router();
@@ -482,7 +482,7 @@ router.post('/chat', authenticate, async (req: Request, res: Response) => {
   const trimmed = message.trim();
 
   // Per-shift rate limit — check before any AI call
-  const pairId = (req as any).pairId as string | undefined;
+  const pairId = getPairId(req);
   const usageKey = getChatUsageKey(pairId ?? 'anon', taskContext?.weekNumber);
   const currentUsage = chatUsageMap.get(usageKey) ?? 0;
 

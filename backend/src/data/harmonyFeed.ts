@@ -1,5 +1,6 @@
 import { getStoryPlan } from './storyPlans';
 import { getWeekConfig } from './week-configs';
+import { getRouteWeeks } from './narrative-routes';
 
 export type HarmonySeedPost = {
   id: string;
@@ -11,23 +12,45 @@ export type HarmonySeedPost = {
   censureData?: Record<string, unknown>;
 };
 
-/**
- * Returns the vocabulary words Harmony should display for a given week.
- * Prefers WeekConfig targetWords (what students actually practice in shift tasks)
- * over storyPlans newWords (narrative anchor words used in Harmony post copy).
- */
-export function getHarmonyReviewContext(weekNumber: number) {
-  const currentConfig = getWeekConfig(weekNumber);
-  const previousConfig = getWeekConfig(weekNumber - 1);
+/** Extract target words for a single week from WeekConfig or StoryPlan. */
+function getWordsForWeek(weekNumber: number): string[] {
+  const config = getWeekConfig(weekNumber);
+  if (config) return config.targetWords;
+  const story = getStoryPlan(weekNumber);
+  return story?.newWords ?? [];
+}
 
-  // Fall back to storyPlans for weeks without a WeekConfig (4+)
-  const currentStory = getStoryPlan(weekNumber);
-  const previousStory = getStoryPlan(weekNumber - 1);
+/**
+ * Returns 3-tier vocabulary for Harmony display, scoped to the class's narrative route.
+ * - focus: current week's target words
+ * - recentWords: previous 2 route-weeks
+ * - deepReviewWords: all older route-weeks
+ */
+export function getHarmonyReviewContext(weekNumber: number, routeId: string = 'full') {
+  const routeWeeks = getRouteWeeks(routeId);
+  const currentIdx = routeWeeks.indexOf(weekNumber);
+
+  // Focus: current week
+  const focusWords = getWordsForWeek(weekNumber);
+
+  // Recent: previous 1-2 route-weeks
+  const recentStart = Math.max(0, currentIdx - 2);
+  const recentWeeks = currentIdx > 0
+    ? routeWeeks.slice(recentStart, currentIdx)
+    : [];
+  const recentWords = recentWeeks.flatMap(w => getWordsForWeek(w));
+
+  // Deep: everything older than recent in the route
+  const deepWeeks = recentStart > 0
+    ? routeWeeks.slice(0, recentStart)
+    : [];
+  const deepReviewWords = deepWeeks.flatMap(w => getWordsForWeek(w));
 
   return {
     currentWeekNumber: weekNumber,
-    focusWords: currentConfig?.targetWords ?? currentStory?.newWords ?? [],
-    reviewWords: previousConfig?.targetWords ?? previousStory?.newWords ?? [],
+    focusWords,
+    recentWords,
+    deepReviewWords,
   };
 }
 

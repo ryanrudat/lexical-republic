@@ -1,6 +1,6 @@
 # The Lexical Republic — Project Instructions
 
-Last updated: 2026-04-02
+Last updated: 2026-04-06
 
 ## Vision
 The Lexical Republic is a dystopian ESL learning game where Taiwanese Grade 10 students (A2-B1) learn English through 18 weekly "Shifts" inside an authoritarian language-control world.
@@ -42,14 +42,31 @@ Story and learning are coupled: grammar, listening, speaking, and writing tasks 
 - [Features](docs/features.md) — current product state, all implemented systems
 - [World, Story & Characters](docs/world-and-story.md) — canon, characters, content pipeline, narrative planning
 
+## Harmony Expansion Status
+Harmony expansion is in progress. See `Dplan/Harmony_Expansion_Review.md` for the full design review.
+- **Phase 0 (bug fixes)**: DONE — generation race condition, dead gate code, censure action fix, orphaned post sweep
+- **Phase A (cumulative review + route awareness)**: DONE — 3-tier vocab (focus/recent/deep), route-aware generation/queries, differentiated mastery (+0.05 current / +0.03 review), cumulative censure review items
+- **Phase B (world-building content engine)**: DONE — world bible, 5 NPC character definitions with arc phases, 4 new content types (bulletin/pearl_tip/community_notice/sector_report), per-type generator, component registry, bulletin comprehension endpoint
+- **Phase C (archives + polish)**: PLANNED — archives tab (vocab mastery, 4488 timeline, bulletin archive), NEW badges, PEARL annotations, notification badge on Harmony tile, socket events. Plan vetted and approved in `Dplan/Harmony_Expansion_Review.md`.
+- **Visual enhancements**: Ideas saved in `Dplan/Harmony_Visual_Enhancement_Ideas.md` (propaganda ticker, 4488 glitch, typewriter bulletins, etc.)
+
+### Harmony Data Files (Phase B)
+- `backend/src/data/harmonyWorldBible.ts` — 8 locations, 5 regulations, weekly culture
+- `backend/src/data/harmonyCharacters.ts` — 5 NPCs with 3-phase arcs + condensed overrides
+- `backend/src/data/harmonyBulletins.ts` — static bulletins weeks 1-3 with comprehension MCQs
+- `backend/src/data/harmonyPearlTips.ts` — static PEARL grammar tips weeks 1-3
+- `backend/src/data/harmonyCommunityContent.ts` — static notices + sector reports weeks 1-3
+
 ## Next Work
+- **Harmony Phase C implementation** — archives tab, NEW badges, PEARL annotations, tile notification (plan ready, code not started)
+- **Harmony content authoring** — weeks 4-6 static content (bulletins, tips, notices, reports) after WeekConfig is built
+- **Condensed route bridging Harmony posts** — ~20 NPC + ~5 Citizen-4488 catch-up posts for gap weeks
 - Build Weeks 4-6 WeekConfig files from `Dplan/Weeks_04_06_Shift_Plan.md` (full narrative, vocabulary, task sequences, and Canva scripts planned).
 - Seed dictionary entries for Weeks 4-6 (30 words defined in shift plan).
-- Seed Harmony static censure items for Weeks 4-6 (24 items defined in shift plan).
 - Define per-week vocabulary ladders (TOEIC target words vs world-building words) for Weeks 7-18.
 - Full scripted dialogue pass for all character beats (especially Weeks 7-18).
 - Custom domain setup for student-friendly URLs (optional).
 - Persistent file storage for Railway (S3/R2) — currently uses Railway volume; redeploys preserve files but volume loss would delete all uploads.
-- Lane auto-promote/demote evaluation after each shift (deferred to Phase B; manual teacher lane control is live).
+- Lane auto-promote/demote evaluation after each shift (deferred; manual teacher lane control is live).
 - Hybrid class model app changes — compact intake_form mode, `teacherLed` task gating flag (multi-gate system implemented: `taskGates Int[]` supports multiple simultaneous gates), teacher "advance to Station Work" signal in dashboard.
 - Printable Ministry materials — Vocabulary Cards, Evidence Board memos, Priority Board case cards, Conversation Frame cards.

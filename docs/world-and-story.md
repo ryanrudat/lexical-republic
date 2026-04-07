@@ -71,23 +71,40 @@ Week 1 stays as-is. Weeks 2+ should prioritize TOEIC alignment in `targetWords`.
 - 8 `WordStatusEvent` entries for narrative status changes (grey week 6, monitored week 7, proscribed week 10)
 - Dictionary word statuses: Approved → Proscribed (week 10+) → Recovered (week 10+)
 
-## Harmony Content & Citizen-4488 Arc
+## Harmony Content & World Bible
 
-**Citizen-4488** is a recurring Harmony character whose posts escalate unease across shifts:
-- **Week 1**: Missing neighbor, empty chair — "I should not worry. The Ministry takes care of everyone."
-- **Week 2**: Names changing overnight, three citizens gone — "It is probably nothing. Everything is fine."
-- **Week 3**: Friend's transfer papers processed, no response — "I must maintain focus. Everything is fine."
-- PEARL notes escalate in parallel: observation → wellness check scheduled → Pattern-7 monitoring
+### Harmony NPC Characters (`harmonyCharacters.ts`)
+5 recurring NPC voices with 3-phase arcs (Act I / Act II / Act III) + condensed-route overrides:
 
-**Static censure content** (hand-written, high quality) exists for weeks 1-3:
-- Each week: 3 grammar + 3 vocab + 2 replace items using that week's target words and grammar focus
-- Week 1: present-simple errors (arrive/arrives, describe/describes, submit/submits)
-- Week 2: past-simple-vs-present errors (notice/noticed, remove/removed, update/updated)
-- Week 3: modal errors (should maintains/maintain, must to complete/complete, can identifies/identify)
-- Weeks 4-6: planned (8 items each, defined in `Dplan/Weeks_04_06_Shift_Plan.md`) — past tense + sequencing (W4), modals + because-clauses (W5), mixed review (W6)
-- Weeks 7+ fall back to AI generation or generic templates
+| Character | Role | Act I (W1-6) | Act II (W7-12) | Act III (W13-18) |
+|-----------|------|-------------|---------------|-----------------|
+| Citizen-2104 | Model employee | Genuinely happy | Notices things, self-corrects | Cracks show |
+| CA-18 | Senior mentor | Helpful authority | Veiled warnings | Goes quiet |
+| Citizen-4488 | The dissenter | Grammar errors, "everything is fine" | Notices patterns, improving grammar | Self-censoring, grammar perfect |
+| WA-07 | Tired worker | Enthusiastic new hire | Exhausted, complains within limits | Robotic compliance |
+| Citizen-7291 | Efficiency bureaucrat | Obsessed with metrics | Proud of audit results | Realizes metrics hide something |
 
-**Feed seed posts** in `harmonyFeed.ts`: 6 for week 1, 3 for week 2, 3 for week 3 (including one Citizen-4488 each)
+Condensed route compresses Act II into a single week-11 beat per character. `getCharacterPhase(char, weekNumber, routeId)` resolves the correct arc.
+
+### Citizen-4488 Arc (inverse literacy)
+- **Week 1**: Grammar error ("arrive" → "arrives"), anxious, "I should not worry"
+- **Week 2**: Grammar perfect, notices removals, "Everything is fine. Change is normal."
+- **Week 3**: Grammar flawless, uses modals correctly, self-censors — "I should not delay my own schedule to ask questions"
+- PEARL notes escalate: observation → wellness check → Pattern-7 monitoring
+
+### World Bible (`harmonyWorldBible.ts`)
+- **8 Locations**: Sector 4 Community Center, Central Filing Hall, Wellness Pavilion, Cafeteria Block 7, Transit Hub Delta, Residential Towers 11-15, Recreation Yard 3, The Archive
+- **5 Regulations**: Regulation 14-C (vocabulary), Form 77-B (activity registration), Directive 2031.4 (schedule changes), Wellness Protocol 9 (check-ins), Harmony Conduct Code
+- **Cultural details**: Clarity tea (10:00/15:00), Synthetic Serenity playlist, weekly rotating slogans, harmony credits
+
+### Static Content (Weeks 1-3)
+- **Bulletins** (`harmonyBulletins.ts`): 4 Ministry Bulletins with 2-3 comprehension MCQs each
+- **PEARL Tips** (`harmonyPearlTips.ts`): 3 grammar-as-policy tips matching each week's grammar target
+- **Notices** (`harmonyCommunityContent.ts`): 7 community notices (cafeteria menus, events, transit, schedule changes)
+- **Sector Reports** (`harmonyCommunityContent.ts`): 3 data-rich weekly reports from Central Filing Hall (baseline metrics that subtly shift across weeks)
+- **Censure items** (`STATIC_CENSURE_ITEMS` in `harmonyGenerator.ts`): 8 per week (3 grammar + 3 vocab + 2 replace)
+- **Seed feed posts** (`harmonyFeed.ts`): 6 for week 1, 3 for week 2, 3 for week 3
+- Weeks 4-6 planned in `Dplan/Weeks_04_06_Shift_Plan.md`. Weeks 7+ fall back to AI generation.
 
 ## Content Pipeline
 

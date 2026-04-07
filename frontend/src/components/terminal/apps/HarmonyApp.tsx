@@ -1,6 +1,10 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useHarmonyStore } from '../../../stores/harmonyStore';
 import type { HarmonyPost, CensureItem } from '../../../api/harmony';
+import HarmonyBulletin from './HarmonyBulletin';
+import HarmonyPearlTip from './HarmonyPearlTip';
+import HarmonyNoticeCard from './HarmonyNoticeCard';
+import HarmonySectorReport from './HarmonySectorReport';
 
 /* ─── Result Overlay (neon check / X) ──────────────────────────── */
 
@@ -69,21 +73,28 @@ function VocabWord({
   type,
 }: {
   text: string;
-  type: 'focus' | 'review';
+  type: 'focus' | 'recent' | 'deep';
 }) {
   const [showTip, setShowTip] = useState(false);
-  const label = type === 'focus' ? 'Target word' : 'Review word';
+  const label = type === 'focus' ? 'Target word' : type === 'recent' ? 'Recent review' : 'Deep review';
   const color = type === 'focus'
     ? 'text-sky-700 font-medium'
-    : 'text-amber-600';
+    : type === 'recent'
+      ? 'text-amber-600'
+      : 'text-[#8B8578]';
   const tipBg = type === 'focus'
     ? 'bg-sky-600/20 border-sky-300/30 text-sky-700'
-    : 'bg-amber-100/20 border-amber-300/30 text-amber-600';
+    : type === 'recent'
+      ? 'bg-amber-100/20 border-amber-300/30 text-amber-600'
+      : 'bg-gray-100/40 border-gray-300/30 text-[#6B7280]';
+  const decoration = type === 'deep'
+    ? 'underline decoration-dotted decoration-1 underline-offset-2 decoration-gray-400/50'
+    : 'underline decoration-dotted decoration-1 underline-offset-2';
 
   return (
     <span className="relative inline">
       <span
-        className={`${color} cursor-help underline decoration-dotted decoration-1 underline-offset-2`}
+        className={`${color} cursor-help ${decoration}`}
         onClick={() => setShowTip(!showTip)}
       >
         {text}
@@ -102,35 +113,40 @@ function VocabWord({
 function HighlightedContent({
   content,
   focusWords,
-  reviewWords,
+  recentWords,
+  deepReviewWords,
 }: {
   content: string;
   focusWords: string[];
-  reviewWords: string[];
+  recentWords: string[];
+  deepReviewWords: string[];
 }) {
-  const allWords = useMemo(() => {
+  const wordSets = useMemo(() => {
     const focusSet = new Set(focusWords.map((w) => w.toLowerCase()));
-    const reviewSet = new Set(reviewWords.map((w) => w.toLowerCase()));
-    return { focusSet, reviewSet };
-  }, [focusWords, reviewWords]);
+    const recentSet = new Set(recentWords.map((w) => w.toLowerCase()));
+    const deepSet = new Set(deepReviewWords.map((w) => w.toLowerCase()));
+    return { focusSet, recentSet, deepSet };
+  }, [focusWords, recentWords, deepReviewWords]);
 
   const parts = useMemo(() => {
     const words = content.split(/(\s+)/);
     return words.map((segment, i) => {
       const cleaned = segment.replace(/[^a-zA-Z]/g, '').toLowerCase();
       if (!cleaned) return { key: i, text: segment, type: 'plain' as const };
-      if (allWords.focusSet.has(cleaned))
+      if (wordSets.focusSet.has(cleaned))
         return { key: i, text: segment, type: 'focus' as const };
-      if (allWords.reviewSet.has(cleaned))
-        return { key: i, text: segment, type: 'review' as const };
+      if (wordSets.recentSet.has(cleaned))
+        return { key: i, text: segment, type: 'recent' as const };
+      if (wordSets.deepSet.has(cleaned))
+        return { key: i, text: segment, type: 'deep' as const };
       return { key: i, text: segment, type: 'plain' as const };
     });
-  }, [content, allWords]);
+  }, [content, wordSets]);
 
   return (
     <p className="text-[13px] text-[#4B5563] leading-relaxed">
       {parts.map((p) => {
-        if (p.type === 'focus' || p.type === 'review')
+        if (p.type === 'focus' || p.type === 'recent' || p.type === 'deep')
           return <VocabWord key={p.key} text={p.text} type={p.type} />;
         return <span key={p.key}>{p.text}</span>;
       })}
@@ -202,14 +218,16 @@ function ComposeBox({
 function PostCard({
   post,
   focusWords,
-  reviewWords,
+  recentWords,
+  deepReviewWords,
   onOpenThread,
   onCensure,
   onDelete,
 }: {
   post: HarmonyPost;
   focusWords: string[];
-  reviewWords: string[];
+  recentWords: string[];
+  deepReviewWords: string[];
   onOpenThread: (postId: string) => void;
   onCensure?: (postId: string, action: 'approve' | 'flag', weekNumber: number) => void;
   onDelete?: (postId: string) => void;
@@ -275,7 +293,8 @@ function PostCard({
           <HighlightedContent
             content={post.content}
             focusWords={focusWords}
-            reviewWords={reviewWords}
+            recentWords={recentWords}
+            deepReviewWords={deepReviewWords}
           />
 
           {/* PEARL note */}
@@ -368,10 +387,12 @@ function PostCard({
 
 function ThreadView({
   focusWords,
-  reviewWords,
+  recentWords,
+  deepReviewWords,
 }: {
   focusWords: string[];
-  reviewWords: string[];
+  recentWords: string[];
+  deepReviewWords: string[];
 }) {
   const {
     posts,
@@ -424,7 +445,7 @@ function ThreadView({
                   {formatTimestamp(parentPost.createdAt)}
                 </span>
               </div>
-              <HighlightedContent content={parentPost.content} focusWords={focusWords} reviewWords={reviewWords} />
+              <HighlightedContent content={parentPost.content} focusWords={focusWords} recentWords={recentWords} deepReviewWords={deepReviewWords} />
             </div>
           </div>
         </div>
@@ -449,7 +470,7 @@ function ThreadView({
                   <span className="text-[12px] font-semibold text-[#2C3340]">{reply.designation}</span>
                   <span className="text-[10px] text-[#9CA3AF]">{formatTimestamp(reply.createdAt)}</span>
                 </div>
-                <HighlightedContent content={reply.content} focusWords={focusWords} reviewWords={reviewWords} />
+                <HighlightedContent content={reply.content} focusWords={focusWords} recentWords={recentWords} deepReviewWords={deepReviewWords} />
               </div>
             </div>
           </div>
@@ -578,7 +599,7 @@ function CensureCard({ item }: { item: CensureItem }) {
     setSubmitting(true);
     // Map shuffled display index back to original index for backend validation
     const originalIdx = indexMapping[selectedIdx];
-    const res = await respondToCensure(item.id, item.postType, originalIdx);
+    const res = await respondToCensure(item.id, 'answer', originalIdx);
     if (res) {
       setResult(res);
       setShowOverlay(true);
@@ -604,6 +625,11 @@ function CensureCard({ item }: { item: CensureItem }) {
           </span>
           {item.weekNumber && (
             <span className="text-[10px] text-[#B8B3AA]">Shift {item.weekNumber}</span>
+          )}
+          {item.isReview && (
+            <span className="text-[9px] font-medium tracking-[0.1em] text-[#8B8578] bg-gray-100/60 px-1.5 py-0.5 rounded-full border border-gray-200/30">
+              REVIEW
+            </span>
           )}
         </div>
         {isReviewed && (
@@ -885,7 +911,8 @@ export default function HarmonyApp() {
     posts,
     currentWeekNumber,
     focusWords,
-    reviewWords,
+    recentWords,
+    deepReviewWords,
     loading,
     error,
     locked,
@@ -925,7 +952,7 @@ export default function HarmonyApp() {
 
   // Thread view
   if (selectedPostId) {
-    return <ThreadView focusWords={focusWords} reviewWords={reviewWords} />;
+    return <ThreadView focusWords={focusWords} recentWords={recentWords} deepReviewWords={deepReviewWords} />;
   }
 
   // Locked state
@@ -980,7 +1007,8 @@ export default function HarmonyApp() {
         <FeedTab
           posts={posts}
           focusWords={focusWords}
-          reviewWords={reviewWords}
+          recentWords={recentWords}
+          deepReviewWords={deepReviewWords}
           currentWeekNumber={currentWeekNumber}
           loading={loading}
           error={error}
@@ -1031,7 +1059,8 @@ function HarmonyHeader({ currentWeekNumber }: { currentWeekNumber: number }) {
 function FeedTab({
   posts,
   focusWords,
-  reviewWords,
+  recentWords,
+  deepReviewWords,
   currentWeekNumber,
   loading,
   error,
@@ -1042,7 +1071,8 @@ function FeedTab({
 }: {
   posts: HarmonyPost[];
   focusWords: string[];
-  reviewWords: string[];
+  recentWords: string[];
+  deepReviewWords: string[];
   currentWeekNumber: number;
   loading: boolean;
   error: string | null;
@@ -1055,8 +1085,8 @@ function FeedTab({
 
   return (
     <>
-      {/* Vocab chips (collapsible) */}
-      {(focusWords.length > 0 || reviewWords.length > 0) && (
+      {/* Vocab chips (collapsible, 3-tier) */}
+      {(focusWords.length > 0 || recentWords.length > 0 || deepReviewWords.length > 0) && (
         <div className="border-b border-[#E8E4DC]">
           <button
             onClick={() => setShowVocab(!showVocab)}
@@ -1083,12 +1113,24 @@ function FeedTab({
                   </div>
                 </div>
               )}
-              {reviewWords.length > 0 && (
+              {recentWords.length > 0 && (
                 <div>
-                  <p className="text-[9px] text-[#9CA3AF] tracking-[0.15em] uppercase mb-1">Review</p>
+                  <p className="text-[9px] text-[#9CA3AF] tracking-[0.15em] uppercase mb-1">Recent</p>
                   <div className="flex flex-wrap gap-1">
-                    {reviewWords.map((w) => (
+                    {recentWords.map((w) => (
                       <span key={w} className="text-[10px] px-2 py-0.5 rounded-full border border-amber-300/20 text-amber-600/70 bg-amber-100/[0.05]">
+                        {w}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {deepReviewWords.length > 0 && (
+                <div>
+                  <p className="text-[9px] text-[#9CA3AF] tracking-[0.15em] uppercase mb-1">Deep Review</p>
+                  <div className="flex flex-wrap gap-1">
+                    {deepReviewWords.map((w) => (
+                      <span key={w} className="text-[10px] px-2 py-0.5 rounded-full border border-gray-300/15 text-[#8B8578]/60 bg-gray-100/[0.03]">
                         {w}
                       </span>
                     ))}
@@ -1127,17 +1169,32 @@ function FeedTab({
           </div>
         )}
 
-        {posts.map((post) => (
-          <PostCard
-            key={post.id}
-            post={post}
-            focusWords={focusWords}
-            reviewWords={reviewWords}
-            onOpenThread={onOpenThread}
-            onCensure={onCensure}
-            onDelete={onDelete}
-          />
-        ))}
+        {posts.map((post) => {
+          // Component registry: route each post type to its card
+          switch (post.postType) {
+            case 'bulletin':
+              return <HarmonyBulletin key={post.id} post={post} />;
+            case 'pearl_tip':
+              return <HarmonyPearlTip key={post.id} post={post} />;
+            case 'community_notice':
+              return <HarmonyNoticeCard key={post.id} post={post} onOpenThread={onOpenThread} />;
+            case 'sector_report':
+              return <HarmonySectorReport key={post.id} post={post} />;
+            default:
+              return (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  focusWords={focusWords}
+                  recentWords={recentWords}
+                  deepReviewWords={deepReviewWords}
+                  onOpenThread={onOpenThread}
+                  onCensure={onCensure}
+                  onDelete={onDelete}
+                />
+              );
+          }
+        })}
       </div>
     </>
   );
