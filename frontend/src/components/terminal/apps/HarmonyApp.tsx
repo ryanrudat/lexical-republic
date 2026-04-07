@@ -6,6 +6,9 @@ import HarmonyPearlTip from './HarmonyPearlTip';
 import HarmonyNoticeCard from './HarmonyNoticeCard';
 import HarmonySectorReport from './HarmonySectorReport';
 
+/** Max characters for a Harmony post. Source of truth: backend/src/data/harmonyWorldBible.ts */
+const HARMONY_POST_MAX_LENGTH = 280;
+
 /* ─── Result Overlay (neon check / X) ──────────────────────────── */
 
 function ResultOverlay({ isCorrect, onDone }: { isCorrect: boolean; onDone: () => void }) {
@@ -193,11 +196,11 @@ function ComposeBox({
             placeholder={placeholder}
             className="w-full bg-transparent text-sm text-[#2C3340] placeholder:text-[#B8B3AA] resize-none outline-none"
             rows={2}
-            maxLength={280}
+            maxLength={HARMONY_POST_MAX_LENGTH}
           />
           <div className="flex items-center justify-between mt-1.5">
             <span className="text-[10px] text-[#B8B3AA]">
-              {text.length}/280
+              {text.length}/{HARMONY_POST_MAX_LENGTH}
             </span>
             <button
               type="submit"

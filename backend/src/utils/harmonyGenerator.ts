@@ -4,7 +4,17 @@ import { getWeekConfig } from '../data/week-configs';
 import { getStoryPlan } from '../data/storyPlans';
 import { getRouteWeeks } from '../data/narrative-routes';
 import { getHarmonyCharacters, getCharacterPhase } from '../data/harmonyCharacters';
-import { getLocationsForWeek, getRegulationsForWeek, WEEKLY_CULTURE } from '../data/harmonyWorldBible';
+import {
+  getLocationsForWeek,
+  getRegulationsForWeek,
+  getActiveCitizens,
+  WEEKLY_CULTURE,
+  APPROVED_MEDIA,
+  FOOD_CULTURE,
+  DOMESTIC_LIFE,
+  COMMUNITY_TRADITIONS,
+  CHILDRENS_WORLD,
+} from '../data/harmonyWorldBible';
 import { STATIC_BULLETINS } from '../data/harmonyBulletins';
 import { STATIC_PEARL_TIPS } from '../data/harmonyPearlTips';
 import { STATIC_COMMUNITY_NOTICES, STATIC_SECTOR_REPORTS } from '../data/harmonyCommunityContent';
@@ -66,7 +76,7 @@ function getAllReviewWords(weekNumber: number, routeId: string = 'full'): string
 }
 
 function buildGenerationPrompt(weekNumber: number, routeId: string = 'full'): string {
-  const { targetWords, previousWords, grammarTarget } = getVocabContext(weekNumber);
+  const { targetWords, grammarTarget } = getVocabContext(weekNumber);
   const allReview = getAllReviewWords(weekNumber, routeId);
 
   // World bible enrichment
@@ -76,51 +86,107 @@ function buildGenerationPrompt(weekNumber: number, routeId: string = 'full'): st
   const characters = getHarmonyCharacters();
   const characterContext = characters.map(c => {
     const phase = getCharacterPhase(c, weekNumber, routeId as NarrativeRouteId);
-    return `- ${c.id} (${c.role}): Mood: "${phase.mood}". ${phase.promptFragment}`;
+    return `- ${c.id} (${c.role}): Voice: ${c.voiceRules} Mood: "${phase.mood}". ${phase.promptFragment}`;
   }).join('\n');
 
-  return `You are generating social media posts for "Harmony" — the state-controlled social network in a dystopian world called the Lexical Republic. Citizens post about their daily work processing government documents.
+  // Active background citizens for this week
+  const activeCitizens = getActiveCitizens(weekNumber)
+    .filter(c => !characters.some(ch => ch.id === c.id))
+    .map(c => `- ${c.id}: ${c.trait} (${c.tower})`)
+    .join('\n');
 
-WORLD CONTEXT:
-- Citizens work as Clarity Associates processing language documents for the Ministry
-- All posts are monitored by PEARL (the AI overseer) and the Ministry
-- The tone is "forced happy" dystopian — citizens sound compliant, polite, and obedient on the surface
-- Locations: ${locations.map(l => l.name).join(', ')}
-- Active regulations: ${regulations.map(r => r.code).join(', ')}
-- This week's slogan: "${culture?.slogan ?? 'Harmony Through Clarity'}"
+  // World texture for the prompt
+  const foodNames = FOOD_CULTURE.cafeteriaDishes.map(d => d.name).join(', ');
+  const mediaNames = APPROVED_MEDIA.television.map(t => t.name).join(', ');
+  const hobbyNames = DOMESTIC_LIFE.approvedHobbies.map(h => h.name).join(', ');
 
-CHARACTER VOICES (generate one feed post per character where possible):
+  return `You are generating social media posts for "Harmony" — the state-controlled social network in a dystopian world called the Lexical Republic.
+
+CRITICAL RULE: Write about PEOPLE, not about vocabulary. Every post must express a character's inner life, daily experience, or emotional state. Target words should appear naturally as part of that expression — never as the reason for the post. NEVER write a post that reads like a vocabulary exercise.
+
+═══ WORLD ═══
+Citizens live in Residential Towers 11-15, work as Clarity Associates at Central Filing Hall, eat at Cafeteria Block 7, and socialize at Sector 4 Community Center and Recreation Yard 3. The tone is "forced happy" — citizens sound polite and compliant on the surface. Think Orwell meets social media, played through mundane daily life.
+
+DAILY LIFE (use these details naturally):
+- Food: ${foodNames}
+- Tea: Clarity Tea at 10:00 & 15:00 — this week: "${culture?.clarityTeaFlavor ?? 'Standard Blend'}". ${FOOD_CULTURE.clarityTeaLore.slice(0, 100)}
+- Media: ${mediaNames}
+- Hobbies: ${hobbyNames}
+- Home: ${DOMESTIC_LIFE.towerLiving[1]} ${DOMESTIC_LIFE.towerLiving[2]}
+- Pets: ${DOMESTIC_LIFE.pets.slice(0, 120)}
+- Children: ${CHILDRENS_WORLD.academy.slice(0, 80)} ${CHILDRENS_WORLD.mascot.slice(0, 60)}
+- Traditions: ${COMMUNITY_TRADITIONS.monthlyDessert.slice(0, 80)} ${COMMUNITY_TRADITIONS.morningAnnouncements.slice(0, 100)}
+
+Locations: ${locations.map(l => l.name).join(', ')}
+Regulations: ${regulations.map(r => r.code).join(', ')}
+Slogan: "${culture?.slogan ?? 'Harmony Through Clarity'}"
+
+═══ CHARACTERS ═══
 ${characterContext}
 
-WEEK ${weekNumber} CONTEXT:
-- Grammar target: ${grammarTarget}
-- Target vocabulary (MUST use naturally): ${targetWords.join(', ')}
-- Review words from previous weeks: ${allReview.length > 0 ? allReview.join(', ') : 'none (first week)'}
+BACKGROUND CITIZENS (pick 1-2 for feed posts):
+${activeCitizens}
 
-GENERATE exactly this JSON array of posts:
+═══ VOCABULARY ═══
+Week ${weekNumber} target words: ${targetWords.join(', ')}
+Grammar focus: ${grammarTarget}
+Review words from previous weeks: ${allReview.length > 0 ? allReview.join(', ') : 'none'}
 
-1. Three "feed" posts — compliant citizen posts using 3-5 target words each naturally. Different citizens (use designations like "Citizen-2104", "CA-18", "WA-07"). 2-3 sentences each. Cheerful but subtly dystopian.
+VOCABULARY BALANCE (per post):
+- 3-5 CURRENT target words (primary exposure — required)
+- 1-2 REVIEW words from previous weeks (spaced repetition — encouraged, not forced)
+- Review words should appear in NEW contexts, different from when they were first introduced. If "arrive" was learned in a work context, recycle it in a domestic or social context ("the cat arrives at my door every morning"). This context variation builds deeper word knowledge.
+- Recent review words (last 1-2 weeks) should appear more often than older review words.
+- NEVER force a review word. If it doesn't serve the character, leave it out.
 
-2. One "feed" post from Citizen-4488 — uses target words but tells a slightly unsettling personal story. Always ends with self-reassurance ("Everything is fine", "I should not worry", "The Ministry takes care of everyone"). Include ONE deliberate grammar error matching the week's grammar target.
+═══ GOOD vs BAD POSTS ═══
 
-3. Two "censure_grammar" posts — citizen posts that contain 1-2 grammar errors related to "${grammarTarget}". These will be shown to students for correction. Include the error details.
+GOOD (character-first, life beyond work):
+"The morning light arrived through my tower window at 06:14. I followed my standard routine — tea, desk check, walk to Filing Hall. I cannot describe how satisfying a confirmed schedule feels."
+→ We learn about this person. Target words serve the character.
 
-4. Two "censure_vocab" posts — citizen posts that use a target word INCORRECTLY (wrong meaning/context). Students must identify the misuse. Include the error details.
+GOOD (mundane texture):
+"The lady in Cafeteria Block 7 slipped me an extra bread roll. Should I report it? It's not standard procedure. I'll check the handbook later. My feet hurt."
+→ Humor, relatability, a small human moment. Words are natural.
 
-5. One "censure_replace" post — a citizen post using a vague/generic word where a specific target word should go. Students pick the correct replacement.
+BAD (vocabulary drill):
+"I arrived early and followed every step on the checklist. My supervisor confirmed my assignment before I could submit anything. The standard is clear: check your work twice."
+→ No person, no feeling, no life. Just target words connected by grammar.
+
+═══ POST TOPICS (vary across these) ═══
+Morning routines and tower life | Cafeteria food opinions | Clarity Tea rituals | Walking groups | TV shows (Our Harmonious Kitchen, Sparky) | Knitting, calligraphy, puzzles | Balcony plants and birds | Children's achievements | Family memories and recipes | The window table mystery | Small beautiful things on the commute | Being tired after a long shift
+
+═══ GENERATION INSTRUCTIONS ═══
+
+1. THREE "feed" posts from different citizens. Each:
+   - Is about the character's LIFE, not just work
+   - Uses 3-5 target words naturally
+   - Is 2-3 sentences, max 280 characters
+   - Contains at least one specific, mundane, human detail
+   - Uses "Citizen-XXXX" format for designations
+
+2. ONE "feed" post from Citizen-4488:
+   - A quietly unsettling personal story using target words
+   - ONE deliberate grammar error matching "${grammarTarget}"
+   - Ends with self-reassurance ("Everything is fine", "I should not worry")
+   - References missing neighbor, the cat, or something absent
+
+3. TWO "censure_grammar" — contain 1-2 grammar errors related to "${grammarTarget}"
+4. TWO "censure_vocab" — use a target word INCORRECTLY (wrong meaning)
+5. ONE "censure_replace" — vague word where a specific target word should go
 
 RESPOND WITH VALID JSON:
 {
   "posts": [
     {
-      "authorLabel": "Citizen-XXXX or CA-XX",
+      "authorLabel": "Citizen-XXXX",
       "content": "the post text",
       "postType": "feed",
       "pearlNote": "brief PEARL observation or null",
       "censureData": null
     },
     {
-      "authorLabel": "...",
+      "authorLabel": "Citizen-XXXX",
       "content": "text WITH the error included",
       "postType": "censure_grammar",
       "pearlNote": null,
@@ -134,7 +200,7 @@ RESPOND WITH VALID JSON:
       }
     },
     {
-      "authorLabel": "...",
+      "authorLabel": "Citizen-XXXX",
       "content": "text with vocab misuse",
       "postType": "censure_vocab",
       "pearlNote": null,
@@ -143,12 +209,12 @@ RESPOND WITH VALID JSON:
         "errorWord": "the misused word",
         "correction": "what it should be or how it should be used",
         "explanation": "why the usage is wrong",
-        "options": ["To formally hand in work (correct definition sentence)", "To carry something to a place (wrong definition sentence)", "To eat at a restaurant (wrong definition sentence)", "To clean a surface (wrong definition sentence)"],
+        "options": ["To formally hand in work (correct)", "To carry something (wrong)", "To eat at a restaurant (wrong)", "To clean a surface (wrong)"],
         "correctIndex": 0
       }
     },
     {
-      "authorLabel": "...",
+      "authorLabel": "Citizen-XXXX",
       "content": "text with a [BLANK] where target word goes",
       "postType": "censure_replace",
       "pearlNote": null,
@@ -165,14 +231,13 @@ RESPOND WITH VALID JSON:
 }
 
 IMPORTANT:
-- Posts should be 2-3 sentences, max 280 characters each
-- Use A2-B1 English appropriate for Taiwanese Grade 10 students
-- Target words must appear naturally, not forced
-- Censure items need clear, unambiguous errors students can identify
-- Each post should have a unique citizen designation
-- censure_vocab options MUST be full definition sentences (e.g. "To reach or come to a place"), NOT single words
-- censure_grammar options MUST be single words/phrases showing different forms (e.g. "arrives", "arrive", "arriving", "arrived")
-- censure_replace options MUST be single target vocabulary words (e.g. "submit", "arrive", "check", "report")`;
+- Posts: 2-3 sentences, max 280 characters each
+- A2-B1 English for Taiwanese Grade 10 students
+- Each post must contain at least one specific, mundane, human detail
+- censure_vocab options MUST be full definition sentences, NOT single words
+- censure_grammar options MUST be single words/phrases showing different forms
+- censure_replace options MUST be single target vocabulary words
+- All citizen designations use "Citizen-XXXX" format (4-digit, zero-padded)`;
 }
 
 /**
@@ -372,7 +437,7 @@ const STATIC_CENSURE_ITEMS: Record<number, GeneratedPost[]> = {
       },
     },
     {
-      authorLabel: 'WA-33',
+      authorLabel: 'Citizen-0033',
       content: 'The supervisor describe the new procedure to us every Monday. She is very careful about the standard.',
       postType: 'censure_grammar',
       pearlNote: null,
@@ -386,7 +451,7 @@ const STATIC_CENSURE_ITEMS: Record<number, GeneratedPost[]> = {
       },
     },
     {
-      authorLabel: 'CA-41',
+      authorLabel: 'Citizen-0041',
       content: 'Our team submit every report on time. We always confirm the details before sending anything.',
       postType: 'censure_grammar',
       pearlNote: null,
@@ -508,7 +573,7 @@ const STATIC_CENSURE_ITEMS: Record<number, GeneratedPost[]> = {
       },
     },
     {
-      authorLabel: 'CA-27',
+      authorLabel: 'Citizen-0027',
       content: 'Last week the Ministry remove three citizens from our department. We were not informed why.',
       postType: 'censure_grammar',
       pearlNote: null,
@@ -522,7 +587,7 @@ const STATIC_CENSURE_ITEMS: Record<number, GeneratedPost[]> = {
       },
     },
     {
-      authorLabel: 'WA-19',
+      authorLabel: 'Citizen-0019',
       content: 'I update all the records this morning before my break. Everything is now in order.',
       postType: 'censure_grammar',
       pearlNote: null,
@@ -644,7 +709,7 @@ const STATIC_CENSURE_ITEMS: Record<number, GeneratedPost[]> = {
       },
     },
     {
-      authorLabel: 'WA-42',
+      authorLabel: 'Citizen-0042',
       content: 'You must to complete all forms before your shift ends. There are no exceptions.',
       postType: 'censure_grammar',
       pearlNote: null,
@@ -658,7 +723,7 @@ const STATIC_CENSURE_ITEMS: Record<number, GeneratedPost[]> = {
       },
     },
     {
-      authorLabel: 'CA-38',
+      authorLabel: 'Citizen-0038',
       content: 'We can identifies errors faster with the new system. It was installed last week.',
       postType: 'censure_grammar',
       pearlNote: null,
@@ -773,36 +838,44 @@ function buildFallbackPosts(weekNumber: number): GeneratedPost[] {
 
   const posts: GeneratedPost[] = [];
 
-  // Feed posts
+  // Feed posts — character-first with world texture
   if (w.length >= 4) {
+    // A citizen with a morning routine
+    const padNum1 = String(2000 + weekNumber * 100 + 4).padStart(4, '0');
     posts.push({
-      authorLabel: `Citizen-${2000 + weekNumber * 100 + 4}`,
-      content: `I ${w[0]} every morning and ${w[1]} the standard procedure. My supervisor always ${w[2]}s my work before I can ${w[3]}. The system works perfectly.`,
+      authorLabel: `Citizen-${padNum1}`,
+      content: `I ${w[0]} at Tower 14 every morning to the smell of Harmony Congee from the corridor. I ${w[1]} the same path to Filing Hall. The ${w[9] ?? 'standard'} route takes twelve minutes. I always ${w[2]} for the small bird on the balcony of Floor 6. She is always there.`,
       postType: 'feed',
-      pearlNote: `Shift ${weekNumber} review feed: target words in circulation.`,
+      pearlNote: `Shift ${weekNumber} review feed: target words in context.`,
       censureData: null,
     });
+
+    // A citizen with an opinion about the cafeteria
+    const padNum2 = String(3300 + weekNumber * 10).padStart(4, '0');
     posts.push({
-      authorLabel: `CA-${10 + weekNumber * 3}`,
-      content: `New associates should ${w[1]} each step carefully. I always ${w[2]} my documents twice before I ${w[3]} them. This is the approved method.`,
+      authorLabel: `Citizen-${padNum2}`,
+      content: `The Wednesday Noodle Bowl is different and no one can tell me why. I ${w[1]} this every week. Today I tried to ${w[2]} with the cafeteria board but it was the same as yesterday. Some things you just ${w[3]}.`,
       postType: 'feed',
       pearlNote: null,
       censureData: null,
     });
+
+    // A citizen who is tired but kind
+    const padNum3 = String(6600 + weekNumber * 10).padStart(4, '0');
     posts.push({
-      authorLabel: `WA-${20 + weekNumber * 2}`,
-      content: `Today I learned to ${w[0]} correctly. My team helped me ${w[4] ?? w[1]} the process. We ${w[5] ?? w[2]} everything on time.`,
+      authorLabel: `Citizen-${padNum3}`,
+      content: `Long shift today. The Clarity Tea at 15:00 was the only good part. My neighbor lent me her Approved Poetry Anthology. I should ${w[0]} it tomorrow. Some days you just need a quiet evening and a warm cup. Corridor lights dim at 22:00 but I was already asleep.`,
       postType: 'feed',
       pearlNote: null,
       censureData: null,
     });
   }
 
-  // Citizen-4488 post — escalating unease across weeks
+  // Citizen-4488 post — escalating unease, same neighbor thread
   const citizen4488Posts: Record<number, string> = {
-    1: `My neighbor used to ${w[0] ?? 'arrive'} at the center every Tuesday. Last week her desk was empty. I should not worry. The Ministry always ${w[2] ?? 'check'}s these things. Everything is fine.`,
-    2: `I ${w[0] ?? 'notice'}d something strange today. The list of names on the board ${w[5] ?? 'change'}d overnight. Three citizens I used to ${w[4] ?? 'request'} help from are gone. I ${w[9] ?? 'inform'}ed no one. It is probably nothing. Everything is fine.`,
-    3: `They ${w[0] ?? 'process'}ed my friend's transfer papers last night. She did not ${w[5] ?? 'respond'} to messages this morning. I should not ${w[3] ?? 'delay'} my work thinking about it. The Ministry will ${w[1] ?? 'complete'} whatever needs completing. I must ${w[8] ?? 'maintain'} focus. Everything is fine.`,
+    1: `My neighbor used to ${w[0] ?? 'arrive'} at the community center every Tuesday with her small gray cat waiting at home. Her chair is empty now. I should not worry. The Ministry ${w[2] ?? 'check'}s these things. The cat still waits. Everything is fine.`,
+    2: `I ${w[0] ?? 'notice'}d my neighbor's ink stones are still on the shelf at the community center. Nobody has ${w[5] ?? 'change'}d anything since she left. I ${w[4] ?? 'request'}ed information but was not ${w[9] ?? 'inform'}ed. The cat follows me home now. Everything is fine.`,
+    3: `They ${w[0] ?? 'process'}ed the community center's remaining items yesterday. My neighbor's things are gone now. I should not ${w[3] ?? 'delay'} my own routine to think about it. I must ${w[8] ?? 'maintain'} my schedule. The cat sleeps at my door. I ${w[1] ?? 'complete'}d the adoption form. Everything is fine.`,
   };
   const c4488Content = citizen4488Posts[weekNumber] ?? citizen4488Posts[1]!;
   posts.push({
@@ -810,9 +883,9 @@ function buildFallbackPosts(weekNumber: number): GeneratedPost[] {
     content: c4488Content,
     postType: 'feed',
     pearlNote: weekNumber === 1
-      ? 'Community post from Citizen-4488 — contains deliberate language anomalies.'
+      ? 'Community post from Citizen-4488 — references absent neighbor.'
       : weekNumber === 2
-        ? 'Citizen-4488 activity logged. Wellness check scheduled.'
+        ? 'Citizen-4488 activity logged. Continued references to absent neighbor.'
         : 'Citizen-4488 flagged for Pattern-7 monitoring. Compliance within parameters.',
     censureData: null,
   });
@@ -825,7 +898,7 @@ function buildFallbackPosts(weekNumber: number): GeneratedPost[] {
     // Generic censure fallback for weeks without static content
     if (w.length >= 2) {
       posts.push({
-        authorLabel: `Citizen-${3000 + weekNumber * 50}`,
+        authorLabel: `Citizen-${String(3000 + weekNumber * 50).padStart(4, '0')}`,
         content: `Yesterday I ${w[0]} the new documents. The team have ${w[1]} everything already.`,
         postType: 'censure_grammar',
         pearlNote: null,
@@ -839,7 +912,7 @@ function buildFallbackPosts(weekNumber: number): GeneratedPost[] {
         },
       });
       posts.push({
-        authorLabel: `Citizen-${3100 + weekNumber * 50}`,
+        authorLabel: `Citizen-${String(3100 + weekNumber * 50).padStart(4, '0')}`,
         content: `She always ${w[0]} the reports but never ${w[1]} them on time. The supervisor say nothing about it.`,
         postType: 'censure_grammar',
         pearlNote: null,
@@ -856,7 +929,7 @@ function buildFallbackPosts(weekNumber: number): GeneratedPost[] {
 
     if (w.length >= 3) {
       posts.push({
-        authorLabel: `Citizen-${4000 + weekNumber * 30}`,
+        authorLabel: `Citizen-${String(4000 + weekNumber * 30).padStart(4, '0')}`,
         content: `I need to ${w[0]} my lunch to the cafeteria before noon.`,
         postType: 'censure_vocab',
         pearlNote: null,
@@ -875,7 +948,7 @@ function buildFallbackPosts(weekNumber: number): GeneratedPost[] {
         },
       });
       posts.push({
-        authorLabel: `Citizen-${4100 + weekNumber * 30}`,
+        authorLabel: `Citizen-${String(4100 + weekNumber * 30).padStart(4, '0')}`,
         content: `Please ${w[2]} the chair closer to the window. It is too far away.`,
         postType: 'censure_vocab',
         pearlNote: null,
@@ -897,7 +970,7 @@ function buildFallbackPosts(weekNumber: number): GeneratedPost[] {
 
     if (w.length >= 4) {
       posts.push({
-        authorLabel: `Citizen-${5000 + weekNumber * 20}`,
+        authorLabel: `Citizen-${String(5000 + weekNumber * 20).padStart(4, '0')}`,
         content: `I need to [do] my ${w[1]} before the deadline. The supervisor expects quality work.`,
         postType: 'censure_replace',
         pearlNote: null,

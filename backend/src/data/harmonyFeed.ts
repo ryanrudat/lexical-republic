@@ -57,103 +57,105 @@ export function getHarmonyReviewContext(weekNumber: number, routeId: string = 'f
 export const HARMONY_SEED_POSTS: HarmonySeedPost[] = [
   // ── Week 1: Target words — arrive, follow, check, report, submit, approve, describe, assign, standard, confirm
   {
-    id: 'harmony-w1-briefing',
+    id: 'harmony-w1-2104',
     weekNumber: 1,
     authorLabel: 'Citizen-2104',
     content:
-      'I arrived early and followed every step on the checklist. My supervisor confirmed my assignment before I could submit anything. The standard is clear: check your work twice.',
-    pearlNote: 'Shift 1 review feed: target words (arrive, follow, check, confirm, submit, standard) in circulation.',
+      'The morning light arrived through my tower window at 06:14 today. I followed my standard routine — tea, desk check, walking route to Filing Hall. I cannot describe how satisfying a confirmed schedule feels. Some people find routine boring. I find it beautiful.',
+    pearlNote: 'Citizen-2104 demonstrates consistent positive engagement. Target words: arrive, follow, standard, check, describe, confirm.',
   },
   {
-    id: 'harmony-w1-workflow',
+    id: 'harmony-w1-0018',
     weekNumber: 1,
-    authorLabel: 'CA-18',
+    authorLabel: 'Citizen-0018',
     content:
-      'New associates: always check each line before you submit. My mentor described the process and I followed it exactly. Once the supervisor approved my report, my assignment was confirmed.',
-    pearlNote: 'Shift 1 review feed: target words (check, submit, describe, follow, approve, report, confirm, assign) plus support words.',
+      'New associates: do not just follow the checklist. Understand it. When I was assigned to Filing Hall, my mentor described each step like it mattered. Check your documents the way you would check on a friend. Submit work you would approve yourself.',
+    pearlNote: 'Citizen-0018 provides procedural guidance. Target words: follow, assign, describe, check, submit, approve.',
   },
   {
-    id: 'harmony-w1-c4488',
+    id: 'harmony-w1-4488',
     weekNumber: 1,
     authorLabel: 'Citizen-4488',
     content:
-      'Has anyone seen my neighbor? She always arrive at the community center on Tuesday, but her chair was empty this week. I am sure she is fine. The Ministry takes care of everyone. I should not worry.',
-    pearlNote: 'Community post from Citizen-4488 — deliberate grammar error (arrive → arrives).',
+      'My neighbor kept herbs on her windowsill and a small gray cat. She always arrive at the standard time for Tuesday calligraphy. I can describe her routine exactly. Her chair was empty this week. The herbs are dying. The cat still waits by her door. I should not worry.',
+    pearlNote: 'Community post from Citizen-4488. Deliberate grammar error: "arrive" should be "arrives" (present simple, third person).',
   },
   {
-    id: 'harmony-w1-routine',
+    id: 'harmony-w1-0007',
     weekNumber: 1,
-    authorLabel: 'WA-15',
+    authorLabel: 'Citizen-0007',
     content:
-      'I always follow the standard checklist. Today I had to describe an unusual document to my supervisor. She approved it after a careful check. Another productive day.',
-    pearlNote: 'Shift 1 review feed: target words (follow, standard, describe, approve, check).',
+      "The lady in Cafeteria Block 7 — the one with the glasses — slipped me an extra bread roll at lunch. Should I report it? It's not standard procedure, right? I'll check the handbook later. I just want to submit my last three files and go home. My feet hurt.",
+    pearlNote: 'Citizen-0007 discusses non-standard cafeteria interaction. Target words: report, standard, check, submit.',
   },
   {
-    id: 'harmony-w1-pride',
+    id: 'harmony-w1-5502',
     weekNumber: 1,
     authorLabel: 'Citizen-5502',
     content:
-      'My first assignment is complete. I arrived on time, checked every document, and submitted my report before noon. The supervisor confirmed my work meets the standard. I feel proud.',
-    pearlNote: 'Shift 1 review feed: target words (arrive, check, submit, report, confirm, standard).',
+      'First week complete. I arrived not knowing anyone and now I can describe the exact sound the Filing Hall printer makes at 14:00. My assignment was confirmed before lunch. My mother would be proud. I should check if she got my letter.',
+    pearlNote: 'New associate Citizen-5502 settling in. Target words: arrive, describe, assignment, confirm, check.',
   },
   {
-    id: 'harmony-w1-advice',
+    id: 'harmony-w1-0009',
     weekNumber: 1,
-    authorLabel: 'CA-09',
+    authorLabel: 'Citizen-0009',
     content:
-      'Reminder for new associates: always confirm your assignment number before you submit. If you follow the steps and check twice, your reports will be approved every time.',
-    pearlNote: 'Shift 1 review feed: target words (confirm, assign, submit, follow, check, report, approve).',
+      'I always check Tower 12\'s notice board on my way to work. Someone drew a small bird on the standard memo. No one reported it. No one will. I followed the approved path and smiled the whole way. Some things do not need a form.',
+    pearlNote: 'Citizen-0009 references unapproved artwork on public notices. Noted. Target words: check, standard, report, follow, approve.',
   },
+
   // ── Week 2: Target words — notice, compare, replace, update, request, remove, change, include, require, inform
   // Review words — arrive, follow, check, report, submit, approve, describe, assign, standard, confirm
   {
-    id: 'harmony-w2-revision',
+    id: 'harmony-w2-3319',
     weekNumber: 2,
     authorLabel: 'Citizen-3319',
     content:
-      'I noticed the update immediately. The new version removed two lines and replaced them with shorter text. I compared both documents and requested clarification, but no one informed me who required the change.',
-    pearlNote: 'Shift 2 review feed: target words (notice, update, remove, replace, compare, request, inform, require, change).',
+      'I noticed the Community Soup changed from Mild Vegetable to Ginger Corn. Nobody was informed. I checked yesterday\'s menu and compared — three items were removed. I updated my log. Some people do not notice. I always notice.',
+    pearlNote: 'Citizen-3319 tracks cafeteria changes. Target words: notice, change, inform, compare, remove, update. Review: check (W1).',
   },
   {
-    id: 'harmony-w2-records',
+    id: 'harmony-w2-0031',
     weekNumber: 2,
-    authorLabel: 'CA-31',
+    authorLabel: 'Citizen-0031',
     content:
-      'When I check updated records, I compare every line against the approved standard. If something was removed, I include the original text in my report and request a review before I submit.',
-    pearlNote: 'Shift 2 review feed: target words (update, compare, remove, include, report, request, review, submit) with Week 1 carryover (check, approved, standard).',
+      'The knitting circle requested cream-colored yarn again. The supply update removed cream and replaced it with standard gray. No one was informed why. I included a note in my log. Some changes require no explanation. That is what they tell us.',
+    pearlNote: 'Citizen-0031 documents supply changes to approved hobby materials. Target words: request, update, remove, replace, inform, include, change, require. Review: standard (W1).',
   },
   {
-    id: 'harmony-w2-c4488',
+    id: 'harmony-w2-4488',
     weekNumber: 2,
     authorLabel: 'Citizen-4488',
     content:
-      'I noticed the community center updated its schedule. Tuesday activities were removed. My neighbor used to attend on Tuesdays. I requested information but no one informed me of changes. Everything is fine. Change is normal.',
-    pearlNote: 'Community post from Citizen-4488 — target words (notice, update, remove, request, inform, change).',
+      "I noticed the community center updated its schedule. Tuesday calligraphy was removed. My neighbor used to attend — her ink stones are still on the shelf. Nobody informed me of the change. I requested information but heard nothing. The cat follows me home now. Everything is fine.",
+    pearlNote: 'Community post from Citizen-4488. Continued reference to absent neighbor. Target words: notice, update, remove, inform, change, request.',
   },
+
   // ── Week 3: Target words — process, complete, review, delay, schedule, respond, identify, separate, maintain, forward
   // Review words — notice, compare, replace, update, request, remove, change, include, require, inform
   {
-    id: 'harmony-w3-queue',
+    id: 'harmony-w3-7291',
     weekNumber: 3,
     authorLabel: 'Citizen-7291',
     content:
-      'I completed my review on schedule, but no one responded when I tried to identify who changed the process. The delay was short. I forwarded my report and maintained my position in the queue.',
-    pearlNote: 'Shift 3 review feed: target words (complete, review, schedule, respond, identify, change, process, delay, forward, maintain).',
+      'I completed my review on schedule and forwarded the results. Processing time: 3.1 minutes per case. I noticed fewer cases this week but cannot identify why. The delay has increased. I will maintain my metrics and not respond to patterns that are not there.',
+    pearlNote: 'Citizen-7291 reports efficiency data. Target words: complete, review, schedule, forward, process, identify, delay, maintain, respond. Review: notice (W2).',
   },
   {
-    id: 'harmony-w3-dispatch',
+    id: 'harmony-w3-0022',
     weekNumber: 3,
-    authorLabel: 'CA-22',
+    authorLabel: 'Citizen-0022',
     content:
-      'You should review each case separately before you process it. If you notice a delay, respond quickly and forward the details. Do not include anything that requires a separate update.',
-    pearlNote: 'Shift 3 review feed: target words (review, separate, process, notice, delay, respond, forward, include, require, update) with Week 2 carryover.',
+      "My grandmother's recipe required you to separate the dough carefully and process each piece by hand. She never followed a cookbook — she reviewed every bun by touch. No delays. I maintain that same patience at my desk. Some skills forward across generations.",
+    pearlNote: 'Citizen-0022 connects personal heritage to work ethic. Target words: separate, process, review, delay, maintain, forward. Review: require (W2), follow (W1).',
   },
   {
-    id: 'harmony-w3-c4488',
+    id: 'harmony-w3-4488',
     weekNumber: 3,
     authorLabel: 'Citizen-4488',
     content:
-      'The community center schedule was updated again. All Tuesday and Thursday activities have been removed. I cannot identify who approved these changes. I should not delay my own schedule to ask questions. Delays cause problems for everyone.',
-    pearlNote: 'Community post from Citizen-4488 — target words (schedule, update, remove, identify, approve, delay).',
+      "The schedule was updated again. Thursday activities also removed. I cannot identify who approved these changes. I should not delay my own routine to ask. My neighbor's cat sleeps at my door now. I completed the adoption form but no one has responded. Everything is fine.",
+    pearlNote: 'Community post from Citizen-4488. Cat adoption form pending — no response expected. Target words: schedule, identify, delay, complete, respond.',
   },
 ];

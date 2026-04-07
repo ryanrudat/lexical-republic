@@ -18,6 +18,7 @@ import harmonyRoutes from './routes/harmony';
 import aiRoutes from './routes/ai';
 import classRoutes from './routes/classes';
 import dictionaryRoutes from './routes/dictionary';
+import { migrateHarmonyAuthorLabels } from './utils/harmonyMigrations';
 import sessionRoutes from './routes/sessions';
 import submissionRoutes from './routes/submissions';
 import messageRoutes from './routes/messages';
@@ -106,8 +107,13 @@ app.use('/api/sessions', sessionRoutes);
 app.use('/api/submissions', submissionRoutes);
 app.use('/api/messages', messageRoutes);
 
-httpServer.listen(PORT, () => {
+httpServer.listen(PORT, async () => {
   console.log(`[Lexical Republic] Server running on port ${PORT}`);
+
+  // Run data migrations (idempotent — safe on every boot)
+  migrateHarmonyAuthorLabels().catch(err =>
+    console.error('[Lexical Republic] Harmony label migration failed:', err),
+  );
   console.log(`[Lexical Republic] Upload dir: ${uploadPath} (UPLOAD_DIR=${UPLOAD_DIR})`);
   console.log(`[Lexical Republic] Upload dir exists: ${require('fs').existsSync(uploadPath)}`);
   const briefingDir = require('path').join(uploadPath, 'briefings');
