@@ -6,7 +6,7 @@
 - Active terminal apps in guided mode: `clarity-queue`, `harmony`, `my-file`
 - `duty-roster` hidden in guided mode; visible in free-roam mode. Shows instruction text ("Choose an unlocked shift to start. Complete each shift in order to unlock the next one.").
 - Harmony locked until teacher opens it for the class (`harmonyOpen` toggle in ClassManager).
-- Terminal header `HOME` button returns to terminal desktop and navigates to `/`.
+- Terminal header `HOME` button returns to terminal desktop and navigates to `/`. **Exit confirmation**: When a student is inside the shift queue (`clarity-queue`), both the `⌂ HOME` button and `✕ CLOSE` button show a "Leave current shift?" confirmation dialog before navigating away. Warns that in-progress task work will be lost (completed tasks are preserved). Non-shift apps close immediately without prompt.
 - Terminal desktop tiles (in order): Office, Lexicon, Current Shift, Duty Roster, Harmony, My File.
 - Students are guided (not free-roam) in the current phase.
 
@@ -272,7 +272,9 @@ Teachers can set student difficulty tiers (1=Guided, 2=Standard, 3=Independent) 
 - **Error Correction Doc**: Tier 1 gets sequential grammar hints via `laneHints`
 - **VocabClearance**: Tier 1 gets 3 attempts (concern only on final miss, 2.5s correct-answer display); Tier 2 gets 2 attempts; Tier 3 gets 1 attempt (immediate lock)
 - **AI evaluation**: Prompt includes lane context; unified pass threshold (avg >= 0.4) across all tiers
-- **WordMatch, ClozeFill, PrioritySort**: Not yet tiered (same for all students)
+- **WordMatch**: Per-word attempt limits — Tier 1 gets 3 attempts before auto-resolve (shows correct match, concern only on final miss, 2s flash for learning), Tier 2 gets 2 attempts (concern every miss), Tier 3 gets 1 attempt (immediate auto-resolve, concern every miss). Tier 1 PEARL barks show remaining attempts. Render-time completion detection with functional state updaters (no stale closures).
+- **ClozeFill**: Per-blank attempt limits — Tier 1 gets 3 attempts before auto-fill (concern only on final miss, 1.5s delay), Tier 2 gets 2 attempts (concern every miss), Tier 3 gets 1 attempt (immediate auto-fill, 800ms delay, concern every miss). Auto-filled blanks don't count toward first-try score.
+- **PrioritySort**: Tiered concern penalty per wrong sort — Tier 1 = 0.05 (gentler), Tier 2 = 0.1 (default), Tier 3 = 0.15 (stricter). Justify phase already lane-aware via WritingEvaluator + modalLane config.
 
 ## Login Form Persistence
 Login form state persisted in `loginFormStore.ts` (Zustand) so navigation away from `/login` doesn't reset partially filled fields. Form clears only on successful login/register.
