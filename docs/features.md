@@ -121,21 +121,31 @@ Step navigation gated by completion. All steps support optional video via `StepV
 
 ## Harmony App (State Social Network)
 - Locked until teacher opens Harmony for the class (`harmonyOpen` toggle)
-- Two tabs: **Feed** (multi-type content) and **Review Queue** (language correction exercises). Third tab (**Archives**) planned for Phase C.
+- **4-tab government portal navigation**: Feed / Ministry / Sector / Review
 - Content accumulates across shifts — queries scoped by narrative route weeks (full or condensed)
 - Route-aware: condensed-route students only see content from their 9-week route, never skipped weeks
+- All NPC designations use unified `Citizen-XXXX` format (4-digit, zero-padded). Students remain `CA-X`.
+- Fifth tab (**Archives**) planned for Phase C.
 
-**Feed (5 content types via component registry):**
-- `feed` — AI-generated + seed + student citizen posts (default `PostCard`)
+**Feed tab** (citizen posts):
+- `feed` — character-first citizen posts with embedded target vocabulary (AI-generated + seed + student posts)
+- Compose box for student posts (280-char limit via `HARMONY_POST_MAX_LENGTH`)
+- 3-tier vocabulary highlighting: Focus (sky, current week), Recent (amber, previous 2 route-weeks), Deep Review (gray, older)
+- Citizen-4488 recurring character with single-neighbor thread: herbs → ink stones → cat adoption form
+- Students can delete their own posts (cascade: replies → censure responses → post)
+- Citizen-4488 posts have Approve/Flag interaction buttons
+
+**Ministry tab** (official communications):
 - `bulletin` — Ministry Bulletins with inline comprehension MCQs (`HarmonyBulletin.tsx`, sky-blue card)
 - `pearl_tip` — PEARL grammar tips disguised as communication policy (`HarmonyPearlTip.tsx`, emerald card)
+- Section header: "Ministry Dispatches" with sky accent
+- Bulletins render first, then PEARL tips with "P.E.A.R.L. Language Guidance" divider
+
+**Sector tab** (local information):
 - `community_notice` — Lost & found, events, menus, transit updates (`HarmonyNoticeCard.tsx`, amber card)
-- `sector_report` — Weekly department statistics (`HarmonySectorReport.tsx`, gray data card)
-- Posts sorted by type priority: bulletins first → tips → reports → notices → feed
-- Citizen-4488 recurring character with escalating narrative across weeks
-- Students can delete their own posts (cascade: replies → censure responses → post)
-- 3-tier vocabulary highlighting: Focus (sky, current week), Recent (amber, previous 2 route-weeks), Deep Review (gray, older route-weeks)
-- Citizen-4488 posts have Approve/Flag interaction buttons
+- `sector_report` — Weekly department statistics with narrative in the data (`HarmonySectorReport.tsx`, gray mono card)
+- Section header: "Sector Board" with amber accent
+- Notices render first, then reports with "Sector Performance Data" divider
 
 **Review Queue (language exercises):**
 - Three censure types: `censure_grammar` (verb form), `censure_vocab` (word meaning MCQ), `censure_replace` (fill-in-blank)
@@ -149,17 +159,22 @@ Step navigation gated by completion. All steps support optional video via `StepV
 **Content generation pipeline:**
 - `ensureHarmonyPostsExist()` called lazily when student opens Harmony
 - Per-type counting via `prisma.harmonyPost.groupBy({ by: ['postType'] })` with `DEFAULT_CONTENT_COUNTS` targets
-- Static content loaded first from 5 data files (bulletins, tips, notices, reports, censure items), then AI fills remaining
-- AI prompts enriched with world bible (locations, regulations, weekly slogans) and per-character arc phases via `getCharacterPhase()`
+- Static content loaded first from data files, then AI fills remaining
+- AI prompt: "Write about PEOPLE, not about vocabulary" — character-first with world texture, good/bad examples, active citizen roster per week
+- Vocabulary recycling: 3-5 current target words + 1-2 review words in new contexts (spaced repetition)
 - Generation lock (`Map<string, Promise<void>>`) prevents concurrent duplicate generation per class
 - Route-aware: only generates for weeks in the class's narrative route
+- Fallback posts reference world bible texture (congee, tower life, cats) if AI fails
+- Vitest validation: 34 tests run via `prebuild` — word coverage, char limits, spaced repetition checks
 
-**World-building data (Phase B):**
-- `harmonyWorldBible.ts` — 8 locations, 5 Ministry regulations, weekly culture/slogans
-- `harmonyCharacters.ts` — 5 NPC characters with 3-phase arcs + condensed-route overrides
-- `harmonyBulletins.ts` — pre-written bulletins with comprehension MCQs (weeks 1-3)
+**World-building data:**
+- `harmonyWorldBible.ts` — 8 locations, 5 regulations, weekly culture, approved media, food culture, domestic life, traditions, children's world, citizen roster (15 named citizens with scripted appearance/departure weeks)
+- `harmonyCharacters.ts` — 5 core NPCs (Citizen-XXXX naming) with 3-phase arcs + condensed overrides
+- `harmonyFeed.ts` — 12 character-first seed posts with vocabulary recycling (weeks 1-3)
+- `harmonyBulletins.ts` — bulletins with comprehension MCQs (weeks 1-3)
 - `harmonyPearlTips.ts` — grammar rules as communication policy (weeks 1-3)
-- `harmonyCommunityContent.ts` — notices + sector reports (weeks 1-3)
+- `harmonyCommunityContent.ts` — immersive notices + narrative sector reports (weeks 1-3)
+- `harmonyMigrations.ts` — startup migration renames old authorLabels (CA-18 → Citizen-0018, etc.)
 
 **Bulletin comprehension:**
 - `POST /api/harmony/bulletins/:id/respond` — ephemeral answer check (no DB write)

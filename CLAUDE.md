@@ -1,6 +1,6 @@
 # The Lexical Republic — Project Instructions
 
-Last updated: 2026-04-07
+Last updated: 2026-04-08
 
 ## Vision
 The Lexical Republic is a dystopian ESL learning game where Taiwanese Grade 10 students (A2-B1) learn English through 18 weekly "Shifts" inside an authoritarian language-control world.
@@ -11,7 +11,7 @@ Story and learning are coupled: grammar, listening, speaking, and writing tasks 
 
 ### Commands
 **Frontend:** `npm run dev` | `npm run lint` | `npm run build`
-**Backend:** `npm run dev` | `npm run build` | `npm run db:migrate` | `npm run seed`
+**Backend:** `npm run dev` | `npm run build` | `npm run db:migrate` | `npm run seed` | `npm run test`
 
 ### Development Credentials
 - Teacher: `teacher` / `teacher123`
@@ -47,20 +47,26 @@ Harmony expansion is in progress. See `Dplan/Harmony_Expansion_Review.md` for th
 - **Phase 0 (bug fixes)**: DONE — generation race condition, dead gate code, censure action fix, orphaned post sweep
 - **Phase A (cumulative review + route awareness)**: DONE — 3-tier vocab (focus/recent/deep), route-aware generation/queries, differentiated mastery (+0.05 current / +0.03 review), cumulative censure review items
 - **Phase B (world-building content engine)**: DONE — world bible, 5 NPC character definitions with arc phases, 4 new content types (bulletin/pearl_tip/community_notice/sector_report), per-type generator, component registry, bulletin comprehension endpoint
+- **Phase B+ (content overhaul)**: DONE — character-first post rewrites, expanded world bible (food/media/hobbies/traditions/citizen roster), unified Citizen-XXXX naming, AI prompt overhaul ("Write about PEOPLE, not vocabulary"), vocabulary recycling (spaced repetition), Vitest validation suite, startup authorLabel migration
+- **Phase B++ (4-tab UI)**: DONE — government portal navigation (Feed / Ministry / Sector / Review), client-side post filtering, MinistryTab + SectorTab components
 - **Phase C (archives + polish)**: PLANNED — archives tab (vocab mastery, 4488 timeline, bulletin archive), NEW badges, PEARL annotations, notification badge on Harmony tile, socket events. Plan vetted and approved in `Dplan/Harmony_Expansion_Review.md`.
 - **Visual enhancements**: Ideas saved in `Dplan/Harmony_Visual_Enhancement_Ideas.md` (propaganda ticker, 4488 glitch, typewriter bulletins, etc.)
 
-### Harmony Data Files (Phase B)
-- `backend/src/data/harmonyWorldBible.ts` — 8 locations, 5 regulations, weekly culture
-- `backend/src/data/harmonyCharacters.ts` — 5 NPCs with 3-phase arcs + condensed overrides
+### Harmony Data Files
+- `backend/src/data/harmonyWorldBible.ts` — 8 locations, 5 regulations, weekly culture, approved media, food culture, domestic life, traditions, children's world, citizen roster (`CORE_CITIZENS` + `BACKGROUND_CITIZENS` with `getActiveCitizens(week)`)
+- `backend/src/data/harmonyCharacters.ts` — 5 NPCs with 3-phase arcs + condensed overrides (Citizen-XXXX naming)
+- `backend/src/data/harmonyFeed.ts` — 12 character-first seed posts weeks 1-3 with spaced vocabulary recycling
 - `backend/src/data/harmonyBulletins.ts` — static bulletins weeks 1-3 with comprehension MCQs
 - `backend/src/data/harmonyPearlTips.ts` — static PEARL grammar tips weeks 1-3
-- `backend/src/data/harmonyCommunityContent.ts` — static notices + sector reports weeks 1-3
+- `backend/src/data/harmonyCommunityContent.ts` — immersive notices + sector reports weeks 1-3
+- `backend/src/data/__tests__/harmony-vocabulary.test.ts` — Vitest suite (34 tests: word coverage, char limits, spaced repetition)
+- `backend/src/utils/harmonyMigrations.ts` — startup migration: old authorLabels → Citizen-XXXX
 
 ## Next Work
 - **Harmony Phase C implementation** — archives tab, NEW badges, PEARL annotations, tile notification (plan ready, code not started)
-- **Harmony content authoring** — weeks 4-6 static content (bulletins, tips, notices, reports) after WeekConfig is built
-- **Condensed route bridging Harmony posts** — ~20 NPC + ~5 Citizen-4488 catch-up posts for gap weeks
+- **Harmony content authoring** — weeks 4-6 static content (new NPC introductions: Citizen-6103, Citizen-1177, Citizen-9020; first disappearance: Citizen-0031) after WeekConfig is built
+- **Condensed route 4488 catch-up posts** — 3-5 posts at route-gap transitions ("I named her Tuesday")
+- **Condensed route bridging Harmony posts** — ~20 NPC catch-up posts for gap weeks
 - Build Weeks 4-6 WeekConfig files from `Dplan/Weeks_04_06_Shift_Plan.md` (full narrative, vocabulary, task sequences, and Canva scripts planned).
 - Seed dictionary entries for Weeks 4-6 (30 words defined in shift plan).
 - Define per-week vocabulary ladders (TOEIC target words vs world-building words) for Weeks 7-18.

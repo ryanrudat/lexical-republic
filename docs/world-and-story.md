@@ -74,36 +74,44 @@ Week 1 stays as-is. Weeks 2+ should prioritize TOEIC alignment in `targetWords`.
 ## Harmony Content & World Bible
 
 ### Harmony NPC Characters (`harmonyCharacters.ts`)
-5 recurring NPC voices with 3-phase arcs (Act I / Act II / Act III) + condensed-route overrides:
+All NPCs use unified `Citizen-XXXX` format. 5 core recurring voices with 3-phase arcs + condensed overrides:
 
 | Character | Role | Act I (W1-6) | Act II (W7-12) | Act III (W13-18) |
 |-----------|------|-------------|---------------|-----------------|
-| Citizen-2104 | Model employee | Genuinely happy | Notices things, self-corrects | Cracks show |
-| CA-18 | Senior mentor | Helpful authority | Veiled warnings | Goes quiet |
-| Citizen-4488 | The dissenter | Grammar errors, "everything is fine" | Notices patterns, improving grammar | Self-censoring, grammar perfect |
-| WA-07 | Tired worker | Enthusiastic new hire | Exhausted, complains within limits | Robotic compliance |
+| Citizen-2104 | Model employee | Genuinely happy, loves routine | Notices things, self-corrects | Cracks show |
+| Citizen-0018 | Senior mentor | Helpful authority, teaches through story | Veiled warnings | Goes quiet |
+| Citizen-4488 | The dissenter | Herbs, cat, "I should not worry" | Notices patterns, improving grammar | Self-censoring, grammar perfect |
+| Citizen-0007 | Tired worker | Enthusiastic new hire, funny | Exhausted, complains within limits | Robotic compliance |
 | Citizen-7291 | Efficiency bureaucrat | Obsessed with metrics | Proud of audit results | Realizes metrics hide something |
+
+10 background citizens with scripted appearances/departures (defined in `BACKGROUND_CITIZENS` array in `harmonyWorldBible.ts`). Key citizens: Citizen-5502 (homesick, gone W7), Citizen-0031 (knitter, gone W6), Citizen-8844 (cafeteria worker, never disappears), Citizen-4401 (4488's cautious ally from W6).
 
 Condensed route compresses Act II into a single week-11 beat per character. `getCharacterPhase(char, weekNumber, routeId)` resolves the correct arc.
 
-### Citizen-4488 Arc (inverse literacy)
-- **Week 1**: Grammar error ("arrive" → "arrives"), anxious, "I should not worry"
-- **Week 2**: Grammar perfect, notices removals, "Everything is fine. Change is normal."
-- **Week 3**: Grammar flawless, uses modals correctly, self-censors — "I should not delay my own schedule to ask questions"
+### Citizen-4488 Arc (single-neighbor thread)
+- **Week 1**: Neighbor's herbs dying, small gray cat waits by door. Grammar error ("arrive" → "arrives"). "I should not worry."
+- **Week 2**: Calligraphy removed, ink stones still on shelf. Cat follows 4488 home. "Everything is fine."
+- **Week 3**: Adoption form filed, no one responds. Cat sleeps at 4488's door. "Everything is fine."
+- **Condensed catch-up** (deferred): "I named her Tuesday." — after the day her owner disappeared.
 - PEARL notes escalate: observation → wellness check → Pattern-7 monitoring
 
 ### World Bible (`harmonyWorldBible.ts`)
 - **8 Locations**: Sector 4 Community Center, Central Filing Hall, Wellness Pavilion, Cafeteria Block 7, Transit Hub Delta, Residential Towers 11-15, Recreation Yard 3, The Archive
 - **5 Regulations**: Regulation 14-C (vocabulary), Form 77-B (activity registration), Directive 2031.4 (schedule changes), Wellness Protocol 9 (check-ins), Harmony Conduct Code
-- **Cultural details**: Clarity tea (10:00/15:00), Synthetic Serenity playlist, weekly rotating slogans, harmony credits
+- **Approved Media**: Our Harmonious Kitchen (cooking show), Junior Associate Sparky (kids' cartoon), Clarity Challenge (quiz show), Evening Serenity Hour, Synthetic Serenity playlist
+- **Food Culture**: Harmony Congee, Standard Noodle Bowl, Efficiency Bun (red bean), Community Soup (seasonal), Celebration Cake (monthly, always vanilla), the window table mystery
+- **Domestic Life**: Tower specs (18 sqm, one window), balcony plants (Form 19-B), approved pets (finches/canaries via Form 22-D, cats unlicensed but tolerated), corridor lights dim at 22:00
+- **Hobbies**: Walking groups (3-6 citizens), calligraphy, puzzle assembly, knitting circle (gray/blue/cream only), container gardening, listening groups
+- **Traditions**: Morning Voice (07:30 intercom, identity classified), Celebration Cake, anonymous poetry, Productivity Festival / Harmony Day / Reflection Week / Year-End Gala
+- **Children**: Junior Associate Academy, Compliance Stars (gold pins), Sparky mascot, nursery rhyme
 
 ### Static Content (Weeks 1-3)
-- **Bulletins** (`harmonyBulletins.ts`): 4 Ministry Bulletins with 2-3 comprehension MCQs each
-- **PEARL Tips** (`harmonyPearlTips.ts`): 3 grammar-as-policy tips matching each week's grammar target
-- **Notices** (`harmonyCommunityContent.ts`): 7 community notices (cafeteria menus, events, transit, schedule changes)
-- **Sector Reports** (`harmonyCommunityContent.ts`): 3 data-rich weekly reports from Central Filing Hall (baseline metrics that subtly shift across weeks)
+- **Seed feed posts** (`harmonyFeed.ts`): 12 character-first posts with spaced vocabulary recycling (6 W1, 3 W2, 3 W3)
+- **Bulletins** (`harmonyBulletins.ts`): 4 Ministry Bulletins with comprehension MCQs
+- **PEARL Tips** (`harmonyPearlTips.ts`): 3 grammar-as-policy tips
+- **Notices** (`harmonyCommunityContent.ts`): 7 immersive notices (named dishes, approved icebreaker, cream scarf in lost-and-found, abandoned 847/1000 puzzle, unclaimed ink stones)
+- **Sector Reports** (`harmonyCommunityContent.ts`): 3 narrative reports (214→208→197 associates, declining headcount, rising "efficiency")
 - **Censure items** (`STATIC_CENSURE_ITEMS` in `harmonyGenerator.ts`): 8 per week (3 grammar + 3 vocab + 2 replace)
-- **Seed feed posts** (`harmonyFeed.ts`): 6 for week 1, 3 for week 2, 3 for week 3
 - Weeks 4-6 planned in `Dplan/Weeks_04_06_Shift_Plan.md`. Weeks 7+ fall back to AI generation.
 
 ## Content Pipeline
