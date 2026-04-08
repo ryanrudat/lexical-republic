@@ -27,6 +27,12 @@ backend/uploads/
 .DS_Store
 Thumbs.db
 
+# Claude Code
+.claude/
+
+# Loose docs
+*.docx
+
 # Logs
 *.log
 npm-debug.log*
