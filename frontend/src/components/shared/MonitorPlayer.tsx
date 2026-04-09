@@ -67,25 +67,58 @@ export default function MonitorPlayer({
     return () => clearTimeout(t);
   }, [videoError, onEnded]);
 
-  // Try autoplay if requested
+  // Try autoplay if requested — with timeout fallback for stalled loads
   useEffect(() => {
     if (!autoPlay || !src || videoError) return;
     const v = videoRef.current;
     if (!v) return;
+    let cancelled = false;
 
     const tryPlay = () => {
+      if (cancelled) return;
       v.play()
-        .then(() => setPaused(false))
-        .catch(() => setNeedsManualPlay(true));
+        .then(() => {
+          if (!cancelled) {
+            setPaused(false);
+            setNeedsManualPlay(false);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setNeedsManualPlay(true);
+        });
     };
+
+    // Fallback: if video doesn't start playing within 4s, show manual play button
+    const fallbackTimer = setTimeout(() => {
+      if (cancelled) return;
+      const vid = videoRef.current;
+      if (vid && vid.paused && !needsManualPlay) {
+        console.warn('[MonitorPlayer] Autoplay timeout — showing manual play button');
+        setNeedsManualPlay(true);
+      }
+    }, 4000);
 
     if (v.readyState >= 1) {
       tryPlay();
     } else {
       v.addEventListener('loadedmetadata', tryPlay, { once: true });
-      return () => v.removeEventListener('loadedmetadata', tryPlay);
     }
-  }, [autoPlay, src, videoError]);
+
+    // Also handle stalled/suspended states — video loaded but buffering
+    const handleStalled = () => {
+      if (!cancelled && v.paused) setNeedsManualPlay(true);
+    };
+    v.addEventListener('stalled', handleStalled);
+    v.addEventListener('suspend', handleStalled);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(fallbackTimer);
+      v.removeEventListener('loadedmetadata', tryPlay);
+      v.removeEventListener('stalled', handleStalled);
+      v.removeEventListener('suspend', handleStalled);
+    };
+  }, [autoPlay, src, videoError]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleManualPlay = () => {
     const v = videoRef.current;
