@@ -383,7 +383,7 @@ export default function MonitorPlayer({
           className="absolute flex items-center justify-center transition-all hover:scale-105 active:scale-95"
           style={{
             top: '79.5%',
-            left: '48%',
+            left: '62%',
             width: '4%',
             height: '7%',
             borderRadius: '50%',
