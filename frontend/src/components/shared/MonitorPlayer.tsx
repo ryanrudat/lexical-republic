@@ -182,7 +182,14 @@ export default function MonitorPlayer({
   };
 
   return (
-    <div className="relative w-full" style={{ aspectRatio: '2744 / 1568' }}>
+    <div
+      className="relative w-full"
+      style={{
+        aspectRatio: '2744 / 1568',
+        maskImage: 'radial-gradient(ellipse 70% 75% at 50% 48%, black 50%, transparent 100%)',
+        WebkitMaskImage: 'radial-gradient(ellipse 70% 75% at 50% 48%, black 50%, transparent 100%)',
+      }}
+    >
       {/* Loading indicator — shown until monitor frame image is ready */}
       {!imageLoaded && (
         <div className="absolute inset-0 flex items-center justify-center">
