@@ -82,12 +82,8 @@ export default function DismissalBroadcast({
       <div
         className="fixed inset-0 z-50 flex flex-col items-center justify-center"
         style={{
-          background: `
-            radial-gradient(ellipse 80% 60% at 50% 45%, rgba(58, 82, 65, 0.35) 0%, transparent 70%),
-            radial-gradient(ellipse 50% 40% at 50% 50%, rgba(0, 180, 100, 0.08) 0%, transparent 60%),
-            radial-gradient(ellipse 120% 80% at 50% 55%, rgba(90, 75, 50, 0.2) 0%, transparent 70%),
-            #0a0a0a
-          `,
+          backgroundColor: '#0a0a0a',
+          backgroundImage: 'radial-gradient(ellipse 80% 60% at 50% 45%, rgba(58,82,65,0.35) 0%, transparent 70%), radial-gradient(ellipse 50% 40% at 50% 50%, rgba(0,180,100,0.08) 0%, transparent 60%), radial-gradient(ellipse 120% 80% at 50% 55%, rgba(90,75,50,0.2) 0%, transparent 70%)',
         }}
       >
         <div className="w-full max-w-3xl px-4">

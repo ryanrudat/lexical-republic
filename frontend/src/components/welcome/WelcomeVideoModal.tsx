@@ -39,12 +39,8 @@ export default function WelcomeVideoModal({ designation, onComplete }: Props) {
     <div
       className="fixed inset-0 z-[70] flex flex-col items-center justify-center"
       style={{
-        background: `
-          radial-gradient(ellipse 80% 60% at 50% 45%, rgba(58, 82, 65, 0.35) 0%, transparent 70%),
-          radial-gradient(ellipse 50% 40% at 50% 50%, rgba(0, 180, 100, 0.08) 0%, transparent 60%),
-          radial-gradient(ellipse 120% 80% at 50% 55%, rgba(90, 75, 50, 0.2) 0%, transparent 70%),
-          #0a0a0a
-        `,
+        backgroundColor: '#0a0a0a',
+        backgroundImage: 'radial-gradient(ellipse 80% 60% at 50% 45%, rgba(58,82,65,0.35) 0%, transparent 70%), radial-gradient(ellipse 50% 40% at 50% 50%, rgba(0,180,100,0.08) 0%, transparent 60%), radial-gradient(ellipse 120% 80% at 50% 55%, rgba(90,75,50,0.2) 0%, transparent 70%)',
       }}
     >
       <div className="relative w-full max-w-5xl px-4">
