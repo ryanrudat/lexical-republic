@@ -4,6 +4,7 @@ import { getWeekConfig } from '../data/week-configs';
 import { getStoryPlan } from '../data/storyPlans';
 import { getRouteWeeks } from '../data/narrative-routes';
 import { getHarmonyCharacters, getCharacterPhase } from '../data/harmonyCharacters';
+import { io } from '../socketServer';
 import {
   getLocationsForWeek,
   getRegulationsForWeek,
@@ -414,6 +415,12 @@ export async function generateHarmonyPosts(
 
   if (inserted > 0) {
     console.log(`  Harmony: generated ${inserted} posts for week ${weekNumber}, class ${classId}`);
+    // Notify students in this class that new Harmony content is available
+    try {
+      io?.to(`class:${classId}`).emit('harmony:new-content', { weekNumber, count: inserted });
+    } catch {
+      // io may not be initialized during tests/seeds
+    }
   }
 }
 

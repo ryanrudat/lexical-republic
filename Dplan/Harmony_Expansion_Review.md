@@ -6,7 +6,7 @@ Last reviewed: 2026-04-06
 - **Phase 0 (bug fixes)**: DONE (2026-04-03) — generation race lock, dead gate code removal, censure action fix, orphaned post sweep
 - **Phase A (cumulative review)**: DONE (2026-04-03) — 3-tier vocab, route-aware generation/queries/review, differentiated mastery, cumulative censure items
 - **Phase B (world-building content)**: DONE (2026-04-03) — world bible, 5 NPC characters, 4 new content types, per-type generator, component registry, bulletin comprehension
-- **Phase C (archives + polish)**: PLANNED — plan vetted 2026-04-06, implementation not started
+- **Phase C (archives + polish)**: DONE (2026-04-09) — 5-tab UI, Archives tab (vocabulary/4488 timeline/bulletins), lastHarmonyVisit tracking, NEW badges, Harmony tile notification, PEARL ambient annotations, socket events
 
 ---
 

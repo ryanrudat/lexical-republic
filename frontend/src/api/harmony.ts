@@ -33,6 +33,7 @@ export interface HarmonyPost {
     refNumber: string;
     questions: BulletinQuestion[];
   } | null;
+  isNew?: boolean;
 }
 
 export interface HarmonyReply {
@@ -146,4 +147,58 @@ export async function submitBulletinResponse(
     selectedIndex,
   });
   return data;
+}
+
+// ─── Archives ─────────────────────────────────────────────────────
+
+export interface ArchiveWord {
+  word: string;
+  definition: string;
+  exampleSentence: string;
+  mastery: number;
+  encounters: number;
+}
+
+export interface ArchiveWeekVocab {
+  weekNumber: number;
+  words: ArchiveWord[];
+}
+
+export interface ArchiveTimelineEntry {
+  id: string;
+  weekNumber: number | null;
+  content: string;
+  authorLabel: string;
+  createdAt: string;
+  studentAction: string | null;
+}
+
+export interface ArchiveBulletin {
+  id: string;
+  weekNumber: number | null;
+  content: string;
+  authorLabel: string;
+  createdAt: string;
+  bulletinData: {
+    refNumber: string;
+    questions: BulletinQuestion[];
+  } | null;
+}
+
+export interface ArchivesResponse {
+  locked: boolean;
+  vocabulary?: ArchiveWeekVocab[];
+  timeline?: ArchiveTimelineEntry[];
+  bulletins?: ArchiveBulletin[];
+}
+
+export async function fetchHarmonyArchives(section?: string): Promise<ArchivesResponse> {
+  const params = section ? { section } : {};
+  const { data } = await client.get('/harmony/archives', { params });
+  return data;
+}
+
+export async function checkHarmonyNewContent(): Promise<boolean> {
+  const { data } = await client.get('/harmony/has-new');
+  return data.hasNew;
 }

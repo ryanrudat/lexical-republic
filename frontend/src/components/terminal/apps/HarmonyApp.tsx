@@ -287,6 +287,11 @@ function PostCard({
                 PENDING
               </span>
             )}
+            {post.isNew && (
+              <span className="text-[8px] text-white bg-sky-500 px-1.5 py-0.5 rounded-full tracking-wider font-bold">
+                NEW
+              </span>
+            )}
             <span className="text-[11px] text-[#9CA3AF] ml-auto">
               {formatTimestamp(post.createdAt)}
             </span>
@@ -928,6 +933,9 @@ export default function HarmonyApp() {
     openThread,
     censurePost: _censurePost,
     deletePost,
+    pearlAnnotations,
+    setHasNewContent,
+    trackCitizen4488Action,
   } = useHarmonyStore();
 
   const [showOnboarding, setShowOnboarding] = useState(
@@ -944,13 +952,17 @@ export default function HarmonyApp() {
   useEffect(() => {
     void loadPosts();
     void loadCensureQueue();
-  }, [loadPosts, loadCensureQueue]);
+    // Clear new content flag when user opens Harmony
+    setHasNewContent(false);
+  }, [loadPosts, loadCensureQueue, setHasNewContent]);
 
   const handleCensure = useCallback(
     (postId: string, action: 'approve' | 'correct' | 'flag', weekNumber: number) => {
       void _censurePost(postId, action, weekNumber);
+      // Track 4488 actions for PEARL annotations
+      trackCitizen4488Action(postId, action);
     },
-    [_censurePost],
+    [_censurePost, trackCitizen4488Action],
   );
 
   // Thread view
@@ -1010,6 +1022,21 @@ export default function HarmonyApp() {
       )}
       {activeTab === 'censure' && (
         <CensureQueue />
+      )}
+      {activeTab === 'archives' && (
+        <ArchivesTab />
+      )}
+
+      {/* PEARL ambient annotations — pinned at bottom of visible tab */}
+      {pearlAnnotations.length > 0 && activeTab === 'feed' && (
+        <div className="border-t border-emerald-200/50 bg-emerald-50/30 px-4 py-2">
+          {pearlAnnotations.map((a, i) => (
+            <div key={i} className="flex items-start gap-2 py-1">
+              <span className="text-[10px] text-emerald-600 font-bold tracking-wider shrink-0">P.E.A.R.L.</span>
+              <p className="text-[10px] text-emerald-700/80 italic leading-relaxed">{a.message}</p>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -1186,15 +1213,16 @@ function HarmonyTabs({
   ministryCount,
 }: {
   activeTab: string;
-  setTab: (tab: 'feed' | 'ministry' | 'sector' | 'censure') => void;
+  setTab: (tab: 'feed' | 'ministry' | 'sector' | 'censure' | 'archives') => void;
   censureStats: { total: number; completed: number };
   ministryCount: number;
 }) {
-  const tabs: { key: 'feed' | 'ministry' | 'sector' | 'censure'; label: string; badge?: number; badgeColor?: string }[] = [
+  const tabs: { key: 'feed' | 'ministry' | 'sector' | 'censure' | 'archives'; label: string; badge?: number; badgeColor?: string }[] = [
     { key: 'feed', label: 'Feed' },
     { key: 'ministry', label: 'Ministry', badge: ministryCount > 0 ? ministryCount : undefined, badgeColor: 'bg-sky-500' },
     { key: 'sector', label: 'Sector' },
     { key: 'censure', label: 'Review', badge: censureStats.total - censureStats.completed > 0 ? censureStats.total - censureStats.completed : undefined, badgeColor: 'bg-rose-500' },
+    { key: 'archives', label: 'Archives' },
   ];
 
   return (
@@ -1341,6 +1369,198 @@ function SectorTab({
       {reports.map((post) => (
         <HarmonySectorReport key={post.id} post={post} />
       ))}
+    </div>
+  );
+}
+
+/* ─── Archives Tab ─────────────────────────────────────────────── */
+
+function ArchivesTab() {
+  const { archives, archivesLoading, loadArchives } = useHarmonyStore();
+  const [expandedWeek, setExpandedWeek] = useState<number | null>(null);
+  const [activeSection, setActiveSection] = useState<'vocabulary' | 'timeline' | 'bulletins'>('vocabulary');
+
+  useEffect(() => {
+    void loadArchives();
+  }, [loadArchives]);
+
+  if (archivesLoading && !archives) {
+    return (
+      <div className="text-xs text-[#8B8578] animate-pulse text-center py-8 tracking-wider">
+        LOADING ARCHIVES...
+      </div>
+    );
+  }
+
+  if (archives?.locked) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-[11px] text-[#9CA3AF] tracking-wider">Archives unavailable.</p>
+      </div>
+    );
+  }
+
+  const sectionTabs: { key: typeof activeSection; label: string }[] = [
+    { key: 'vocabulary', label: 'Vocabulary' },
+    { key: 'timeline', label: 'Case File: 4488' },
+    { key: 'bulletins', label: 'Bulletins' },
+  ];
+
+  return (
+    <div className="flex-1 overflow-auto">
+      {/* Section header */}
+      <div className="px-4 py-3 border-b border-[#D4CFC6]">
+        <p className="text-[10px] text-[#8B8578] tracking-[0.2em] uppercase font-semibold">
+          Ministry Archives
+        </p>
+        <p className="text-[9px] text-[#B8B3AA] mt-0.5">
+          Historical records and vocabulary reference.
+        </p>
+      </div>
+
+      {/* Sub-section tabs */}
+      <div className="flex gap-1 px-3 py-2 bg-[#EFEBE4] border-b border-[#E8E4DC]">
+        {sectionTabs.map(t => (
+          <button
+            key={t.key}
+            onClick={() => setActiveSection(t.key)}
+            className={`flex-1 py-1 rounded text-[9px] font-semibold tracking-[0.06em] uppercase transition-all ${
+              activeSection === t.key
+                ? 'bg-white text-[#2C3340] shadow-sm border border-[#D4CFC6]'
+                : 'text-[#8B8578] hover:text-[#4B5563] hover:bg-white/40'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Vocabulary by Week */}
+      {activeSection === 'vocabulary' && (
+        <div className="px-3 py-2">
+          {(!archives?.vocabulary || archives.vocabulary.length === 0) && (
+            <p className="text-[11px] text-[#9CA3AF] text-center py-8">No vocabulary records yet.</p>
+          )}
+          {archives?.vocabulary?.map(week => (
+            <div key={week.weekNumber} className="mb-2">
+              <button
+                onClick={() => setExpandedWeek(expandedWeek === week.weekNumber ? null : week.weekNumber)}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-white border border-[#E8E4DC] hover:border-[#D4CFC6] transition-colors"
+              >
+                <span className="text-[12px] font-semibold text-[#2C3340]">Shift {week.weekNumber}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-[#8B8578]">{week.words.length} words</span>
+                  <span className={`text-[10px] transition-transform ${expandedWeek === week.weekNumber ? 'rotate-180' : ''}`}>
+                    &#9660;
+                  </span>
+                </div>
+              </button>
+              {expandedWeek === week.weekNumber && (
+                <div className="mt-1 space-y-1 pl-2">
+                  {week.words.map(w => (
+                    <div key={w.word} className="flex items-center gap-3 px-3 py-2 bg-white/60 rounded-lg border border-[#E8E4DC]/50">
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[12px] font-semibold text-[#2C3340]">{w.word}</span>
+                        <p className="text-[10px] text-[#4B5563] leading-snug mt-0.5">{w.definition}</p>
+                        {w.exampleSentence && (
+                          <p className="text-[9px] text-[#8B8578] italic mt-0.5">"{w.exampleSentence}"</p>
+                        )}
+                      </div>
+                      {/* Mastery bar */}
+                      <div className="w-16 shrink-0">
+                        <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              w.mastery >= 0.8 ? 'bg-emerald-500' : w.mastery >= 0.4 ? 'bg-amber-500' : 'bg-rose-400'
+                            }`}
+                            style={{ width: `${Math.round(w.mastery * 100)}%` }}
+                          />
+                        </div>
+                        <p className="text-[8px] text-[#9CA3AF] text-right mt-0.5">
+                          {Math.round(w.mastery * 100)}%
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Citizen-4488 Case File Timeline */}
+      {activeSection === 'timeline' && (
+        <div className="px-4 py-3">
+          {(!archives?.timeline || archives.timeline.length === 0) && (
+            <p className="text-[11px] text-[#9CA3AF] text-center py-8">No case file entries yet.</p>
+          )}
+          <div className="relative">
+            {/* Timeline line */}
+            {(archives?.timeline?.length ?? 0) > 1 && (
+              <div className="absolute left-[14px] top-3 bottom-3 w-px bg-amber-200" />
+            )}
+            {archives?.timeline?.map((entry) => (
+              <div key={entry.id} className="flex gap-3 mb-3 relative">
+                {/* Timeline dot */}
+                <div className={`w-[30px] h-[30px] rounded-full border-2 flex items-center justify-center shrink-0 z-[1] ${
+                  entry.studentAction === 'flag' ? 'bg-rose-100 border-rose-300' :
+                  entry.studentAction === 'approve' ? 'bg-emerald-100 border-emerald-300' :
+                  'bg-amber-100 border-amber-300'
+                }`}>
+                  <span className="text-[8px] font-bold text-amber-700">
+                    {entry.weekNumber ? `S${entry.weekNumber}` : '?'}
+                  </span>
+                </div>
+                {/* Entry content */}
+                <div className="flex-1 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[11px] font-semibold text-amber-700">{entry.authorLabel}</span>
+                    <span className="text-[9px] text-amber-500">{formatTimestamp(entry.createdAt)}</span>
+                    {entry.studentAction && (
+                      <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-bold ml-auto ${
+                        entry.studentAction === 'flag'
+                          ? 'bg-rose-100 text-rose-600'
+                          : 'bg-emerald-100 text-emerald-600'
+                      }`}>
+                        {entry.studentAction === 'flag' ? 'FLAGGED' : 'APPROVED'}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-[#4B5563] leading-relaxed">{entry.content}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Bulletin Archive */}
+      {activeSection === 'bulletins' && (
+        <div className="px-3 py-2">
+          {(!archives?.bulletins || archives.bulletins.length === 0) && (
+            <p className="text-[11px] text-[#9CA3AF] text-center py-8">No archived bulletins.</p>
+          )}
+          {archives?.bulletins?.map(b => (
+            <HarmonyBulletin
+              key={b.id}
+              post={{
+                id: b.id,
+                designation: b.authorLabel,
+                content: b.content,
+                status: 'approved',
+                pearlNote: null,
+                replyCount: 0,
+                createdAt: b.createdAt,
+                isOwn: false,
+                weekNumber: b.weekNumber,
+                postType: 'bulletin',
+                bulletinData: b.bulletinData as HarmonyPost['bulletinData'],
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

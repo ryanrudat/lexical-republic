@@ -4,6 +4,7 @@ import { useViewStore } from '../../stores/viewStore';
 import { useStudentStore } from '../../stores/studentStore';
 import { useSeasonStore } from '../../stores/seasonStore';
 import { useDictionaryStore } from '../../stores/dictionaryStore';
+import { useHarmonyStore } from '../../stores/harmonyStore';
 import type { TerminalApp } from '../../types/views';
 import { GUIDED_STUDENT_MODE } from '../../config/runtimeFlags';
 
@@ -71,12 +72,19 @@ export default function TerminalDesktop() {
   const weeks = useSeasonStore((s) => s.weeks);
   const loadSeason = useSeasonStore((s) => s.loadSeason);
   const toggleDictionary = useDictionaryStore((s) => s.toggle);
+  const hasNewHarmonyContent = useHarmonyStore((s) => s.hasNewContent);
+  const checkNewContent = useHarmonyStore((s) => s.checkNewContent);
 
   useEffect(() => {
     if (weeks.length === 0) {
       void loadSeason();
     }
   }, [weeks.length, loadSeason]);
+
+  // Check for new Harmony content on desktop mount
+  useEffect(() => {
+    void checkNewContent();
+  }, [checkNewContent]);
 
   const highestUnlockedWeek = getHighestUnlockedWeek(weeks);
   const visibleApps = GUIDED_STUDENT_MODE && user?.role === 'student'
@@ -143,13 +151,17 @@ export default function TerminalDesktop() {
               <button
                 key={app.id}
                 onClick={() => openApp(app.id)}
-                className="w-[240px] shrink-0 rounded-xl transition-all duration-200 group hover:scale-105 active:scale-95"
+                className="relative w-[240px] shrink-0 rounded-xl transition-all duration-200 group hover:scale-105 active:scale-95"
               >
                 <img
                   src={app.icon}
                   alt={app.name}
                   className="w-full object-contain"
                 />
+                {/* Notification badge for Harmony */}
+                {app.id === 'harmony' && hasNewHarmonyContent && (
+                  <span className="absolute top-2 right-2 w-4 h-4 bg-rose-500 rounded-full border-2 border-[#8EBCC1] animate-pulse" />
+                )}
               </button>
             );
           }

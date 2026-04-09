@@ -17,12 +17,12 @@ Weeks 4-6 complete Act I: Compliance. The narrative arc moves from "obedient lea
 | Week | Target Words (10) | Story Words (4) | Previous Words |
 |------|-------------------|------------------|----------------|
 | 4 | arrange, collect, examine, indicate, locate, organize, present, record, select, verify | timeline, evidence, sequence, source | W1-W3 (30 words) |
-| 5 | concern, effort, express, improve, observe, reduce, respond, suggest, support, value | wellness, obligation, emotion, monitor | W1-W4 (40 words) |
+| 5 | concern, effort, express, improve, observe, reduce, recommend, suggest, support, value | wellness, obligation, emotion, monitor | W1-W4 (40 words) |
 | 6 | achieve, adjust, conduct, establish, evaluate, perform, prepare, produce, summarize, transfer | audit, summary, classification, oversight | W1-W5 (50 words) |
 
 ### TOEIC Alignment Notes
 - **Week 4** targets: Business document reading (Part 7) — locating, organizing, verifying information
-- **Week 5** targets: Interpersonal communication (Part 3/4) — expressing concern, suggesting, supporting
+- **Week 5** targets: Interpersonal communication (Part 3/4) — expressing concern, recommending, suggesting, supporting
 - **Week 6** targets: Performance evaluation (Part 5/7) — evaluating, summarizing, producing reports
 
 ---
@@ -80,14 +80,14 @@ Since `evidence_assembly` isn't fully implemented yet, we'll use **document_revi
   5. "What was the final step?" → "The updated record was presented to the Archive on March 7."
 
 **Document B: "Filing Adjustment Notice" (error_correction type)**
-- A 6-sentence notice about the filing adjustment with **6 grammar errors** (sequencing + past tense):
+- A 6-sentence notice about the filing adjustment with **6 grammar errors** (sequencing + past tense + SVA):
   1. "First, the supervisor ~~review~~ → **reviewed** the original document." (past tense)
   2. "Then, Associate-15 ~~collect~~ → **collected** all related files." (past tense)
   3. "~~Final~~ → **Finally**, the records were organized by date." (sequencing word form)
   4. "The team ~~verify~~ → **verified** each entry before submission." (past tense)
   5. "~~After~~ the review, the supervisor ~~indicate~~ → **indicated** two missing sections." (past tense)
-  6. "The Archive ~~select~~ → **selects** → **selected** the approved version." (past tense consistency)
-- Lane 1 hints: highlight error zones, show "Should this be past tense?" prompts
+  6. "The Archive ~~select~~ → **selects** the approved version each week." (SVA — Archive is singular, requires -s in present simple; L1 Mandarin interference target)
+- Lane 1 hints: highlight error zones, show "Should this be past tense?" / "Does this verb match the subject?"
 
 #### Task 3: Cloze Fill (Records Office)
 **Title:** "ARCHIVE TIMELINE REPORT — EVIDENCE BOARD ENTRY"
@@ -167,7 +167,7 @@ The Department introduces "Wellness Language Guidelines" — a new directive req
 **Citizen-4488 Post:**
 > "I must express that I feel safe because the Ministry supports all citizens. I should not feel concerned about changes because change improves our community. I observe that my neighbor's apartment is still empty. I value the Ministry's efforts to reduce confusion. I must report that everything is fine."
 
-*(Uses W5 target words: express, concerned, observe, value, reduce, report. Grammar: must/should + because-clauses. Escalation: forced positive framing while reporting disturbing observations — the wellness language IS the cage.)*
+*(Uses W5 target words: express, concerned, observe, value, reduce, support. Recycles W1: report. Grammar: must/should + because-clauses. Escalation: forced positive framing while reporting disturbing observations — the wellness language IS the cage.)*
 
 ### Task Sequence (5 tasks)
 
@@ -180,9 +180,9 @@ The Department introduces "Wellness Language Guidelines" — a new directive req
 
 A directive memo about approved emotional expression with 10 blanks:
 
-> "All associates **must** _______ (express) their feelings using approved vocabulary. You **should** _______ (observe) your emotional state each morning. If you feel _______ (concerned), you **must** _______ (respond) by filing a Wellness Report. The Ministry _______ (values) emotional clarity because clear language _______ (reduces) confusion. Associates **should** _______ (suggest) wellness activities to colleagues who seem tired. Your _______ (effort) to _______ (improve) emotional communication _______ (supports) the entire department."
+> "All associates **must** _______ (express) their feelings using approved vocabulary. You **should** _______ (observe) your emotional state each morning. If you feel _______ (concerned), the Ministry _______ (recommends) filing a Wellness Report. The Ministry _______ (values) emotional clarity because clear language _______ (reduces) confusion. Associates **should** _______ (suggest) wellness activities to colleagues who seem tired. Your _______ (effort) to _______ (improve) emotional communication _______ (supports) the entire department."
 
-**Word bank (13 words, 10 correct + 3 distractors):** express, observe, concerned, respond, values, reduces, suggest, effort, improve, supports, require, maintain, forward
+**Word bank (13 words, 10 correct + 3 distractors):** express, observe, concerned, recommends, values, reduces, suggest, effort, improve, supports, require, maintain, forward
 
 **PEARL bark:** "Wellness Language Guidelines acknowledged. Emotional vocabulary calibrated."
 
@@ -203,14 +203,14 @@ A directive memo about approved emotional expression with 10 blanks:
   4. "Why might 'I must report that I have no concerns' be an unusual answer?" → (open-ended — encourages critical thinking about forced compliance)
 
 **Document B: "Wellness Memo — Weekly Update" (error_correction type)**
-- 6-sentence wellness memo with **6 grammar errors** (modals + because-clauses + emotion adjectives):
+- 5-sentence wellness memo with **5 grammar errors** (modals + because-clauses + emotion adjectives + SVA):
   1. "Associates ~~must to~~ → **must** complete wellness forms by Friday." (modal form)
   2. "You ~~should reports~~ → **should report** any emotional concerns." (modal + base verb)
   3. "The team feels ~~happily~~ → **happy** ~~because of~~ → **because** the new schedule ~~reduce~~ → **reduces** overtime." (adjective vs adverb + because-clause + SVA)
-  4. "We ~~must~~ → **should** suggest improvements ~~because~~ to support each other." (must vs should appropriateness)
-  5. "Your emotional ~~improve~~ → **improvement** is ~~importance~~ → **important** to the Ministry." (word form)
-  6. "Associates ~~can~~ → **must** observe wellness guidelines at all times." (modal strength — can vs must)
+  4. "Your emotional ~~improve~~ → **improvement** is ~~importance~~ → **important** to the Ministry." (word form)
+  5. "Associates ~~can~~ → **must** observe wellness guidelines at all times." (modal strength — can vs must)
 - Lane 1 hints: "Check the modal verb. Should it use 'to' after it?" / "Is this an adjective or adverb?"
+- *Note: Original error #4 (must→should appropriateness) removed — subjective distinction too ambiguous for A2 students. Error #3 already contains an SVA component (reduce→reduces).*
 
 #### Task 4: Vocab Clearance (Clearance Terminal)
 - 10 items mixing `definition`, `toeic_p5`, and `context` types
@@ -221,6 +221,7 @@ A directive memo about approved emotional expression with 10 blanks:
   - (context) "The manager asked the team to _______ their feelings about the schedule change." → express
   - (definition) "To watch carefully without being noticed" → observe
   - (toeic_p5) "The wellness program has helped to _______ stress among workers." → reduce
+  - (context) "The supervisor _______ that all associates attend the wellness session." → recommend
 
 **PEARL bark:** "Wellness vocabulary clearance confirmed. Emotional language authorization updated."
 
@@ -285,7 +286,9 @@ Students face an audit of their entire first-arc performance. The tasks mix all 
 
 *(Uses W6 target words: achieved, summarize, adjusted, conducted, evaluated, prepared, produced, classification, transfer. Grammar: mixed — present simple, past simple, modals. Escalation: most self-aware post yet — citizen knows they're self-censoring, actively chooses compliance, but the cracks are showing.)*
 
-### Task Sequence (5 tasks)
+### Task Sequence (4 tasks)
+
+*Reduced from 5 to 4 tasks — original Tasks 4+5 (two consecutive writing tasks) merged into a single integrated writing task per pedagogical audit. See Task 4 notes.*
 
 #### Task 1: Word Match (Language Lab)
 - Match 10 target words to definitions
@@ -315,7 +318,7 @@ Students face an audit of their entire first-arc performance. The tasks mix all 
   2. "They ~~verify~~ → **verified** all documents and ~~submit~~ → **submitted** clean reports." (W4 past tense)
   3. "The associate ~~notice~~ → **noticed** a contradiction between Memo 14 and Memo 14-R." (W2 past tense)
   4. "They ~~must to~~ → **must** report all findings to their supervisor." (W3/W5 modal form)
-  5. "Associates ~~should follows~~ → **should follow** standard procedures at all times." (W3 modal + base verb)
+  5. "Each associate ~~follow~~ → **follows** standard procedures at all times." (SVA — singular subject requires -s; L1 Mandarin interference target)
   6. "The team feels ~~satisfyingly~~ → **satisfied** because the audit ~~produce~~ → **produced** good results." (W5 adjective + because-clause + W6 past tense)
   7. "~~Final~~ → **Finally**, the supervisor ~~evaluate~~ → **evaluated** the complete compliance record." (W4 sequencing + W6 past tense)
   8. "Performance ~~is~~ → **was** ~~establish~~ → **established** as satisfactory." (passive past tense)
@@ -338,33 +341,23 @@ Students face an audit of their entire first-arc performance. The tasks mix all 
   2. "What was flagged?" → "A reclassified fragment in Week 4 notes."
   3. "What will happen next?" → "It will be addressed in the next review period."
 
-#### Task 4: Writing — Case File Synthesis (Case File Desk)
+#### Task 4: Act I Compliance Report (Filing Desk)
 **Type:** `shift_report` (reusing the writing evaluation system)
 
-**Prompt:** "Write your Act I summary using 4 to 6 sentences. What have you learned during Shifts 1-5? What did you achieve? What should you improve? Use vocabulary from at least 3 different weeks. Include at least one sentence with a sequencing word (first, then, finally) and one sentence with 'because.'"
+*Merged from original Tasks 4+5 — audit found two consecutive writing tasks overloaded the ~15 min digital window, especially for Lane 1 students after a 3-document review.*
+
+**Prompt:** "Write your Act I Compliance Report using 5 to 8 sentences. Part 1: What have you learned during Shifts 1-5? What did you achieve? What should you improve? Part 2: What have you produced? What do you value about your work? Use vocabulary from at least 3 different weeks. Include at least one sequencing word (first, then, finally) and one sentence with 'because.'"
 
 **Lane configurations:**
-- **Lane 1 (Guided):** 30 min words, sentence starters ("First, I learned to...", "I achieved... because...", "I should improve... because...", "Finally, I..."), Chinese word bank, 4 PEARL hints, 4 guided questions (W1: report/submit, W2: notice/compare, W3: process/review, W4-5: examine/observe)
-- **Lane 2 (Standard):** 45 min words, visible word list (all 60 words from W1-W6)
-- **Lane 3 (Independent):** 65 min words, bonus question: "M.K. asked you: 'What's the pattern?' In 2-3 additional sentences, describe any pattern you've noticed across your first five shifts. What keeps changing? What stays the same?"
+- **Lane 1 (Guided):** 35 min words, sentence starters ("First, I learned to...", "I achieved... because...", "I should improve... because...", "I value... because...", "Finally, I..."), Chinese word bank, 4 PEARL hints, 4 guided questions (W1: report/submit, W2: notice/compare, W3: process/review, W4-5: examine/observe)
+- **Lane 2 (Standard):** 50 min words, visible word list (all 60 words from W1-W6)
+- **Lane 3 (Independent):** 70 min words, bonus question A: "M.K. asked you: 'What's the pattern?' In 2-3 additional sentences, describe any pattern you've noticed across your first five shifts." Bonus question B: "A file in your queue just flashed one word: RUN. Write one sentence about what you think it means."
 
 **Character messages:**
 - **M.K.** appears at task start: "Six shifts. Six weeks of processing, correcting, filing. Tell me — what's the pattern?"
 - **Betty** appears mid-task: "You've done such good work, sugar. The Party is proud of associates who achieve high marks."
 - **Ivan** appears at task complete: "I passed. Did you pass? I think I passed. But they didn't say 'good.' They said 'adequate.' Is adequate enough?"
-
-#### Task 5: Clock-Out — Final Shift Report (Filing Desk)
-**Type:** `shift_report`
-
-**Prompt:** "This is your final Act I report. Write 3 to 5 sentences summarizing your experience as a Clarity Associate. What have you produced? What have you evaluated? What do you value about your work? Use as many target words from this week as possible."
-
-**Lane configurations:**
-- **Lane 1 (Guided):** 25 min words, sentence starters ("I have achieved...", "I must summarize...", "I value... because..."), Chinese word bank, 3 PEARL hints
-- **Lane 2 (Standard):** 40 min words, visible word list
-- **Lane 3 (Independent):** 55 min words, bonus question: "A file in your queue just flashed one word: RUN. Write one sentence about what you think it means."
-
-**Character messages:**
-- **Director-7** appears at task complete: "Adequate. The Party notes your progress. Your classification has been updated. Report for your next shift when directed."
+- **Director-7** appears at task complete (after Ivan): "Adequate. The Party notes your progress. Your classification has been updated. Report for your next shift when directed."
 - **M.K.** final message (post-completion, before shift closing): "You answered my question about the pattern. Now answer this one for yourself: who benefits?" (null reply)
 
 ### Narrative Hook
@@ -508,7 +501,7 @@ Students face an audit of their entire first-arc performance. The tasks mix all 
 | improve | verb | to make something better | "We must improve our emotional clarity." | 改善 | Performance | No |
 | observe | verb | to watch carefully | "Observe your emotional state each morning." | 觀察 | General Business | No |
 | reduce | verb | to make something smaller or less | "Clear language reduces confusion." | 減少 | General Business | No |
-| respond | verb | to answer or react | "Respond to wellness checks promptly." | 回應 | Communication | No |
+| recommend | verb | to suggest something as good or suitable | "I recommend regular wellness check-ins." | 推薦 | Communication | No |
 | suggest | verb | to offer an idea for consideration | "I suggest we should take regular breaks." | 建議 | Communication | No |
 | support | verb/noun | to help or encourage | "Support your colleagues with clear language." | 支持 | Interpersonal | No |
 | value | verb/noun | to think something is important | "The Ministry values emotional clarity." | 重視 | General Business | No |
@@ -584,9 +577,55 @@ Students face an audit of their entire first-arc performance. The tasks mix all 
 
 ### To Verify
 - [ ] All target words are TOEIC-aligned (checked against TOEIC word list)
+- [x] TOEIC alignment verified 2026-04-08: All 30 words confirmed on TOEIC 600/3000 lists
+- [x] "respond" duplication fixed: replaced with "recommend" in Week 5
 - [ ] Grammar targets match storyPlans.ts
 - [ ] Character voices match Script_Writing_Style_Guide.md
 - [ ] Citizen-4488 posts use that week's target vocabulary
 - [ ] Difficulty tiers follow Lane 1/2/3 pattern from weeks 1-3
-- [ ] Task count is 5 per week (aligned with weeks 2-3 pattern)
+- [x] Task count: W4=5, W5=5, W6=4 (two writing tasks merged per audit)
 - [ ] previousWords accumulates correctly
+
+---
+
+## Pedagogical Notes (from 2026-04-08 Audit)
+
+### WritingEvaluator — Article Tolerance
+PEARL's writing evaluation (AI grading) must NOT penalize article errors (a/the/zero article) in Weeks 1-6. Articles are not taught until Act II. Mandarin has no article system, so student writing will be saturated with article errors — penalizing untaught grammar undermines the pedagogical contract. Add to PEARL evaluation prompt: "Do not flag article (a/the) usage errors. Focus evaluation on: target vocabulary usage, grammar targets taught this week and previous weeks, sentence variety, and task completion."
+
+### Cloze Fill — Base-Form Blank Consideration
+Current cloze word banks show pre-inflected forms (e.g., "examined," "collected"). Consider changing 2-3 blanks per cloze passage to show the base form in the word bank, requiring students to add inflection themselves. This targets the #1 Mandarin L1 interference pattern (tense marking omission) more directly than recognition-only blanks. Implement during WeekConfig authoring — not a plan change, a build-time decision.
+
+### SVA Error Frequency
+Subject-verb agreement errors are the most persistent L1 Mandarin interference issue across all CEFR levels. This plan now includes SVA errors in:
+- Week 4 Document B, error #6 (select → selects)
+- Week 5 Document B, error #3 (reduce → reduces, within the because-clause)
+- Week 6 Document A, error #5 (follow → follows)
+Continue including 1+ SVA error per week through Act II and Act III.
+
+### Stress-Shift Pronunciation Words
+Five target words across W4-6 have noun/verb stress shifts: **present** (W4), **record** (W4), **produce** (W6), **conduct** (W6), **transfer** (W6). Mandarin speakers frequently confuse these. Consider:
+- A PEARL grammar tip in Harmony covering stress shifts (Week 4 or 6)
+- Teacher guide note for oral practice during non-digital class time
+- Not a WeekConfig change — a content/teacher support item
+
+### Week 6 → Week 7 Grammar Scaffold
+The jump from mixed review (A2-B1) to relative clauses (B1) needs a bridge. When designing Week 7's config:
+- Start with noun phrases students already know, connecting to Week 5 adjective work
+- Use the narrative naturally: "The word **that** was hidden..." / "The citizen **who** wrote the note..."
+- Consider a receptive-only relative clause exposure in Week 6 (one comprehension question about a sentence containing a relative clause) to preview the structure
+
+### Passive Voice and Future Simple
+Both are Grade 10 targets in Taiwan's 108 Curriculum but absent from Weeks 1-6. Plan to introduce:
+- **Passive voice** in Act II (Weeks 7-12) — fits naturally with "was transferred," "has been removed" control language
+- **Future simple** in Act II — fits planning/prediction contexts ("will be reviewed," "will report")
+
+### L1 Mandarin Interference — Expected Error Patterns
+During WritingEvaluator scoring and error correction task design, expect and design for:
+1. **Tense marking omission**: "Yesterday I *collect* the files" (highest frequency)
+2. **Modal + to**: "Must *to* complete" (already targeted in W3/W5)
+3. **SVA omission**: "She *observe* the changes" (now targeted in W4/W5/W6)
+4. **Adjective/adverb confusion**: "feels *happily*" (targeted in W5)
+5. **Article errors**: "I went to *Ø* office" (NOT targeted in W1-6 — tolerate, don't penalize)
+6. **Plural omission**: "Three *document* were filed" (not targeted — tolerate in W1-6)
+7. **Preposition confusion**: "arrived *in* the office" (not targeted — tolerate in W1-6)

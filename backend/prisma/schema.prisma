@@ -88,6 +88,7 @@ model Pair {
   consecutiveQualifyingShifts  Int      @default(0)
   laneLocked                   Boolean  @default(false)
   harmonyUnlockedAt            DateTime?
+  lastHarmonyVisit             DateTime?
 
   missionScores          MissionScore[]
   recordings             Recording[]

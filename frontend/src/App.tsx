@@ -15,6 +15,7 @@ import { useMessagingStore } from './stores/messagingStore';
 import type { CharacterMessage, ThreadEntry } from './types/shiftQueue';
 import WelcomeVideoModal from './components/welcome/WelcomeVideoModal';
 import { useSeasonStore } from './stores/seasonStore';
+import { useHarmonyStore } from './stores/harmonyStore';
 
 export default function App() {
   const { user, loading, refresh } = useStudentStore();
@@ -134,6 +135,10 @@ export default function App() {
       // Load all existing messages on login so inbox is populated immediately
       void useMessagingStore.getState().loadMessages();
 
+      const onHarmonyNewContent = () => {
+        useHarmonyStore.getState().setHasNewContent(true);
+      };
+
       sock.on('connect_error', onError);
       sock.on('session:paused', onPaused);
       sock.on('session:resumed', onResumed);
@@ -142,6 +147,7 @@ export default function App() {
       sock.on('session:gate-updated', onGateUpdated);
       sock.on('session:shift-changed', onShiftChanged);
       sock.on('session:clarity-message', onClarityMessage);
+      sock.on('harmony:new-content', onHarmonyNewContent);
 
       return () => {
         sock.off('connect_error', onError);
@@ -152,6 +158,7 @@ export default function App() {
         sock.off('session:gate-updated', onGateUpdated);
         sock.off('session:shift-changed', onShiftChanged);
         sock.off('session:clarity-message', onClarityMessage);
+        sock.off('harmony:new-content', onHarmonyNewContent);
       };
     }
   }, [user?.id, user?.role, user?.designation, user?.displayName, navigate]);

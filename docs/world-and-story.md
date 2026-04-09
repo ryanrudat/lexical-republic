@@ -137,10 +137,20 @@ Do not finalize story questions until episode scripts are approved. Keep each lo
 Full shift plan with narrative, vocabulary, task sequences, Canva scripts, dictionary words, and Harmony censure items defined in `Dplan/Weeks_04_06_Shift_Plan.md`. Summary:
 
 - **Week 4: Evidence Board** — Sequencing words + simple past. Students build timelines from evidence fragments; one fragment gets reclassified mid-task. 10 TOEIC words (arrange, collect, examine, indicate, locate, organize, present, record, select, verify).
-- **Week 5: Wellness Check** — Must/should + emotion adjectives + because-clauses. Wellness Language Guidelines require approved emotional vocabulary; student self-assessment gets forwarded to supervisor. 10 TOEIC words (concern, effort, express, improve, observe, reduce, respond, suggest, support, value).
-- **Week 6: Act I Clock-Out** — Mixed review of all W1-5 grammar. Full compliance audit, M.K. asks "What's the pattern?", Director-7 reviews, file flashes "RUN." Clearance elevated to Steward. 10 TOEIC words (achieve, adjust, conduct, establish, evaluate, perform, prepare, produce, summarize, transfer).
+- **Week 5: Wellness Check** — Must/should + emotion adjectives + because-clauses. Wellness Language Guidelines require approved emotional vocabulary; student self-assessment gets forwarded to supervisor. 10 TOEIC words (concern, effort, express, improve, observe, reduce, recommend, suggest, support, value).
+- **Week 6: Act I Clock-Out** — Mixed review of all W1-5 grammar. Full compliance audit, M.K. asks "What's the pattern?", Director-7 reviews, file flashes "RUN." Clearance elevated to Steward. 4 tasks (writing tasks merged per audit). 10 TOEIC words (achieve, adjust, conduct, establish, evaluate, perform, prepare, produce, summarize, transfer).
 
 Citizen-4488 arc across W4-6: self-censorship deepens from constructing compliant narratives (W4) through forced positive framing (W5) to active awareness of self-censorship (W6).
+
+### Pedagogical audit notes (2026-04-08)
+- All 60 TOEIC target words (W1-6) verified against TOEIC 600/3000 word lists — all confirmed
+- "respond" was duplicated in W3 and W5 — replaced with "recommend" in W5
+- Week 6 reduced from 5 to 4 tasks (two writing tasks merged)
+- SVA errors now included in W4/W5/W6 error correction (L1 Mandarin interference)
+- WritingEvaluator must not penalize article errors in W1-6 (not yet taught)
+- Grammar progression W1-6 validated against Taiwan 108 Curriculum and CEFR A2-B1
+- Passive voice and future simple absent from W1-6 — planned for Act II
+- Full pedagogical notes in `Dplan/Weeks_04_06_Shift_Plan.md` § Pedagogical Notes
 
 ### Current content reality check
 - Much weekly narrative content is still seeded placeholder copy from `backend/prisma/seed.ts`

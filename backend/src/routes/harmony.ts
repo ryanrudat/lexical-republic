@@ -151,6 +151,192 @@ async function getReviewItemMasteries(
 // All harmony routes require authentication
 router.use(authenticate);
 
+// GET /api/harmony/has-new — lightweight check for new content since last visit
+router.get('/has-new', async (req, res) => {
+  try {
+    const viewer = await getViewerContext(req);
+    if (!viewer?.pairId || !viewer.harmonyOpen) {
+      res.json({ hasNew: false });
+      return;
+    }
+
+    const pair = await prisma.pair.findUnique({
+      where: { id: viewer.pairId },
+      select: { lastHarmonyVisit: true },
+    });
+
+    if (!pair?.lastHarmonyVisit) {
+      // Never visited — check if any approved posts exist
+      const count = await prisma.harmonyPost.count({
+        where: {
+          ...getClassFilter(viewer.accessibleClassIds),
+          status: 'approved',
+          parentId: null,
+        },
+      });
+      res.json({ hasNew: count > 0 });
+      return;
+    }
+
+    const count = await prisma.harmonyPost.count({
+      where: {
+        ...getClassFilter(viewer.accessibleClassIds),
+        status: 'approved',
+        parentId: null,
+        createdAt: { gt: pair.lastHarmonyVisit },
+      },
+    });
+    res.json({ hasNew: count > 0 });
+  } catch (err) {
+    console.error('Failed to check harmony new content:', err);
+    res.json({ hasNew: false });
+  }
+});
+
+// GET /api/harmony/archives — vocabulary by week, 4488 timeline, bulletin archive
+router.get('/archives', async (req, res) => {
+  try {
+    const viewer = await getViewerContext(req);
+    if (!viewer?.pairId) {
+      res.status(403).json({ error: 'Pair auth required' });
+      return;
+    }
+    if (!viewer.harmonyOpen) {
+      res.json({ locked: true, vocabulary: [], timeline: [], bulletins: [] });
+      return;
+    }
+
+    const section = (req.query.section as string) || 'all';
+    const routeWeeks = getRouteWeeks(viewer.narrativeRoute);
+    const completedWeeks = routeWeeks.filter(w => w <= viewer.currentWeekNumber);
+
+    const result: {
+      locked: false;
+      vocabulary?: Array<{
+        weekNumber: number;
+        words: Array<{
+          word: string;
+          definition: string;
+          exampleSentence: string;
+          mastery: number;
+          encounters: number;
+        }>;
+      }>;
+      timeline?: Array<{
+        id: string;
+        weekNumber: number | null;
+        content: string;
+        authorLabel: string;
+        createdAt: string;
+        studentAction: string | null;
+      }>;
+      bulletins?: Array<{
+        id: string;
+        weekNumber: number | null;
+        content: string;
+        authorLabel: string;
+        createdAt: string;
+        bulletinData: unknown;
+      }>;
+    } = { locked: false as const };
+
+    // Vocabulary by week
+    if (section === 'all' || section === 'vocabulary') {
+      const dictWords = await prisma.dictionaryWord.findMany({
+        where: { weekIntroduced: { in: completedWeeks } },
+        orderBy: [{ weekIntroduced: 'asc' }, { word: 'asc' }],
+        select: { id: true, word: true, definition: true, exampleSentence: true, weekIntroduced: true },
+      });
+
+      const progressRecords = await prisma.pairDictionaryProgress.findMany({
+        where: { pairId: viewer.pairId, wordId: { in: dictWords.map(d => d.id) } },
+        select: { wordId: true, mastery: true, encounters: true },
+      });
+      const progressMap = new Map(progressRecords.map(p => [p.wordId, p]));
+
+      const weekMap = new Map<number, typeof result.vocabulary extends (infer U)[] | undefined ? U extends Array<infer V> ? V : never : never>();
+      for (const w of completedWeeks) {
+        const weekWords = dictWords
+          .filter(d => d.weekIntroduced === w)
+          .map(d => {
+            const prog = progressMap.get(d.id);
+            return {
+              word: d.word,
+              definition: d.definition,
+              exampleSentence: d.exampleSentence,
+              mastery: prog?.mastery ?? 0,
+              encounters: prog?.encounters ?? 0,
+            };
+          });
+        if (weekWords.length > 0) {
+          weekMap.set(w, { weekNumber: w, words: weekWords } as never);
+        }
+      }
+      result.vocabulary = completedWeeks
+        .filter(w => weekMap.has(w))
+        .map(w => weekMap.get(w)!);
+    }
+
+    // Citizen-4488 timeline
+    if (section === 'all' || section === 'timeline') {
+      const posts4488 = await prisma.harmonyPost.findMany({
+        where: {
+          ...getClassFilter(viewer.accessibleClassIds),
+          status: { in: ['approved', 'flagged'] },
+          authorLabel: { startsWith: 'Citizen-4488' },
+          parentId: null,
+          ...getRouteWeekFilter(viewer),
+        },
+        orderBy: [{ weekNumber: 'asc' }, { createdAt: 'asc' }],
+        select: { id: true, weekNumber: true, content: true, authorLabel: true, createdAt: true },
+      });
+
+      const interactions = await prisma.citizen4488Interaction.findMany({
+        where: { pairId: viewer.pairId },
+        select: { weekNumber: true, action: true },
+      });
+      const actionMap = new Map(interactions.map(i => [i.weekNumber, i.action]));
+
+      result.timeline = posts4488.map(p => ({
+        id: p.id,
+        weekNumber: p.weekNumber,
+        content: p.content,
+        authorLabel: p.authorLabel ?? 'Citizen-4488',
+        createdAt: p.createdAt.toISOString(),
+        studentAction: p.weekNumber ? (actionMap.get(p.weekNumber) ?? null) : null,
+      }));
+    }
+
+    // Bulletin archive
+    if (section === 'all' || section === 'bulletins') {
+      const bulletins = await prisma.harmonyPost.findMany({
+        where: {
+          ...getClassFilter(viewer.accessibleClassIds),
+          postType: 'bulletin',
+          status: 'approved',
+          parentId: null,
+          ...getRouteWeekFilter(viewer),
+        },
+        orderBy: [{ weekNumber: 'desc' }, { createdAt: 'desc' }],
+        select: { id: true, weekNumber: true, content: true, authorLabel: true, createdAt: true, bulletinData: true },
+      });
+      result.bulletins = bulletins.map(b => ({
+        id: b.id,
+        weekNumber: b.weekNumber,
+        content: b.content,
+        authorLabel: b.authorLabel ?? 'Ministry of Clarity',
+        createdAt: b.createdAt.toISOString(),
+        bulletinData: b.bulletinData,
+      }));
+    }
+
+    res.json(result);
+  } catch (err) {
+    console.error('Failed to fetch harmony archives:', err);
+    res.status(500).json({ error: 'Failed to fetch archives' });
+  }
+});
+
 // GET /api/harmony/posts — list approved feed posts (+ own pending), scoped by class/week
 router.get('/posts', async (req, res) => {
   try {
@@ -205,9 +391,27 @@ router.get('/posts', async (req, res) => {
       await ensureHarmonyPostsExist(viewer.currentWeekNumber, viewer.classId, viewer.narrativeRoute);
     }
 
+    // Update lastHarmonyVisit for students
+    if (viewer.pairId) {
+      void prisma.pair.update({
+        where: { id: viewer.pairId },
+        data: { lastHarmonyVisit: new Date() },
+      }).catch(() => {});
+    }
+
     const ownFilter = viewer.pairId
       ? { pairId: viewer.pairId }
       : { userId: viewer.userId ?? '' };
+
+    // Fetch lastHarmonyVisit for NEW badge calculation
+    let lastVisit: Date | null = null;
+    if (viewer.pairId) {
+      const pair = await prisma.pair.findUnique({
+        where: { id: viewer.pairId },
+        select: { lastHarmonyVisit: true },
+      });
+      lastVisit = pair?.lastHarmonyVisit ?? null;
+    }
 
     const posts = await prisma.harmonyPost.findMany({
       where: {
@@ -259,6 +463,7 @@ router.get('/posts', async (req, res) => {
         weekNumber: post.weekNumber,
         postType: post.postType,
         bulletinData: post.bulletinData ?? null,
+        isNew: lastVisit ? post.createdAt > lastVisit : false,
       })),
       ...reviewContext,
     });
