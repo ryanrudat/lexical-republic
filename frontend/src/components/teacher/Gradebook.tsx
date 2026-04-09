@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { fetchGradebook, updateScore, deleteScore, resetWeekProgress } from '../../api/teacher';
-import type { GradebookData, GradebookStudent, GradebookWeek, GradebookMissionScore } from '../../api/teacher';
+import type { GradebookData, GradebookStudent, GradebookWeek, GradebookMissionScore, GradebookShiftResult } from '../../api/teacher';
 import { STEP_ORDER } from '../../types/shifts';
 
 // Queue task labels for display
@@ -21,6 +21,7 @@ interface CellStatus {
   state: 'gray' | 'blue' | 'green' | 'amber';
   avgScore: number | null;
   scores: GradebookMissionScore[];
+  shiftResult: GradebookShiftResult | null;
 }
 
 function computeCell(
@@ -30,9 +31,12 @@ function computeCell(
   const weekScores = student.missionScores.filter(
     (ms) => ms.mission.weekId === week.id
   );
+  const shiftResult = student.shiftResults?.find(
+    (sr) => sr.weekNumber === week.weekNumber
+  ) ?? null;
 
   if (weekScores.length === 0) {
-    return { state: 'gray', avgScore: null, scores: [] };
+    return { state: 'gray', avgScore: null, scores: [], shiftResult };
   }
 
   // Check completion: clock_out for phase weeks, last task for queue weeks
@@ -40,22 +44,29 @@ function computeCell(
     (ms) =>
       (ms.details as Record<string, unknown>)?.status === 'complete' &&
       (ms.mission.missionType === 'clock_out' || ms.mission.missionType === 'shift_report')
-  );
+  ) || shiftResult?.completedAt != null;
 
-  // Calculate average across ALL tasks in the week (incomplete = 0)
-  const totalTasks = week.taskTypes?.length ?? STEP_ORDER.length;
-  const totalScore = weekScores.reduce((sum, ms) => sum + ms.score, 0);
-  const avg = totalTasks > 0 ? totalScore / totalTasks : null;
+  // Use ShiftResult summary average when available (matches what student sees),
+  // otherwise fall back to MissionScore average
+  let avg: number | null;
+  if (shiftResult && isComplete) {
+    // Average vocab + grammar scores — same metrics student sees on ShiftClosing
+    avg = (shiftResult.vocabScore + shiftResult.grammarAccuracy) / 2;
+  } else {
+    const totalTasks = week.taskTypes?.length ?? STEP_ORDER.length;
+    const totalScore = weekScores.reduce((sum, ms) => sum + ms.score, 0);
+    avg = totalTasks > 0 ? totalScore / totalTasks : null;
+  }
 
   if (!isComplete) {
-    return { state: 'blue', avgScore: avg, scores: weekScores };
+    return { state: 'blue', avgScore: avg, scores: weekScores, shiftResult };
   }
 
   if (avg !== null && avg >= 0.7) {
-    return { state: 'green', avgScore: avg, scores: weekScores };
+    return { state: 'green', avgScore: avg, scores: weekScores, shiftResult };
   }
 
-  return { state: 'amber', avgScore: avg, scores: weekScores };
+  return { state: 'amber', avgScore: avg, scores: weekScores, shiftResult };
 }
 
 const CELL_COLORS: Record<CellStatus['state'], string> = {
@@ -290,6 +301,53 @@ function DrillDown({
           </button>
         </div>
       </div>
+
+      {/* Shift Summary — matches what the student sees on ShiftClosing */}
+      {cell.shiftResult && (
+        <div className="mb-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
+          <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider mb-2">
+            Shift Summary (Student View)
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="text-center">
+              <span className="text-sm font-semibold text-slate-700">
+                {cell.shiftResult.documentsProcessed}/{cell.shiftResult.documentsTotal}
+              </span>
+              <p className="text-[9px] text-slate-400">Docs Processed</p>
+            </div>
+            <div className="text-center">
+              <span className="text-sm font-semibold text-slate-700">
+                {cell.shiftResult.errorsFound}/{cell.shiftResult.errorsTotal}
+              </span>
+              <p className="text-[9px] text-slate-400">Errors Found</p>
+            </div>
+            <div className="text-center">
+              <span className="text-sm font-semibold text-slate-700">
+                {cell.shiftResult.targetWordsUsed}
+              </span>
+              <p className="text-[9px] text-slate-400">Words Used</p>
+            </div>
+            <div className="text-center">
+              <span className="text-sm font-semibold text-indigo-600">
+                {Math.round(cell.shiftResult.vocabScore * 100)}%
+              </span>
+              <p className="text-[9px] text-slate-400">Vocab Score</p>
+            </div>
+            <div className="text-center">
+              <span className="text-sm font-semibold text-indigo-600">
+                {Math.round(cell.shiftResult.grammarAccuracy * 100)}%
+              </span>
+              <p className="text-[9px] text-slate-400">Grammar Accuracy</p>
+            </div>
+            <div className="text-center">
+              <span className={`text-sm font-semibold ${cell.shiftResult.concernScoreDelta > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                {cell.shiftResult.concernScoreDelta.toFixed(1)}
+              </span>
+              <p className="text-[9px] text-slate-400">Concern Score</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-2">
         {taskList.map((task) => {

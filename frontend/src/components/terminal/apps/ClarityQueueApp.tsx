@@ -33,7 +33,9 @@ const STEP_COMPONENTS: Record<StepId, React.LazyExoticComponent<React.ComponentT
   clock_out: ClockOutStep,
 };
 
-function getFirstUnlockedWeekNumber(weeks: Array<{ weekNumber: number; clockedOut: boolean; isUnlocked?: boolean }>): number | null {
+interface WeekSummary { weekNumber: number; clockedOut: boolean; isUnlocked?: boolean }
+
+function getFirstUnlockedWeekNumber(weeks: WeekSummary[]): number | null {
   if (weeks.length === 0) return null;
   const sorted = [...weeks].sort((a, b) => a.weekNumber - b.weekNumber);
 
@@ -56,6 +58,17 @@ function getFirstUnlockedWeekNumber(weeks: Array<{ weekNumber: number; clockedOu
   return unlocked;
 }
 
+/** Check if the student has completed their current shift but the next one isn't unlocked. */
+function isAwaitingNextShift(weeks: WeekSummary[]): { waiting: boolean; completedWeek: number } {
+  if (weeks.length === 0) return { waiting: false, completedWeek: 0 };
+  const target = getFirstUnlockedWeekNumber(weeks);
+  if (!target) return { waiting: false, completedWeek: 0 };
+  const week = weeks.find(w => w.weekNumber === target);
+  if (!week?.clockedOut) return { waiting: false, completedWeek: 0 };
+  // Current target week is already complete — student is between shifts
+  return { waiting: true, completedWeek: target };
+}
+
 export default function ClarityQueueApp() {
   const { weekNumber, stepId } = useParams<{ weekNumber?: string; stepId?: string }>();
   const navigate = useNavigate();
@@ -76,12 +89,16 @@ export default function ClarityQueueApp() {
     if (weeks.length === 0) loadSeason();
   }, [weeks.length, loadSeason]);
 
+  const awaitingStatus = weeks.length > 0 ? isAwaitingNextShift(weeks) : null;
+
   useEffect(() => {
     if (weekNumber || weeks.length === 0) return;
+    // If student is awaiting next shift, don't navigate into the completed one
+    if (awaitingStatus?.waiting) return;
     const unlockedWeek = getFirstUnlockedWeekNumber(weeks);
     if (!unlockedWeek) return;
     navigate(`/shift/${unlockedWeek}`, { replace: true });
-  }, [weekNumber, weeks, navigate]);
+  }, [weekNumber, weeks, navigate, awaitingStatus?.waiting]);
 
   const currentWeekIdRef = useRef<string | null>(null);
 
@@ -168,6 +185,30 @@ export default function ClarityQueueApp() {
       }
     }
   }, [weekNumber, currentStepId, navigate]);
+
+  // If student completed current shift but next isn't unlocked, show waiting state
+  if (!weekNumber && awaitingStatus?.waiting) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center py-12 gap-6 bg-[#F5F1EB]">
+        <div className="w-16 h-16 rounded-full bg-emerald-100 border-2 border-emerald-300 flex items-center justify-center">
+          <svg className="w-8 h-8 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+          </svg>
+        </div>
+        <div className="text-center max-w-xs">
+          <p className="font-special-elite text-lg text-[#2C3340] tracking-wide mb-2">
+            Shift {awaitingStatus.completedWeek} Complete
+          </p>
+          <p className="text-[12px] text-[#4B5563] leading-relaxed">
+            Your shift report has been filed. Awaiting supervisor authorization for your next assignment.
+          </p>
+          <p className="text-[10px] text-[#8B8578] mt-3 tracking-wider uppercase">
+            Stand by, Associate.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // If no weekNumber in URL, show a prompt to select from duty roster
   if (!weekNumber) {

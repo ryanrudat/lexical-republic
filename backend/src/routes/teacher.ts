@@ -607,11 +607,39 @@ router.get('/gradebook', async (req: Request, res: Response) => {
       orderBy: { designation: 'asc' },
     });
 
+    // Fetch ShiftResults for all pairs in one query
+    const pairIds = pairs.map(p => p.id);
+    const shiftResults = pairIds.length > 0
+      ? await prisma.shiftResult.findMany({
+          where: { pairId: { in: pairIds } },
+          select: {
+            pairId: true,
+            weekNumber: true,
+            documentsProcessed: true,
+            documentsTotal: true,
+            errorsFound: true,
+            errorsTotal: true,
+            vocabScore: true,
+            grammarAccuracy: true,
+            targetWordsUsed: true,
+            concernScoreDelta: true,
+            completedAt: true,
+          },
+        })
+      : [];
+    const shiftResultsByPair = new Map<string, typeof shiftResults>();
+    for (const sr of shiftResults) {
+      const existing = shiftResultsByPair.get(sr.pairId) ?? [];
+      existing.push(sr);
+      shiftResultsByPair.set(sr.pairId, existing);
+    }
+
     const pairStudents = pairs.map((p) => ({
       id: p.id,
       designation: p.designation,
       displayName: `${p.studentAName}${p.studentBName ? ` & ${p.studentBName}` : ''}`,
       missionScores: p.missionScores,
+      shiftResults: shiftResultsByPair.get(p.id) ?? [],
       isPair: true,
     }));
 

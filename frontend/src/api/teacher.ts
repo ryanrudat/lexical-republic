@@ -142,11 +142,25 @@ export interface GradebookMissionScore {
   };
 }
 
+export interface GradebookShiftResult {
+  weekNumber: number;
+  documentsProcessed: number;
+  documentsTotal: number;
+  errorsFound: number;
+  errorsTotal: number;
+  vocabScore: number;
+  grammarAccuracy: number;
+  targetWordsUsed: number;
+  concernScoreDelta: number;
+  completedAt: string | null;
+}
+
 export interface GradebookStudent {
   id: string;
   designation: string | null;
   displayName: string;
   missionScores: GradebookMissionScore[];
+  shiftResults?: GradebookShiftResult[];
 }
 
 export interface GradebookWeek {
