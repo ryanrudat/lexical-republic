@@ -264,7 +264,7 @@ export const WEEK_1_CONFIG: WeekConfig = {
             from: "Scheduling Division",
             to: "Department of Clarity \u2014 All Associates",
             re: "Weekly Schedule Update",
-            body: "Each associate arrive at their assigned station by 08:00. Morning briefing take place in Room B-7. Associates follows the daily checklist without exception. All report is submitted before 17:00. The supervisor confirm each document before filing. Associates does not leave until the shift report is approve. New associates is assigned a mentor for the first week.",
+            body: "Each associate arrive at their assigned station by 08:00. Morning briefing take place in Room B-7. Associates follows the daily checklist without exception. All report are submitted before 17:00. The supervisor confirm each document before filing. Associates does not leave until the shift report is approve. New associates is assigned a mentor for the first week.",
             errors: [
               {
                 sentenceIndex: 0,
