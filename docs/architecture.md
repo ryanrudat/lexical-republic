@@ -5,7 +5,7 @@
 - Prisma + PostgreSQL
 - Auth via JWT in HTTP-only cookies + Bearer token fallback (Safari ITP)
 - Major route groups: `/api/auth`, `/api/shifts`, `/api/recordings`, `/api/pearl`, `/api/harmony`, `/api/teacher`, `/api/vocabulary`, `/api/ai`, `/api/classes`, `/api/dictionary`, `/api/sessions`, `/api/submissions`, `/api/messages`
-- Socket.IO for real-time teacher dashboard (student activity tracking, briefing stage broadcasts). Student socket connects on login (App.tsx). Socket auth supports both cookie and `auth.token` Bearer fallback.
+- Socket.IO for real-time teacher dashboard (student activity tracking, briefing stage broadcasts) and student notifications (`harmony:new-content`). Student socket connects on login (App.tsx). Socket auth supports both cookie and `auth.token` Bearer fallback.
 - Socket reconnection: `connectSocket()` reuses stale sockets via `socket.connect()` instead of destroying and recreating them, preserving event listeners registered by App.tsx (session:clarity-message, session:task-command, etc.)
 - AI services (fail-open): OpenAI direct API (GPT-4.1-mini default) for grammar checking and PEARL contextual barks, Azure Whisper for transcription
 - Shared OpenAI client: `backend/src/utils/openai.ts` — lazy-init singleton, exports `getOpenAI()` and `OPENAI_MODEL`
@@ -26,7 +26,7 @@
 - `FrostedGlassPlayer`: `frontend/src/components/shift/media/FrostedGlassPlayer.tsx` — DEPRECATED (no remaining imports). Was replaced by MonitorPlayer.
 
 ## Data Model (Prisma)
-Primary models: `User`, `Arc`, `Week`, `Mission`, `MissionScore`, `Recording`, `HarmonyPost`, `PearlMessage`, `Class`, `ClassEnrollment`, `ClassWeekUnlock`, `Character`, `DialogueNode`, `PearlConversation`, `NarrativeChoice`, `TeacherConfig`, `DictionaryWord`, `WordFamily`, `WordStatusEvent`, `PairDictionaryProgress`, `Pair`, `SessionConfig`, `CharacterMessage`, `Citizen4488Interaction`, `ShiftResult`
+Primary models: `User`, `Arc`, `Week`, `Mission`, `MissionScore`, `Recording`, `HarmonyPost`, `HarmonyCensureResponse`, `PearlMessage`, `Class`, `ClassEnrollment`, `ClassWeekUnlock`, `Character`, `DialogueNode`, `PearlConversation`, `NarrativeChoice`, `TeacherConfig`, `DictionaryWord`, `WordFamily`, `WordStatusEvent`, `PairDictionaryProgress`, `Pair`, `SessionConfig`, `CharacterMessage`, `Citizen4488Interaction`, `ShiftResult`
 
 Deprecated: `Vocabulary`, `StudentVocabulary`
 
@@ -68,6 +68,7 @@ Deprecated: `Vocabulary`, `StudentVocabulary`
 - **Legacy Socket.IO path** still works for online students: student client handles `session:task-command` events, persists via its own API calls
 
 ### Teacher routes (`backend/src/routes/teacher.ts`)
+- `GET /api/teacher/gradebook` — students + mission scores + ShiftResult summaries. Includes `shiftResults[]` per student (vocabScore, grammarAccuracy, documentsProcessed/Total, errorsFound/Total, targetWordsUsed, concernScoreDelta) so teacher sees the same stats students see on ShiftClosing.
 - `GET /api/teacher/weeks` — week list + briefing config
 - `GET /api/teacher/weeks/:weekId/storyboard` — shift storyboard (derived from WeekConfig tasks, auto-creates missing Mission records)
 - `PATCH /api/teacher/weeks/:weekId/steps/:missionType` — update step: swap activity, set embed URL, toggle `videoClipHidden`, remove video, remove dismissal video (`removeDismissalVideo`), reset override
@@ -110,7 +111,8 @@ Deprecated: `Vocabulary`, `StudentVocabulary`
 - `GET /api/harmony/censure-queue` — censure items scoped to route weeks, up to 3 review items by lowest mastery, returns `isReview` flag
 - `POST /api/harmony/censure-queue/:id/respond` — submit censure response. Differentiated mastery: +0.05 current-week, +0.03 review.
 - `POST /api/harmony/bulletins/:id/respond` — bulletin comprehension MCQ check (ephemeral, no DB write)
-- Phase C planned: `GET /api/harmony/archives?section=vocabulary|timeline|bulletins`, `GET /api/harmony/has-new`
+- `GET /api/harmony/archives?section=vocabulary|timeline|bulletins` — vocabulary by week with mastery, 4488 case file timeline, bulletin archive. Route-scoped, lazy-loadable by section.
+- `GET /api/harmony/has-new` — lightweight check for new content since `Pair.lastHarmonyVisit`. Polled on TerminalDesktop mount.
 
 ### PEARL routes (`backend/src/routes/pearl.ts`)
 - `GET /api/pearl/messages` — active ambient messages (shuffled)

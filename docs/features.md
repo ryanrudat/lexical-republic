@@ -16,6 +16,7 @@ Config-driven task queue. Each week has 4 tasks driven by static `WeekConfig` Ty
 - Backend: `backend/src/data/week-configs/week1.ts`, `week2.ts`, `week3.ts` — served via `GET /api/shifts/weeks/:weekId/config`
 - Frontend: `ShiftQueue.tsx` renders tasks via `TASK_REGISTRY` lookup (extensible)
 - Branching: `ClarityQueueApp.tsx` checks `weekConfig?.shiftType === 'queue'` before falling through to PhaseRunner
+- **Between-shift UX**: When student has completed their current shift but the next shift isn't unlocked by the teacher, "Current Shift" shows a clean "Shift N Complete — Awaiting supervisor authorization for your next assignment. Stand by, Associate." screen instead of re-entering the completed shift queue.
 - Stores: `shiftQueueStore` (task progress, concern delta), `messagingStore` (character messages, notifications)
 
 **Task types (TypeScript union):** `intake_form`, `word_match`, `cloze_fill`, `word_sort`, `vocab_clearance`, `document_review`, `contradiction_report`, `shift_report`, `priority_briefing`, `priority_sort`, `evidence_assembly`, `custom`
@@ -121,11 +122,10 @@ Step navigation gated by completion. All steps support optional video via `StepV
 
 ## Harmony App (State Social Network)
 - Locked until teacher opens Harmony for the class (`harmonyOpen` toggle)
-- **4-tab government portal navigation**: Feed / Ministry / Sector / Review
+- **5-tab government portal navigation**: Feed / Ministry / Sector / Review / Archives
 - Content accumulates across shifts — queries scoped by narrative route weeks (full or condensed)
 - Route-aware: condensed-route students only see content from their 9-week route, never skipped weeks
 - All NPC designations use unified `Citizen-XXXX` format (4-digit, zero-padded). Students remain `CA-X`.
-- Fifth tab (**Archives**) planned for Phase C.
 
 **Feed tab** (citizen posts):
 - `feed` — character-first citizen posts with embedded target vocabulary (AI-generated + seed + student posts)
@@ -181,6 +181,26 @@ Step navigation gated by completion. All steps support optional video via `StepV
 - Frontend tracks answers in session-only `bulletinAnswers` store state
 - "Test Understanding" expands inline MCQs with shuffled options and green/red feedback
 
+**Archives tab** (Phase C):
+- Three lazy-loaded sub-sections: Vocabulary by Week, Citizen-4488 Case File, Bulletin Archive
+- **Vocabulary by Week**: Expandable per-week sections showing each word with definition, example sentence, and mastery bar (color-coded: emerald ≥80%, amber ≥40%, rose <40%). Route-scoped — condensed students see only their 9 weeks.
+- **Citizen-4488 Case File**: Chronological timeline of all 4488 posts with student's approve/flag decision history. Timeline dots color-coded by action (rose=flagged, emerald=approved, amber=no action).
+- **Bulletin Archive**: Past Ministry Bulletins re-readable with comprehension MCQs re-attemptable via existing `HarmonyBulletin` component.
+- Backend: `GET /api/harmony/archives?section=vocabulary|timeline|bulletins` — supports section-level lazy loading.
+
+**NEW badges and notifications** (Phase C):
+- `lastHarmonyVisit DateTime?` on Pair model — updated when student opens Harmony feed
+- Posts with `createdAt > lastHarmonyVisit` display "NEW" badge (sky-500 pill)
+- `GET /api/harmony/has-new` lightweight endpoint polled on TerminalDesktop mount
+- `harmony:new-content` socket event emitted when `ensureHarmonyPostsExist()` creates new posts
+- Pulsing rose-500 notification dot on Harmony tile in TerminalDesktop when `hasNewContent` is true
+- Badge clears when student opens Harmony
+
+**PEARL ambient annotations** (Phase C):
+- Session-based (not persisted to DB). Computed from `recentCensureResults` and `citizen4488Actions` in harmonyStore.
+- Displayed as pinned cards at bottom of Feed tab with emerald PEARL branding.
+- Triggers: 5 correct censure streak ("Exceptional language accuracy. Added to your file."), 3 wrong streak ("Additional review scheduled for your benefit."), flag 4488 ("Your compliance protects the community."), approve 4488 ("Citizens who approve concerning content may receive guidance.")
+
 ## MonitorPlayer (Shared CRT Video Player)
 - **Single source of truth** for all video playback: `frontend/src/components/shared/MonitorPlayer.tsx`
 - Used by: WelcomeVideoModal, ShiftQueue task clip gate, DismissalBroadcast, PhaseClipPlayer, BriefingStep, StepVideoClip, ShiftStoryboard previews
@@ -192,7 +212,10 @@ Step navigation gated by completion. All steps support optional video via `StepV
 - Seekable progress bar overlaid on the monitor's green LED strip
 - Playback controls: rewind 10s + pause/play buttons on bezel, vintage brass volume knob — all touch-friendly
 - Autoplay rejection handling: "Play Transmission" manual play button overlay
+- **Autoplay timeout fallback**: 4-second timer shows manual play button if video doesn't start (covers stalled loads, slow networks, silent autoplay rejection). Stalled/suspend event handlers catch mid-stream buffering.
 - STANDBY screen when no video source; auto-skip after 2s on video load error (404/missing file)
+- **Edge fade mask**: Radial CSS mask (`maskImage`) dissolves monitor bezel edges into the dark background — screen area stays fully opaque
+- **Ambient glow background**: All video player contexts (WelcomeVideoModal, ShiftQueue clip gate, DismissalBroadcast) use layered radial gradients matching monitor colors (warm bronze bezel + green CRT emission) instead of flat black
 - Props: `src?`, `embedUrl?`, `autoPlay?`, `onEnded?`, `screenOverlay?`
 - Replaced: FrostedGlassPlayer (deprecated, no remaining imports)
 
@@ -241,7 +264,7 @@ Step navigation gated by completion. All steps support optional video via `StepV
 - Briefing Setup: episode title/subtitle, Canva/embed URL, fallback text
 - Now Showing sequence: `clip_a → activity → clip_b`
 - Clip-specific media inputs (upload or embed URL)
-- Grades: per-student drill-down, inline score editing, writing viewer, week reset, concern override (dual ShiftQueue/PhaseRunner support). **Average calculated across all tasks in the week** (incomplete tasks count as 0), not just scored tasks.
+- Grades: per-student drill-down, inline score editing, writing viewer, week reset, concern override (dual ShiftQueue/PhaseRunner support). **Cell average uses ShiftResult summary** (vocabScore + grammarAccuracy average) when available, matching what the student sees on ShiftClosing. Falls back to MissionScore average for in-progress weeks. **Drill-down shows "Shift Summary (Student View)"** with the same 6 stats: Docs Processed, Errors Found, Words Used, Vocab Score %, Grammar Accuracy %, Concern Score.
 - Dictionary: editable word table (inline edit → PATCH save)
 - Shifts: welcome video upload + Shift Storyboard (per-task video upload, embed URL, hide/show toggle)
 - **ClassManager**: expandable students/weeks panels per class, delete class (cascade), remove individual students with confirmation dialogs
