@@ -443,11 +443,16 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
           const lk = student.lastKnown;
           const shiftStatus = student.offlineShift;
 
-          // Determine task list for "Send to Task" — prefer online, fall back to fetched status
+          // Determine task list for "Send to Task" — prefer online, then last-known (preserved
+          // on disconnect), then DB-fetched shift status. lastKnown keeps the task list available
+          // immediately when a student's socket drops due to idle/background-tab throttling.
           const taskList = student.online?.tasks && student.online.tasks.length > 0
             ? student.online.tasks
-            : shiftStatus?.tasks ?? [];
+            : lk?.tasks && lk.tasks.length > 0
+              ? lk.tasks
+              : shiftStatus?.tasks ?? [];
           const currentTaskId = student.online?.taskId
+            ?? lk?.taskId
             ?? (shiftStatus && shiftStatus.currentTaskIndex >= 0 ? shiftStatus.tasks[shiftStatus.currentTaskIndex]?.id : null);
 
           return (
