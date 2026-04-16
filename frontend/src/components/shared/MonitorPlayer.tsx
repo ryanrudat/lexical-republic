@@ -84,7 +84,21 @@ export default function MonitorPlayer({
           }
         })
         .catch(() => {
-          if (!cancelled) setNeedsManualPlay(true);
+          if (cancelled) return;
+          // Unmuted autoplay blocked — retry muted (browsers always allow muted autoplay)
+          v.muted = true;
+          setMuted(true);
+          v.play()
+            .then(() => {
+              if (!cancelled) {
+                setPaused(false);
+                setNeedsManualPlay(false);
+              }
+            })
+            .catch(() => {
+              // Both unmuted and muted autoplay failed — show manual play button
+              if (!cancelled) setNeedsManualPlay(true);
+            });
         });
     };
 
