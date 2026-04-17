@@ -8,6 +8,7 @@ import TaskCard from './TaskCard';
 import ShiftClosing from './ShiftClosing';
 import MonitorPlayer from '../shared/MonitorPlayer';
 import DismissalBroadcast from './DismissalBroadcast';
+import VocabularyInterstitial from './VocabularyInterstitial';
 import IntakeForm from './tasks/IntakeForm';
 import WordMatch from './tasks/WordMatch';
 import ClozeFill from './tasks/ClozeFill';
@@ -65,6 +66,8 @@ const TASK_REGISTRY: Record<string, React.ComponentType<TaskProps>> = {
   priority_sort: PrioritySort,
 };
 
+const VOCAB_TASK_TYPES = new Set(['vocab_clearance', 'cloze_fill']);
+
 /** Extract teacher video clip info from a task config */
 function getTaskClip(config: Record<string, unknown>) {
   const override = config?.teacherOverride as Record<string, unknown> | undefined;
@@ -104,6 +107,16 @@ export default function ShiftQueue() {
   const dismissalUrlRef = useRef<string>('');
   const [showDismissalSkip, setShowDismissalSkip] = useState(false);
   const pendingTriggerRef = useRef<{ taskId: string; weekNumber: number } | null>(null);
+
+  // Vocabulary interstitial — shown after vocab_clearance / cloze_fill tasks complete
+  const [showVocabInterstitial, setShowVocabInterstitial] = useState(false);
+  const pendingInterstitialRef = useRef(false);
+
+  // Clear interstitial on week change / teacher task reset / skip
+  useEffect(() => {
+    setShowVocabInterstitial(false);
+    pendingInterstitialRef.current = false;
+  }, [weekConfig?.weekNumber, taskResetKey]);
 
   // When task changes, check if it has a clip to play first
   useEffect(() => {
@@ -179,17 +192,20 @@ export default function ShiftQueue() {
       ? resolveUploadUrl(currentTask.clipAfter)
       : '';
     const completedTaskId = currentTask.id;
+    const wasVocabTask = VOCAB_TASK_TYPES.has(currentTask.type);
 
     await completeTask(currentTask.id, score, details);
 
     if (afterUrl) {
       // DELAY character message triggers until dismissal completes
+      pendingInterstitialRef.current = wasVocabTask;
       dismissalUrlRef.current = afterUrl;
       pendingTriggerRef.current = { taskId: completedTaskId, weekNumber };
       setDismissalState('flash');
     } else {
       // No dismissal video — fire messages immediately
       triggerMessage('task_complete', { taskId: completedTaskId, weekNumber }, weekConfig);
+      if (wasVocabTask) setShowVocabInterstitial(true);
     }
   };
 
@@ -203,7 +219,17 @@ export default function ShiftQueue() {
       triggerMessage('task_complete', pendingTriggerRef.current, weekConfig);
       pendingTriggerRef.current = null;
     }
+
+    // Show vocab interstitial after dismissal if queued
+    if (pendingInterstitialRef.current) {
+      pendingInterstitialRef.current = false;
+      setShowVocabInterstitial(true);
+    }
   }, [weekConfig, triggerMessage]);
+
+  const handleVocabInterstitialContinue = useCallback(() => {
+    setShowVocabInterstitial(false);
+  }, []);
 
   const handleClipDone = () => {
     setWatchingClip(false);
@@ -243,6 +269,17 @@ export default function ShiftQueue() {
         onSkipReady={() => setShowDismissalSkip(true)}
         onComplete={handleDismissalComplete}
         onSkip={handleDismissalComplete}
+      />
+    );
+  }
+
+  // Vocabulary interstitial — shown after vocab_clearance / cloze_fill tasks
+  if (showVocabInterstitial) {
+    return (
+      <VocabularyInterstitial
+        weekNumber={weekNumber}
+        targetWords={weekConfig.targetWords}
+        onContinue={handleVocabInterstitialContinue}
       />
     );
   }
