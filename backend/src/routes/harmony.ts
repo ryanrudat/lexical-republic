@@ -373,14 +373,15 @@ router.get('/posts', async (req, res) => {
       return;
     }
 
-    // Sweep stale pending posts (safety net if server restarted during setTimeout approval)
+    // Sweep stale pending posts (safety net if server restarted during setTimeout approval).
+    // Threshold is 3s to reliably close the gap after the 2-5s auto-approve setTimeout fires.
     if (viewer.classId) {
       await prisma.harmonyPost.updateMany({
         where: {
           classId: viewer.classId,
           status: 'pending_review',
           isGenerated: false,
-          createdAt: { lt: new Date(Date.now() - 10_000) },
+          createdAt: { lt: new Date(Date.now() - 3_000) },
         },
         data: { status: 'approved', pearlNote: 'Content reviewed and approved by the Ministry.' },
       });
@@ -391,27 +392,24 @@ router.get('/posts', async (req, res) => {
       await ensureHarmonyPostsExist(viewer.currentWeekNumber, viewer.classId, viewer.narrativeRoute);
     }
 
-    // Update lastHarmonyVisit for students
+    // Capture prior lastHarmonyVisit BEFORE updating — NEW badges need the previous request's timestamp
+    let lastVisit: Date | null = null;
     if (viewer.pairId) {
-      void prisma.pair.update({
+      const priorPair = await prisma.pair.findUnique({
+        where: { id: viewer.pairId },
+        select: { lastHarmonyVisit: true },
+      });
+      lastVisit = priorPair?.lastHarmonyVisit ?? null;
+
+      await prisma.pair.update({
         where: { id: viewer.pairId },
         data: { lastHarmonyVisit: new Date() },
-      }).catch(() => {});
+      });
     }
 
     const ownFilter = viewer.pairId
       ? { pairId: viewer.pairId }
       : { userId: viewer.userId ?? '' };
-
-    // Fetch lastHarmonyVisit for NEW badge calculation
-    let lastVisit: Date | null = null;
-    if (viewer.pairId) {
-      const pair = await prisma.pair.findUnique({
-        where: { id: viewer.pairId },
-        select: { lastHarmonyVisit: true },
-      });
-      lastVisit = pair?.lastHarmonyVisit ?? null;
-    }
 
     const posts = await prisma.harmonyPost.findMany({
       where: {
@@ -613,17 +611,20 @@ router.post('/censure-queue/:id/respond', async (req, res) => {
           const currentWeek = await getCurrentWeekNumberForPair(pairId);
           const masteryDelta = post.weekNumber === currentWeek ? 0.05 : 0.03;
 
-          const progress = await prisma.pairDictionaryProgress.upsert({
-            where: { pairId_wordId: { pairId, wordId: dictWord.id } },
-            update: { encounters: { increment: 1 }, lastSeenAt: new Date() },
-            create: { pairId, wordId: dictWord.id, encounters: 1, mastery: 0.1, lastSeenAt: new Date() },
-          });
-          if (progress.mastery < 1.0) {
-            await prisma.pairDictionaryProgress.update({
-              where: { id: progress.id },
-              data: { mastery: Math.min(1.0, progress.mastery + masteryDelta) },
+          // Wrap encounter increment + mastery bump in a single transaction so they can't diverge
+          await prisma.$transaction(async (tx) => {
+            const progress = await tx.pairDictionaryProgress.upsert({
+              where: { pairId_wordId: { pairId, wordId: dictWord.id } },
+              update: { encounters: { increment: 1 }, lastSeenAt: new Date() },
+              create: { pairId, wordId: dictWord.id, encounters: 1, mastery: 0.1, lastSeenAt: new Date() },
             });
-          }
+            if (progress.mastery < 1.0) {
+              await tx.pairDictionaryProgress.update({
+                where: { id: progress.id },
+                data: { mastery: Math.min(1.0, progress.mastery + masteryDelta) },
+              });
+            }
+          });
         }
       }
     }
@@ -922,8 +923,14 @@ router.post('/posts/:id/censure', async (req, res) => {
     }
 
     const post = await findVisiblePost(postId, viewer);
-    if (!post || post.classId !== viewer.classId) {
+    if (!post) {
       res.status(404).json({ error: 'Post not found' });
+      return;
+    }
+
+    // Prevent cross-class censure even if findVisiblePost would have surfaced the post
+    if (post.classId !== viewer.classId) {
+      res.status(403).json({ error: 'Cross-class action not permitted' });
       return;
     }
 
