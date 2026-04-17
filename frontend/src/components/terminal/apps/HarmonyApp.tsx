@@ -847,6 +847,56 @@ function CensureQueue() {
   );
 }
 
+/* ─── First-Visit PEARL Intro Banner ───────────────────────────── */
+
+function PearlIntroBanner() {
+  const isFirstVisit = useHarmonyStore(s => s.isFirstVisit);
+  const dismissFirstVisit = useHarmonyStore(s => s.dismissFirstVisit);
+
+  // Auto-dismiss on first scroll — ambient, not intrusive.
+  // `once: true` ensures the listener fires at most once, so no de-dupe ref is needed.
+  useEffect(() => {
+    if (!isFirstVisit) return;
+    window.addEventListener('scroll', dismissFirstVisit, { capture: true, once: true, passive: true });
+    return () => window.removeEventListener('scroll', dismissFirstVisit, { capture: true });
+  }, [isFirstVisit, dismissFirstVisit]);
+
+  if (!isFirstVisit) return null;
+
+  return (
+    <div className="mx-4 mt-3 mb-2 rounded-xl border border-sky-200 bg-sky-50 shadow-sm p-3 flex items-start gap-3">
+      <img
+        src="/images/pearl-eye-glow.png"
+        alt=""
+        aria-hidden="true"
+        className="w-8 h-8 rounded-full object-cover shrink-0 mt-0.5"
+        style={{
+          maskImage: 'radial-gradient(circle, black 40%, transparent 72%)',
+          WebkitMaskImage: 'radial-gradient(circle, black 40%, transparent 72%)',
+        }}
+      />
+      <div className="flex-1 min-w-0">
+        <div className="font-ibm-mono text-[9px] text-sky-700 tracking-[0.2em] uppercase mb-1">
+          P.E.A.R.L. Orientation
+        </div>
+        <p className="text-[12px] text-[#2C3340] leading-relaxed">
+          Welcome to community communications, Citizen. Your fellow associates share their progress here. Some write more carefully than others. Pay attention to patterns &mdash; the Ministry values observant citizens.
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={dismissFirstVisit}
+        aria-label="Dismiss orientation"
+        className="text-[#8B8578] hover:text-[#4B5563] transition-colors active:scale-95 shrink-0"
+      >
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 /* ─── Onboarding Briefing ──────────────────────────────────────── */
 
 const HARMONY_BRIEFING_KEY = 'harmony_briefing_dismissed';
@@ -1104,6 +1154,9 @@ function FeedTab({
 
   return (
     <>
+      {/* First-visit PEARL intro banner (one-time, dismissible) */}
+      <PearlIntroBanner />
+
       {/* Vocab chips (collapsible, 3-tier) */}
       {(focusWords.length > 0 || recentWords.length > 0 || deepReviewWords.length > 0) && (
         <div className="border-b border-[#E8E4DC]">

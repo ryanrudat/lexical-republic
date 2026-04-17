@@ -81,6 +81,14 @@ export const HARMONY_SEED_POSTS: HarmonySeedPost[] = [
     pearlNote: 'Community post from Citizen-4488. Deliberate grammar error: "arrive" should be "arrives" (present simple, third person).',
   },
   {
+    id: 'harmony-w1-4488-b',
+    weekNumber: 1,
+    authorLabel: 'Citizen-4488',
+    content:
+      'Tuesday quiet today. No calligraphy class assigned to my block. My neighbor\'s cat still sit on her step by the empty door. I bring water in the small dish. I follow the approved path back. I did not report this. It is standard. Some things do not need a form.',
+    pearlNote: 'Community post from Citizen-4488. Deliberate grammar error: "cat still sit" should be "sits" (present simple, third person).',
+  },
+  {
     id: 'harmony-w1-0007',
     weekNumber: 1,
     authorLabel: 'Citizen-0007',
@@ -131,6 +139,14 @@ export const HARMONY_SEED_POSTS: HarmonySeedPost[] = [
       "I noticed the community center updated its schedule. Tuesday calligraphy was removed. My neighbor used to attend — her ink stones are still on the shelf. Nobody informed me of the change. I requested information but heard nothing. The cat follows me home now. Everything is fine.",
     pearlNote: 'Community post from Citizen-4488. Continued reference to absent neighbor. Target words: notice, update, remove, inform, change, request.',
   },
+  {
+    id: 'harmony-w2-4488-b',
+    weekNumber: 2,
+    authorLabel: 'Citizen-4488',
+    content:
+      "I noticed — I mean, observed — a detail. The knitting circle replaced cream yarn with gray. My former neighbor used to attend. The supply list was updated. Tuesday was already removed. I changed my request. No one informed me. The cat follows standard routes now.",
+    pearlNote: 'Community post from Citizen-4488. Self-correction visible ("I noticed — I mean, observed"). Grammar is correct. Target words: notice, replace, update, remove, change, request, inform.',
+  },
 
   // ── Week 3: Target words — process, complete, review, delay, schedule, respond, identify, separate, maintain, forward
   // Review words — notice, compare, replace, update, request, remove, change, include, require, inform
@@ -157,5 +173,13 @@ export const HARMONY_SEED_POSTS: HarmonySeedPost[] = [
     content:
       "The schedule was updated again. Thursday activities also removed. I cannot identify who approved these changes. I should not delay my own routine to ask. My neighbor's cat sleeps at my door now. I completed the adoption form but no one has responded. Everything is fine.",
     pearlNote: 'Community post from Citizen-4488. Cat adoption form pending — no response expected. Target words: schedule, identify, delay, complete, respond.',
+  },
+  {
+    id: 'harmony-w3-4488-b',
+    weekNumber: 3,
+    authorLabel: 'Citizen-4488',
+    content:
+      "Thank you, Ministry, for the updated schedule. I have completed all required forms. My morning routine processes efficiently. I respond to every notice in the standard timeframe. I maintain my desk. I review each memo. I do not delay. Change is normal. Everything is fine.",
+    pearlNote: 'Community post from Citizen-4488. Grammar now strict. Tone emotionally flat — internalized compliance voice. Target words: schedule, complete, process, respond, maintain, review, delay.',
   },
 ];
