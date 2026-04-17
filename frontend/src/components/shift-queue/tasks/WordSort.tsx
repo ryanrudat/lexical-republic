@@ -87,9 +87,10 @@ export default function WordSort({ config, onComplete }: TaskProps) {
     }
     setTimeout(() => {
       onComplete(score, {
-        type: 'word_sort',
-        correct: firstTryCorrect.size,
-        total: allWords.length,
+        taskType: 'word_sort',
+        itemsCorrect: firstTryCorrect.size,
+        itemsTotal: allWords.length,
+        category: 'vocab',
       });
     }, 800);
   }

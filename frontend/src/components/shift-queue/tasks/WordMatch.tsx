@@ -54,9 +54,10 @@ export default function WordMatch({ config, onComplete }: TaskProps) {
     }
     setTimeout(() => {
       onComplete(score, {
-        type: 'word_match',
-        correct: firstTryCorrect.size,
-        total: pairs.length,
+        taskType: 'word_match',
+        itemsCorrect: firstTryCorrect.size,
+        itemsTotal: pairs.length,
+        category: 'vocab',
       });
     }, 1000);
   }

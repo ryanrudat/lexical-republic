@@ -145,9 +145,10 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
     }
     setTimeout(() => {
       onComplete(score, {
-        type: 'cloze_fill',
-        correct: firstTryCorrect.size,
-        total: blanks.length,
+        taskType: 'cloze_fill',
+        itemsCorrect: firstTryCorrect.size,
+        itemsTotal: blanks.length,
+        category: 'vocab',
       });
     }, 800);
   }

@@ -168,12 +168,18 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
       ).length;
       const score = correctClassifications / Math.max(effectiveDifferences.length, 1);
       onComplete(Math.min(score, 1), {
-        type: 'contradiction_report',
+        taskType: 'contradiction_report',
+        itemsCorrect: correctClassifications,
+        itemsTotal: effectiveDifferences.length,
+        category: 'grammar',
+        errorsFound: correctClassifications,
+        errorsTotal: effectiveDifferences.length,
+        writingText,
+        // Gradebook teacher view reads these legacy keys — keep them.
         recallScore,
         recallTotal: recallQuestions.length,
         correctClassifications,
         classificationsTotal: effectiveDifferences.length,
-        writingText,
       });
     }, 1500);
   }, [effectiveDifferences, classifications, writingText, onComplete, recallScore, recallQuestions.length]);

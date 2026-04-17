@@ -78,6 +78,11 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
     } else {
       const score = total > 0 ? finalCorrectCount / total : 1;
       onComplete(score, {
+        taskType: 'vocab_clearance',
+        itemsCorrect: finalCorrectCount,
+        itemsTotal: total,
+        category: 'vocab',
+        // Gradebook teacher view reads these legacy keys — keep them.
         correct: finalCorrectCount,
         total,
       });
