@@ -173,7 +173,8 @@ function ComposeBox({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!text.trim() || submitting) return;
+    if (submitting) return;
+    if (!text.trim()) return;
     setSubmitting(true);
     try {
       await onSubmit(text.trim());
