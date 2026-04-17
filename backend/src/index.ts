@@ -22,6 +22,7 @@ import { migrateHarmonyAuthorLabels } from './utils/harmonyMigrations';
 import sessionRoutes from './routes/sessions';
 import submissionRoutes from './routes/submissions';
 import messageRoutes from './routes/messages';
+import pearlFeedbackRoutes from './routes/pearl-feedback';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -106,6 +107,7 @@ app.use('/api/dictionary', dictionaryRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/submissions', submissionRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/pearl-feedback', pearlFeedbackRoutes);
 
 httpServer.listen(PORT, async () => {
   console.log(`[Lexical Republic] Server running on port ${PORT}`);

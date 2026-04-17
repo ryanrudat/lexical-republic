@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import client from '../../../../api/client';
 import { sendPearlChat } from '../../../../api/pearl';
+import { fetchPearlFeedback } from '../../../../api/pearl-feedback';
 import { getSocket } from '../../../../utils/socket';
 
 export interface EvalResult {
@@ -46,6 +47,10 @@ export default function WritingEvaluator({
   const [evaluating, setEvaluating] = useState(false);
   const [lastResult, setLastResult] = useState<EvalResult | null>(null);
 
+  // Second AI pass: reasoning feedback. Separate from grammar/vocab so it can stream in asynchronously without blocking the main result.
+  const [pearlReasoning, setPearlReasoning] = useState<string | null>(null);
+  const [pearlReasoningLoading, setPearlReasoningLoading] = useState(false);
+
   // Nudge state
   const [nudgeText, setNudgeText] = useState<string | null>(null);
   const [nudgeLoading, setNudgeLoading] = useState(false);
@@ -53,6 +58,7 @@ export default function WritingEvaluator({
 
   async function evaluate() {
     setEvaluating(true);
+    setPearlReasoning(null);
 
     try {
       let result: EvalResult;
@@ -122,6 +128,17 @@ export default function WritingEvaluator({
         }
       }
       onResult(result, currentAttempt);
+
+      // Fire-and-forget so the grammar result renders immediately; fetchPearlFeedback never throws.
+      setPearlReasoningLoading(true);
+      fetchPearlFeedback({
+        taskType: 'writing',
+        taskContext: taskContext ?? writingPrompt ?? '',
+        studentText: text,
+        weekNumber,
+      })
+        .then(({ pearlFeedback }) => setPearlReasoning(pearlFeedback))
+        .finally(() => setPearlReasoningLoading(false));
     } catch {
       const currentAttempt = attempt;
       setAttempt(prev => prev + 1);
@@ -227,6 +244,36 @@ export default function WritingEvaluator({
               {lastResult.taskNotes}
             </p>
           )}
+        </div>
+      )}
+
+      {/* In-character PEARL reasoning feedback */}
+      {lastResult && (pearlReasoning || pearlReasoningLoading) && (
+        <div className="w-full bg-sky-50/60 border border-sky-200 rounded-xl p-3 flex items-start gap-2.5">
+          <img
+            src="/images/pearl-eye-glow.png"
+            alt=""
+            aria-hidden="true"
+            className="w-5 h-5 rounded-full object-cover shrink-0 mt-0.5"
+            style={{
+              maskImage: 'radial-gradient(circle, black 40%, transparent 72%)',
+              WebkitMaskImage: 'radial-gradient(circle, black 40%, transparent 72%)',
+            }}
+          />
+          <div className="flex-1 min-w-0">
+            <div className="font-ibm-mono text-[9px] text-sky-700 tracking-[0.2em] uppercase mb-1">
+              P.E.A.R.L. Observation
+            </div>
+            {pearlReasoningLoading && !pearlReasoning ? (
+              <p className="text-xs text-sky-600/70 italic animate-pulse">
+                Observing...
+              </p>
+            ) : (
+              <p className="text-xs text-[#2C3340] leading-relaxed">
+                {pearlReasoning}
+              </p>
+            )}
+          </div>
         </div>
       )}
     </div>
