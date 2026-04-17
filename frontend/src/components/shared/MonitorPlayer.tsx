@@ -55,6 +55,13 @@ export default function MonitorPlayer({
   const [imageLoaded, setImageLoaded] = useState(false);
   const hasVideo = !!(src || embedUrl);
 
+  // Latest-onEnded ref — avoids stale closures when the parent passes a new
+  // callback reference without re-running the autoplay effect.
+  const onEndedRef = useRef(onEnded);
+  useEffect(() => {
+    onEndedRef.current = onEnded;
+  }, [onEnded]);
+
   const handleVideoError = () => {
     console.error(`[MonitorPlayer] Video failed to load: ${src}`);
     setVideoError(true);
@@ -62,10 +69,11 @@ export default function MonitorPlayer({
 
   // Auto-skip when video fails to load — only if onEnded is provided (student context)
   useEffect(() => {
-    if (!videoError || !onEnded) return;
-    const t = setTimeout(() => onEnded(), 2000);
+    if (!videoError) return;
+    if (!onEndedRef.current) return;
+    const t = setTimeout(() => onEndedRef.current?.(), 2000);
     return () => clearTimeout(t);
-  }, [videoError, onEnded]);
+  }, [videoError]);
 
   // Try autoplay if requested — with timeout fallback for stalled loads
   useEffect(() => {
@@ -106,7 +114,7 @@ export default function MonitorPlayer({
     const fallbackTimer = setTimeout(() => {
       if (cancelled) return;
       const vid = videoRef.current;
-      if (vid && vid.paused && !needsManualPlay) {
+      if (vid && vid.paused) {
         console.warn('[MonitorPlayer] Autoplay timeout — showing manual play button');
         setNeedsManualPlay(true);
       }
@@ -132,7 +140,7 @@ export default function MonitorPlayer({
       v.removeEventListener('stalled', handleStalled);
       v.removeEventListener('suspend', handleStalled);
     };
-  }, [autoPlay, src, videoError]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [autoPlay, src, videoError]);
 
   const handleManualPlay = () => {
     const v = videoRef.current;
@@ -192,7 +200,7 @@ export default function MonitorPlayer({
 
   const handleEnded = () => {
     setPaused(true);
-    onEnded?.();
+    onEndedRef.current?.();
   };
 
   return (
