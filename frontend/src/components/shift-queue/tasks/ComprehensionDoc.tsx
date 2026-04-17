@@ -21,9 +21,14 @@ interface ComprehensionDocConfig {
   questions: ComprehensionQuestion[];
 }
 
+export interface ComprehensionResult {
+  correctCount: number;
+  totalQuestions: number;
+}
+
 interface ComprehensionDocProps {
   doc: ComprehensionDocConfig;
-  onComplete: (score: number) => void;
+  onComplete: (score: number, result: ComprehensionResult) => void;
 }
 
 export default function ComprehensionDoc({
@@ -54,7 +59,10 @@ export default function ComprehensionDoc({
     ).length;
     const score = correctCount / totalQuestions;
 
-    setTimeout(() => onComplete(score), 1500);
+    setTimeout(
+      () => onComplete(score, { correctCount, totalQuestions }),
+      1500,
+    );
   }, [allAnswered, submitted, doc.questions, answers, totalQuestions, onComplete]);
 
   return (

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useShiftQueueStore } from '../../stores/shiftQueueStore';
 import { useShiftStore } from '../../stores/shiftStore';
@@ -7,10 +7,18 @@ import { useViewStore } from '../../stores/viewStore';
 import { useHarmonyStore } from '../../stores/harmonyStore';
 import { getSocket } from '../../utils/socket';
 import { postShiftResult, patchClearance, patchConcern } from '../../api/shifts';
+import { aggregateTaskResults } from '../../utils/scoreAggregator';
+import type { TaskResultDetails } from '../../types/taskResult';
+import { getCitizen4488PostForWeek } from '../../data/citizen4488Posts';
 
 interface StatItem {
   label: string;
   value: string;
+}
+
+function formatPct(value: number | null): string {
+  if (value === null) return 'N/A';
+  return Math.round(value * 100) + '%';
 }
 
 export default function ShiftClosing() {
@@ -32,82 +40,51 @@ export default function ShiftClosing() {
   const openApp = useViewStore(s => s.openApp);
   const returnToDesktop = useViewStore(s => s.returnToDesktop);
 
-  // Calculate stats from task progress
-  const completedTasks = taskProgress.filter(t => t.status === 'complete');
-  const totalTasks = taskProgress.length;
+  // Aggregate stats from the completed task results via the pure reducer.
+  const completedTasks = useMemo(
+    () => taskProgress.filter(t => t.status === 'complete'),
+    [taskProgress],
+  );
 
-  let docsProcessed = 0;
-  let docsTotal = 0;
-  let errorsFound = 0;
-  let errorsTotal = 0;
-  let vocabScore = 0;
-  let vocabCount = 0;
-  let grammarAccuracy = 0;
-  let grammarCount = 0;
-  let targetWordsUsed = 0;
+  const aggregate = useMemo(
+    () =>
+      aggregateTaskResults(
+        completedTasks.map(t => ({
+          score: t.score ?? 0,
+          details: t.details as TaskResultDetails | undefined,
+        })),
+      ),
+    [completedTasks],
+  );
 
-  for (const tp of completedTasks) {
-    const d = tp.details ?? {};
-    const taskType = String(d.type ?? '');
-
-    // DocumentReview passes { documentsProcessed, errors }
-    if (taskType.includes('document') || d.documentsProcessed != null) {
-      docsProcessed += Number(d.documentsProcessed ?? 1);
-      docsTotal += Number(d.documentsTotal ?? d.documentsProcessed ?? 1);
+  // Sum target-word usage from writing tasks that report a wordCount.
+  const targetWordsUsed = useMemo(() => {
+    let total = 0;
+    for (const t of completedTasks) {
+      const wc = (t.details as Record<string, unknown> | undefined)?.wordCount;
+      if (typeof wc === 'number') total += wc;
     }
-
-    // ErrorCorrectionDoc + DocumentReview pass { errors } (total error count)
-    if (d.errors != null) {
-      errorsTotal += Number(d.errors);
-    }
-    if (d.errorsFound != null) {
-      errorsFound += Number(d.errorsFound);
-    }
-
-    // VocabClearance passes { correct, total }
-    if (d.correct != null && d.total != null) {
-      vocabScore += Number(d.correct) / Math.max(Number(d.total), 1);
-      vocabCount += 1;
-    } else if (d.vocabScore != null) {
-      vocabScore += Number(d.vocabScore);
-      vocabCount += 1;
-    }
-
-    // ContradictionReport passes { correctClassifications, diffsTotal }
-    if (d.correctClassifications != null) {
-      grammarAccuracy += Number(d.correctClassifications) / Math.max(Number(d.diffsTotal ?? 1), 1);
-      grammarCount += 1;
-    } else if (d.grammarAccuracy != null) {
-      grammarAccuracy += Number(d.grammarAccuracy);
-      grammarCount += 1;
-    }
-
-    // ShiftReport passes { wordCount }
-    if (d.wordCount != null) {
-      targetWordsUsed += Number(d.wordCount);
-    } else if (d.targetWordsUsed != null) {
-      targetWordsUsed += Number(d.targetWordsUsed);
-    }
-  }
-
-  // Average scores when multiple tasks contribute
-  const avgVocabScore = vocabCount > 0 ? vocabScore / vocabCount : completedTasks.length / totalTasks;
-  const avgGrammarAccuracy = grammarCount > 0 ? grammarAccuracy / grammarCount : completedTasks.length / totalTasks;
-
-  // Use sensible defaults if no detailed data available
-  if (docsTotal === 0) {
-    docsProcessed = completedTasks.length;
-    docsTotal = totalTasks;
-  }
+    return total;
+  }, [completedTasks]);
 
   const stats: StatItem[] = [
-    { label: 'Documents Processed', value: docsProcessed + '/' + docsTotal },
-    { label: 'Errors Found', value: errorsFound + '/' + errorsTotal },
-    { label: 'Vocabulary Score', value: Math.round(avgVocabScore * 100) + '%' },
-    { label: 'Grammar Accuracy', value: Math.round(avgGrammarAccuracy * 100) + '%' },
+    { label: 'Documents Processed', value: completedTasks.length + '/' + taskProgress.length },
+    {
+      label: 'Errors Found',
+      value:
+        aggregate.errorsTotal > 0
+          ? aggregate.errorsFound + '/' + aggregate.errorsTotal
+          : 'N/A',
+    },
+    { label: 'Vocabulary Score', value: formatPct(aggregate.vocabAccuracy) },
+    { label: 'Grammar Accuracy', value: formatPct(aggregate.grammarAccuracy) },
     { label: 'Target Words Used', value: String(targetWordsUsed) },
     { label: 'Concern Score', value: concernScoreDelta.toFixed(1) },
   ];
+
+  const citizen4488Post = weekConfig
+    ? getCitizen4488PostForWeek(weekConfig.weekNumber)
+    : null;
 
   // Post shift result, update clearance, persist concern, mark complete
   useEffect(() => {
@@ -117,12 +94,13 @@ export default function ShiftClosing() {
     const postResults = async () => {
       try {
         const resultPayload: Record<string, unknown> = {
-          documentsProcessed: docsProcessed,
-          documentsTotal: docsTotal,
-          errorsFound,
-          errorsTotal,
-          vocabScore: avgVocabScore,
-          grammarAccuracy: avgGrammarAccuracy,
+          documentsProcessed: completedTasks.length,
+          documentsTotal: taskProgress.length,
+          errorsFound: aggregate.errorsFound,
+          errorsTotal: aggregate.errorsTotal,
+          vocabScore: aggregate.vocabAccuracy,
+          grammarAccuracy: aggregate.grammarAccuracy,
+          writingScore: aggregate.writingScore,
           targetWordsUsed,
           concernScoreDelta,
         };
@@ -208,6 +186,11 @@ export default function ShiftClosing() {
         ))}
       </div>
 
+      {/* Citizen-4488 Case File Update — subtle but hard to miss */}
+      {citizen4488Post && (
+        <Citizen4488Card post={citizen4488Post} concernDelta={concernScoreDelta} />
+      )}
+
       {/* Clearance upgrade animation */}
       {showUpgrade && weekConfig.shiftClosing.clearanceFrom !== weekConfig.shiftClosing.clearanceTo && (
         <div className="bg-white border border-emerald-200 rounded-xl p-4 text-center animate-fade-in">
@@ -273,6 +256,43 @@ export default function ShiftClosing() {
         >
           End Shift
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Citizen-4488 case file card ─────────────────────────────────
+
+interface Citizen4488CardProps {
+  post: { title: string; excerpt: string };
+  concernDelta: number;
+}
+
+function Citizen4488Card({ post, concernDelta }: Citizen4488CardProps) {
+  const tone =
+    concernDelta >= 0.5
+      ? { label: 'CONCERN RISING', text: 'text-rose-700', border: 'border-rose-200', bg: 'bg-rose-50' }
+      : concernDelta >= 0.2
+      ? { label: 'MILD CONCERN', text: 'text-amber-700', border: 'border-amber-200', bg: 'bg-amber-50' }
+      : { label: 'STABLE', text: 'text-emerald-700', border: 'border-emerald-200', bg: 'bg-emerald-50' };
+
+  return (
+    <div className={`border rounded-xl overflow-hidden ${tone.border} ${tone.bg}`}>
+      <div className="px-4 py-2 border-b border-white/60 flex items-center justify-between">
+        <span className={`font-ibm-mono text-[9px] tracking-widest uppercase ${tone.text}`}>
+          Citizen-4488 Case File
+        </span>
+        <span className={`font-ibm-mono text-[9px] tracking-widest uppercase ${tone.text}`}>
+          {tone.label} &middot; &Delta; {concernDelta.toFixed(2)}
+        </span>
+      </div>
+      <div className="px-4 py-3 space-y-2 bg-white">
+        <p className="font-ibm-mono text-[10px] text-[#8B8578] tracking-wider uppercase">
+          {post.title}
+        </p>
+        <p className="text-[12px] text-[#4B5563] leading-relaxed">
+          &ldquo;{post.excerpt}&rdquo;
+        </p>
       </div>
     </div>
   );

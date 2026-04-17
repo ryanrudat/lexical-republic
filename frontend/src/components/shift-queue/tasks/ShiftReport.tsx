@@ -41,10 +41,15 @@ export default function ShiftReport({ config, weekConfig, onComplete }: TaskProp
         setPassed(true);
         setTimeout(() => {
           onComplete(1, {
-            type: 'shift_report',
-            text: fullText,
-            attempt,
+            taskType: 'shift_report',
+            itemsCorrect: 1,
+            itemsTotal: 1,
+            category: 'writing',
+            writingText: fullText,
             wordCount: fullText.split(/\s+/).filter(Boolean).length,
+            attempt,
+            // Gradebook WritingDisplay reads `text` for the "Shift Report" label.
+            text: fullText,
           });
         }, 1000);
       }

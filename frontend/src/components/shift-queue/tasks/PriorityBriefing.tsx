@@ -83,7 +83,14 @@ export default function PriorityBriefing({ config, weekConfig, onComplete }: Tas
       setWritingText('');
       setWritingPassed(false);
     } else {
-      onComplete(1, { type: 'priority_briefing', writingSubmissions });
+      const hasWriting = Object.keys(writingSubmissions).length > 0;
+      onComplete(1, {
+        taskType: 'priority_briefing',
+        itemsCorrect: 1,
+        itemsTotal: 1,
+        category: hasWriting ? 'writing' : 'mixed',
+        writingSubmissions,
+      });
     }
   }, [currentCard, total, cardCompleted, writingSubmissions, onComplete]);
 
