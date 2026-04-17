@@ -129,7 +129,14 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
       setQuestionLocked({});
     } else {
       const score = 1;
+      // IntakeForm is a narrative onboarding form — not a graded vocab/grammar
+      // task — so it contributes a neutral 1/1 to the mixed bucket and keeps
+      // the useful per-card detail for teacher review.
       const details: Record<string, unknown> = {
+        taskType: 'intake_form',
+        itemsCorrect: 1,
+        itemsTotal: 1,
+        category: 'mixed',
         cardsCompleted: total,
         dropdownChoices: dropdownValues,
         writingSubmissions,

@@ -147,11 +147,16 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
       const correctCount = cases.filter(c => sortResults[c.caseId]).length;
       const score = correctCount / Math.max(cases.length, 1);
       onComplete(score, {
-        type: 'priority_sort',
-        casesCorrect: correctCount,
-        totalCases: cases.length,
+        taskType: 'priority_sort',
+        itemsCorrect: correctCount,
+        itemsTotal: cases.length,
+        // mixed = both grammar (sort decisions) and writing (justifications)
+        category: 'mixed',
         disappeared: [...disappearedCases],
         justifications: allJustifications,
+        // Gradebook teacher view reads these legacy keys — keep them.
+        casesCorrect: correctCount,
+        totalCases: cases.length,
       });
       setPhase('done');
     }

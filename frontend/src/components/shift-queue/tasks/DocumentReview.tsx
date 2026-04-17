@@ -2,7 +2,9 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import type { TaskProps } from '../../../types/shiftQueue';
 import DocumentCard from './DocumentCard';
 import ErrorCorrectionDoc from './ErrorCorrectionDoc';
+import type { ErrorCorrectionResult } from './ErrorCorrectionDoc';
 import ComprehensionDoc from './ComprehensionDoc';
+import type { ComprehensionResult } from './ComprehensionDoc';
 
 
 interface DocumentConfig {
@@ -35,6 +37,11 @@ interface DocumentConfig {
   }>;
 }
 
+interface DocResultDetail {
+  correctCount: number;
+  itemTotal: number;
+}
+
 export default function DocumentReview({
   config,
   onComplete,
@@ -45,6 +52,7 @@ export default function DocumentReview({
   const [currentDocIndex, setCurrentDocIndex] = useState(0);
   const [completedDocs] = useState<Set<string>>(() => new Set());
   const [docScores, setDocScores] = useState<Record<string, number>>({});
+  const [docResults, setDocResults] = useState<Record<string, DocResultDetail>>({});
   const [stampStatus, setStampStatus] = useState<'idle' | 'stamping' | 'stamped'>('idle');
   const stampTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -69,23 +77,49 @@ export default function DocumentReview({
     } else {
       // All documents processed
       const scores = Object.values(docScores);
-      const totalErrors = documents.reduce((sum, d) => sum + (d.errors?.length ?? 0), 0);
       const avgScore =
         scores.length > 0
           ? scores.reduce((sum, s) => sum + s, 0) / scores.length
           : 1;
 
+      // Aggregate corrected-item counts across every document in this task
+      let correctSum = 0;
+      let totalSum = 0;
+      for (const d of documents) {
+        const r = docResults[d.id];
+        if (r) {
+          correctSum += r.correctCount;
+          totalSum += r.itemTotal;
+        } else if (d.type === 'approve') {
+          // Approve-type docs are 1-of-1 pass/fail, always correct when reached
+          correctSum += 1;
+          totalSum += 1;
+        }
+      }
+
+      const totalErrors = documents.reduce((sum, d) => sum + (d.errors?.length ?? 0), 0);
       onComplete(avgScore, {
+        taskType: 'document_review',
+        itemsCorrect: correctSum,
+        itemsTotal: totalSum,
+        // Document Review is primarily grammar error correction + comprehension
+        category: 'grammar',
+        errorsFound: correctSum,
+        errorsTotal: totalSum,
+        // Gradebook teacher view reads these legacy keys — keep them.
         documentsProcessed: documents.length,
         errors: totalErrors,
       });
     }
-  }, [currentDocIndex, completedDocs, docScores, documents, onComplete]);
+  }, [currentDocIndex, completedDocs, docScores, docResults, documents, onComplete]);
 
   const markDocComplete = useCallback(
-    (docId: string, score: number) => {
+    (docId: string, score: number, result?: DocResultDetail) => {
       completedDocs.add(docId);
       setDocScores(prev => ({ ...prev, [docId]: score }));
+      if (result) {
+        setDocResults(prev => ({ ...prev, [docId]: result }));
+      }
 
       // Trigger stamp animation
       setStampStatus('stamping');
@@ -101,23 +135,29 @@ export default function DocumentReview({
   // Handle approve-type document
   const handleApprove = useCallback(() => {
     if (!currentDoc || stampStatus !== 'idle') return;
-    markDocComplete(currentDoc.id, 1);
+    markDocComplete(currentDoc.id, 1, { correctCount: 1, itemTotal: 1 });
   }, [currentDoc, stampStatus, markDocComplete]);
 
   // Handle error correction completion
   const handleErrorComplete = useCallback(
-    (score: number) => {
+    (score: number, result: ErrorCorrectionResult) => {
       if (!currentDoc) return;
-      markDocComplete(currentDoc.id, score);
+      markDocComplete(currentDoc.id, score, {
+        correctCount: result.correctCount,
+        itemTotal: result.totalErrors,
+      });
     },
     [currentDoc, markDocComplete],
   );
 
   // Handle comprehension completion
   const handleComprehensionComplete = useCallback(
-    (score: number) => {
+    (score: number, result: ComprehensionResult) => {
       if (!currentDoc) return;
-      markDocComplete(currentDoc.id, score);
+      markDocComplete(currentDoc.id, score, {
+        correctCount: result.correctCount,
+        itemTotal: result.totalQuestions,
+      });
     },
     [currentDoc, markDocComplete],
   );

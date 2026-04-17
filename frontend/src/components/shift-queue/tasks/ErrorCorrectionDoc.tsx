@@ -29,10 +29,15 @@ interface ErrorDoc {
   laneHints?: Record<string, string[]>;
 }
 
+export interface ErrorCorrectionResult {
+  correctCount: number;
+  totalErrors: number;
+}
+
 interface ErrorCorrectionDocProps {
   doc: ErrorDoc;
   lane: number;
-  onComplete: (score: number) => void;
+  onComplete: (score: number, result: ErrorCorrectionResult) => void;
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -109,10 +114,14 @@ export default function ErrorCorrectionDoc({
               const selected = idx === errorIndex ? optionIndex : corrections[idx];
               return selected === err.correctIndex;
             }).length;
-            const score = correctCount / normalizedDoc.errors.length;
+            const total = normalizedDoc.errors.length;
+            const score = correctCount / total;
 
             setAllDone(true);
-            setTimeout(() => onComplete(score), 800);
+            setTimeout(
+              () => onComplete(score, { correctCount, totalErrors: total }),
+              800,
+            );
           }
 
           return next;
