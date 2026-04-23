@@ -288,6 +288,11 @@ function PostCard({
                 PENDING
               </span>
             )}
+            {post.status === 'flagged' && (
+              <span className="text-[9px] text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded tracking-wider font-medium">
+                FLAGGED
+              </span>
+            )}
             {post.isNew && (
               <span className="text-[8px] text-white bg-sky-500 px-1.5 py-0.5 rounded-full tracking-wider font-bold">
                 NEW

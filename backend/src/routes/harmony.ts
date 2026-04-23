@@ -5,7 +5,9 @@ import { getCurrentWeekNumberForPair } from '../utils/progression';
 import { getHarmonyReviewContext } from '../data/harmonyFeed';
 import { ensureHarmonyPostsExist } from '../utils/harmonyGenerator';
 import { generateNpcReplies } from '../utils/harmonyReplies';
+import { moderatePost } from '../utils/harmonyModeration';
 import { getRouteWeeks } from '../data/narrative-routes';
+import { io } from '../socketServer';
 
 const router = Router();
 
@@ -420,6 +422,7 @@ router.get('/posts', async (req, res) => {
         OR: [
           { status: 'approved' },
           { ...ownFilter, status: 'pending_review' },
+          { ...ownFilter, status: 'flagged' },
         ],
         AND: [getRouteWeekFilter(viewer)],
       },
@@ -730,38 +733,40 @@ router.post('/posts', async (req, res) => {
       return;
     }
 
+    const trimmed = content.trim();
+
+    // Moderation: may hit OpenAI, defaults to approved on failure.
+    const moderation = await moderatePost(trimmed, viewer.currentWeekNumber);
+
     const post = await prisma.harmonyPost.create({
       data: {
         pairId,
-        content: content.trim(),
-        status: 'pending_review',
+        content: trimmed,
+        status: moderation.verdict === 'flagged' ? 'flagged' : 'approved',
+        pearlNote: moderation.pearlNote,
         postType: 'feed',
         classId: viewer.classId,
         weekNumber: viewer.currentWeekNumber,
       },
     });
 
-    // Auto-approve after a fake delay (simulating Ministry review)
-    setTimeout(async () => {
-      try {
-        await prisma.harmonyPost.update({
-          where: { id: post.id },
-          data: {
-            status: 'approved',
-            pearlNote: 'Content reviewed and approved by the Ministry.',
-          },
-        });
-      } catch {
-        // Post may have been deleted
-      }
-    }, 2000 + Math.random() * 3000);
-
-    // Fire-and-forget NPC replies so the feed feels populated with active citizens.
-    generateNpcReplies(post.id, content.trim(), viewer.currentWeekNumber, viewer.classId);
+    // Broadcast to class only on approved posts (flagged posts are private to the author).
+    if (moderation.verdict === 'approved') {
+      io?.to(`class:${viewer.classId}`).emit('harmony:new-content', {
+        weekNumber: viewer.currentWeekNumber,
+        count: 1,
+      });
+      generateNpcReplies(post.id, trimmed, viewer.currentWeekNumber, viewer.classId);
+    }
 
     res.status(201).json({
       id: post.id,
       status: post.status,
+      pearlNote: post.pearlNote,
+      moderation: {
+        verdict: moderation.verdict,
+        reason: moderation.reason,
+      },
       createdAt: post.createdAt.toISOString(),
       weekNumber: post.weekNumber,
     });
@@ -846,33 +851,37 @@ router.post('/posts/:id/replies', async (req, res) => {
       return;
     }
 
+    const trimmed = content.trim();
+    const moderation = await moderatePost(trimmed, parent.weekNumber ?? viewer.currentWeekNumber);
+
     const reply = await prisma.harmonyPost.create({
       data: {
         pairId,
-        content: content.trim(),
+        content: trimmed,
         parentId: parent.id,
-        status: 'pending_review',
+        status: moderation.verdict === 'flagged' ? 'flagged' : 'approved',
+        pearlNote: moderation.pearlNote,
         postType: 'feed',
         classId: parent.classId,
         weekNumber: parent.weekNumber,
       },
     });
 
-    // Auto-approve
-    setTimeout(async () => {
-      try {
-        await prisma.harmonyPost.update({
-          where: { id: reply.id },
-          data: { status: 'approved' },
-        });
-      } catch {
-        // Reply may have been deleted
-      }
-    }, 1500 + Math.random() * 2000);
+    if (parent.classId && moderation.verdict === 'approved') {
+      io?.to(`class:${parent.classId}`).emit('harmony:new-content', {
+        weekNumber: parent.weekNumber ?? viewer.currentWeekNumber,
+        count: 1,
+      });
+    }
 
     res.status(201).json({
       id: reply.id,
       status: reply.status,
+      pearlNote: reply.pearlNote,
+      moderation: {
+        verdict: moderation.verdict,
+        reason: moderation.reason,
+      },
       createdAt: reply.createdAt.toISOString(),
     });
   } catch (err) {

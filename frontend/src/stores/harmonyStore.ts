@@ -182,24 +182,20 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
     try {
       const result = await createHarmonyPost(content);
       const { posts, currentWeekNumber } = get();
-      const pendingPost: HarmonyPost = {
+      const newPost: HarmonyPost = {
         id: result.id,
         designation: 'YOU',
         content,
-        status: 'pending_review',
-        pearlNote: null,
+        status: result.status,
+        pearlNote: result.pearlNote,
         replyCount: 0,
-        createdAt: new Date().toISOString(),
+        createdAt: result.createdAt,
         isOwn: true,
-        weekNumber: currentWeekNumber,
+        weekNumber: result.weekNumber ?? currentWeekNumber,
         postType: 'feed',
         bulletinData: null,
       };
-      set({ posts: [pendingPost, ...posts] });
-
-      setTimeout(() => {
-        get().loadPosts();
-      }, 5000);
+      set({ posts: [newPost, ...posts] });
     } catch {
       set({ error: 'Failed to submit post' });
     }

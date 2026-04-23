@@ -109,9 +109,18 @@ export async function submitCensureResponse(
   return data;
 }
 
-export async function createHarmonyPost(content: string): Promise<{ id: string; status: string }> {
+export interface CreatePostResult {
+  id: string;
+  status: 'approved' | 'flagged' | 'pending_review';
+  pearlNote: string | null;
+  moderation?: { verdict: 'approved' | 'flagged'; reason: string | null };
+  createdAt: string;
+  weekNumber: number | null;
+}
+
+export async function createHarmonyPost(content: string): Promise<CreatePostResult> {
   const { data } = await client.post('/harmony/posts', { content });
-  return data;
+  return data as CreatePostResult;
 }
 
 export async function fetchReplies(postId: string): Promise<HarmonyReply[]> {

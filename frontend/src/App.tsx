@@ -16,6 +16,7 @@ import type { CharacterMessage, ThreadEntry } from './types/shiftQueue';
 import WelcomeVideoModal from './components/welcome/WelcomeVideoModal';
 import { useSeasonStore } from './stores/seasonStore';
 import { useHarmonyStore } from './stores/harmonyStore';
+import { useViewStore } from './stores/viewStore';
 
 export default function App() {
   const { user, loading, refresh } = useStudentStore();
@@ -137,6 +138,12 @@ export default function App() {
 
       const onHarmonyNewContent = () => {
         useHarmonyStore.getState().setHasNewContent(true);
+        // If Harmony is the currently-open app, refetch so new posts appear live
+        // without the student having to sign out and back in.
+        if (useViewStore.getState().terminalApp === 'harmony') {
+          void useHarmonyStore.getState().loadPosts();
+          void useHarmonyStore.getState().loadCensureQueue();
+        }
       };
 
       sock.on('connect_error', onError);
