@@ -3,7 +3,8 @@ import { authenticate, getPairId } from '../middleware/auth';
 import { isPairPayload } from '../utils/jwt';
 import prisma from '../utils/prisma';
 import { getWeekConfig } from '../data/week-configs';
-import { getNarrativeRoute } from '../data/narrative-routes';
+import { getNarrativeRoute, getRouteWeeks } from '../data/narrative-routes';
+import { ensureHarmonyPostsExist } from '../utils/harmonyGenerator';
 
 const router = Router();
 router.use(authenticate);
@@ -436,6 +437,26 @@ router.post('/weeks/:weekId/shift-result', async (req: Request, res: Response) =
       update: { ...data, completedAt: new Date() },
       create: { pairId, weekNumber: week.weekNumber, ...data, completedAt: new Date() },
     });
+
+    // Proactively prepare next-week Harmony content in the background so it's ready
+    // when the student starts the next shift. Fire-and-forget: never blocks the response.
+    void (async () => {
+      try {
+        const enrollment = await prisma.classEnrollment.findFirst({
+          where: { pairId },
+          select: { classId: true, class: { select: { narrativeRoute: true } } },
+        });
+        if (!enrollment?.classId) return;
+        const routeId = enrollment.class?.narrativeRoute ?? 'full';
+        const routeWeeks = getRouteWeeks(routeId);
+        const nextWeek = routeWeeks.find(w => w > week.weekNumber);
+        if (nextWeek === undefined) return;
+        await ensureHarmonyPostsExist(nextWeek, enrollment.classId, routeId);
+      } catch (err) {
+        console.error('Proactive Harmony generation failed:', err);
+      }
+    })();
+
     res.json(result);
   } catch (err) {
     console.error('Shift result error:', err);

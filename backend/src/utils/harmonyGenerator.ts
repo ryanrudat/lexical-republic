@@ -19,6 +19,7 @@ import {
 import { STATIC_BULLETINS } from '../data/harmonyBulletins';
 import { STATIC_PEARL_TIPS } from '../data/harmonyPearlTips';
 import { STATIC_COMMUNITY_NOTICES, STATIC_SECTOR_REPORTS } from '../data/harmonyCommunityContent';
+import { HARMONY_SEED_POSTS } from '../data/harmonyFeed';
 import type { NarrativeRouteId } from '../data/narrative-routes';
 import type { BulletinQuestion } from '../data/harmonyBulletins';
 
@@ -296,6 +297,19 @@ function buildStaticPosts(weekNumber: number): GeneratedPost[] {
     });
   }
 
+  // Hand-authored feed posts (HARMONY_SEED_POSTS) — keeps the Citizen-4488 arc + narrative
+  // feed posts available to every class, not only the one that existed at seed time.
+  for (const sp of HARMONY_SEED_POSTS.filter(p => p.weekNumber === weekNumber)) {
+    posts.push({
+      authorLabel: sp.authorLabel,
+      content: sp.content,
+      postType: sp.postType ?? 'feed',
+      pearlNote: sp.pearlNote,
+      censureData: (sp.censureData ?? null) as Record<string, unknown> | null,
+      bulletinData: null,
+    });
+  }
+
   // Static censure items (weeks 1-3)
   for (const c of STATIC_CENSURE_ITEMS[weekNumber] ?? []) {
     posts.push(c);
@@ -313,20 +327,26 @@ export async function generateHarmonyPosts(
   classId: string,
   routeId: string = 'full',
 ): Promise<void> {
-  // Count existing posts by type for this week+class
-  const existingCounts = await prisma.harmonyPost.groupBy({
-    by: ['postType'],
+  // Load existing posts once — used for both type counts AND content-level dedup.
+  // Dedup matters because a class that was seeded with HARMONY_SEED_POSTS already
+  // has those feed posts; we must not re-insert the same content when backfilling.
+  const existing = await prisma.harmonyPost.findMany({
     where: { weekNumber, classId },
-    _count: true,
+    select: { postType: true, authorLabel: true, content: true },
   });
-  const countMap = new Map(existingCounts.map(e => [e.postType, e._count]));
+  const countMap = new Map<string, number>();
+  const existingKeys = new Set<string>();
+  for (const e of existing) {
+    countMap.set(e.postType, (countMap.get(e.postType) ?? 0) + 1);
+    existingKeys.add(`${e.authorLabel}||${e.content}`);
+  }
 
   // Determine which types still need content
   const needed: Record<string, number> = {};
   for (const [type, target] of Object.entries(DEFAULT_CONTENT_COUNTS)) {
-    const existing = countMap.get(type) ?? 0;
-    if (existing < target) {
-      needed[type] = target - existing;
+    const count = countMap.get(type) ?? 0;
+    if (count < target) {
+      needed[type] = target - count;
     }
   }
 
@@ -338,10 +358,14 @@ export async function generateHarmonyPosts(
   // Track what static content satisfies
   const remaining = { ...needed };
   const toInsert: GeneratedPost[] = [];
+  const pendingKeys = new Set<string>();
 
   for (const post of staticPosts) {
+    const key = `${post.authorLabel}||${post.content}`;
+    if (existingKeys.has(key) || pendingKeys.has(key)) continue;
     if ((remaining[post.postType] ?? 0) > 0) {
       toInsert.push(post);
+      pendingKeys.add(key);
       remaining[post.postType]!--;
     }
   }
@@ -373,8 +397,11 @@ export async function generateHarmonyPosts(
           : [];
 
         for (const post of aiPosts) {
+          const key = `${post.authorLabel}||${post.content}`;
+          if (existingKeys.has(key) || pendingKeys.has(key)) continue;
           if ((remaining[post.postType] ?? 0) > 0) {
             toInsert.push(post);
+            pendingKeys.add(key);
             remaining[post.postType]!--;
           }
         }
@@ -386,8 +413,11 @@ export async function generateHarmonyPosts(
     // 3. Final fallback for any still-needed feed/censure posts
     const fallbackPosts = buildFallbackPosts(weekNumber);
     for (const post of fallbackPosts) {
+      const key = `${post.authorLabel}||${post.content}`;
+      if (existingKeys.has(key) || pendingKeys.has(key)) continue;
       if ((remaining[post.postType] ?? 0) > 0) {
         toInsert.push(post);
+        pendingKeys.add(key);
         remaining[post.postType]!--;
       }
     }
