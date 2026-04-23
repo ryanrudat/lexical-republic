@@ -26,6 +26,22 @@ import type { BulletinQuestion } from '../data/harmonyBulletins';
 /** In-flight generation promises per classId — prevents duplicate concurrent generation. */
 const generationLocks = new Map<string, Promise<void>>();
 
+/** Spread createdAt across a per-type window so the feed reads like it was populated over a shift. */
+function staggeredCreatedAt(postType: string): Date {
+  const rand = (min: number, max: number) => min + Math.random() * (max - min);
+  const minutesAgo = (() => {
+    switch (postType) {
+      case 'bulletin':         return rand(150, 300); // 2.5–5 h
+      case 'sector_report':    return rand(180, 330); // 3–5.5 h
+      case 'pearl_tip':        return rand(60, 240);  // 1–4 h
+      case 'community_notice': return rand(75, 255);  // 1.25–4.25 h
+      case 'feed':             return rand(10, 210);  // 10 min–3.5 h
+      default:                 return rand(30, 180);  // censure: 30 min–3 h
+    }
+  })();
+  return new Date(Date.now() - minutesAgo * 60 * 1000);
+}
+
 /** Target counts per content type. */
 const DEFAULT_CONTENT_COUNTS: Record<string, number> = {
   feed: 5,
@@ -438,6 +454,7 @@ export async function generateHarmonyPosts(
         weekNumber,
         classId,
         isGenerated: !staticPosts.includes(post),
+        createdAt: staggeredCreatedAt(post.postType),
       },
     });
     inserted++;

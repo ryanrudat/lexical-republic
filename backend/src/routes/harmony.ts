@@ -4,6 +4,7 @@ import prisma from '../utils/prisma';
 import { getCurrentWeekNumberForPair } from '../utils/progression';
 import { getHarmonyReviewContext } from '../data/harmonyFeed';
 import { ensureHarmonyPostsExist } from '../utils/harmonyGenerator';
+import { generateNpcReplies } from '../utils/harmonyReplies';
 import { getRouteWeeks } from '../data/narrative-routes';
 
 const router = Router();
@@ -754,6 +755,9 @@ router.post('/posts', async (req, res) => {
         // Post may have been deleted
       }
     }, 2000 + Math.random() * 3000);
+
+    // Fire-and-forget NPC replies so the feed feels populated with active citizens.
+    generateNpcReplies(post.id, content.trim(), viewer.currentWeekNumber, viewer.classId);
 
     res.status(201).json({
       id: post.id,
