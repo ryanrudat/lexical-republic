@@ -19,6 +19,7 @@ import aiRoutes from './routes/ai';
 import classRoutes from './routes/classes';
 import dictionaryRoutes from './routes/dictionary';
 import { migrateHarmonyAuthorLabels } from './utils/harmonyMigrations';
+import { clampShiftResultRatios } from './utils/shiftResultMigrations';
 import sessionRoutes from './routes/sessions';
 import submissionRoutes from './routes/submissions';
 import messageRoutes from './routes/messages';
@@ -117,6 +118,9 @@ httpServer.listen(PORT, async () => {
   // Run data migrations (idempotent — safe on every boot)
   migrateHarmonyAuthorLabels().catch(err =>
     console.error('[Lexical Republic] Harmony label migration failed:', err),
+  );
+  clampShiftResultRatios().catch(err =>
+    console.error('[Lexical Republic] ShiftResult clamp migration failed:', err),
   );
   console.log(`[Lexical Republic] Upload dir: ${uploadPath} (UPLOAD_DIR=${UPLOAD_DIR})`);
   console.log(`[Lexical Republic] Upload dir exists: ${require('fs').existsSync(uploadPath)}`);
