@@ -105,37 +105,46 @@ Language goal: reinforce reporting language
 
 ## Week 3 - Clarity Bay Intake
 
-### Clip A (2:20 target)
-Upload slot: `clipA`  
-Story goal: Increase pressure and set speed vs accuracy conflict.  
-Language goal: `clarify`, `queue`, `priority`, `dispatch`
+**Narrative approach:** Single-voice narration (Ministry Training Broadcast — calm, institutional, feminine). Characters perform silently on terminal computers. One character anchors each clip. All visuals are screen-based (CRT monitors + shift queue app), no physical paper.
 
-| Time | Visual Direction (Canva) | Dialogue / VO | On-screen Text |
+**Narrator voice direction:** Feminine, calm, mid-pace, institutional. Think corporate induction film or PA announcement — warm enough to feel like care, even enough to feel like surveillance. Never emotional.
+
+---
+
+### Clip A (2:20 target) — "The Queue Grows"
+Upload slot: `clipA`
+Story goal: Show what priority + accuracy look like in practice; end on William internalizing the lesson.
+Language goal (target words — 6/10 in this clip): `queue`, `maintain`, `separate`, `process`, `delay`, `schedule`, `complete`
+Grammar focus (modals): `should`, `must`, `can`
+On-screen focus: Betty (foreground). William visible at far desk (final beats).
+
+| Time | Visual Direction (Canva) | Narration (Ministry Training Broadcast) | On-screen Text |
 |---|---|---|---|
-| 0:00-0:12 | Queue counter rapidly rises on dashboard. | PEARL (on-screen text): "Queue volume has doubled. Maintain quality and speed." | `QUEUE LOAD: ELEVATED` |
-| 0:12-0:35 | Betty moves cases into priority lane. | Betty: "High priority cases should be processed first, sugar." | `PRIORITY FIRST` |
-| 0:35-0:58 | Ivan pauses over unclear message and marks it. | Ivan: "If a message is unclear, clarify before you approve." | `CLARIFY BEFORE APPROVAL` |
-| 0:58-1:22 | Dispatch flow diagram animates forward. | PEARL (on-screen text): "Fast, accurate dispatch protects the collective." | `ACCURATE DISPATCH` |
-| 1:22-1:45 | Workers at terminals, controlled urgency. | Betty: "A calm associate keeps the queue moving." | `STAY CALM` |
-| 1:45-2:08 | William chooses "review" instead of "approve." | William (internal): "I can be fast, but I should be correct." | `CAN vs SHOULD` |
-| 2:08-2:20 | Transition card to activity. | PEARL (on-screen text): "Demonstrate your priority decisions now." | `ACTIVITY READY` |
+| 0:00-0:15 | Open on Central Filing Hall. Rows of light-oak desks with CRT terminals glowing warm cream. Wall-mounted dashboard ticks up: `QUEUE: 47 → 62 → 98 → 127`. Associates glance up from their monitors. | "A shift begins. The queue has grown. This is a routine event in the Ministry of Clarity." | `QUEUE LOAD: ELEVATED` |
+| 0:15-0:45 | Cut to Betty at her terminal. Close on her monitor — shift queue app showing three columns: **URGENT**, **ROUTINE**, **HOLD**. She drags one case card into URGENT. Drags another into ROUTINE. Places a third into HOLD. Her hand is fast; her smile does not waver. | "A calm associate maintains the queue. Urgent cases must be separated first and processed without delay. Routine cases follow their schedule. Cases that require more information should be placed on hold." | `PRIORITY FIRST` |
+| 0:45-1:05 | Tight on Betty's monitor. A case detail pane expands. She reads the summary field. She double-clicks a word to open a regulation reference in a side pane. She clicks **APPROVE**. The card slides off her screen with a soft confirmation tone. | "Every case must be complete. Every case must be correct. An associate should not rush accuracy." | `ACCURACY OVER SPEED` |
+| 1:05-1:30 | Wide on the hall. Wall dashboard now reads `QUEUE: 94` — falling. Associates at their terminals work in rhythm — keyboard clicks, soft confirmation tones overlapping. William, at a far desk, looks up from his own monitor and watches Betty for a beat. | "When every associate maintains their priority, the queue moves. Accurate dispatch protects the collective." | `ACCURATE DISPATCH` |
+| 1:30-1:55 | Close on William's monitor. A case is open in the shift queue app. Two buttons: **APPROVE** and **REVIEW**. His cursor hovers. He clicks **REVIEW**. A small PEARL note animates into the corner of his screen: *"I can be fast. I should be correct."* | "An associate can be fast. An associate should be correct. These are not the same." | `CAN vs SHOULD` |
+| 1:55-2:20 | The PEARL eye icon fades in on William's monitor, centered. It does not blink. Wall dashboard holds steady. | "Your queue is waiting. Show your priorities." | `ACTIVITY READY` |
 
 Activity bridge line shown before stage change:
 - `PEARL: Delays increase confusion. Accuracy resolves it.`
 
 ---
 
-### Clip B (1:20 target)
-Upload slot: `clipB`  
-Story goal: Force contrast between speed messaging and caution messaging.  
-Language goal: modal justification in choices
+### Clip B (1:20 target) — "The Second Look"
+Upload slot: `clipB`
+Story goal: Show careful self-review; end on the shift remaining under observation.
+Language goal (target words — 4/10 in this clip; combined with Clip A = 10/10): `review`, `identify`, `forward`, `respond`
+Grammar focus (modals): `should`, `must`, `can`
+On-screen focus: Ivan (whole clip).
 
-| Time | Visual Direction (Canva) | Dialogue / VO | On-screen Text |
+| Time | Visual Direction (Canva) | Narration (Ministry Training Broadcast) | On-screen Text |
 |---|---|---|---|
-| 0:00-0:22 | Ivan in close frame, quiet background. | Ivan: "Fast work can hide mistakes." | `VERIFY BEFORE YOU SUBMIT` |
-| 0:22-0:45 | Betty bright frame, encouraging smile. | Betty: "Confidence matters. Hesitation spreads doubt." | `MOVE THE QUEUE` |
-| 0:45-1:05 | PEARL eye icon center screen, fixed gaze. | PEARL (on-screen text): "Priority queue updated. Continue to Language Desk." | `QUEUE UPDATED` |
-| 1:05-1:20 | End card with low hum fade-out. | PEARL (on-screen text): "Your shift remains under observation." | `SHIFT CONTINUES` |
+| 0:00-0:25 | Late in the shift. Ivan at his terminal. On his monitor, shift queue app shows a list of **APPROVED** cases from today. He scrolls. He stops. He double-clicks an entry. The case detail opens. He reads. His eyes narrow. | "A careful associate reviews their own work. Fast work can hide mistakes." | `VERIFY BEFORE YOU SUBMIT` |
+| 0:25-0:50 | Close on Ivan's monitor. He highlights a phrase in the case body. He opens a status dropdown — **APPROVED → REVIEW** — and selects REVIEW. He clicks **FORWARD**. The case routes out of his queue with a soft tone. | "An associate must identify errors before they become permanent. An associate should forward what they cannot clarify." | `REVIEW BEFORE YOU APPROVE` |
+| 0:50-1:05 | The PEARL eye icon fades in on Ivan's screen. His status indicator in the corner of the shift queue interface shifts from green to amber. Ivan nods once and opens the next case — a red "Urgent — Supervisor Inquiry" flag appears in his queue. | "Corrections are valued. Your precision has been recorded. An associate must respond to supervisor inquiries promptly." | `QUEUE UPDATED` |
+| 1:05-1:20 | End card. Wall dashboard in the background still reads `QUEUE: ELEVATED`. Low terminal hum fades. | "Your shift remains under observation." | `SHIFT CONTINUES` |
 
 ---
 
