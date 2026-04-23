@@ -339,13 +339,13 @@ function DrillDown({
             </div>
             <div className="text-center">
               <span className="text-sm font-semibold text-indigo-600">
-                {Math.round(cell.shiftResult.vocabScore * 100)}%
+                {Math.round(Math.max(0, Math.min(1, cell.shiftResult.vocabScore)) * 100)}%
               </span>
               <p className="text-[9px] text-slate-400">Vocab Score</p>
             </div>
             <div className="text-center">
               <span className="text-sm font-semibold text-indigo-600">
-                {Math.round(cell.shiftResult.grammarAccuracy * 100)}%
+                {Math.round(Math.max(0, Math.min(1, cell.shiftResult.grammarAccuracy)) * 100)}%
               </span>
               <p className="text-[9px] text-slate-400">Grammar Accuracy</p>
             </div>
