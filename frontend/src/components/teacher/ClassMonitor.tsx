@@ -6,6 +6,7 @@ import { getSocket } from '../../utils/socket';
 import { STEP_ORDER } from '../../types/shifts';
 import type { StudentSummary } from '../../types/shifts';
 import ClarityMinderThread from './ClarityMinderThread';
+import ShiftReviewModal from './ShiftReviewModal';
 import { getAvailableShifts } from '../../data/narrative-routes';
 
 const stepLabel = (stepId: string) =>
@@ -46,6 +47,8 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
     weekNumber?: number;
   } | null>(null);
   const [showClassShiftSelector, setShowClassShiftSelector] = useState(false);
+  const [showReviewShiftSelector, setShowReviewShiftSelector] = useState(false);
+  const [reviewShiftNumber, setReviewShiftNumber] = useState<number | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   // Cache of shift status fetched from backend for offline students
   const [offlineStatus, setOfflineStatus] = useState<Map<string, ShiftStatus>>(new Map());
@@ -304,7 +307,26 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
         )}
         {students.length > 0 && (
           <button
-            onClick={() => setShowClassShiftSelector(v => !v)}
+            onClick={() => {
+              setShowReviewShiftSelector(v => !v);
+              if (showClassShiftSelector) setShowClassShiftSelector(false);
+            }}
+            className={`px-3 py-2 text-xs rounded-lg border transition-colors ${
+              showReviewShiftSelector
+                ? 'bg-indigo-100 text-indigo-700 border-indigo-300'
+                : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+            }`}
+            title="See every student's work for a specific shift"
+          >
+            Review Shift
+          </button>
+        )}
+        {students.length > 0 && (
+          <button
+            onClick={() => {
+              setShowClassShiftSelector(v => !v);
+              if (showReviewShiftSelector) setShowReviewShiftSelector(false);
+            }}
             className={`px-3 py-2 text-xs rounded-lg border transition-colors ${
               showClassShiftSelector
                 ? 'bg-indigo-100 text-indigo-700 border-indigo-300'
@@ -315,6 +337,23 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
           </button>
         )}
       </div>
+      {showReviewShiftSelector && (
+        <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-4 py-2">
+          <span className="text-xs text-slate-500 mr-1">Review which shift:</span>
+          {AVAILABLE_SHIFTS.map((wn) => (
+            <button
+              key={wn}
+              className="px-3 py-1 text-xs rounded-md border bg-white text-slate-600 border-slate-200 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 transition-colors"
+              onClick={() => {
+                setReviewShiftNumber(wn);
+                setShowReviewShiftSelector(false);
+              }}
+            >
+              Shift {wn}
+            </button>
+          ))}
+        </div>
+      )}
       {showClassShiftSelector && (
         <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-4 py-2">
           <span className="text-xs text-slate-500 mr-1">Move all students to:</span>
@@ -833,6 +872,13 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
             </div>
           </div>
         </div>
+      )}
+      {reviewShiftNumber !== null && classId && (
+        <ShiftReviewModal
+          classId={classId}
+          weekNumber={reviewShiftNumber}
+          onClose={() => setReviewShiftNumber(null)}
+        />
       )}
     </div>
   );
