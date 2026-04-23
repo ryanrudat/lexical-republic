@@ -17,8 +17,10 @@ export const WEEK_3_CONFIG: WeekConfig = {
   ],
 
   // ─── Tasks ──────────────────────────────────────────────────────
+  // Sequence: Input → Recognition → Guided Practice → Assessment → Application → Production
+  // Matches W1/W2 scaffold for A2-B1 ESL learners.
   tasks: [
-    // 1. Priority Briefing
+    // 1. Priority Briefing — input (queue pressure + modal writing)
     {
       id: "priority_briefing",
       type: "priority_briefing",
@@ -59,11 +61,68 @@ export const WEEK_3_CONFIG: WeekConfig = {
       },
     },
 
-    // 2. Vocabulary Clearance
+    // 2. Word Match — vocabulary recognition, grounded in priority-briefing context
+    {
+      id: "word_match_w3",
+      type: "word_match",
+      location: "Compliance Desk",
+      label: "Language Authorization",
+      config: {
+        pairs: [
+          { word: "process", definition: "to deal with something using an official procedure" },
+          { word: "complete", definition: "to finish something entirely" },
+          { word: "review", definition: "to look at something again carefully" },
+          { word: "delay", definition: "to make something happen later than planned" },
+          { word: "schedule", definition: "a plan that lists when things will happen" },
+          { word: "respond", definition: "to reply or react to something formally" },
+          { word: "identify", definition: "to recognize or determine what something is" },
+          { word: "separate", definition: "to divide or keep things apart from each other" },
+          { word: "maintain", definition: "to keep something in good condition or at the same level" },
+          { word: "forward", definition: "to send something on to another person or place" },
+        ],
+        pearlBarkOnComplete:
+          "Vocabulary authorization verified. Proceed to Queue Processing Procedures.",
+      },
+    },
+
+    // 3. Cloze Fill — guided practice of modals + target words in a procedural memo
+    {
+      id: "cloze_fill_w3",
+      type: "cloze_fill",
+      location: "Records Office",
+      label: "Queue Processing Procedures",
+      config: {
+        title: "PROCEDURE MEMO 000419 — QUEUE PROCESSING GUIDELINES",
+        from: "Department of Clarity — Operations",
+        passage:
+          "All associates must follow standard queue protocols for every shift.\n\nSection 1: Associates should {0} all urgent cases first. When a case is received, you must {1} its priority level before proceeding. Urgent cases must be {2} from routine cases in the queue display. Do not {3} any case without a valid reason.\n\nSection 2: Every associate must {4} their daily work before closing. Routine cases must be handled on the approved {5}. You must {6} promptly to supervisor inquiries. No case may be closed until it is {7}.\n\nSection 3: Associates must {8} accurate records at all times. Cases that cannot be resolved should be {9} to a supervisor.",
+        blanks: [
+          { index: 0, correctWord: "process" },
+          { index: 1, correctWord: "identify" },
+          { index: 2, correctWord: "separated" },
+          { index: 3, correctWord: "delay" },
+          { index: 4, correctWord: "review" },
+          { index: 5, correctWord: "schedule" },
+          { index: 6, correctWord: "respond" },
+          { index: 7, correctWord: "completed" },
+          { index: 8, correctWord: "maintain" },
+          { index: 9, correctWord: "forwarded" },
+        ],
+        wordBank: [
+          "process", "identify", "separated", "delay", "review",
+          "schedule", "respond", "completed", "maintain", "forwarded",
+          "notice", "check",
+        ],
+        pearlBarkOnComplete:
+          "Processing procedures acknowledged. Proceed to Vocabulary Clearance.",
+      },
+    },
+
+    // 4. Vocabulary Clearance
     {
       id: "vocab_clearance",
       type: "vocab_clearance",
-      location: "Compliance Desk",
+      location: "Clearance Terminal",
       label: "Vocabulary Clearance",
       config: {
         items: [
@@ -147,7 +206,7 @@ export const WEEK_3_CONFIG: WeekConfig = {
       },
     },
 
-    // 3. Priority Classification
+    // 5. Priority Classification
     {
       id: "priority_sort",
       type: "priority_sort",
@@ -208,7 +267,7 @@ export const WEEK_3_CONFIG: WeekConfig = {
       },
     },
 
-    // 4. Shift Report
+    // 6. Shift Report
     {
       id: "shift_report",
       type: "shift_report",
