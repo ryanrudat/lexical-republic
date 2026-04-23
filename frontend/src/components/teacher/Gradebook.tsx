@@ -28,8 +28,15 @@ function computeCell(
   student: GradebookStudent,
   week: GradebookWeek
 ): CellStatus {
+  // Only count MissionScores whose missionType belongs to the CURRENT task list
+  // for this week. Legacy Missions (old storyboard: recap/briefing/grammar/etc.)
+  // can still live in the DB at orderIndex 100+; without this filter their
+  // scores inflated the sum and produced >100% shift totals.
+  const validTypes = new Set<string>(
+    week.taskTypes?.map((t) => t.type) ?? STEP_ORDER.map((s) => s.id),
+  );
   const weekScores = student.missionScores.filter(
-    (ms) => ms.mission.weekId === week.id
+    (ms) => ms.mission.weekId === week.id && validTypes.has(ms.mission.missionType),
   );
   const shiftResult = student.shiftResults?.find(
     (sr) => sr.weekNumber === week.weekNumber
@@ -47,15 +54,18 @@ function computeCell(
   ) || shiftResult?.completedAt != null;
 
   // Use ShiftResult summary average when available (matches what student sees),
-  // otherwise fall back to MissionScore average
+  // otherwise fall back to MissionScore average. Clamp to [0, 1] in both paths
+  // as a final safety net against any historical bad data.
   let avg: number | null;
   if (shiftResult && isComplete) {
     // Average vocab + grammar scores — same metrics student sees on ShiftClosing
-    avg = (shiftResult.vocabScore + shiftResult.grammarAccuracy) / 2;
+    const raw = (shiftResult.vocabScore + shiftResult.grammarAccuracy) / 2;
+    avg = Math.max(0, Math.min(1, raw));
   } else {
     const totalTasks = week.taskTypes?.length ?? STEP_ORDER.length;
     const totalScore = weekScores.reduce((sum, ms) => sum + ms.score, 0);
-    avg = totalTasks > 0 ? totalScore / totalTasks : null;
+    const raw = totalTasks > 0 ? totalScore / totalTasks : null;
+    avg = raw === null ? null : Math.max(0, Math.min(1, raw));
   }
 
   if (!isComplete) {
