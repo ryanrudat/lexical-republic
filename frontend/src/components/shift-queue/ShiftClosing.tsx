@@ -67,6 +67,26 @@ export default function ShiftClosing() {
     return total;
   }, [completedTasks]);
 
+  // W3 MVP reactive echo: pull the student's first writing sentence from the
+  // Priority Briefing writing card and quote it back at shift close. Tests
+  // whether students notice the game quoting their own words.
+  const partyObservation = useMemo<string | null>(() => {
+    if (!weekConfig || weekConfig.weekNumber !== 3) return null;
+    const briefingTask = completedTasks.find(t => t.taskId === 'priority_briefing');
+    const submissions = (briefingTask?.details as Record<string, unknown> | undefined)
+      ?.writingSubmissions as Record<string, string> | undefined;
+    if (!submissions) return null;
+    const firstNonEmpty = Object.values(submissions).find(s => s && s.trim().length > 0);
+    if (!firstNonEmpty) return null;
+    const firstSentence = firstNonEmpty.trim().split(/[.!?]+/)[0]?.trim();
+    if (!firstSentence) return null;
+    const words = firstSentence.split(/\s+/);
+    const capped = words.length > 20
+      ? words.slice(0, 20).join(' ') + '…'
+      : words.join(' ') + '.';
+    return capped.charAt(0).toUpperCase() + capped.slice(1);
+  }, [completedTasks, weekConfig]);
+
   const stats: StatItem[] = [
     { label: 'Documents Processed', value: completedTasks.length + '/' + taskProgress.length },
     {
@@ -206,6 +226,18 @@ export default function ShiftClosing() {
               {weekConfig.shiftClosing.clearanceTo}
             </span>
           </div>
+        </div>
+      )}
+
+      {/* W3 reactive echo — PEARL quotes the student's first written principle back */}
+      {partyObservation && (
+        <div className="bg-white border border-sky-200 rounded-xl p-4 animate-fade-in">
+          <p className="font-ibm-mono text-[10px] text-sky-600 tracking-wider uppercase mb-2 text-center">
+            P.E.A.R.L. — Observation
+          </p>
+          <p className="text-xs text-[#4B5563] leading-relaxed text-center">
+            Your first principle — <span className="italic">&ldquo;{partyObservation}&rdquo;</span> — has been logged. The Party values specificity, Citizen.
+          </p>
         </div>
       )}
 
