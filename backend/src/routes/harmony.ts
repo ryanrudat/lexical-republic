@@ -510,18 +510,28 @@ router.get('/censure-queue', async (req, res) => {
       include: {
         censureResponses: {
           where: { pairId: viewer.pairId },
-          select: { action: true, isCorrect: true },
+          select: { action: true, isCorrect: true, createdAt: true },
         },
       },
       orderBy: [{ weekNumber: 'desc' }, { createdAt: 'asc' }],
     });
 
-    // Separate current-week items from review candidates
+    // Separate current-week items from review candidates.
+    // Review candidates use spaced-repetition rules so items from previous shifts
+    // re-surface over time rather than disappearing after a single correct response.
     const currentWeekItems = censurePosts.filter(p => p.weekNumber === viewer.currentWeekNumber);
-    const reviewCandidates = censurePosts.filter(p =>
-      p.weekNumber !== viewer.currentWeekNumber &&
-      p.censureResponses.length === 0,
-    );
+
+    const SPACED_REPETITION_DAYS = 7;
+    const now = Date.now();
+    const MS_PER_DAY = 1000 * 60 * 60 * 24;
+    const reviewCandidates = censurePosts.filter(p => {
+      if (p.weekNumber === viewer.currentWeekNumber) return false;
+      const r = p.censureResponses[0];
+      if (!r) return true;                // never answered
+      if (!r.isCorrect) return true;      // answered wrong — keep surfacing until they get it right
+      const ageDays = (now - r.createdAt.getTime()) / MS_PER_DAY;
+      return ageDays > SPACED_REPETITION_DAYS;   // correct but stale — spaced repetition re-eligible
+    });
 
     // Select up to 3 review items, prioritized by lowest mastery
     let selectedReviewItems = reviewCandidates;
@@ -534,30 +544,43 @@ router.get('/censure-queue', async (req, res) => {
       selectedReviewItems = reviewCandidates.slice(0, 3);
     }
 
-    // Already-reviewed items from older weeks (show in "completed" section)
+    // Items the student has completed on a past shift that aren't currently in the
+    // active review rotation — show in read-only "completed" section.
+    const selectedReviewIds = new Set(selectedReviewItems.map(p => p.id));
     const reviewedOlderItems = censurePosts.filter(p =>
       p.weekNumber !== viewer.currentWeekNumber &&
-      p.censureResponses.length > 0,
+      p.censureResponses.length > 0 &&
+      !selectedReviewIds.has(p.id),
     );
 
     const allItems = [...currentWeekItems, ...selectedReviewItems, ...reviewedOlderItems];
     const totalItems = allItems.length;
-    const completedItems = allItems.filter(p => p.censureResponses.length > 0).length;
+    // "Completed" count = items in the read-only section. Items in active review
+    // (even if they have a prior response) count as outstanding work.
+    const completedItems = reviewedOlderItems.length +
+      currentWeekItems.filter(p => p.censureResponses.length > 0).length;
 
     res.json({
       locked: false,
-      items: allItems.map((post) => ({
-        id: post.id,
-        designation: post.authorLabel || 'Unknown',
-        content: post.content,
-        postType: post.postType,
-        weekNumber: post.weekNumber,
-        censureData: post.censureData,
-        reviewed: post.censureResponses.length > 0,
-        wasCorrect: post.censureResponses[0]?.isCorrect ?? null,
-        studentAction: post.censureResponses[0]?.action ?? null,
-        isReview: post.weekNumber !== viewer.currentWeekNumber,
-      })),
+      items: allItems.map((post) => {
+        const isCurrent = post.weekNumber === viewer.currentWeekNumber;
+        const isActiveReview = selectedReviewIds.has(post.id);
+        const hasResponse = post.censureResponses.length > 0;
+        return {
+          id: post.id,
+          designation: post.authorLabel || 'Unknown',
+          content: post.content,
+          postType: post.postType,
+          weekNumber: post.weekNumber,
+          censureData: post.censureData,
+          // Only render as "reviewed" (read-only) when it's a completed item not in active rotation.
+          // Items re-surfaced by spaced repetition are actionable again even with a prior response.
+          reviewed: !isCurrent && !isActiveReview && hasResponse,
+          wasCorrect: post.censureResponses[0]?.isCorrect ?? null,
+          studentAction: post.censureResponses[0]?.action ?? null,
+          isReview: !isCurrent,
+        };
+      }),
       stats: { total: totalItems, completed: completedItems },
     });
   } catch (err) {
@@ -592,9 +615,11 @@ router.post('/censure-queue/:id/respond', async (req, res) => {
     const correctIndex = censureData?.correctIndex as number | undefined;
     const isCorrect = correctIndex !== undefined && selectedIndex === correctIndex;
 
+    // Refresh createdAt on re-answer so the spaced-repetition clock restarts.
+    // createdAt doubles as "last answered at" for the review-candidate filter.
     const response = await prisma.harmonyCensureResponse.upsert({
       where: { pairId_postId: { pairId, postId } },
-      update: { action, isCorrect },
+      update: { action, isCorrect, createdAt: new Date() },
       create: { pairId, postId, action, isCorrect },
     });
 
