@@ -134,3 +134,27 @@ export function aggregateTaskResults(inputs: AggregatorInput[]): AggregatorResul
     overallScore,
   };
 }
+
+/**
+ * Count distinct target-vocab words the student hit across all completed tasks.
+ *
+ * Reads `details.vocabUsed` (populated by writing tasks via WritingEvaluator)
+ * and dedupes case-insensitively. Returns null when no task contributed a
+ * vocabUsed array (so ShiftClosing can render "—" instead of a bogus 0).
+ */
+export function countTargetWordsHit(inputs: AggregatorInput[]): number | null {
+  const seen = new Set<string>();
+  let anyContributed = false;
+  for (const input of inputs) {
+    const details = input.details as Record<string, unknown> | undefined;
+    const vocab = details?.vocabUsed;
+    if (!Array.isArray(vocab)) continue;
+    anyContributed = true;
+    for (const word of vocab) {
+      if (typeof word === 'string' && word.trim()) {
+        seen.add(word.trim().toLowerCase());
+      }
+    }
+  }
+  return anyContributed ? seen.size : null;
+}

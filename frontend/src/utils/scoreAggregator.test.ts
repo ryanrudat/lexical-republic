@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { aggregateTaskResults } from './scoreAggregator';
+import { aggregateTaskResults, countTargetWordsHit } from './scoreAggregator';
 import type { TaskResultDetails } from '../types/taskResult';
 
 // Helper: build a canonical result entry inline.
@@ -229,5 +229,69 @@ describe('aggregateTaskResults', () => {
     expect(result.writingScore).toBe(1);
     expect(result.errorsFound).toBe(7);
     expect(result.errorsTotal).toBe(9);
+  });
+});
+
+describe('countTargetWordsHit', () => {
+  it('returns null when no task contributed a vocabUsed array', () => {
+    expect(countTargetWordsHit([])).toBeNull();
+    expect(
+      countTargetWordsHit([
+        task(0.8, {
+          taskType: 'word_match',
+          itemsCorrect: 8,
+          itemsTotal: 10,
+          category: 'vocab',
+        }),
+      ]),
+    ).toBeNull();
+  });
+
+  it('returns the count from a single task with vocabUsed', () => {
+    const result = countTargetWordsHit([
+      task(1, {
+        taskType: 'shift_report',
+        itemsCorrect: 1,
+        itemsTotal: 1,
+        category: 'writing',
+        vocabUsed: ['comply', 'approve'],
+      }),
+    ]);
+    expect(result).toBe(2);
+  });
+
+  it('dedupes overlapping words across multiple tasks (case-insensitive)', () => {
+    const result = countTargetWordsHit([
+      task(1, {
+        taskType: 'priority_briefing',
+        itemsCorrect: 1,
+        itemsTotal: 1,
+        category: 'writing',
+        vocabUsed: ['Comply', 'approve'],
+      }),
+      task(1, {
+        taskType: 'shift_report',
+        itemsCorrect: 1,
+        itemsTotal: 1,
+        category: 'writing',
+        vocabUsed: ['comply', 'record'],
+      }),
+    ]);
+    // Comply/comply merge; approve + record stay distinct => 3 unique.
+    expect(result).toBe(3);
+  });
+
+  it('returns 0 when a task explicitly reports an empty vocabUsed array', () => {
+    // Student submitted writing but hit zero target words — distinct from "no writing task at all".
+    const result = countTargetWordsHit([
+      task(0.5, {
+        taskType: 'shift_report',
+        itemsCorrect: 1,
+        itemsTotal: 1,
+        category: 'writing',
+        vocabUsed: [],
+      }),
+    ]);
+    expect(result).toBe(0);
   });
 });
