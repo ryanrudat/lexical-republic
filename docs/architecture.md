@@ -4,10 +4,9 @@
 - Express 5 + TypeScript
 - Prisma + PostgreSQL
 - Auth via JWT in HTTP-only cookies + Bearer token fallback (Safari ITP)
-- Major route groups: `/api/auth`, `/api/shifts`, `/api/recordings`, `/api/pearl`, `/api/pearl-feedback`, `/api/harmony`, `/api/teacher`, `/api/vocabulary`, `/api/ai`, `/api/classes`, `/api/dictionary`, `/api/sessions`, `/api/submissions`, `/api/messages`, `/api/student`, `/api/narrative-choices`, `/api/clarity-check`
+- Major route groups: `/api/auth`, `/api/shifts`, `/api/recordings`, `/api/pearl`, `/api/harmony`, `/api/teacher`, `/api/vocabulary`, `/api/ai`, `/api/classes`, `/api/dictionary`, `/api/sessions`, `/api/submissions`, `/api/messages`
 - Socket.IO for real-time teacher dashboard (student activity tracking, briefing stage broadcasts) and student notifications (`harmony:new-content`). Student socket connects on login (App.tsx). Socket auth supports both cookie and `auth.token` Bearer fallback.
 - Socket reconnection: `connectSocket()` reuses stale sockets via `socket.connect()` instead of destroying and recreating them, preserving event listeners registered by App.tsx (session:clarity-message, session:task-command, etc.)
-- **Socket listener dedup + JWT expiry detection** (2026-04-17, PR #4): module-level `coreListenersAttached` flag prevents duplicate connect/disconnect/connect_error listeners on repeat `connectSocket()` calls. On visibility-triggered reconnect, a local JWT base64 decode (no crypto) checks `exp` — if expired, emits `window.dispatchEvent(new CustomEvent('auth:required'))` instead of hanging in "connecting" state.
 - AI services (fail-open): OpenAI direct API (GPT-4.1-mini default) for grammar checking and PEARL contextual barks, Azure Whisper for transcription
 - Shared OpenAI client: `backend/src/utils/openai.ts` — lazy-init singleton, exports `getOpenAI()` and `OPENAI_MODEL`
 
@@ -23,10 +22,8 @@
 - `/teacher` is a dedicated route only for teacher-role users. All other routes show the student experience.
 - Auth tokens in `sessionStorage` (per-tab isolation). Token cleared on logout via `disconnectSocket()` + `clearStoredToken()`.
 - Stale chunk handling: `vite:preloadError` listener in `main.tsx` auto-reloads once after deploys.
-- `MonitorPlayer`: `frontend/src/components/shared/MonitorPlayer.tsx` — shared CRT monitor video player (used for welcome video, storyboard clips, shift queue task clips). Renders video inside retro monitor frame with clip-path, scanlines, vignette, seekable LED progress bar, brass volume knob. `onEnded` captured in ref so parent re-renders don't reset the 2s auto-skip timer (fixed 2026-04-17 PR #5).
+- `MonitorPlayer`: `frontend/src/components/shared/MonitorPlayer.tsx` — shared CRT monitor video player (used for welcome video, storyboard clips, shift queue task clips). Renders video inside retro monitor frame with clip-path, scanlines, vignette, seekable LED progress bar, brass volume knob.
 - `FrostedGlassPlayer`: `frontend/src/components/shift/media/FrostedGlassPlayer.tsx` — DEPRECATED (no remaining imports). Was replaced by MonitorPlayer.
-- `scoreAggregator` + `taskResult` types (added 2026-04-17, PR #9): `frontend/src/utils/scoreAggregator.ts` is a pure reducer, `frontend/src/types/taskResult.ts` defines the canonical `TaskResultDetails` shape emitted by every task component's `onComplete`. ShiftClosing calls the aggregator; Vitest covers it (`frontend/src/utils/scoreAggregator.test.ts`, 11 tests).
-- Frontend data shim: `frontend/src/data/citizen4488Posts.ts` mirrors backend's 4488 feed posts for ShiftClosing's Case File card (avoids a backend round-trip on shift close).
 
 ## Data Model (Prisma)
 Primary models: `User`, `Arc`, `Week`, `Mission`, `MissionScore`, `Recording`, `HarmonyPost`, `HarmonyCensureResponse`, `PearlMessage`, `Class`, `ClassEnrollment`, `ClassWeekUnlock`, `Character`, `DialogueNode`, `PearlConversation`, `NarrativeChoice`, `TeacherConfig`, `DictionaryWord`, `WordFamily`, `WordStatusEvent`, `PairDictionaryProgress`, `Pair`, `SessionConfig`, `CharacterMessage`, `Citizen4488Interaction`, `ShiftResult`
@@ -105,9 +102,8 @@ Deprecated: `Vocabulary`, `StudentVocabulary`
 - `PATCH /api/dictionary/:wordId/chinese-revealed` — set chineseRevealed=true (one-way)
 
 ### Harmony routes (`backend/src/routes/harmony.ts`)
-- `GET /api/harmony/posts` — all feed-tab content types (feed, bulletin, pearl_tip, community_notice, sector_report), sorted by type priority. Triggers lazy generation. Returns `postType`, `bulletinData`, 3-tier vocab words. PR #12 (pending) adds `isFirstVisit: boolean` (true only when pre-update `lastHarmonyVisit` is null) for gating a one-time PEARL intro banner.
-- **Auth + transaction hardening** (2026-04-17, PR #2): `POST /posts/:id/censure` rejects cross-class attempts (403). Mastery upsert+update atoms via `prisma.$transaction(async (tx) => {...})`. Stale-pending sweep threshold lowered 10s→3s. `lastHarmonyVisit` update awaited (no more fire-and-forget swallowing errors).
-- `POST /api/harmony/posts` — create student post. As of 2026-04-24, runs through `harmonyModeration.ts` (profanity pre-filter + OpenAI rubric): approved posts are inserted with status='approved' + `pearlNote` + broadcast `harmony:new-content` + trigger `generateNpcReplies()`; flagged posts inserted with status='flagged' + PEARL rejection note, visible only to the author. OpenAI failure defaults to approved.
+- `GET /api/harmony/posts` — all feed-tab content types (feed, bulletin, pearl_tip, community_notice, sector_report), sorted by type priority. Triggers lazy generation. Returns `postType`, `bulletinData`, 3-tier vocab words.
+- `POST /api/harmony/posts` — create student post (auto-approved after 2-5s; orphaned pending posts swept on next GET)
 - `DELETE /api/harmony/posts/:id` — delete post (cascade: replies → censure responses → post)
 - `GET /api/harmony/posts/:id/replies` — fetch replies for a post
 - `POST /api/harmony/posts/:id/replies` — create reply
@@ -118,52 +114,7 @@ Deprecated: `Vocabulary`, `StudentVocabulary`
 - `GET /api/harmony/archives?section=vocabulary|timeline|bulletins` — vocabulary by week with mastery, 4488 case file timeline, bulletin archive. Route-scoped, lazy-loadable by section.
 - `GET /api/harmony/has-new` — lightweight check for new content since `Pair.lastHarmonyVisit`. Polled on TerminalDesktop mount.
 
-### Clarity Check routes (`backend/src/routes/clarity-check.ts`)
-- `POST /api/clarity-check/complete` — body `{ checkId, weekNumber, words: [{word, correct}] }`. Records a completed Clarity Check and bumps dictionary mastery +0.03 per correct answer (matches Harmony spaced-review rate). Wrapped in `prisma.$transaction`. No MissionScore is written — Clarity Checks are lightweight verifications, not tasks.
-
-### Narrative Choices routes (`backend/src/routes/narrative-choices.ts`)
-- `POST /api/narrative-choices` — record a student's choice from an Inter-Task Moment or Mid-Task Choice. Body `{ choiceKey, value, weekNumber?, context? }`. Backed by `NarrativeChoice` Prisma model.
-- `GET /api/narrative-choices?weekNumber=N` — read stored choices for the authenticated pair, optionally filtered by week.
-
 ### PEARL routes (`backend/src/routes/pearl.ts`)
 - `GET /api/pearl/messages` — active ambient messages (shuffled)
 - `POST /api/pearl/bark` — AI-generated contextual bark (3s timeout, fail-open to pool)
 - `POST /api/pearl/chat` — AI chat with 4-layer guardrails, per-shift rate limit (20 messages per `pairId-weekN`). Supports `isWritingNudge` mode: specialized writing guidance context injection, Layer 4 filter relaxed to allow target vocab references in hints.
-
-### PEARL Feedback route (`backend/src/routes/pearl-feedback.ts`) — added 2026-04-17 via PR #8
-- `POST /api/pearl-feedback` — pair-authed. Request: `{ taskType, taskContext, studentText, weekNumber }`. Response: `{ pearlFeedback: string }` (150-200 chars, in-character PEARL observation on student REASONING — not grammar/vocab). 8s OpenAI timeout with `Promise.race`. Falls back to canned rotation on failure/timeout (never throws to UI). Reuses `getOpenAI()` from `backend/src/utils/openai.ts`; mirrors `Promise.race` pattern from `routes/pearl.ts`.
-
-### Student routes (`backend/src/routes/student.ts`) — added 2026-04-17 via PR #6
-- `GET /api/student/profile-summary` — pair-authed. Aggregates in parallel (`Promise.all`): Pair fields, `ShiftResult[]`, `PairDictionaryProgress` totals by status, `HarmonyPost` + `HarmonyCensureResponse` counts with correctness rate, `NarrativeChoice` + `Citizen4488Interaction` counts. Powers `MyFileApp.tsx`.
-
-### Narrative Choices route (`backend/src/routes/narrative-choices.ts`) — added 2026-04-21
-Stores student decisions from B (inter-task moments) and C (mid-task choices) layers. Writes to `NarrativeChoice` Prisma model (no migration — model existed; previously only written to from `messages.ts` character replies).
-- `POST /api/narrative-choices` — pair-authed. Body: `{ choiceKey, value, weekNumber?, context? }`. `weekNumber` merged into `context` JSON before persistence. Uses `Prisma.InputJsonValue` cast for JSON column.
-- `GET /api/narrative-choices?weekNumber=N` — pair-authed. Returns this pair's choices, optionally filtered to a specific week (filter applied in-memory on `context.weekNumber`).
-- **Conventions:**
-  - `choiceKey` pattern: `w{N}_{character}_aftertask{N}` for B moments (e.g. `w4_betty_aftertask1`), `w{N}_doc_review_*` for C mid-task doc choices (e.g. `w4_doc_review_frag3`). Stable across releases for cross-week queries.
-  - `value` pattern: `compliant` | `curious` | `guarded` for triadic narrative choices. Used by consumer code (e.g. ShiftClosing PEARL echoes) to branch.
-
-## Narrative-Reactive UI Layer (2026-04-21)
-
-The W3 MVP and W4 rebuild added two non-skippable interaction layers inside the terminal flow:
-
-### Inter-Task Moments (B-layer)
-- Component: `frontend/src/components/shift-queue/InterTaskMoment.tsx` — full-surface (not floating modal), no skip/dismiss. Two variants:
-  - `character`: message from a named NPC + 2–3 reply buttons (each uses W-grammar target). Click reply → POST `NarrativeChoice` → show chosen text + character response + Continue.
-  - `ambient`: glitch text + timer (`durationMs`, default 2000ms) → Continue button appears after timer.
-- Config: `interTaskMoments?: Record<taskId, InterTaskMomentConfig>` on `WeekConfig`. Keyed by task ID the moment fires AFTER (stable across task-list refactors).
-- Wiring: `ShiftQueue.tsx` cascade after task completes = dismissal video → vocab interstitial → **inter-task moment** → next task. State cleared on week change / teacher task reset.
-
-### Mid-Task Choices (C-layer)
-- Embedded in `frontend/src/components/shift-queue/tasks/DocumentReview.tsx`. Interrupts between stamp animation and advance when the completed doc has `midTaskChoice` config.
-- Config: `midTaskChoice?: MidTaskChoiceConfig` field on `DocumentConfig` (see `backend/src/data/week-configs/types.ts`). Options have `{ text, value, responseText? }`.
-- UI: amber-accented "P.E.A.R.L. — Archive Control" overlay replaces doc view. Click option → POST `NarrativeChoice` → show chosen text + response (if any) + Continue → real advance.
-- Extensible to any task type with a natural "between phases" moment.
-
-### Shift-close PEARL observation cards
-- `frontend/src/components/shift-queue/ShiftClosing.tsx` fetches `fetchNarrativeChoices(weekNumber)` on mount.
-- Week-specific observation cards render before the ceremonial PEARL quote:
-  - **W3** (MVP): quotes the student's first `priority_briefing` writing submission verbatim. Reads from `taskProgress[].details.writingSubmissions` — no backend dependency.
-  - **W4**: conditional on `w4_doc_review_frag3` value. Compliant → "exemplary timeline compliance." Curious → "we have amended your file." Read from fetched choices.
-- Cards are mutually exclusive (different weekNumber gates). Pattern scales as new weeks ship.

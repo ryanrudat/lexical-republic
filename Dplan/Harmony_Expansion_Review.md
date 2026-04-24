@@ -1,17 +1,12 @@
 # Harmony Expansion — Design Review & Implementation Plan
 
-Last reviewed: 2026-04-17
+Last reviewed: 2026-04-10
 
 ### Implementation Status
 - **Phase 0 (bug fixes)**: DONE (2026-04-03) — generation race lock, dead gate code removal, censure action fix, orphaned post sweep
 - **Phase A (cumulative review)**: DONE (2026-04-03) — 3-tier vocab, route-aware generation/queries/review, differentiated mastery, cumulative censure items
 - **Phase B (world-building content)**: DONE (2026-04-03) — world bible, 5 NPC characters, 4 new content types, per-type generator, component registry, bulletin comprehension
 - **Phase C (archives + polish)**: DONE (2026-04-09) — 5-tab UI, Archives tab (vocabulary/4488 timeline/bulletins), lastHarmonyVisit tracking, NEW badges, Harmony tile notification, PEARL ambient annotations, socket events
-- **Phase D (security + visibility)**: PARTIAL (2026-04-17)
-  - DONE on master (PR #2): cross-class censure auth fix (was comparing `viewer.classId !== viewer.classId`); mastery upsert+update wrapped in `prisma.$transaction`; stale-pending sweep threshold lowered 10s→3s; `lastHarmonyVisit` update awaited (no more silent fire-and-forget swallowing errors).
-  - DONE on master (PR #6): adjacent — student profile dossier reads Harmony censure correctness rate via new `GET /api/student/profile-summary` endpoint.
-  - PENDING (PR #12): Citizen-4488 arc visibility — 2nd post per week W1-3 (bumps `harmony-vocabulary.test.ts` from 34 → 42 tests) + first-Harmony-visit PEARL intro banner ("Some write more carefully than others. Pay attention to patterns.") + ShiftClosing collapsible "grammar watch" note. Driven by Narrative & Pedagogy Review 2026-04-17 finding that the 4488 arc (the game's central metaphor) was invisible to A2-B1 Mandarin speakers without baseline subject-verb agreement rules.
-  - **Adds**: `isFirstVisit: boolean` field to `GET /api/harmony/posts` response when pre-update `lastHarmonyVisit` is null. Belt-and-suspenders dismissal via localStorage key `harmony_first_visit_dismissed`.
 
 ---
 

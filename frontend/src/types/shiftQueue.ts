@@ -43,50 +43,6 @@ export interface WeekConfig {
   narrativeHook: { title: string; body: string; borderColor: string };
   citizen4488Post: Citizen4488Config;
   shiftClosing: ShiftClosingConfig;
-  /** Inter-task B moments keyed by the task ID the moment fires AFTER. */
-  interTaskMoments?: Record<string, InterTaskMomentConfig>;
-  /** Screen-locking pop-up vocab quizzes. Fire at placement points in the shift. */
-  clarityChecks?: ClarityCheckConfig[];
-}
-
-// ─── Clarity Check (screen-locking pop-up vocab quiz) ─────────────
-
-export type ClarityCheckPlacement =
-  | "shift_start"
-  | "shift_end"
-  | { afterTaskId: string };
-
-export interface ClarityCheckQuestion {
-  word: string;
-  correctDefinition: string;
-  distractors: string[];
-}
-
-export interface ClarityCheckConfig {
-  id: string;
-  placement: ClarityCheckPlacement;
-  title: string;
-  subtitle?: string;
-  questions: ClarityCheckQuestion[];
-}
-
-// ─── Inter-Task Moment (B-layer) ──────────────────────────────────
-
-export interface InterTaskMomentReply {
-  text: string;
-  responseText: string | null;
-  value: string;
-}
-
-export interface InterTaskMomentConfig {
-  id: string;
-  type: "character" | "ambient";
-  characterName?: string;
-  designation?: string;
-  messageText?: string;
-  replies?: InterTaskMomentReply[];
-  glitchText?: string;
-  durationMs?: number;
 }
 
 export interface TaskConfig {

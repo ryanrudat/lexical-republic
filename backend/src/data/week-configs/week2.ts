@@ -558,41 +558,4 @@ export const WEEK_2_CONFIG: WeekConfig = {
       body: "Queue volume increased 200% since last week. Three new associates started this morning. None of them finished their first shift.",
     },
   },
-
-  // ── Clarity Checks ───────────────────────────────────────────────
-  // Screen-locking pop-up vocab verifications. Fire at configured placements.
-  clarityChecks: [
-    {
-      id: "clarity-w2-start",
-      placement: "shift_start",
-      title: "Clarity Check — Vocabulary Verification",
-      subtitle: "Standard spot review. Complete all items to continue.",
-      questions: [
-        {
-          word: "notice",
-          correctDefinition: "to see or become aware of something",
-          distractors: [
-            "to disagree with something openly",
-            "to write a formal request",
-          ],
-        },
-        {
-          word: "inform",
-          correctDefinition: "to tell someone about something officially",
-          distractors: [
-            "to decorate or fill a space",
-            "to replace one item with another",
-          ],
-        },
-        {
-          word: "require",
-          correctDefinition: "to need something or make it necessary",
-          distractors: [
-            "to eat or consume something",
-            "to remove something from a list",
-          ],
-        },
-      ],
-    },
-  ],
 };

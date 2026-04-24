@@ -76,7 +76,7 @@ router.post('/evaluate', requirePair, async (req: Request, res: Response) => {
       res.json({
         passed: false,
         reason: `Use at least ${minVocabRequired} target vocabulary words. Found: ${vocabUsed.length}.`,
-        pearlFeedback: `Vocabulary growth takes practice, Citizen. ${vocabUsed.length} of ${targetVocab.length} target terms noted. Review your assigned words and try again.`,
+        pearlFeedback: `Vocabulary compliance insufficient. ${vocabUsed.length} of ${targetVocab.length} target terms detected. Review your assigned vocabulary.`,
         vocabUsed,
         vocabMissed,
       });
@@ -125,7 +125,7 @@ router.post('/evaluate', requirePair, async (req: Request, res: Response) => {
             vocabMissed,
             taskScore: ts,
             taskNotes: parsed.taskNotes || '',
-            pearlFeedback: parsed.pearlFeedback || 'Your submission has been filed, Citizen. The Ministry thanks you for your contribution.',
+            pearlFeedback: parsed.pearlFeedback || 'Your submission has been received and filed.',
             concernScoreChange: 0,
             isDegraded: false,
           };
@@ -240,7 +240,7 @@ function buildFallbackResult(
     taskScore: passed ? 0.5 : 0.2,
     taskNotes: '',
     pearlFeedback: passed
-      ? `Your submission has been filed, Citizen. Vocabulary compliance: ${vocabUsed.length} of ${totalVocab} terms noted. Continue refining your word choices — clarity builds with care.`
+      ? `Your submission has been received and filed. Vocabulary compliance: ${vocabUsed.length} of ${totalVocab} terms detected. Processing complete.`
       : coherence.feedback,
     concernScoreChange: 0,
     isDegraded: true,
@@ -270,7 +270,7 @@ function checkCoherence(content: string): {
       passed: false,
       score: 0.2,
       notes: ['Submission contains fewer than 2 sentences.'],
-      feedback: 'Your submission shows effort, Citizen. Clarity strengthens with more complete sentences. Review and rebuild with care.',
+      feedback: 'The Ministry requires complete, multi-sentence responses. Rewrite your submission with proper sentence structure.',
     };
   }
 
@@ -295,7 +295,7 @@ function checkCoherence(content: string): {
         passed: false,
         score: 0.15,
         notes,
-        feedback: 'Language variety supports clarity, Citizen. Try using different phrasing to strengthen your writing.',
+        feedback: `Repetitive language detected. The Ministry does not accept filler text. Revise your submission with varied vocabulary.`,
       };
     }
   }
@@ -308,7 +308,7 @@ function checkCoherence(content: string): {
       passed: false,
       score: 0.1,
       notes,
-      feedback: 'This response needs more structure, Citizen. Complete English sentences bring stronger Ministry alignment. Try again with clearer phrasing.',
+      feedback: 'Your submission does not meet Ministry language standards. Write complete English sentences.',
     };
   }
 
@@ -322,7 +322,7 @@ function checkCoherence(content: string): {
         passed: false,
         score: 0.2,
         notes,
-        feedback: 'Language variety supports clarity, Citizen. Try different phrasing to lift your writing.',
+        feedback: 'Language variation insufficient. Expand your vocabulary usage and avoid repetitive phrasing.',
       };
     }
   }
@@ -336,7 +336,7 @@ function checkCoherence(content: string): {
       passed: false,
       score: 0.25,
       notes,
-      feedback: 'Your sentences need firmer shape, Citizen. Begin each with a capital letter and include a subject and verb for stronger alignment.',
+      feedback: 'Several sentences lack proper structure. Each sentence must begin with a capital letter and contain at least a subject and verb.',
     };
   }
 

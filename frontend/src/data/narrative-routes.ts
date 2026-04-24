@@ -18,7 +18,7 @@ export function getRouteWeeks(routeId: string | null | undefined): number[] {
  * The highest week number that currently has built WeekConfig content.
  * Update this as new weeks are added to the backend.
  */
-export const MAX_BUILT_WEEK = 4;
+export const MAX_BUILT_WEEK = 3;
 
 /**
  * Get available shifts for a route, filtered to only weeks with content.

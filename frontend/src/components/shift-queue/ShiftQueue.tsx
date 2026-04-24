@@ -9,8 +9,6 @@ import ShiftClosing from './ShiftClosing';
 import MonitorPlayer from '../shared/MonitorPlayer';
 import DismissalBroadcast from './DismissalBroadcast';
 import VocabularyInterstitial from './VocabularyInterstitial';
-import InterTaskMoment from './InterTaskMoment';
-import ClarityCheck from './ClarityCheck';
 import IntakeForm from './tasks/IntakeForm';
 import WordMatch from './tasks/WordMatch';
 import ClozeFill from './tasks/ClozeFill';
@@ -22,7 +20,7 @@ import PriorityBriefing from './tasks/PriorityBriefing';
 import PrioritySort from './tasks/PrioritySort';
 import ShiftReport from './tasks/ShiftReport';
 import TaskGateOverlay from './TaskGateOverlay';
-import type { TaskProps, BridgingBriefing, InterTaskMomentConfig, ClarityCheckConfig } from '../../types/shiftQueue';
+import type { TaskProps, BridgingBriefing } from '../../types/shiftQueue';
 
 /** Bridging briefing overlay for condensed-route students who skipped weeks */
 function BridgingBriefingOverlay({ briefing, onDismiss }: { briefing: BridgingBriefing; onDismiss: () => void }) {
@@ -114,40 +112,10 @@ export default function ShiftQueue() {
   const [showVocabInterstitial, setShowVocabInterstitial] = useState(false);
   const pendingInterstitialRef = useRef(false);
 
-  // Inter-task moment (B-layer) — non-skippable character choice or ambient beat
-  // keyed by the task ID it fires AFTER.
-  const [activeInterTaskMoment, setActiveInterTaskMoment] = useState<InterTaskMomentConfig | null>(null);
-  const pendingInterTaskMomentRef = useRef<InterTaskMomentConfig | null>(null);
-
-  // Clarity Check — screen-locking pop-up vocab verification.
-  // Placement: shift_start | shift_end | { afterTaskId }. One-shot per shift.
-  const [activeClarityCheck, setActiveClarityCheck] = useState<ClarityCheckConfig | null>(null);
-  const pendingClarityCheckRef = useRef<ClarityCheckConfig | null>(null);
-  const completedClarityCheckIdsRef = useRef<Set<string>>(new Set());
-
-  const findClarityCheckForPlacement = useCallback(
-    (
-      placementMatch: (placement: ClarityCheckConfig['placement']) => boolean,
-    ): ClarityCheckConfig | null => {
-      const checks = weekConfig?.clarityChecks ?? [];
-      for (const c of checks) {
-        if (completedClarityCheckIdsRef.current.has(c.id)) continue;
-        if (placementMatch(c.placement)) return c;
-      }
-      return null;
-    },
-    [weekConfig],
-  );
-
-  // Clear interstitial + inter-task moment + clarity check on week change / teacher task reset / skip
+  // Clear interstitial on week change / teacher task reset / skip
   useEffect(() => {
     setShowVocabInterstitial(false);
     pendingInterstitialRef.current = false;
-    setActiveInterTaskMoment(null);
-    pendingInterTaskMomentRef.current = null;
-    setActiveClarityCheck(null);
-    pendingClarityCheckRef.current = null;
-    completedClarityCheckIdsRef.current = new Set();
   }, [weekConfig?.weekNumber, taskResetKey]);
 
   // When task changes, check if it has a clip to play first
@@ -169,21 +137,6 @@ export default function ShiftQueue() {
       if (skipTimerRef.current) clearTimeout(skipTimerRef.current);
     };
   }, [currentTask?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Fire shift_start clarity check once on mount (before first task renders)
-  useEffect(() => {
-    if (!weekConfig) return;
-    const startCheck = findClarityCheckForPlacement((p) => p === 'shift_start');
-    if (startCheck) setActiveClarityCheck(startCheck);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weekConfig?.weekNumber]);
-
-  // Fire shift_end clarity check once when all tasks complete, before ShiftClosing renders
-  useEffect(() => {
-    if (!shiftComplete || activeClarityCheck) return;
-    const endCheck = findClarityCheckForPlacement((p) => p === 'shift_end');
-    if (endCheck) setActiveClarityCheck(endCheck);
-  }, [shiftComplete, activeClarityCheck, findClarityCheckForPlacement]);
 
   // Load messages on mount, then fire shift_start + initial task_start
   useEffect(() => {
@@ -240,34 +193,19 @@ export default function ShiftQueue() {
       : '';
     const completedTaskId = currentTask.id;
     const wasVocabTask = VOCAB_TASK_TYPES.has(currentTask.type);
-    const momentConfig = weekConfig.interTaskMoments?.[completedTaskId] ?? null;
-    const clarityCheckConfig = findClarityCheckForPlacement(
-      (p) => typeof p === 'object' && p.afterTaskId === completedTaskId,
-    );
 
     await completeTask(currentTask.id, score, details);
 
     if (afterUrl) {
       // DELAY character message triggers until dismissal completes
       pendingInterstitialRef.current = wasVocabTask;
-      pendingInterTaskMomentRef.current = momentConfig;
-      pendingClarityCheckRef.current = clarityCheckConfig;
       dismissalUrlRef.current = afterUrl;
       pendingTriggerRef.current = { taskId: completedTaskId, weekNumber };
       setDismissalState('flash');
     } else {
       // No dismissal video — fire messages immediately
       triggerMessage('task_complete', { taskId: completedTaskId, weekNumber }, weekConfig);
-      if (wasVocabTask) {
-        pendingInterTaskMomentRef.current = momentConfig;
-        pendingClarityCheckRef.current = clarityCheckConfig;
-        setShowVocabInterstitial(true);
-      } else if (momentConfig) {
-        pendingClarityCheckRef.current = clarityCheckConfig;
-        setActiveInterTaskMoment(momentConfig);
-      } else if (clarityCheckConfig) {
-        setActiveClarityCheck(clarityCheckConfig);
-      }
+      if (wasVocabTask) setShowVocabInterstitial(true);
     }
   };
 
@@ -282,44 +220,16 @@ export default function ShiftQueue() {
       pendingTriggerRef.current = null;
     }
 
-    // Cascade: vocab interstitial → inter-task moment → clarity check → next task
+    // Show vocab interstitial after dismissal if queued
     if (pendingInterstitialRef.current) {
       pendingInterstitialRef.current = false;
       setShowVocabInterstitial(true);
-    } else if (pendingInterTaskMomentRef.current) {
-      setActiveInterTaskMoment(pendingInterTaskMomentRef.current);
-      pendingInterTaskMomentRef.current = null;
-    } else if (pendingClarityCheckRef.current) {
-      setActiveClarityCheck(pendingClarityCheckRef.current);
-      pendingClarityCheckRef.current = null;
     }
   }, [weekConfig, triggerMessage]);
 
   const handleVocabInterstitialContinue = useCallback(() => {
     setShowVocabInterstitial(false);
-    if (pendingInterTaskMomentRef.current) {
-      setActiveInterTaskMoment(pendingInterTaskMomentRef.current);
-      pendingInterTaskMomentRef.current = null;
-    } else if (pendingClarityCheckRef.current) {
-      setActiveClarityCheck(pendingClarityCheckRef.current);
-      pendingClarityCheckRef.current = null;
-    }
   }, []);
-
-  const handleInterTaskMomentComplete = useCallback(() => {
-    setActiveInterTaskMoment(null);
-    if (pendingClarityCheckRef.current) {
-      setActiveClarityCheck(pendingClarityCheckRef.current);
-      pendingClarityCheckRef.current = null;
-    }
-  }, []);
-
-  const handleClarityCheckComplete = useCallback(() => {
-    if (activeClarityCheck) {
-      completedClarityCheckIdsRef.current.add(activeClarityCheck.id);
-    }
-    setActiveClarityCheck(null);
-  }, [activeClarityCheck]);
 
   const handleClipDone = () => {
     setWatchingClip(false);
@@ -374,28 +284,6 @@ export default function ShiftQueue() {
     );
   }
 
-  // Inter-task moment (B-layer) — non-skippable character choice or ambient beat
-  if (activeInterTaskMoment) {
-    return (
-      <InterTaskMoment
-        moment={activeInterTaskMoment}
-        weekNumber={weekNumber}
-        onComplete={handleInterTaskMomentComplete}
-      />
-    );
-  }
-
-  // Clarity Check — screen-locking pop-up vocab verification (takes priority over task render)
-  if (activeClarityCheck) {
-    return (
-      <ClarityCheck
-        config={activeClarityCheck}
-        weekNumber={weekNumber}
-        onComplete={handleClarityCheckComplete}
-      />
-    );
-  }
-
   // Gated — waiting for teacher to advance
   if (gated && !shiftComplete) {
     const sock = getSocket();
@@ -427,11 +315,6 @@ export default function ShiftQueue() {
 
   // Shift complete — notify teacher
   if (shiftComplete) {
-    // If a shift_end Clarity Check still needs to fire, defer ShiftClosing by a frame
-    // to avoid the closing screen briefly flashing before the check takes over.
-    const endCheckPending = findClarityCheckForPlacement((p) => p === 'shift_end');
-    if (endCheckPending) return null;
-
     const sock = getSocket();
     if (sock?.connected) {
       sock.emit('student:task-update', { taskId: 'shift_complete', taskLabel: 'Shift Complete', failCount: 0 });

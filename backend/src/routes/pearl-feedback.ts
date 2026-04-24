@@ -36,9 +36,9 @@ Examples of tone:
 // ---------------------------------------------------------------------------
 
 const FEEDBACK_FALLBACKS = [
-  'Submission registered, Citizen. The Ministry has noted your work with care.',
-  'Your reasoning has been filed, Citizen. Continue cultivating clarity in your duties.',
-  'Your work strengthens the Ministry, Citizen. Continue cultivating clarity.',
+  'Submission registered, Citizen. The Ministry has noted your work.',
+  'Processing complete. Continue your assigned duties.',
+  'Your contribution to compliance has been catalogued.',
 ];
 
 function randomFallback(): string {
