@@ -3,6 +3,7 @@ import type { TaskProps } from '../../../types/shiftQueue';
 import { useStudentStore } from '../../../stores/studentStore';
 import TargetWordHighlighter from './shared/TargetWordHighlighter';
 import WritingEvaluator from './shared/WritingEvaluator';
+import type { EvalResult } from './shared/WritingEvaluator';
 import LaneScaffolding from './shared/LaneScaffolding';
 
 export default function ShiftReport({ config, weekConfig, onComplete }: TaskProps) {
@@ -36,23 +37,30 @@ export default function ShiftReport({ config, weekConfig, onComplete }: TaskProp
   const fullText = isGuided ? guidedTexts.filter(Boolean).join(' ') : writingText;
 
   const handleResult = useCallback(
-    (result: { passed: boolean }, attempt: number) => {
-      if (result.passed) {
-        setPassed(true);
-        setTimeout(() => {
-          onComplete(1, {
-            taskType: 'shift_report',
-            itemsCorrect: 1,
-            itemsTotal: 1,
-            category: 'writing',
-            writingText: fullText,
-            wordCount: fullText.split(/\s+/).filter(Boolean).length,
-            attempt,
-            // Gradebook WritingDisplay reads `text` for the "Shift Report" label.
-            text: fullText,
-          });
-        }, 1000);
-      }
+    (result: EvalResult, attempt: number) => {
+      if (!result.passed) return;
+      setPassed(true);
+
+      // Clamped gradient score so no single submission registers as perfect or zero.
+      const raw = (result.grammarScore + result.vocabScore) / 2;
+      const score = Math.min(1, Math.max(0.1, Number.isFinite(raw) ? raw : 0.3));
+
+      setTimeout(() => {
+        onComplete(score, {
+          taskType: 'shift_report',
+          itemsCorrect: 1,
+          itemsTotal: 1,
+          category: 'writing',
+          writingText: fullText,
+          wordCount: fullText.split(/\s+/).filter(Boolean).length,
+          attempt,
+          grammarScore: result.grammarScore,
+          vocabScore: result.vocabScore,
+          submittedAnyway: result.submittedAnyway ?? false,
+          // Gradebook WritingDisplay reads `text` for the "Shift Report" label.
+          text: fullText,
+        });
+      }, 1000);
     },
     [fullText, onComplete]
   );
@@ -120,6 +128,7 @@ export default function ShiftReport({ config, weekConfig, onComplete }: TaskProp
           taskContext={`Week ${weekConfig.weekNumber} shift report. The student completed their shift tasks and is writing a report about their experience.`}
           onResult={handleResult}
           disabled={fullText.split(/\s+/).filter(Boolean).length < Math.floor(minWords * 0.5)}
+          minWords={minWords}
         />
       )}
 
