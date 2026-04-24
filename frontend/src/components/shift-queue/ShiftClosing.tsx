@@ -18,7 +18,9 @@ interface StatItem {
 
 function formatPct(value: number | null): string {
   if (value === null) return 'N/A';
-  return Math.round(value * 100) + '%';
+  // Defensive clamp — bad upstream data should never render as e.g. 200%.
+  const clamped = Math.max(0, Math.min(1, value));
+  return Math.round(clamped * 100) + '%';
 }
 
 export default function ShiftClosing() {

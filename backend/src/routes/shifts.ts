@@ -422,13 +422,20 @@ router.post('/weeks/:weekId/shift-result', async (req: Request, res: Response) =
       return;
     }
     const body = req.body;
+    // Clamp ratio fields to [0, 1] at the boundary so no client bug or legacy
+    // aggregator output can store values outside the valid range (e.g. 2.0
+    // grammarAccuracy displaying as 200%).
+    const clamp01 = (n: unknown): number => {
+      const v = typeof n === 'number' && Number.isFinite(n) ? n : 0;
+      return Math.max(0, Math.min(1, v));
+    };
     const data = {
       documentsProcessed: body.documentsProcessed ?? 0,
       documentsTotal: body.documentsTotal ?? 0,
       errorsFound: body.errorsFound ?? 0,
       errorsTotal: body.errorsTotal ?? 0,
-      vocabScore: body.vocabScore ?? 0,
-      grammarAccuracy: body.grammarAccuracy ?? 0,
+      vocabScore: clamp01(body.vocabScore),
+      grammarAccuracy: clamp01(body.grammarAccuracy),
       targetWordsUsed: body.targetWordsUsed ?? 0,
       concernScoreDelta: body.concernScoreDelta ?? 0,
     };

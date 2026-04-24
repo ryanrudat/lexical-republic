@@ -83,46 +83,66 @@ export function aggregateTaskResults(inputs: AggregatorInput[]): AggregatorResul
       errorsTotal += details.errorsTotal;
     }
 
-    if (Number.isFinite(score)) {
-      overallScores.push(score);
+    // Any task that passes a ratio via itemsCorrect/itemsTotal must respect
+    // itemsCorrect ≤ itemsTotal or the accuracy buckets go above 1.0. Clamp
+    // correct at the per-task level so one misbehaving task can't poison the
+    // whole bucket, and warn in dev so the source bug is noticed.
+    let safeCorrect = details.itemsCorrect;
+    if (details.itemsTotal > 0 && details.itemsCorrect > details.itemsTotal) {
+      if (typeof console !== 'undefined' && console.warn) {
+        console.warn(
+          `[scoreAggregator] Task ${details.taskType} reported itemsCorrect (${details.itemsCorrect}) > itemsTotal (${details.itemsTotal}). Clamping.`,
+        );
+      }
+      safeCorrect = details.itemsTotal;
+    }
+
+    const safeScore = Number.isFinite(score)
+      ? Math.max(0, Math.min(1, score))
+      : score;
+
+    if (Number.isFinite(safeScore)) {
+      overallScores.push(safeScore);
     }
 
     if (details.category === 'writing') {
       // Writing tasks use the raw score directly (rarely have item counts).
-      if (Number.isFinite(score)) writingScores.push(score);
+      if (Number.isFinite(safeScore)) writingScores.push(safeScore);
       continue;
     }
 
     const bucket = perCategoryItems[details.category];
     if (bucket && details.itemsTotal > 0) {
-      bucket.correct += details.itemsCorrect;
+      bucket.correct += safeCorrect;
       bucket.total += details.itemsTotal;
-    } else if (Number.isFinite(score)) {
+    } else if (Number.isFinite(safeScore)) {
       // Category with no item counts (rare) — count the raw score as one item.
-      bucket.correct += score;
+      bucket.correct += safeScore;
       bucket.total += 1;
     }
   }
 
+  const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
+
   const vocabAccuracy =
     perCategoryItems.vocab.total > 0
-      ? perCategoryItems.vocab.correct / perCategoryItems.vocab.total
+      ? clamp01(perCategoryItems.vocab.correct / perCategoryItems.vocab.total)
       : null;
 
   // Grammar + mixed share the grammar accuracy bucket — "mixed" tasks
   // (e.g. priority sort that also has writing) contribute to grammar too.
   const grammarCorrect = perCategoryItems.grammar.correct + perCategoryItems.mixed.correct;
   const grammarTotal = perCategoryItems.grammar.total + perCategoryItems.mixed.total;
-  const grammarAccuracy = grammarTotal > 0 ? grammarCorrect / grammarTotal : null;
+  const grammarAccuracy = grammarTotal > 0 ? clamp01(grammarCorrect / grammarTotal) : null;
 
   const writingScore =
     writingScores.length > 0
-      ? writingScores.reduce((a, b) => a + b, 0) / writingScores.length
+      ? clamp01(writingScores.reduce((a, b) => a + b, 0) / writingScores.length)
       : null;
 
   const overallScore =
     overallScores.length > 0
-      ? overallScores.reduce((a, b) => a + b, 0) / overallScores.length
+      ? clamp01(overallScores.reduce((a, b) => a + b, 0) / overallScores.length)
       : null;
 
   return {

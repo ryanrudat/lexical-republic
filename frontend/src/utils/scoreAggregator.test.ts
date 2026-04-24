@@ -185,6 +185,39 @@ describe('aggregateTaskResults', () => {
     expect(result.overallScore).toBeCloseTo(0.75);
   });
 
+  it('clamps vocab/grammar/writing outputs to [0, 1] even with malformed inputs', () => {
+    // A task bug that reports itemsCorrect > itemsTotal must not push the
+    // accuracy bucket above 100%. This was the cause of e.g. grammarAccuracy
+    // = 2.0 being stored for a student (Janie W2, seen in teacher gradebook).
+    const result = aggregateTaskResults([
+      task(1, {
+        taskType: 'contradiction_report',
+        itemsCorrect: 10, // bogus: > total
+        itemsTotal: 5,
+        category: 'grammar',
+      }),
+      task(1, {
+        taskType: 'word_match',
+        itemsCorrect: 20, // bogus: > total
+        itemsTotal: 10,
+        category: 'vocab',
+      }),
+      task(5, { // bogus: score > 1
+        taskType: 'shift_report',
+        itemsCorrect: 1,
+        itemsTotal: 1,
+        category: 'writing',
+      }),
+    ]);
+    expect(result.vocabAccuracy).toBeLessThanOrEqual(1);
+    expect(result.vocabAccuracy).toBeGreaterThanOrEqual(0);
+    expect(result.grammarAccuracy).toBeLessThanOrEqual(1);
+    expect(result.grammarAccuracy).toBeGreaterThanOrEqual(0);
+    expect(result.writingScore).toBeLessThanOrEqual(1);
+    expect(result.writingScore).toBeGreaterThanOrEqual(0);
+    expect(result.overallScore).toBeLessThanOrEqual(1);
+  });
+
   it('combines all shift components from a typical Week 1 run', () => {
     // Simulates: intake_form + word_match + contradiction_report + document_review + shift_report
     const result = aggregateTaskResults([
