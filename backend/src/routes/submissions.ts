@@ -37,6 +37,27 @@ interface EvaluationResult {
   isDegraded: boolean;
 }
 
+// Merge details JSON but protect non-empty string fields from being overwritten
+// by an empty-string update. Writing tasks sometimes send writingText='' when
+// state is reset or attempt-3 auto-pass fires without typed text — that should
+// not wipe a writingText this endpoint already stored from a passing attempt.
+function mergeDetails(
+  existing: Record<string, unknown>,
+  incoming: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...existing };
+  for (const [key, value] of Object.entries(incoming)) {
+    if (typeof value === 'string' && value.length === 0) {
+      const existingVal = out[key];
+      if (typeof existingVal === 'string' && existingVal.length > 0) {
+        continue;
+      }
+    }
+    out[key] = value;
+  }
+  return out;
+}
+
 // POST /api/submissions/evaluate — two-layer evaluation pipeline
 router.post('/evaluate', requirePair, async (req: Request, res: Response) => {
   try {
@@ -165,6 +186,8 @@ router.post('/evaluate', requirePair, async (req: Request, res: Response) => {
       // out fields that the /shifts/.../score call (or a previous attempt) put
       // there — answerLog, writingText on task-side, etc. Both endpoints write
       // to the same MissionScore row and used to race-overwrite each other.
+      // mergeDetails also protects non-empty string fields from empty-string
+      // overrides (e.g. writingText='' from a degraded path).
       await prisma.$transaction(async (tx) => {
         const existing = await tx.missionScore.findUnique({
           where: { pairId_missionId: { pairId, missionId } },
@@ -174,7 +197,7 @@ router.post('/evaluate', requirePair, async (req: Request, res: Response) => {
           existing?.details && typeof existing.details === 'object' && !Array.isArray(existing.details)
             ? (existing.details as Record<string, unknown>)
             : {};
-        const mergedDetails = { ...existingDetails, ...detailsPayload } as any;
+        const mergedDetails = mergeDetails(existingDetails, detailsPayload) as any;
         await tx.missionScore.upsert({
           where: { pairId_missionId: { pairId, missionId } },
           update: {

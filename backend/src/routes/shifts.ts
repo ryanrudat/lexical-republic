@@ -36,6 +36,28 @@ function getAuthContext(req: Request) {
   };
 }
 
+// Merge details JSON while protecting non-empty string fields from being clobbered
+// by an empty-string snapshot. Writing tasks can send writingText='' when the
+// student's state is reset or when attempt-3 auto-pass fires with no typed text;
+// we don't want that to wipe a writingText that the /submissions/evaluate call
+// already stored correctly.
+function mergeDetails(
+  existing: Record<string, unknown>,
+  incoming: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...existing };
+  for (const [key, value] of Object.entries(incoming)) {
+    if (typeof value === 'string' && value.length === 0) {
+      const existingVal = out[key];
+      if (typeof existingVal === 'string' && existingVal.length > 0) {
+        continue;
+      }
+    }
+    out[key] = value;
+  }
+  return out;
+}
+
 // GET /api/shifts/season — All weeks with arc info + student's completion per week
 router.get('/season', async (req: Request, res: Response) => {
   try {
@@ -257,6 +279,8 @@ router.post(
       // save (e.g. the /shifts/.../score call after a writing task) does NOT
       // wipe fields written by an earlier save (e.g. grammarScore/pearlFeedback
       // from /submissions/evaluate). Both endpoints write to the same row.
+      // mergeDetails additionally protects non-empty string fields (writingText,
+      // text) from being overwritten by an empty-string snapshot.
       const result = await prisma.$transaction(async (tx) => {
         const existing = await tx.missionScore.findUnique({
           where: ctx.scoreWhere(mission.id),
@@ -270,7 +294,7 @@ router.post(
           details && typeof details === 'object' && !Array.isArray(details)
             ? (details as Record<string, unknown>)
             : {};
-        const mergedDetails = { ...existingDetails, ...incomingDetails } as any;
+        const mergedDetails = mergeDetails(existingDetails, incomingDetails) as any;
         return tx.missionScore.upsert({
           where: ctx.scoreWhere(mission.id),
           update: { score, details: mergedDetails },
