@@ -2,11 +2,13 @@ import type { WeekConfig } from './types';
 import { WEEK_1_CONFIG } from './week1';
 import { WEEK_2_CONFIG } from './week2';
 import { WEEK_3_CONFIG } from './week3';
+import { WEEK_4_CONFIG } from './week4';
 
 const WEEK_CONFIGS: Record<number, WeekConfig> = {
   1: WEEK_1_CONFIG,
   2: WEEK_2_CONFIG,
   3: WEEK_3_CONFIG,
+  4: WEEK_4_CONFIG,
 };
 
 export function getWeekConfig(weekNumber: number): WeekConfig | null {

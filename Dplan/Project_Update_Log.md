@@ -1,6 +1,160 @@
 # Project Update Log
 
-Last updated: 2026-03-13
+Last updated: 2026-04-24
+
+## 2026-04-24 — Score Visibility Investigation
+
+### Context
+User reported students aren't seeing their final score at the end of each shift. Diagnosis only — no fixes shipped.
+
+### Findings
+1. **ShiftReport (W1/W3/W4 final task) gates closing-screen advance on AI pass.** `tasks/ShiftReport.tsx:38-58` only fires `onComplete` inside `if (result.passed)`. If `WritingEvaluator` rejects the writing and the student gives up, no `MissionScore` is persisted *and* the task stays in `current` state — the shift never advances to `ShiftClosing`. This is the most likely real explanation for the symptom: students never reach the closing screen at all.
+2. **No Writing Score or Final Score card on the closing screen.** `aggregate.writingScore` and `aggregate.overallScore` are computed by `frontend/src/utils/scoreAggregator.ts:118-126` but never rendered in `ShiftClosing.tsx:155-168`. The 6-card grid (Documents Processed / Errors Found / Vocabulary Score / Grammar Accuracy / Target Words Used / Concern Score) has no overall summary and no writing card. ShiftReport's only visible contribution is incrementing the Documents Processed count.
+3. **"Target Words Used" stat is mislabeled.** It sums `details.wordCount` across tasks. ShiftReport sets `wordCount` to the full essay word count (`fullText.split(/\s+/).filter(Boolean).length`), not the count of target words actually used. The displayed number is "total words written across writing tasks."
+4. **ShiftReport hardcodes score to `1` on pass** — no gradient. Pass = 100%, fail = no completion event.
+5. **ContradictionReport (W2 final task) is fine.** Always fires `onComplete` on Submit (no AI gate). Emits canonical `category: 'grammar'` + `errorsFound`/`errorsTotal`. Contributes correctly to Grammar Accuracy + Errors Found cards.
+
+### Working tree at session start
+Leftover `<<<<<<< / =======` markers in `ShiftClosing.tsx` and `backend/src/data/week-configs/week3.ts` from the 2026-04-21 stash pop. `npm run build` failed. Resolved during the same session (separate batch — see Recent Work entry in `CLAUDE.md`). Build now green.
+
+### Open questions for next session
+- (a) Add a fallback so `ShiftReport` awards partial credit after N failed attempts, so students always reach `ShiftClosing`.
+- (b) Add a Writing Score card and a real Final Score card (using `aggregate.overallScore`) to the closing grid.
+- (c) Rename or fix "Target Words Used" so it reflects what it actually shows.
+
+Full technical notes in `~/.claude/.../memory/project_score_registration_findings_2026_04_24.md`.
+
+---
+
+## 2026-04-21 / 22 — Narrative-Reactive Layer (Shape 1 Commitment)
+
+### Context
+External feedback flagged that students were treating narrative as decorative wrapper and engaging only with tasks. Diagnosis: agency exists in tasks, not narrative, so students route around the narrative layer. Worldbuilding artifacts (character bibles, propaganda scripts, PEARL arcs) were "progress on aspiration, not product."
+
+After strategic discussion laying out three paths (1: rebuild as load-bearing narrative / 2: partner character middle path / 3: accept narrative as flavor), user committed to **Shape 1 — "story-driven game that teaches English."**
+
+Rather than waiting for MVP data (classes currently on W2, W3 MVP tests won't return results for 1-2 weeks), user chose to build W4 in the new architecture now on the grounds that W4 has to exist when classes reach it — real choice is "old template vs new template," not "build vs wait."
+
+### Shipped
+
+**W3 MVP — smallest possible reactivity test (same-session echo)**
+- `frontend/src/components/shift-queue/ShiftClosing.tsx` — new "P.E.A.R.L. — Observation" card before ceremonial quote. Quotes student's first `priority_briefing` writing submission verbatim. Pure frontend — reads from existing `taskProgress[].details.writingSubmissions`. Gated on `weekNumber === 3`.
+- Tests whether students engage when narrative reacts to them. If students don't notice their own words quoted back, the problem is deeper than reactivity.
+
+**W4 mechanical scaffold**
+- `backend/src/data/week-configs/week4.ts` — 5 tasks (word_match, document_review, cloze_fill, vocab_clearance, shift_report) from `Dplan/Weeks_04_06_Shift_Plan.md`. Grammar target `past-simple-sequencing`. 10 target words (arrange/collect/examine/indicate/locate/organize/present/record/select/verify). 4 character messages (Betty, Ivan×2, M.K. silent). Citizen-4488 post (missing neighbor), "Archive Access" narrative hook, STANDARD→STANDARD clearance.
+- `backend/src/data/week-configs/index.ts` — registered.
+- `frontend/src/data/narrative-routes.ts` — `MAX_BUILT_WEEK` bumped 3→4.
+
+**B-layer infrastructure (inter-task moments)**
+- `backend/src/routes/narrative-choices.ts` — POST + GET for NarrativeChoice records. Model already existed in Prisma schema.
+- `backend/src/index.ts` — route registered.
+- `frontend/src/components/shift-queue/InterTaskMoment.tsx` — full-surface non-skippable; `character` and `ambient` variants.
+- `frontend/src/api/narrative-choices.ts` — `postNarrativeChoice()` + `fetchNarrativeChoices()`.
+- Types: `InterTaskMomentConfig`, `InterTaskMomentReply`, optional `interTaskMoments?: Record<taskId, InterTaskMomentConfig>` on WeekConfig.
+- `frontend/src/components/shift-queue/ShiftQueue.tsx` — cascade order (dismissal → vocab interstitial → inter-task moment → next task). Cleared on week change / taskResetKey.
+
+**B-layer W4 content (3 moments)**
+- Betty after `word_match_w4`: warm warning about timelines (3 replies).
+- Ivan after `cloze_fill_w4`: anxious about cloze passage being pre-written (3 replies).
+- Ambient glitch `DON'T FORGET` after `vocab_clearance` (2500ms timer).
+
+**C-layer infrastructure (mid-task choices)**
+- Types: `MidTaskChoiceConfig` + optional `midTaskChoice` on `DocumentConfig`.
+- `frontend/src/components/shift-queue/tasks/DocumentReview.tsx` — `checkChoiceOrAdvance` interceptor between stamp animation and advance. Amber-accented "P.E.A.R.L. — Archive Control" overlay replaces doc view. POSTs choice, shows response + Continue.
+
+**C-layer W4 content**
+- Fragment 3 reclassification on `doc_fragments`: PEARL reclassifies mid-task; student chooses REMOVE (compliant) or KEEP FLAGGED (curious). Either path, fragment is gone from official record.
+
+**Shift-close PEARL echo (C-layer payoff)**
+- `ShiftClosing.tsx` fetches `fetchNarrativeChoices(weekNumber)` on mount.
+- W4-specific observation card conditional on `w4_doc_review_frag3` value. Compliant: "exemplary timeline compliance." Curious: "we have amended your file."
+
+### Verified
+- Backend build clean (34 vitest tests green, tsc passes).
+- Frontend build clean.
+- Against `Dplan/Story_Arc_Timeline.md` — W4's canonical Clip-B beat ("one viewed fragment becomes classified") now interactive. Character voices verified against `Dplan/Character_Bible.md`.
+- All B/C reply option sets include one compliant choice (per Character Bible interaction rule 4).
+
+### Deferred
+- W5 carry-over hooks (requires W5 WeekConfig to exist).
+- W5 and W6 WeekConfig files.
+- W4 dictionary entries seeded to DictionaryWord table.
+- W4 Harmony static content (bulletins, PEARL tips, notices, sector reports, censure items).
+
+### Docs updated
+- `CLAUDE.md` — "Recent Work (2026-04-21 / 22)" section; Key Paths includes week4.ts; Next Work updated (W4 removed, W5-6 remain).
+- `docs/architecture.md` — `/api/narrative-choices` route; "Narrative-Reactive UI Layer" section covering InterTaskMoment, DocumentConfig.midTaskChoice, shift-close echoes.
+- `docs/features.md` — "ShiftQueue System (Weeks 1-4)"; PEARL Observation cards under Shift Closing; "Narrative-Reactive Interaction Layers" section.
+- `Dplan/Weeks_04_06_Shift_Plan.md` — W4 section has implementation status note.
+
+---
+
+## 2026-04-17 — Bug & Design Review, 9-PR Fix Batch, Narrative & Pedagogy Review, Doc Sweep
+
+Long multi-part session covering: full bug/design assessment → parallel fix batch → narrative/pedagogy review → top-3-finding follow-up batch → docs updated to reflect everything. 12 PRs total (9 merged, 3 pending).
+
+### Bug & Design Review
+4 parallel investigators surveyed: shift-completion scoring flow, My File feature, codebase bug scan, game-design/pedagogy assessment. Surfaced 2 P0s (user-flagged), 9 P1s, 11 P2 polish items. Findings ordered by impact, not category.
+
+### Fix Batch — 9 PRs Merged
+All P0 + all P1 items shipped as independent units in isolated worktrees, merged to master.
+
+| PR | What |
+|---|---|
+| #1 | `prisma.$transaction` wrap on submission mastery upsert+update (atomicity) |
+| #2 | **Security:** Harmony cross-class censure auth hole (was comparing `viewer.classId !== viewer.classId`); + mastery transaction wrap; + sweep threshold 10s→3s; + awaited `lastHarmonyVisit` |
+| #3 | HarmonyApp `if (submitting) return;` guard prevents Enter+click double-POST |
+| #4 | Socket reconnect listener dedup + JWT expiry detection → `auth:required` custom event on stale tab wake |
+| #5 | MonitorPlayer `onEnded` ref pattern (fixes stale closure + 2s timer reset on parent re-render) |
+| #6 | **P0:** New `GET /api/student/profile-summary` endpoint + MyFileApp rewritten from placeholder to 5-section Ministry dossier (Citizen Record / 18-cell Shift History grid / Vocabulary Ledger / Harmony Activity / Character Dossier) |
+| #7 | New Vocabulary Completion Interstitial (emerald/amber/rose chips per target word, 4s auto-advance) |
+| #8 | New `POST /api/pearl-feedback` endpoint + WritingEvaluator renders in-character PEARL "Observation" on student reasoning |
+| #9 | **P0:** Canonical `TaskResultDetails` type + pure `scoreAggregator.ts` utility + 11 task components updated + ShiftClosing accurate vocab/grammar/errorsFound (was inflated) + Citizen-4488 Case File card |
+
+**One merge conflict resolved**: PRs #6 and #8 both added route registrations to `backend/src/index.ts`. Kept both, committed merge resolution.
+
+### New Infrastructure on Master
+- **Canonical task result shape** (`frontend/src/types/taskResult.ts`): every task component emits `{ taskType, itemsCorrect, itemsTotal, category: 'vocab'|'grammar'|'writing'|'mixed', errorsFound?, errorsTotal? }`. Aggregator returns per-category `null` when no tasks contributed (no more `completedTasks/totalTasks` inflated fallback).
+- **Frontend Vitest set up**: `frontend/package.json` now has `test`/`test:watch` scripts. 11 tests in `frontend/src/utils/scoreAggregator.test.ts`.
+- **New backend routes**: `backend/src/routes/student.ts`, `backend/src/routes/pearl-feedback.ts`.
+- **New frontend data shim**: `frontend/src/data/citizen4488Posts.ts` (mirrors backend's 4488 feed posts for ShiftClosing).
+
+### Narrative & Pedagogy Review
+3 parallel deep-read agents reviewed: shift scripts (W1-3 + W4-6 plan), Harmony content + 4488 arc, PEARL voice across surfaces. Findings synthesized into `Dplan/Narrative_Pedagogy_Review_2026_04_17.md` (267 lines).
+
+**Headline:** "The game is 80% of the way to being transformative. The remaining 20% is making implicit things visible — to students who have no reason yet to look closely."
+
+Top P0 findings:
+1. Citizen-4488 arc invisible to A2-B1 Mandarin speakers (no baseline agreement rules).
+2. No narrative throughline W1→W2→W3 (Case 5 / Wellness Division dropped).
+3. Implicit grammar teaching fails Mandarin-L1 learners.
+4. Writing prompts treat target words as decoration, not necessity.
+5. PEARL goes cold-procedural on failure states.
+
+### Top-3 Findings Follow-up Batch — 3 PRs (open, awaiting merge)
+
+| PR | What |
+|---|---|
+| #10 | Warm up 11 PEARL failure-state strings in submissions.ts + pearl-feedback.ts to preserve "forced happy" tone |
+| #11 | Edit `Dplan/Weeks_04_06_Shift_Plan.md` — 6 pre-build pedagogy fixes: Evidence Assembly deferred to Act II; W6 re-split 4→5 tasks; W5 because-clause explicit teaching; W6 cumulative requires W1/W2/W3 vocab; PEARL bark after RUN flash; Wellness Division thread woven W3→W4→W5 |
+| #12 | Citizen-4488 visibility: 2nd post per week W1-3 + ShiftClosing grammar-watch collapsible note + first-Harmony-visit PEARL intro banner; adds `isFirstVisit: boolean` to `GET /api/harmony/posts`; bumps `harmony-vocabulary.test.ts` from 34 → 42 tests |
+
+### Documentation Sweep
+Updated to reflect master's actual state (with PRs #10-12 noted as pending):
+- `CLAUDE.md` — added "Recent Work (2026-04-17)" section, link to narrative review, "Task Result & Scoring Utilities" subsection
+- `docs/features.md` — added "My File (Student Dossier)" section, "Vocabulary Completion Interstitial", "Shift Closing & Score Aggregation", "PEARL in-character observation", "Security & reliability hardening"
+- `docs/architecture.md` — added `/api/student` + `/api/pearl-feedback` routes, security/transaction notes, frontend scoreAggregator + taskResult mentions
+
+### Worktree / Sandbox Notes (for next batch)
+- First batch (PRs #1-9): worktree isolation mostly worked. One merge conflict (#6 + #8). Resolved.
+- Second batch (PRs #10-12): sandbox tightened. Workers couldn't run `gh` or even `git commit`. Coordinator manually staged + committed + pushed + opened PRs from main shell.
+- **Verify sandbox permissions for `gh` and `git` BEFORE launching another batch.**
+
+### Out-of-Scope Finding (not yet shipped)
+- `frontend/src/api/pearl-feedback.ts:14-18` has duplicate canned PEARL fallbacks with the OLD cold copy (network-error path). PR #10 fixed backend only; needs sync.
+
+---
 
 ## 2026-03-13 — Multi-Gate System, Documentation Update
 

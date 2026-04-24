@@ -24,6 +24,8 @@ import submissionRoutes from './routes/submissions';
 import messageRoutes from './routes/messages';
 import pearlFeedbackRoutes from './routes/pearl-feedback';
 import studentRoutes from './routes/student';
+import narrativeChoicesRoutes from './routes/narrative-choices';
+import clarityCheckRoutes from './routes/clarity-check';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -110,6 +112,8 @@ app.use('/api/submissions', submissionRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/pearl-feedback', pearlFeedbackRoutes);
 app.use('/api/student', studentRoutes);
+app.use('/api/narrative-choices', narrativeChoicesRoutes);
+app.use('/api/clarity-check', clarityCheckRoutes);
 
 httpServer.listen(PORT, async () => {
   console.log(`[Lexical Republic] Server running on port ${PORT}`);

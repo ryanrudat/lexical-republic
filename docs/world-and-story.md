@@ -133,14 +133,26 @@ Do not finalize story questions until episode scripts are approved. Keep each lo
 - **TOEIC alignment is the primary filter** for selecting `targetWords` each week — pick from TOEIC word lists first, then supplement with world-building vocabulary as needed for narrative
 - Script readability: clips use mostly known words; new words introduced in controlled repetition
 
-### Weeks 4-6 content status (planned, not yet built)
+### Weeks 4-6 content status
 Full shift plan with narrative, vocabulary, task sequences, Canva scripts, dictionary words, and Harmony censure items defined in `Dplan/Weeks_04_06_Shift_Plan.md`. Summary:
 
-- **Week 4: Evidence Board** — Sequencing words + simple past. Students build timelines from evidence fragments; one fragment gets reclassified mid-task. 10 TOEIC words (arrange, collect, examine, indicate, locate, organize, present, record, select, verify).
-- **Week 5: Wellness Check** — Must/should + emotion adjectives + because-clauses. Wellness Language Guidelines require approved emotional vocabulary; student self-assessment gets forwarded to supervisor. 10 TOEIC words (concern, effort, express, improve, observe, reduce, recommend, suggest, support, value).
-- **Week 6: Act I Clock-Out** — Mixed review of all W1-5 grammar. Full compliance audit, M.K. asks "What's the pattern?", Director-7 reviews, file flashes "RUN." Clearance elevated to Steward. 4 tasks (writing tasks merged per audit). 10 TOEIC words (achieve, adjust, conduct, establish, evaluate, perform, prepare, produce, summarize, transfer).
+- **Week 4: Evidence Board** — **SHIPPED 2026-04-21**. Sequencing words + simple past + 1 SVA error (L1 Mandarin target). Students build timelines from evidence fragments; one fragment gets reclassified mid-task **as an interactive C choice (REMOVE vs KEEP FLAGGED)**. 10 TOEIC words (arrange, collect, examine, indicate, locate, organize, present, record, select, verify). Includes 3 B moments (Betty, Ivan, ambient glitch) and a shift-close PEARL Observation card conditional on the Fragment 3 choice value.
+- **Week 5: Wellness Check** — Must/should + emotion adjectives + because-clauses. Wellness Language Guidelines require approved emotional vocabulary; student self-assessment gets forwarded to supervisor. 10 TOEIC words (concern, effort, express, improve, observe, reduce, recommend, suggest, support, value). **Planned with W4 carry-over hooks** (Betty/Ivan tones, Citizen-4488 post variants, Harmony Wellness Division tone all condition on stored W4 NarrativeChoice values).
+- **Week 6: Act I Clock-Out** — Mixed review of all W1-5 grammar. Full compliance audit, M.K. asks "What's the pattern?", Director-7 reviews, file flashes "RUN." Clearance elevated to Steward. 5 tasks per pedagogy audit (W6 re-split 4→5 to reduce Lane 1 cognitive load). 10 TOEIC words (achieve, adjust, conduct, establish, evaluate, perform, prepare, produce, summarize, transfer).
 
-Citizen-4488 arc across W4-6: self-censorship deepens from constructing compliant narratives (W4) through forced positive framing (W5) to active awareness of self-censorship (W6).
+Citizen-4488 arc across W4-6: self-censorship deepens from constructing compliant narratives (W4 — grammar nearly error-free) through forced positive framing (W5) to active awareness of self-censorship (W6).
+
+### Narrative-Reactive Interaction Layers (2026-04-21)
+From W4 onward, narrative lives in **non-skippable interaction points** inside the terminal flow, not just toasts and Harmony posts. Two layer types:
+
+- **B (inter-task moments)**: full-surface non-skippable card between tasks. NPC sends a message, student picks a reply (each uses current-week grammar target). Stored as `NarrativeChoice` for future branching.
+- **C (mid-task choices)**: interrupts a task mid-flow. E.g. PEARL reclassifies Fragment 3 during Document Review; student must choose how to respond before Doc B loads.
+
+Every NPC reply set includes one compliant choice (Character Bible interaction rule 4). Choices flow into:
+- Same-shift payoff: shift-close PEARL Observation card branching on the stored choice value.
+- Cross-shift payoff (planned, W5+): Betty/Ivan tone variants, Citizen-4488 post variants, Harmony content tone — all conditioned on stored W4 choices.
+
+Full architecture in `docs/architecture.md` § Narrative-Reactive UI Layer.
 
 ### Pedagogical audit notes (2026-04-08)
 - All 60 TOEIC target words (W1-6) verified against TOEIC 600/3000 word lists — all confirmed
@@ -155,7 +167,8 @@ Citizen-4488 arc across W4-6: self-censorship deepens from constructing complian
 ### Current content reality check
 - Much weekly narrative content is still seeded placeholder copy from `backend/prisma/seed.ts`
 - Week 1-3 authored lesson packages are in script-first classroom format
-- Weeks 4-6 fully planned but not yet built as WeekConfig files
+- Week 4 WeekConfig shipped 2026-04-21 with C+B interactive layers; W4 Harmony static content + W4 dictionary seed entries still deferred
+- Weeks 5-6 fully planned but not yet built as WeekConfig files
 - Treat seed content as temporary scaffolding, not final script
 
 ## 50-Minute Hybrid Class Structure (planned)

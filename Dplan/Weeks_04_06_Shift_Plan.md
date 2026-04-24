@@ -29,6 +29,13 @@ Weeks 4-6 complete Act I: Compliance. The narrative arc moves from "obedient lea
 
 ## Week 4: Evidence Board
 
+> **Implementation status (2026-04-22):** W4 SHIPPED. Mechanical scaffold at `backend/src/data/week-configs/week4.ts` with C+B narrative-reactive layers on top of the spec below. Specifically added:
+> - **C (mid-task choice):** Fragment 3 reclassification in Task 2 `doc_fragments` (PEARL reclassifies → student chooses REMOVE or KEEP FLAGGED → shift-close PEARL echo conditional on choice). Implements the canonical Clip-B beat ("one viewed fragment becomes classified") from Story Arc Timeline as an interactive moment.
+> - **B (inter-task moments):** Betty after Task 1 (3 replies), Ivan after Task 3 (3 replies), ambient `DON'T FORGET` glitch after Task 4.
+> - **Shift-close PEARL Observation card** in `ShiftClosing.tsx` branches on the Fragment 3 choice value.
+>
+> The spec below is the foundation; C/B layers augment it without contradicting it. Still deferred: W4 Harmony static content (bulletins, tips, notices, censure items), W4 dictionary entries seeded to `DictionaryWord`, Canva clip production.
+
 **Episode Title:** Episode 4: Evidence Board
 **Episode Subtitle:** Associates must build a clean timeline from fragments.
 **Grammar Target:** Sequencing words (first, then, next, after, finally) + simple past
