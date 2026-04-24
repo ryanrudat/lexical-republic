@@ -749,7 +749,7 @@ router.get('/classes/:classId/writing-review', async (req: Request, res: Respons
     const missionTypeById = new Map(missions.map((m) => [m.id, m.missionType] as const));
 
     if (missionIds.length === 0) {
-      res.json({ students: [], week });
+      res.json({ weekNumber: week.weekNumber, weekTitle: week.title, entries: [] });
       return;
     }
 
@@ -765,6 +765,7 @@ router.get('/classes/:classId/writing-review', async (req: Request, res: Respons
       orderBy: { designation: 'asc' },
     });
     const pairIds = pairs.map((p) => p.id);
+    const pairById = new Map(pairs.map((p) => [p.id, p] as const));
 
     const scores = pairIds.length > 0
       ? await prisma.missionScore.findMany({
@@ -785,51 +786,133 @@ router.get('/classes/:classId/writing-review', async (req: Request, res: Respons
         })
       : [];
 
-    // Filter to scores that actually have written content
-    const hasWriting = (details: unknown): boolean => {
-      if (!details || typeof details !== 'object') return false;
-      const d = details as Record<string, unknown>;
-      if (typeof d.writingText === 'string' && d.writingText.trim().length > 0) return true;
-      if (typeof d.text === 'string' && d.text.trim().length > 0) return true;
-      if (d.writingSubmissions && typeof d.writingSubmissions === 'object') {
-        const vals = Object.values(d.writingSubmissions as Record<string, unknown>);
-        if (vals.some((v) => typeof v === 'string' && v.trim().length > 0)) return true;
-      }
-      if (Array.isArray(d.justifications)) {
-        if (d.justifications.some((v) => typeof v === 'string' && v.trim().length > 0)) return true;
-      }
-      return false;
+    // Map task types → labels from the WeekConfig (falls back to type string).
+    const weekCfg = getWeekConfig(week.weekNumber);
+    const taskTitleByType = new Map<string, string>();
+    weekCfg?.tasks.forEach((t) => taskTitleByType.set(t.type, t.label));
+
+    const asStringArray = (value: unknown): string[] =>
+      Array.isArray(value)
+        ? (value as unknown[]).filter((v): v is string => typeof v === 'string')
+        : [];
+
+    type Entry = {
+      scoreId: string;
+      studentId: string;
+      designation: string | null;
+      displayName: string;
+      taskType: string;
+      taskTitle: string;
+      score: number;
+      submittedAt: string | null;
+      writingText: string;
+      label: string | null;
+      submittedAnyway: boolean;
+      grammarScore: number | null;
+      grammarNotes: string[];
+      vocabUsed: string[];
+      vocabMissed: string[];
+      taskNotes: string | null;
+      pearlFeedback: string | null;
+      teacherComment: string | null;
     };
 
-    const scoresByPair = new Map<string, typeof scores>();
+    const entries: Entry[] = [];
+
     for (const s of scores) {
       if (!s.pairId) continue;
-      if (!hasWriting(s.details)) continue;
-      const list = scoresByPair.get(s.pairId) ?? [];
-      list.push(s);
-      scoresByPair.set(s.pairId, list);
+      const pair = pairById.get(s.pairId);
+      if (!pair) continue;
+
+      const details = (s.details ?? {}) as Record<string, unknown>;
+      const taskType = missionTypeById.get(s.missionId) ?? 'unknown';
+      const taskTitle = taskTitleByType.get(taskType) ?? taskType;
+
+      // Each score can produce multiple writing entries (writingText, text,
+      // writingSubmissions keys, justifications keys). Dedupe by (label, text).
+      const texts: Array<{ text: string; label: string | null }> = [];
+      if (typeof details.writingText === 'string' && details.writingText.trim().length > 0) {
+        texts.push({ text: details.writingText, label: null });
+      }
+      if (typeof details.text === 'string' && details.text.trim().length > 0) {
+        texts.push({ text: details.text, label: null });
+      }
+      if (details.writingSubmissions && typeof details.writingSubmissions === 'object') {
+        const subs = details.writingSubmissions as Record<string, unknown>;
+        for (const [key, text] of Object.entries(subs)) {
+          if (typeof text === 'string' && text.trim().length > 0) {
+            const idx = Number(key);
+            const label = Number.isFinite(idx) ? `Card ${idx + 1}` : `Card ${key}`;
+            texts.push({ text, label });
+          }
+        }
+      }
+      if (details.justifications && typeof details.justifications === 'object' && !Array.isArray(details.justifications)) {
+        const justs = details.justifications as Record<string, unknown>;
+        for (const [caseId, text] of Object.entries(justs)) {
+          if (typeof text === 'string' && text.trim().length > 0) {
+            texts.push({ text, label: `Case ${caseId}` });
+          }
+        }
+      }
+
+      if (texts.length === 0) continue;
+
+      const seen = new Set<string>();
+      const unique = texts.filter((t) => {
+        const key = `${t.label ?? ''}::${t.text}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      const grammarScore = typeof details.grammarScore === 'number' ? details.grammarScore : null;
+      const grammarNotes = asStringArray(details.grammarNotes);
+      const vocabUsed = asStringArray(details.vocabUsed);
+      const vocabMissed = asStringArray(details.vocabMissed);
+      const taskNotes = typeof details.taskNotes === 'string' ? details.taskNotes : null;
+      const submittedAnyway = details.submittedAnyway === true;
+      // Fall back to details.pearlFeedback for legacy rows written before
+      // the top-level column existed (Unit 4 wrote both paths for a while).
+      const pearlFeedback = s.pearlFeedback
+        ?? (typeof details.pearlFeedback === 'string' ? details.pearlFeedback : null);
+      const teacherComment = s.teacherComment
+        ?? (typeof details.teacherComment === 'string' ? details.teacherComment : null);
+
+      const displayName = `${pair.studentAName}${pair.studentBName ? ` & ${pair.studentBName}` : ''}`;
+
+      for (const t of unique) {
+        entries.push({
+          scoreId: s.id,
+          studentId: pair.id,
+          designation: pair.designation,
+          displayName,
+          taskType,
+          taskTitle,
+          score: s.score,
+          submittedAt: s.createdAt.toISOString(),
+          writingText: t.text,
+          label: t.label,
+          submittedAnyway,
+          grammarScore,
+          grammarNotes,
+          vocabUsed,
+          vocabMissed,
+          taskNotes,
+          pearlFeedback,
+          teacherComment,
+        });
+      }
     }
 
-    const students = pairs
-      .map((p) => ({
-        pairId: p.id,
-        designation: p.designation,
-        displayName: `${p.studentAName}${p.studentBName ? ` & ${p.studentBName}` : ''}`,
-        submissions: (scoresByPair.get(p.id) ?? [])
-          .map((s) => ({
-            scoreId: s.id,
-            missionType: missionTypeById.get(s.missionId) ?? 'unknown',
-            score: s.score,
-            details: (s.details ?? {}) as Record<string, unknown>,
-            teacherComment: s.teacherComment,
-            pearlFeedback: s.pearlFeedback,
-            createdAt: s.createdAt.toISOString(),
-          }))
-          .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
-      }))
-      .filter((s) => s.submissions.length > 0);
+    // Default sort: by designation then submission time.
+    entries.sort((a, b) => {
+      const desigCmp = (a.designation ?? '~').localeCompare(b.designation ?? '~');
+      if (desigCmp !== 0) return desigCmp;
+      return (a.submittedAt ?? '').localeCompare(b.submittedAt ?? '');
+    });
 
-    res.json({ students, week });
+    res.json({ weekNumber: week.weekNumber, weekTitle: week.title, entries });
   } catch (err) {
     console.error('Teacher writing review fetch error:', err);
     res.status(500).json({ error: 'Failed to fetch writing review' });
