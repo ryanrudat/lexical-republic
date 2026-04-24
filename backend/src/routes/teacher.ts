@@ -1649,6 +1649,66 @@ router.get('/debug/uploads', (_req: Request, res: Response) => {
   res.json(result);
 });
 
+// GET /api/teacher/debug/raw-details/:pairId/:weekNumber
+// Dumps raw MissionScore rows for a student's shift so we can see exactly
+// what's stored in the details JSON. Diagnostic tool for the writing-missing bug.
+router.get('/debug/raw-details/:pairId/:weekNumber', async (req: Request, res: Response) => {
+  try {
+    const teacherId = getTeacherId(req)!;
+    const pairId = req.params.pairId as string;
+    const weekNumber = parseInt(req.params.weekNumber as string, 10);
+
+    if (!(await teacherOwnsPair(teacherId, pairId))) {
+      res.status(403).json({ error: 'Not your student' });
+      return;
+    }
+
+    const week = await prisma.week.findFirst({ where: { weekNumber } });
+    if (!week) {
+      res.status(404).json({ error: 'Week not found' });
+      return;
+    }
+
+    const scores = await prisma.missionScore.findMany({
+      where: { pairId, mission: { weekId: week.id } },
+      select: {
+        id: true,
+        score: true,
+        details: true,
+        teacherComment: true,
+        pearlFeedback: true,
+        mission: { select: { missionType: true, orderIndex: true } },
+      },
+      orderBy: { mission: { orderIndex: 'asc' } },
+    });
+
+    res.json({
+      pairId,
+      weekNumber,
+      count: scores.length,
+      scores: scores.map(s => {
+        const d = (s.details ?? {}) as Record<string, unknown>;
+        return {
+          missionType: s.mission.missionType,
+          orderIndex: s.mission.orderIndex,
+          score: s.score,
+          detailsKeys: Object.keys(d).sort(),
+          writingText: d.writingText ?? null,
+          text: d.text ?? null,
+          writingSubmissions: d.writingSubmissions ?? null,
+          justifications: d.justifications ?? null,
+          answerLogLength: Array.isArray(d.answerLog) ? (d.answerLog as unknown[]).length : 0,
+          pearlFeedbackColumn: s.pearlFeedback,
+          teacherComment: s.teacherComment,
+        };
+      }),
+    });
+  } catch (err) {
+    console.error('Raw details debug error:', err);
+    res.status(500).json({ error: 'Failed to fetch raw details' });
+  }
+});
+
 // ── Student shift status (works for offline students too) ─────────────────
 
 router.get('/students/:studentId/shift-status', async (req: Request, res: Response) => {
