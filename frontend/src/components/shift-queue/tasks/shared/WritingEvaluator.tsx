@@ -14,6 +14,8 @@ export interface EvalResult {
   taskNotes?: string;
   pearlFeedback?: string;
   isDegraded?: boolean;
+  /** True when the student forced submission after a failed AI evaluation. */
+  submittedAnyway?: boolean;
 }
 
 interface WritingEvaluatorProps {
@@ -27,6 +29,12 @@ interface WritingEvaluatorProps {
   disabled?: boolean;
   writingPrompt?: string;
   taskContext?: string;
+  /**
+   * Minimum word count required to enable the "Submit Anyway" button.
+   * Prevents empty/near-empty submissions from bypassing evaluation.
+   * Defaults to 20.
+   */
+  minWords?: number;
 }
 
 const MAX_NUDGES = 3;
@@ -42,6 +50,7 @@ export default function WritingEvaluator({
   disabled,
   writingPrompt,
   taskContext,
+  minWords = 20,
 }: WritingEvaluatorProps) {
   const [attempt, setAttempt] = useState(1);
   const [evaluating, setEvaluating] = useState(false);
@@ -157,6 +166,20 @@ export default function WritingEvaluator({
     }
   }
 
+  const submitAnyway = useCallback(() => {
+    // Fall back to the degraded 0.3 floor so this path and the attempt-3 auto-pass land at the same score.
+    const result: EvalResult = {
+      passed: true,
+      grammarScore: lastResult?.grammarScore ?? 0.3,
+      vocabScore: lastResult?.vocabScore ?? 0.3,
+      vocabUsed: lastResult?.vocabUsed,
+      vocabMissed: lastResult?.vocabMissed,
+      submittedAnyway: true,
+    };
+    setLastResult(result);
+    onResult(result, attempt);
+  }, [lastResult, attempt, onResult]);
+
   const handleNudge = useCallback(async () => {
     if (nudgeLoading || nudgeCount >= MAX_NUDGES) return;
     setNudgeLoading(true);
@@ -185,11 +208,14 @@ export default function WritingEvaluator({
     }
   }, [nudgeLoading, nudgeCount, weekNumber, grammarTarget, targetVocab, writingPrompt, text, taskContext]);
 
-  const hasText = text.trim().length > 0;
+  const trimmedText = text.trim();
+  const hasText = trimmedText.length > 0;
+  const hasFailedOnce = lastResult !== null && !lastResult.passed;
+  const meetsMinWords = trimmedText.split(/\s+/).filter(Boolean).length >= minWords;
 
   return (
     <div className="flex flex-col items-start gap-3">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <button
           className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 disabled:opacity-40 transition-colors"
           disabled={disabled || evaluating}
@@ -216,7 +242,28 @@ export default function WritingEvaluator({
             `Request Guidance (${MAX_NUDGES - nudgeCount} left)`
           )}
         </button>
+
+        {hasFailedOnce && (
+          <button
+            className="px-4 py-2.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-700 text-xs font-medium tracking-wider hover:bg-amber-100 disabled:opacity-40 disabled:hover:bg-amber-50 transition-colors"
+            disabled={!meetsMinWords || evaluating}
+            onClick={submitAnyway}
+            title={
+              meetsMinWords
+                ? 'Submit your current draft for review.'
+                : `Write at least ${minWords} words to submit anyway.`
+            }
+          >
+            Submit Anyway
+          </button>
+        )}
       </div>
+
+      {hasFailedOnce && !meetsMinWords && (
+        <p className="font-ibm-mono text-[10px] text-[#8B8578] tracking-wider">
+          Reach {minWords} words to submit as-is.
+        </p>
+      )}
 
       {/* Nudge display */}
       {nudgeText && (
