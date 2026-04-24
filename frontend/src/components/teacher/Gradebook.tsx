@@ -1,6 +1,19 @@
-import { useEffect, useState, useCallback } from 'react';
-import { fetchGradebook, updateScore, deleteScore, resetWeekProgress } from '../../api/teacher';
-import type { GradebookData, GradebookStudent, GradebookWeek, GradebookMissionScore, GradebookShiftResult } from '../../api/teacher';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import {
+  fetchGradebook,
+  updateScore,
+  deleteScore,
+  resetWeekProgress,
+  patchMissionScoreComment,
+} from '../../api/teacher';
+import type {
+  GradebookData,
+  GradebookStudent,
+  GradebookWeek,
+  GradebookMissionScore,
+  GradebookShiftResult,
+  AnswerLogEntry,
+} from '../../api/teacher';
 import { STEP_ORDER } from '../../types/shifts';
 
 // Queue task labels for display
@@ -398,6 +411,8 @@ function TaskRow({
   const [editValue, setEditValue] = useState('');
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [answersExpanded, setAnswersExpanded] = useState(false);
+  const [evalExpanded, setEvalExpanded] = useState(false);
 
   const details = (score?.details ?? {}) as Record<string, unknown>;
   const hasWriting = !!(details.writingText || details.writingSubmissions || details.text || details.justifications);
@@ -489,6 +504,20 @@ function TaskRow({
                     </button>
                   )}
                   <button
+                    onClick={() => setAnswersExpanded(!answersExpanded)}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 ml-1"
+                    title="Student multi-choice answers"
+                  >
+                    {answersExpanded ? 'Hide Answers' : 'Student Answers'}
+                  </button>
+                  <button
+                    onClick={() => setEvalExpanded(!evalExpanded)}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 ml-1"
+                    title="PEARL & AI evaluation breakdown"
+                  >
+                    {evalExpanded ? 'Hide Evaluation' : 'PEARL & AI'}
+                  </button>
+                  <button
                     onClick={handleDelete}
                     disabled={saving}
                     className="text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-500 hover:bg-red-100 ml-1 disabled:opacity-50"
@@ -507,6 +536,15 @@ function TaskRow({
 
       {/* Expanded writing display */}
       {expanded && score && <WritingDisplay details={details} />}
+
+      {/* Student multi-choice answers */}
+      {answersExpanded && score && <AnswerLogDisplay details={details} />}
+
+      {/* PEARL & AI evaluation */}
+      {evalExpanded && score && <EvaluationDisplay score={score} details={details} />}
+
+      {/* Teacher comment — always available when a score exists */}
+      {score && <TeacherCommentSection score={score} />}
     </div>
   );
 }
@@ -620,6 +658,327 @@ function QueueTaskDetails({
     default:
       return null;
   }
+}
+
+function truncate(text: string, max: number): string {
+  if (text.length <= max) return text;
+  return text.slice(0, max - 1) + '…';
+}
+
+function AnswerLogDisplay({ details }: { details: Record<string, unknown> }) {
+  const rawLog = details.answerLog;
+  const entries: AnswerLogEntry[] = Array.isArray(rawLog) ? (rawLog as AnswerLogEntry[]) : [];
+
+  if (entries.length === 0) {
+    return (
+      <div className="px-3 pb-3 text-xs text-slate-400 italic">
+        Not recorded for this task.
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-3 pb-3">
+      <div className="bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
+        <div className="px-3 py-2 border-b border-slate-200 bg-white/60">
+          <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
+            Student Answers ({entries.length})
+          </span>
+        </div>
+        <table className="w-full text-xs">
+          <thead className="bg-white/40">
+            <tr className="text-left text-[10px] uppercase tracking-wider text-slate-500">
+              <th className="px-3 py-1.5 font-medium w-[44%]">Prompt</th>
+              <th className="px-2 py-1.5 font-medium w-[22%]">Chosen</th>
+              <th className="px-2 py-1.5 font-medium w-[22%]">Correct</th>
+              <th className="px-2 py-1.5 font-medium w-[12%]">Result</th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((e, i) => {
+              const promptText = typeof e.prompt === 'string' ? e.prompt : (e.questionId ?? `#${i + 1}`);
+              const isCorrect = Boolean(e.wasCorrect);
+              return (
+                <tr key={i} className="border-t border-slate-200/70 align-top">
+                  <td className="px-3 py-1.5 text-slate-700" title={promptText}>
+                    {truncate(promptText, 60)}
+                  </td>
+                  <td className="px-2 py-1.5 text-slate-700">{e.chosen ?? '—'}</td>
+                  <td className="px-2 py-1.5 text-slate-700">{e.correct ?? '—'}</td>
+                  <td className="px-2 py-1.5">
+                    <span
+                      className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium border ${
+                        isCorrect
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-rose-50 text-rose-700 border-rose-200'
+                      }`}
+                    >
+                      {isCorrect ? '✓' : '✗'}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((v): v is string => typeof v === 'string');
+}
+
+function EvaluationDisplay({
+  score,
+  details,
+}: {
+  score: GradebookMissionScore;
+  details: Record<string, unknown>;
+}) {
+  const grammarScore = typeof details.grammarScore === 'number' ? details.grammarScore : null;
+  const grammarNotes = asStringArray(details.grammarNotes);
+  const vocabScore = typeof details.vocabScore === 'number' ? details.vocabScore : null;
+  const vocabUsed = asStringArray(details.vocabUsed);
+  const vocabMissed = asStringArray(details.vocabMissed);
+  const taskScore = typeof details.taskScore === 'number' ? details.taskScore : null;
+  const taskNotes = typeof details.taskNotes === 'string' ? details.taskNotes : '';
+  const pearlFeedback = typeof score.pearlFeedback === 'string' ? score.pearlFeedback : null;
+
+  const hasAnyEval =
+    grammarScore !== null ||
+    grammarNotes.length > 0 ||
+    vocabScore !== null ||
+    vocabUsed.length > 0 ||
+    vocabMissed.length > 0 ||
+    taskScore !== null ||
+    taskNotes !== '';
+
+  if (!hasAnyEval && !pearlFeedback) {
+    return (
+      <div className="px-3 pb-3 text-xs text-slate-400 italic">
+        No PEARL or AI evaluation saved for this task.
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-3 pb-3">
+      <div className="bg-indigo-50/40 rounded-lg border border-indigo-100 p-3">
+        <div className="text-[10px] font-medium text-indigo-500 uppercase tracking-wider mb-2">
+          PEARL &amp; AI Evaluation
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Grammar panel */}
+          <div className="bg-white rounded-lg border border-slate-200 p-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
+                Grammar
+              </span>
+              <span className="text-xs font-semibold text-indigo-600">
+                {grammarScore !== null ? `${Math.round(grammarScore * 100)}%` : '—'}
+              </span>
+            </div>
+            {grammarNotes.length > 0 ? (
+              <ul className="list-disc pl-4 space-y-0.5 text-xs text-slate-700">
+                {grammarNotes.map((note, i) => (
+                  <li key={i}>{note}</li>
+                ))}
+              </ul>
+            ) : (
+              <div className="text-xs text-slate-400 italic">No grammar notes saved.</div>
+            )}
+          </div>
+
+          {/* Vocab panel */}
+          <div className="bg-white rounded-lg border border-slate-200 p-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
+                Vocabulary
+              </span>
+              <span className="text-xs font-semibold text-indigo-600">
+                {vocabScore !== null ? `${Math.round(vocabScore * 100)}%` : '—'}
+              </span>
+            </div>
+            {vocabUsed.length === 0 && vocabMissed.length === 0 ? (
+              <div className="text-xs text-slate-400 italic">
+                No vocabulary tracking saved.
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {vocabUsed.length > 0 && (
+                  <div>
+                    <div className="text-[10px] text-slate-400 mb-0.5">Used</div>
+                    <div className="flex flex-wrap gap-1">
+                      {vocabUsed.map((w, i) => (
+                        <span
+                          key={i}
+                          className="inline-block px-1.5 py-0.5 rounded-full text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        >
+                          {w}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {vocabMissed.length > 0 && (
+                  <div>
+                    <div className="text-[10px] text-slate-400 mb-0.5">Missed</div>
+                    <div className="flex flex-wrap gap-1">
+                      {vocabMissed.map((w, i) => (
+                        <span
+                          key={i}
+                          className="inline-block px-1.5 py-0.5 rounded-full text-[10px] bg-rose-50 text-rose-700 border border-rose-200"
+                        >
+                          {w}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Task relevance + PEARL narration */}
+        <div className="mt-3 bg-white rounded-lg border border-slate-200 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
+              Task Relevance
+            </span>
+            <span className="text-xs font-semibold text-indigo-600">
+              {taskScore !== null ? `${Math.round(taskScore * 100)}%` : '—'}
+            </span>
+          </div>
+          {taskNotes ? (
+            <div className="text-xs text-slate-700 leading-relaxed">{taskNotes}</div>
+          ) : (
+            <div className="text-xs text-slate-400 italic">No relevance note saved.</div>
+          )}
+          <div className="pt-2 border-t border-slate-100">
+            <div className="text-[10px] font-medium text-slate-500 uppercase tracking-wider mb-1">
+              <span aria-hidden className="mr-1">◉</span>P.E.A.R.L. Observation
+            </div>
+            {pearlFeedback ? (
+              <div className="text-xs text-slate-700 italic leading-relaxed">
+                "{pearlFeedback}"
+              </div>
+            ) : (
+              <div className="text-xs text-slate-400 italic">
+                No PEARL feedback saved.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TeacherCommentSection({ score }: { score: GradebookMissionScore }) {
+  const initial = score.teacherComment ?? '';
+  const [expanded, setExpanded] = useState<boolean>(initial.length > 0);
+  const [value, setValue] = useState<string>(initial);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const savedFlashRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const baselineRef = useRef<string>(initial);
+  const isDirty = value !== baselineRef.current;
+
+  useEffect(() => {
+    return () => {
+      if (savedFlashRef.current) clearTimeout(savedFlashRef.current);
+    };
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    if (saving) return;
+    const trimmed = value.trim();
+    const payload = trimmed.length === 0 ? null : value.slice(0, 2000);
+    setSaving(true);
+    setError(null);
+    // Optimistic baseline update — revert on failure.
+    const previousBaseline = baselineRef.current;
+    baselineRef.current = payload ?? '';
+    try {
+      await patchMissionScoreComment(score.id, payload);
+      setSavedAt(Date.now());
+      if (savedFlashRef.current) clearTimeout(savedFlashRef.current);
+      savedFlashRef.current = setTimeout(() => setSavedAt(null), 2500);
+    } catch (err: unknown) {
+      baselineRef.current = previousBaseline;
+      const axiosErr = err as { response?: { status?: number } };
+      setError(axiosErr.response?.status === 404 ? 'Server not ready' : 'Save failed');
+      console.error('patchMissionScoreComment failed:', err);
+    } finally {
+      setSaving(false);
+    }
+  }, [saving, value, score.id]);
+
+  return (
+    <div className="px-3 pb-3">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="text-[10px] font-medium text-slate-500 uppercase tracking-wider hover:text-slate-700 transition-colors flex items-center gap-1"
+      >
+        <span>{expanded ? '▼' : '▶'}</span>
+        Teacher Comment
+        {initial.length > 0 && !expanded && (
+          <span className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-indigo-400" />
+        )}
+      </button>
+      {expanded && (
+        <div className="mt-2 bg-white rounded-lg border border-slate-200 p-3">
+          <textarea
+            value={value}
+            onChange={(e) => {
+              const next = e.target.value.slice(0, 2000);
+              setValue(next);
+              if (error) setError(null);
+            }}
+            placeholder="Add a note for this student's submission..."
+            rows={3}
+            maxLength={2000}
+            className="w-full text-xs text-slate-700 border border-slate-200 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-400 resize-y"
+          />
+          <div className="flex items-center justify-between mt-1.5">
+            <div className="text-[10px] text-slate-400">
+              {value.length}/2000
+            </div>
+            <div className="flex items-center gap-2">
+              {isDirty && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                  Modified
+                </span>
+              )}
+              {savedAt !== null && !isDirty && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  Saved
+                </span>
+              )}
+              {error && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                  {error}
+                </span>
+              )}
+              <button
+                onClick={handleSave}
+                disabled={saving || !isDirty}
+                className="text-[10px] px-2 py-0.5 rounded bg-indigo-500 text-white hover:bg-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {saving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function WritingDisplay({ details }: { details: Record<string, unknown> }) {

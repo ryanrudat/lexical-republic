@@ -29,4 +29,17 @@ export interface TaskResultDetails {
   wordCount?: number;
   /** True when teacher or student skipped the task — should not pull the averages down. */
   skipped?: boolean;
+  /**
+   * Per-question answer log for multi-choice / selection tasks (Unit 3).
+   * Populated by tasks that track item-level answers so teachers can review
+   * which questions were missed in the Gradebook drill-down.
+   */
+  answerLog?: Array<{
+    questionId?: string;
+    prompt?: string;
+    chosen?: string;
+    correct?: string;
+    wasCorrect?: boolean;
+    attempts?: number;
+  }>;
 }

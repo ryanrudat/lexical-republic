@@ -134,12 +134,26 @@ export interface GradebookMissionScore {
   id: string;
   score: number;
   details: Record<string, unknown> | null;
+  /** Top-level PEARL in-character feedback saved alongside the score (Unit 4). */
+  pearlFeedback?: string | null;
+  /** Top-level teacher comment on this score (Unit 4). */
+  teacherComment?: string | null;
   mission: {
     id: string;
     missionType: string;
     weekId: string;
     week: { weekNumber: number } | null;
   };
+}
+
+/** Single multi-choice answer record rendered in the Gradebook drill-down (Unit 3). */
+export interface AnswerLogEntry {
+  questionId?: string;
+  prompt?: string;
+  chosen?: string;
+  correct?: string;
+  wasCorrect?: boolean;
+  attempts?: number;
 }
 
 export interface GradebookShiftResult {
@@ -190,6 +204,19 @@ export async function updateScore(scoreId: string, score: number, details?: Reco
 
 export async function deleteScore(scoreId: string): Promise<void> {
   await client.delete(`/teacher/scores/${scoreId}`);
+}
+
+/**
+ * PATCH teacher comment on a mission score (Unit 4 — backend endpoint).
+ * Returns the updated MissionScore payload on success. Will 404 until the
+ * backend route ships; callers should handle that gracefully.
+ */
+export async function patchMissionScoreComment(
+  scoreId: string,
+  comment: string | null,
+): Promise<GradebookMissionScore> {
+  const { data } = await client.patch(`/teacher/scores/${scoreId}/comment`, { comment });
+  return data as GradebookMissionScore;
 }
 
 export async function resetWeekProgress(pairId: string, weekId: string): Promise<void> {
