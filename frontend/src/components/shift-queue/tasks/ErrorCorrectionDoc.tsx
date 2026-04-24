@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import DocumentCard from './DocumentCard';
 import { useShiftQueueStore } from '../../../stores/shiftQueueStore';
+import type { TaskAnswerLogEntry } from '../../../types/taskResult';
 
 interface ErrorOption {
   text: string;
@@ -32,6 +33,7 @@ interface ErrorDoc {
 export interface ErrorCorrectionResult {
   correctCount: number;
   totalErrors: number;
+  answerLog: TaskAnswerLogEntry[];
 }
 
 interface ErrorCorrectionDocProps {
@@ -117,9 +119,25 @@ export default function ErrorCorrectionDoc({
             const total = normalizedDoc.errors.length;
             const score = correctCount / total;
 
+            const answerLog: TaskAnswerLogEntry[] = normalizedDoc.errors.map((err, idx) => {
+              const selectedOpt = idx === errorIndex ? optionIndex : corrections[idx];
+              const chosenText =
+                typeof selectedOpt === 'number'
+                  ? err.options[selectedOpt]?.text ?? '(none)'
+                  : '(none)';
+              return {
+                questionId: `err:${idx}`,
+                prompt: `${normalizedDoc.title}: "${err.errorWord}"`,
+                chosen: chosenText,
+                correct: err.options[err.correctIndex]?.text ?? '',
+                wasCorrect: selectedOpt === err.correctIndex,
+                attempts: 1,
+              };
+            });
+
             setAllDone(true);
             setTimeout(
-              () => onComplete(score, { correctCount, totalErrors: total }),
+              () => onComplete(score, { correctCount, totalErrors: total, answerLog }),
               800,
             );
           }

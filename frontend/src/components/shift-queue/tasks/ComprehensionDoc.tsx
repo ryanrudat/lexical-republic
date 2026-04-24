@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import DocumentCard from './DocumentCard';
+import type { TaskAnswerLogEntry } from '../../../types/taskResult';
 
 interface ComprehensionQuestion {
   text?: string;
@@ -24,6 +25,7 @@ interface ComprehensionDocConfig {
 export interface ComprehensionResult {
   correctCount: number;
   totalQuestions: number;
+  answerLog: TaskAnswerLogEntry[];
 }
 
 interface ComprehensionDocProps {
@@ -59,8 +61,22 @@ export default function ComprehensionDoc({
     ).length;
     const score = correctCount / totalQuestions;
 
+    const answerLog: TaskAnswerLogEntry[] = doc.questions.map((q, idx) => {
+      const chosenIdx = answers[idx];
+      const chosenText =
+        typeof chosenIdx === 'number' ? q.options[chosenIdx] : '(no answer)';
+      return {
+        questionId: `comp:${idx}`,
+        prompt: q.text || q.question || `Question ${idx + 1}`,
+        chosen: chosenText,
+        correct: q.options[q.correctIndex],
+        wasCorrect: chosenIdx === q.correctIndex,
+        attempts: 1,
+      };
+    });
+
     setTimeout(
-      () => onComplete(score, { correctCount, totalQuestions }),
+      () => onComplete(score, { correctCount, totalQuestions, answerLog }),
       1500,
     );
   }, [allAnswered, submitted, doc.questions, answers, totalQuestions, onComplete]);

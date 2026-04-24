@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { TaskProps } from '../../../types/shiftQueue';
+import type { TaskAnswerLogEntry } from '../../../types/taskResult';
 import { useShiftQueueStore } from '../../../stores/shiftQueueStore';
 import { useStudentStore } from '../../../stores/studentStore';
 import TargetWordHighlighter from './shared/TargetWordHighlighter';
@@ -167,6 +168,34 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
         d => classifications[d.diffId] === d.classification
       ).length;
       const score = correctClassifications / Math.max(effectiveDifferences.length, 1);
+
+      // Teacher review trail — recall picks + per-diff classifications.
+      const recallLog: TaskAnswerLogEntry[] = recallQuestions.map((q) => {
+        const chosenIdx = recallAnswers[q.id];
+        const chosenText =
+          typeof chosenIdx === 'number' ? q.options[chosenIdx] : '(no answer)';
+        return {
+          questionId: `recall:${q.id}`,
+          prompt: q.question,
+          chosen: chosenText,
+          correct: q.options[q.correctIndex],
+          wasCorrect: chosenIdx === q.correctIndex,
+          attempts: 1,
+        };
+      });
+      const classificationLog: TaskAnswerLogEntry[] = effectiveDifferences.map((diff) => {
+        const chosenClass = classifications[diff.diffId] ?? '(none)';
+        return {
+          questionId: `diff:${diff.diffId}`,
+          prompt: `${diff.label}: "${diff.originalText}" → "${diff.revisedText}"`,
+          chosen: chosenClass,
+          correct: diff.classification,
+          wasCorrect: chosenClass === diff.classification,
+          attempts: 1,
+        };
+      });
+      const answerLog = [...recallLog, ...classificationLog];
+
       onComplete(Math.min(score, 1), {
         taskType: 'contradiction_report',
         itemsCorrect: correctClassifications,
@@ -175,6 +204,7 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
         errorsFound: correctClassifications,
         errorsTotal: effectiveDifferences.length,
         writingText,
+        answerLog,
         // Gradebook teacher view reads these legacy keys — keep them.
         recallScore,
         recallTotal: recallQuestions.length,
@@ -182,7 +212,7 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
         classificationsTotal: effectiveDifferences.length,
       });
     }, 1500);
-  }, [effectiveDifferences, classifications, writingText, onComplete, recallScore, recallQuestions.length]);
+  }, [effectiveDifferences, classifications, writingText, onComplete, recallScore, recallQuestions, recallAnswers]);
 
   // ── Render: Memo card (plain text, no highlights) ───────────────
 

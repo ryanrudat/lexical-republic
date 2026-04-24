@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import type { TaskProps } from '../../../types/shiftQueue';
 import { useShiftQueueStore } from '../../../stores/shiftQueueStore';
 import { useStudentStore } from '../../../stores/studentStore';
+import type { TaskAnswerLogEntry } from '../../../types/taskResult';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -54,6 +55,9 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
   const [eliminatedOptions, setEliminatedOptions] = useState<Set<number>>(new Set());
   const [attempt, setAttempt] = useState(1);
 
+  // Teacher review trail — one entry per item appended as it's finalized.
+  const answerLogRef = useRef<TaskAnswerLogEntry[]>([]);
+
   const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -82,6 +86,7 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
         itemsCorrect: finalCorrectCount,
         itemsTotal: total,
         category: 'vocab',
+        answerLog: answerLogRef.current,
         // Gradebook teacher view reads these legacy keys — keep them.
         correct: finalCorrectCount,
         total,
@@ -97,8 +102,19 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
 
     resultTimerRef.current = setTimeout(() => {
       const isCorrect = optionIndex === item.correctIndex;
+      const questionId = String(currentItem);
+      const correctText = item.options[item.correctIndex];
+      const chosenText = item.options[optionIndex];
 
       if (isCorrect) {
+        answerLogRef.current.push({
+          questionId,
+          prompt: item.question,
+          chosen: chosenText,
+          correct: correctText,
+          wasCorrect: attempt === 1,
+          attempts: attempt,
+        });
         setShowResult(true);
         const newCount = correctCount + 1;
         setCorrectCount(newCount);
@@ -116,6 +132,14 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
         }, 800);
       } else {
         // Final attempt missed — lock and advance
+        answerLogRef.current.push({
+          questionId,
+          prompt: item.question,
+          chosen: chosenText,
+          correct: correctText,
+          wasCorrect: false,
+          attempts: attempt,
+        });
         setShowResult(true);
         addConcern(0.05);
         // Tier 1: show correct answer longer (2s) for learning; others: 1.5s
@@ -123,7 +147,7 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
         advanceTimerRef.current = setTimeout(() => advanceToNext(correctCount), delay);
       }
     }, 300);
-  }, [showResult, selectedOption, eliminatedOptions, item, attempt, maxAttempts, lane, correctCount, addConcern, advanceToNext]);
+  }, [showResult, selectedOption, eliminatedOptions, item, attempt, maxAttempts, lane, correctCount, addConcern, advanceToNext, currentItem]);
 
   if (!item) {
     return null;

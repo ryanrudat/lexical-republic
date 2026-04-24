@@ -4,6 +4,7 @@ import { useShiftQueueStore } from '../../../stores/shiftQueueStore';
 import { useStudentStore } from '../../../stores/studentStore';
 import { useTapOrDrag } from './shared/useTapOrDrag';
 import type { TaskProps } from '../../../types/shiftQueue';
+import type { TaskAnswerLogEntry } from '../../../types/taskResult';
 
 interface Blank {
   index: number;
@@ -32,6 +33,10 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
   const [firstTryCorrect, setFirstTryCorrect] = useState<Set<number>>(new Set());
   const [attempted, setAttempted] = useState<Set<number>>(new Set());
   const [attemptCounts, setAttemptCounts] = useState<Record<number, number>>({});
+
+  // Teacher review trail (refs — read once at completion, don't drive re-renders).
+  const lastWrongPickRef = useRef<Record<number, string>>({});
+  const autoFilledRef = useRef<Set<number>>(new Set());
 
   const { selectedId, selectItem, clearSelection } = useTapOrDrag();
 
@@ -96,6 +101,7 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
         const newCount = (attemptCounts[blankIndex] ?? 0) + 1;
         setAttemptCounts(prev => ({ ...prev, [blankIndex]: newCount }));
         setAttempted((prev) => new Set(prev).add(blankIndex));
+        lastWrongPickRef.current[blankIndex] = word;
 
         // Tier 1: concern only on final miss; Tier 2/3: every miss
         if (lane !== 1) addConcern(0.05);
@@ -103,6 +109,7 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
         if (newCount >= maxAttempts) {
           // Max attempts reached — auto-fill with correct word
           if (lane === 1) addConcern(0.05);
+          autoFilledRef.current.add(blankIndex);
           setWrongFlash(blankIndex);
           setTimeout(() => {
             setWrongFlash(null);
@@ -137,18 +144,61 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
   const allFilled = locked.size === blanks.length;
   const hasCompleted = useRef(false);
 
+  const buildBlankPrompt = useCallback(
+    (blankIndex: number) => {
+      const token = `{${blankIndex}}`;
+      const fallback = `Blank ${blankIndex + 1}`;
+      const tokenPos = passage.indexOf(token);
+      if (tokenPos === -1) return fallback;
+
+      const boundaries = ['. ', '! ', '? '];
+      const before = passage.slice(0, tokenPos);
+      const after = passage.slice(tokenPos + token.length);
+      const sentenceStart = Math.max(...boundaries.map((b) => before.lastIndexOf(b)));
+      const afterHits = boundaries
+        .map((b) => after.indexOf(b))
+        .filter((i) => i >= 0);
+
+      const startIdx = sentenceStart >= 0 ? sentenceStart + 2 : 0;
+      const endIdx =
+        afterHits.length > 0
+          ? tokenPos + token.length + Math.min(...afterHits) + 1
+          : passage.length;
+
+      const sentence = passage.slice(startIdx, endIdx).replace(token, '___').trim();
+      return sentence || fallback;
+    },
+    [passage],
+  );
+
   if (allFilled && !hasCompleted.current) {
     hasCompleted.current = true;
     const score = firstTryCorrect.size / blanks.length;
     if (pearlBark) {
       usePearlStore.getState().triggerBark('success', pearlBark);
     }
+    const answerLog: TaskAnswerLogEntry[] = blanks.map((blank) => {
+      // Auto-filled blanks never ended on a student-chosen word; surface the
+      // student's last wrong guess so teachers see what they actually tried.
+      const autoFilled = autoFilledRef.current.has(blank.index);
+      const lastWrong = lastWrongPickRef.current[blank.index];
+      const chosen = autoFilled && lastWrong ? lastWrong : blank.correctWord;
+      return {
+        questionId: String(blank.index),
+        prompt: buildBlankPrompt(blank.index),
+        chosen,
+        correct: blank.correctWord,
+        wasCorrect: firstTryCorrect.has(blank.index),
+        attempts: (attemptCounts[blank.index] ?? 0) + 1,
+      };
+    });
     setTimeout(() => {
       onComplete(score, {
         taskType: 'cloze_fill',
         itemsCorrect: firstTryCorrect.size,
         itemsTotal: blanks.length,
         category: 'vocab',
+        answerLog,
       });
     }, 800);
   }
