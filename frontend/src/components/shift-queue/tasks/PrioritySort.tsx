@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { TaskProps } from '../../../types/shiftQueue';
+import type { TaskAnswerLogEntry } from '../../../types/taskResult';
 import { useShiftQueueStore } from '../../../stores/shiftQueueStore';
 import { useStudentStore } from '../../../stores/studentStore';
 import TargetWordHighlighter from './shared/TargetWordHighlighter';
@@ -146,12 +147,33 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
       // All justified -- finish
       const correctCount = cases.filter(c => sortResults[c.caseId]).length;
       const score = correctCount / Math.max(cases.length, 1);
+
+      // Teacher review trail. Disappeared cases are still logged so the
+      // teacher sees the full sequence, not a gap.
+      const answerLog: TaskAnswerLogEntry[] = cases.map(c => {
+        const assignedColumn = (Object.keys(columns) as ColumnName[]).find(
+          col => columns[col].includes(c.caseId),
+        );
+        const isDisappeared = disappearedCases.has(c.caseId);
+        return {
+          questionId: `case:${c.caseId}`,
+          prompt: `${c.title}: ${c.description}`,
+          chosen: isDisappeared
+            ? '(case disappeared)'
+            : assignedColumn ?? '(unassigned)',
+          correct: c.correctColumn,
+          wasCorrect: !!sortResults[c.caseId],
+          attempts: 1,
+        };
+      });
+
       onComplete(score, {
         taskType: 'priority_sort',
         itemsCorrect: correctCount,
         itemsTotal: cases.length,
         // mixed = both grammar (sort decisions) and writing (justifications)
         category: 'mixed',
+        answerLog,
         disappeared: [...disappearedCases],
         justifications: allJustifications,
         // Gradebook teacher view reads these legacy keys — keep them.
@@ -160,7 +182,7 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
       });
       setPhase('done');
     }
-  }, [currentJustifyCase, currentJustifyIdx, justifyCases.length, justifications, cases, sortResults, disappearedCases, onComplete]);
+  }, [currentJustifyCase, currentJustifyIdx, justifyCases.length, justifications, cases, sortResults, disappearedCases, onComplete, columns]);
 
   // ── Render: Case card ──────────────────────────────────────────
 

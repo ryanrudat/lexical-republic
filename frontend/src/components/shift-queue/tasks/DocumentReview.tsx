@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { TaskProps } from '../../../types/shiftQueue';
+import type { TaskAnswerLogEntry } from '../../../types/taskResult';
 import DocumentCard from './DocumentCard';
 import ErrorCorrectionDoc from './ErrorCorrectionDoc';
 import type { ErrorCorrectionResult } from './ErrorCorrectionDoc';
@@ -40,6 +41,7 @@ interface DocumentConfig {
 interface DocResultDetail {
   correctCount: number;
   itemTotal: number;
+  answerLog?: TaskAnswerLogEntry[];
 }
 
 export default function DocumentReview({
@@ -85,15 +87,33 @@ export default function DocumentReview({
       // Aggregate corrected-item counts across every document in this task
       let correctSum = 0;
       let totalSum = 0;
+      const mergedAnswerLog: TaskAnswerLogEntry[] = [];
       for (const d of documents) {
         const r = docResults[d.id];
         if (r) {
           correctSum += r.correctCount;
           totalSum += r.itemTotal;
+          if (r.answerLog) {
+            // Namespace questionIds by doc so later UIs can tell them apart.
+            for (const entry of r.answerLog) {
+              mergedAnswerLog.push({
+                ...entry,
+                questionId: `${d.id}:${entry.questionId}`,
+              });
+            }
+          }
         } else if (d.type === 'approve') {
           // Approve-type docs are 1-of-1 pass/fail, always correct when reached
           correctSum += 1;
           totalSum += 1;
+          mergedAnswerLog.push({
+            questionId: `${d.id}:approve`,
+            prompt: `Approve: ${d.title}`,
+            chosen: 'APPROVED',
+            correct: 'APPROVED',
+            wasCorrect: true,
+            attempts: 1,
+          });
         }
       }
 
@@ -106,6 +126,7 @@ export default function DocumentReview({
         category: 'grammar',
         errorsFound: correctSum,
         errorsTotal: totalSum,
+        answerLog: mergedAnswerLog,
         // Gradebook teacher view reads these legacy keys — keep them.
         documentsProcessed: documents.length,
         errors: totalErrors,
@@ -145,6 +166,7 @@ export default function DocumentReview({
       markDocComplete(currentDoc.id, score, {
         correctCount: result.correctCount,
         itemTotal: result.totalErrors,
+        answerLog: result.answerLog,
       });
     },
     [currentDoc, markDocComplete],
@@ -157,6 +179,7 @@ export default function DocumentReview({
       markDocComplete(currentDoc.id, score, {
         correctCount: result.correctCount,
         itemTotal: result.totalQuestions,
+        answerLog: result.answerLog,
       });
     },
     [currentDoc, markDocComplete],

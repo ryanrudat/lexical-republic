@@ -3,6 +3,7 @@ import { usePearlStore } from '../../../stores/pearlStore';
 import { useShiftQueueStore } from '../../../stores/shiftQueueStore';
 import { useStudentStore } from '../../../stores/studentStore';
 import type { TaskProps } from '../../../types/shiftQueue';
+import type { TaskAnswerLogEntry } from '../../../types/taskResult';
 
 interface Pair {
   word: string;
@@ -42,6 +43,10 @@ export default function WordMatch({ config, onComplete }: TaskProps) {
   const [attempted, setAttempted] = useState<Set<string>>(new Set());
   const [attemptCounts, setAttemptCounts] = useState<Record<string, number>>({});
 
+  // Teacher review trail (refs — read once at completion, don't drive re-renders).
+  const lastWrongPickRef = useRef<Record<string, string>>({});
+  const autoResolvedRef = useRef<Set<string>>(new Set());
+
   const hasCompleted = useRef(false);
 
   // Render-time completion detection (same pattern as ClozeFill)
@@ -52,12 +57,28 @@ export default function WordMatch({ config, onComplete }: TaskProps) {
     if (pearlBark) {
       usePearlStore.getState().triggerBark('success', pearlBark);
     }
+    const answerLog: TaskAnswerLogEntry[] = pairs.map((pair, idx) => {
+      // Auto-resolved students never ended on the correct match; surface
+      // their last wrong pick so teachers see what they actually tried.
+      const autoResolved = autoResolvedRef.current.has(pair.word);
+      const lastWrong = lastWrongPickRef.current[pair.word];
+      const chosen = autoResolved && lastWrong ? lastWrong : pair.definition;
+      return {
+        questionId: String(idx),
+        prompt: `Match: ${pair.word}`,
+        chosen,
+        correct: pair.definition,
+        wasCorrect: firstTryCorrect.has(pair.word),
+        attempts: (attemptCounts[pair.word] ?? 0) + 1,
+      };
+    });
     setTimeout(() => {
       onComplete(score, {
         taskType: 'word_match',
         itemsCorrect: firstTryCorrect.size,
         itemsTotal: pairs.length,
         category: 'vocab',
+        answerLog,
       });
     }, 1000);
   }
@@ -92,12 +113,18 @@ export default function WordMatch({ config, onComplete }: TaskProps) {
         setAttemptCounts(prev => ({ ...prev, [word]: newCount }));
         setAttempted((prev) => new Set(prev).add(word));
 
+        const wrongDef = pairs.find(p => p.word === defWord)?.definition;
+        if (wrongDef) {
+          lastWrongPickRef.current[word] = wrongDef;
+        }
+
         // Tier 1: concern only on final miss; Tier 2/3: every miss
         if (lane !== 1) addConcern(0.05);
 
         if (newCount >= maxAttempts) {
           // Max attempts reached — flash wrong, then auto-resolve with correct match
           if (lane === 1) addConcern(0.05);
+          autoResolvedRef.current.add(word);
           setWrongFlash(defWord);
           setSelectedWord(null);
           setTimeout(() => {
@@ -124,7 +151,7 @@ export default function WordMatch({ config, onComplete }: TaskProps) {
         }
       }
     },
-    [matched, attempted, attemptCounts, maxAttempts, lane, addConcern],
+    [matched, attempted, attemptCounts, maxAttempts, lane, addConcern, pairs],
   );
 
   const handleDefClick = useCallback(
