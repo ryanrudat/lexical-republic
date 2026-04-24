@@ -5,6 +5,7 @@ import type { TeacherTab } from '../stores/teacherStore';
 import { useTeacherSocket } from '../hooks/useTeacherSocket';
 import ClassMonitor from '../components/teacher/ClassMonitor';
 import Gradebook from '../components/teacher/Gradebook';
+import WritingReview from '../components/teacher/WritingReview';
 import ShiftsTab from '../components/teacher/ShiftsTab';
 import DictionaryManager from '../components/teacher/DictionaryManager';
 import ClassManager from '../components/teacher/ClassManager';
@@ -14,6 +15,7 @@ import type { ClassInfo } from '../api/teacher';
 const TABS: { id: TeacherTab; label: string }[] = [
   { id: 'class', label: 'Class' },
   { id: 'grades', label: 'Grades' },
+  { id: 'writing', label: 'Writing Review' },
   { id: 'shifts', label: 'Shifts' },
   { id: 'dictionary', label: 'Dictionary' },
 ];
@@ -182,6 +184,7 @@ export default function TeacherDashboard() {
             </div>
           )}
           {activeTab === 'grades' && <Gradebook classId={selectedClassId} />}
+          {activeTab === 'writing' && <WritingReview classId={selectedClassId} />}
           {activeTab === 'shifts' && <ShiftsTab />}
           {activeTab === 'dictionary' && <DictionaryManager />}
         </div>

@@ -182,10 +182,202 @@ export async function fetchGradebook(classId?: string): Promise<GradebookData> {
   return data as GradebookData;
 }
 
+// ── Writing Review ──────────────────────────────────────────────
+//
+// Class-wide, per-shift view of every written submission. Matches the
+// response shape defined for parallel Unit 4 (`GET /api/teacher/classes/
+// :classId/writing-review?week=N`). If that endpoint isn't live yet,
+// `fetchWritingReview` falls back to transforming `/teacher/gradebook`
+// client-side — see the fallback path below.
+
+export interface WritingReviewEntry {
+  scoreId: string;
+  studentId: string;
+  designation: string | null;
+  displayName: string;
+  taskType: string;
+  taskTitle: string;
+  score: number;
+  submittedAt: string | null;
+  writingText: string;
+  label: string | null;
+  /** Optional per-score submittedAnyway flag populated by Unit 1's ShiftReport fallback. */
+  submittedAnyway: boolean;
+  /** AI evaluation metadata — may be absent on legacy scores. */
+  grammarScore: number | null;
+  grammarNotes: string[];
+  vocabUsed: string[];
+  vocabMissed: string[];
+  taskNotes: string | null;
+  pearlFeedback: string | null;
+  teacherComment: string | null;
+}
+
+export interface WritingReviewData {
+  weekNumber: number;
+  weekTitle: string | null;
+  entries: WritingReviewEntry[];
+}
+
+const QUEUE_TASK_TITLE_FALLBACK: Record<string, string> = {
+  intake_form: 'Intake Form',
+  vocab_clearance: 'Vocab Clearance',
+  document_review: 'Document Review',
+  contradiction_report: 'Contradiction Report',
+  shift_report: 'Shift Report',
+  priority_briefing: 'Priority Briefing',
+  priority_sort: 'Priority Sort',
+};
+
+// Extract every writing payload stored on a MissionScore's details blob
+// into one or more WritingReviewEntry rows. Matches the priority order
+// documented in the Unit 6 brief: writingText → text → writingSubmissions.
+function entriesFromScoreDetails(
+  score: GradebookMissionScore,
+  student: GradebookStudent,
+  taskTitleMap: Record<string, string>,
+): WritingReviewEntry[] {
+  const details = (score.details ?? {}) as Record<string, unknown>;
+  const texts: Array<{ text: string; label: string | null }> = [];
+
+  if (typeof details.writingText === 'string' && details.writingText.trim().length > 0) {
+    texts.push({ text: details.writingText, label: null });
+  }
+  if (typeof details.text === 'string' && details.text.trim().length > 0) {
+    texts.push({ text: details.text, label: null });
+  }
+  if (details.writingSubmissions && typeof details.writingSubmissions === 'object') {
+    const subs = details.writingSubmissions as Record<string, string>;
+    Object.entries(subs).forEach(([key, text]) => {
+      if (typeof text === 'string' && text.trim().length > 0) {
+        texts.push({ text, label: `Card ${Number(key) + 1}` });
+      }
+    });
+  }
+  if (details.justifications && typeof details.justifications === 'object') {
+    const justs = details.justifications as Record<string, string>;
+    Object.entries(justs).forEach(([caseId, text]) => {
+      if (typeof text === 'string' && text.trim().length > 0) {
+        texts.push({ text, label: `Case ${caseId}` });
+      }
+    });
+  }
+
+  // Deduplicate: if writingText and text are the same string (common), keep one.
+  const seen = new Set<string>();
+  const unique = texts.filter((t) => {
+    const key = `${t.label ?? ''}::${t.text}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  if (unique.length === 0) return [];
+
+  const taskType = score.mission.missionType;
+  const taskTitle = taskTitleMap[taskType] ?? QUEUE_TASK_TITLE_FALLBACK[taskType] ?? taskType;
+  const pearlFeedback = typeof details.pearlFeedback === 'string' ? details.pearlFeedback : null;
+  const teacherComment = typeof details.teacherComment === 'string' ? details.teacherComment : null;
+  const grammarScore = typeof details.grammarScore === 'number' ? details.grammarScore : null;
+  const grammarNotes = Array.isArray(details.grammarNotes)
+    ? (details.grammarNotes as unknown[]).filter((n): n is string => typeof n === 'string')
+    : [];
+  const vocabUsed = Array.isArray(details.vocabUsed)
+    ? (details.vocabUsed as unknown[]).filter((n): n is string => typeof n === 'string')
+    : [];
+  const vocabMissed = Array.isArray(details.vocabMissed)
+    ? (details.vocabMissed as unknown[]).filter((n): n is string => typeof n === 'string')
+    : [];
+  const taskNotes = typeof details.taskNotes === 'string' ? details.taskNotes : null;
+  const submittedAnyway = details.submittedAnyway === true;
+
+  return unique.map((t) => ({
+    scoreId: score.id,
+    studentId: student.id,
+    designation: student.designation,
+    displayName: student.displayName,
+    taskType,
+    taskTitle,
+    score: score.score,
+    submittedAt: null,
+    writingText: t.text,
+    label: t.label,
+    submittedAnyway,
+    grammarScore,
+    grammarNotes,
+    vocabUsed,
+    vocabMissed,
+    taskNotes,
+    pearlFeedback,
+    teacherComment,
+  }));
+}
+
+export async function fetchWritingReview(
+  classId: string,
+  weekNumber: number,
+): Promise<WritingReviewData> {
+  try {
+    const { data } = await client.get(
+      `/teacher/classes/${classId}/writing-review`,
+      { params: { week: weekNumber } },
+    );
+    return data as WritingReviewData;
+  } catch (err) {
+    // TODO(unit-4): remove this fallback once the dedicated writing-review
+    // endpoint lands. Until then, transform the gradebook response client-side
+    // so the teacher UI works end-to-end.
+    const status = (err as { response?: { status?: number } }).response?.status;
+    if (status && status !== 404) throw err;
+
+    const gradebook = await fetchGradebook(classId);
+    const week = gradebook.weeks.find((w) => w.weekNumber === weekNumber) ?? null;
+    const taskTitleMap: Record<string, string> = {};
+    (week?.taskTypes ?? []).forEach((t) => {
+      taskTitleMap[t.type] = t.title;
+    });
+
+    const entries: WritingReviewEntry[] = [];
+    for (const student of gradebook.students) {
+      const weekScores = week
+        ? student.missionScores.filter((ms) => ms.mission.weekId === week.id)
+        : [];
+      for (const score of weekScores) {
+        entries.push(...entriesFromScoreDetails(score, student, taskTitleMap));
+      }
+    }
+
+    return {
+      weekNumber,
+      weekTitle: week?.title ?? null,
+      entries,
+    };
+  }
+}
+
 // ── Grade Management ─────────────────────────────────────────
 
 export async function updateScore(scoreId: string, score: number, details?: Record<string, unknown>): Promise<void> {
   await client.patch(`/teacher/scores/${scoreId}`, { score, details });
+}
+
+// Writes a teacher comment onto a MissionScore's details blob. Unit 4's
+// dedicated `PATCH /teacher/scores/:scoreId/comment` endpoint is preferred;
+// if it's missing, we fall back to the existing PATCH endpoint by merging
+// `teacherComment` into `details`.
+export async function updateScoreComment(
+  scoreId: string,
+  teacherComment: string,
+  existingDetails?: Record<string, unknown> | null,
+): Promise<void> {
+  try {
+    await client.patch(`/teacher/scores/${scoreId}/comment`, { comment: teacherComment });
+  } catch (err) {
+    const status = (err as { response?: { status?: number } }).response?.status;
+    if (status && status !== 404) throw err;
+    const merged = { ...(existingDetails ?? {}), teacherComment };
+    await client.patch(`/teacher/scores/${scoreId}`, { details: merged });
+  }
 }
 
 export async function deleteScore(scoreId: string): Promise<void> {
