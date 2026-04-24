@@ -27,6 +27,8 @@ export interface TaskResultDetails {
   writingText?: string;
   /** Word count of writing output, where applicable. */
   wordCount?: number;
+  /** Target-vocab words the student actually hit in writing output (from WritingEvaluator). Used by ShiftClosing "Target Words Hit" card. */
+  vocabUsed?: string[];
   /** True when teacher or student skipped the task — should not pull the averages down. */
   skipped?: boolean;
 }

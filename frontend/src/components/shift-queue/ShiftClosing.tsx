@@ -7,7 +7,7 @@ import { useViewStore } from '../../stores/viewStore';
 import { useHarmonyStore } from '../../stores/harmonyStore';
 import { getSocket } from '../../utils/socket';
 import { postShiftResult, patchClearance, patchConcern } from '../../api/shifts';
-import { aggregateTaskResults } from '../../utils/scoreAggregator';
+import { aggregateTaskResults, countTargetWordsHit } from '../../utils/scoreAggregator';
 import type { TaskResultDetails } from '../../types/taskResult';
 import { getCitizen4488PostForWeek } from '../../data/citizen4488Posts';
 
@@ -18,6 +18,13 @@ interface StatItem {
 
 function formatPct(value: number | null): string {
   if (value === null) return 'N/A';
+  return Math.round(value * 100) + '%';
+}
+
+// Em-dash fallback for stats where null means "no contributing task" (as opposed
+// to "task completed with 0") — reads more cleanly than "N/A" in a small card.
+function formatPctOrDash(value: number | null | undefined): string {
+  if (value === null || value === undefined) return '—';
   return Math.round(value * 100) + '%';
 }
 
@@ -46,19 +53,23 @@ export default function ShiftClosing() {
     [taskProgress],
   );
 
-  const aggregate = useMemo(
+  const aggregatorInputs = useMemo(
     () =>
-      aggregateTaskResults(
-        completedTasks.map(t => ({
-          score: t.score ?? 0,
-          details: t.details as TaskResultDetails | undefined,
-        })),
-      ),
+      completedTasks.map(t => ({
+        score: t.score ?? 0,
+        details: t.details as TaskResultDetails | undefined,
+      })),
     [completedTasks],
   );
 
-  // Sum target-word usage from writing tasks that report a wordCount.
-  const targetWordsUsed = useMemo(() => {
+  const aggregate = useMemo(
+    () => aggregateTaskResults(aggregatorInputs),
+    [aggregatorInputs],
+  );
+
+  // Sum of words the student physically wrote across writing tasks (honest label
+  // for what ShiftReport puts in details.wordCount — the full essay length).
+  const wordsWritten = useMemo(() => {
     let total = 0;
     for (const t of completedTasks) {
       const wc = (t.details as Record<string, unknown> | undefined)?.wordCount;
@@ -66,6 +77,13 @@ export default function ShiftClosing() {
     }
     return total;
   }, [completedTasks]);
+
+  // Distinct target-vocab words the student hit (from WritingEvaluator's vocabUsed).
+  // null when no writing task contributed → card renders "—".
+  const targetWordsHit = useMemo(
+    () => countTargetWordsHit(aggregatorInputs),
+    [aggregatorInputs],
+  );
 
   // W3 MVP reactive echo: pull the student's first writing sentence from the
   // Priority Briefing writing card and quote it back at shift close. Tests
@@ -98,7 +116,13 @@ export default function ShiftClosing() {
     },
     { label: 'Vocabulary Score', value: formatPct(aggregate.vocabAccuracy) },
     { label: 'Grammar Accuracy', value: formatPct(aggregate.grammarAccuracy) },
-    { label: 'Target Words Used', value: String(targetWordsUsed) },
+    { label: 'Writing Score', value: formatPctOrDash(aggregate.writingScore) },
+    { label: 'Final Score', value: formatPctOrDash(aggregate.overallScore) },
+    { label: 'Words Written', value: String(wordsWritten) },
+    {
+      label: 'Target Words Hit',
+      value: targetWordsHit === null ? '—' : String(targetWordsHit),
+    },
     { label: 'Concern Score', value: concernScoreDelta.toFixed(1) },
   ];
 
@@ -121,7 +145,9 @@ export default function ShiftClosing() {
           vocabScore: aggregate.vocabAccuracy,
           grammarAccuracy: aggregate.grammarAccuracy,
           writingScore: aggregate.writingScore,
-          targetWordsUsed,
+          overallScore: aggregate.overallScore,
+          wordsWritten,
+          targetWordsHit,
           concernScoreDelta,
         };
 
@@ -194,8 +220,8 @@ export default function ShiftClosing() {
         </p>
       </div>
 
-      {/* Stats grid: 2x3 cards */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Stats grid: 9 cards. 2 cols on narrow viewports, 3 cols on sm+ so 9 fills 3x3. */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {stats.map(stat => (
           <div key={stat.label} className="bg-white border border-[#E8E4DC] rounded-xl p-3 text-center">
             <span className="font-ibm-mono text-lg text-sky-600 font-bold">{stat.value}</span>
