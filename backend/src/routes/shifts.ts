@@ -422,6 +422,17 @@ router.post('/weeks/:weekId/shift-result', async (req: Request, res: Response) =
       return;
     }
     const body = req.body;
+    // ShiftClosing (PR #18) renamed the payload field from `targetWordsUsed`
+    // to `wordsWritten` and added new fields (writingScore, overallScore,
+    // targetWordsHit). Accept both old + new names so old frontend bundles
+    // keep working, and stash the extra metrics in the existing
+    // `taskResults` JSON catch-all so teacher views can read them later.
+    const wordsWrittenValue = body.wordsWritten ?? body.targetWordsUsed ?? 0;
+    const taskResultsPayload: Record<string, number> = {};
+    if (typeof body.writingScore === 'number') taskResultsPayload.writingScore = body.writingScore;
+    if (typeof body.overallScore === 'number') taskResultsPayload.overallScore = body.overallScore;
+    if (typeof body.targetWordsHit === 'number') taskResultsPayload.targetWordsHit = body.targetWordsHit;
+    if (typeof body.wordsWritten === 'number') taskResultsPayload.wordsWritten = body.wordsWritten;
     const data = {
       documentsProcessed: body.documentsProcessed ?? 0,
       documentsTotal: body.documentsTotal ?? 0,
@@ -429,8 +440,9 @@ router.post('/weeks/:weekId/shift-result', async (req: Request, res: Response) =
       errorsTotal: body.errorsTotal ?? 0,
       vocabScore: body.vocabScore ?? 0,
       grammarAccuracy: body.grammarAccuracy ?? 0,
-      targetWordsUsed: body.targetWordsUsed ?? 0,
+      targetWordsUsed: wordsWrittenValue,
       concernScoreDelta: body.concernScoreDelta ?? 0,
+      taskResults: taskResultsPayload,
     };
     const result = await prisma.shiftResult.upsert({
       where: { pairId_weekNumber: { pairId, weekNumber: week.weekNumber } },

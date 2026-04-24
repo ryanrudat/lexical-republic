@@ -327,49 +327,86 @@ function DrillDown({
 
       {/* Shift Summary — matches what the student sees on ShiftClosing */}
       {cell.shiftResult && (
-        <div className="mb-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
-          <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider mb-2">
-            Shift Summary (Student View)
-          </p>
-          <div className="grid grid-cols-3 gap-2">
-            <div className="text-center">
-              <span className="text-sm font-semibold text-slate-700">
-                {cell.shiftResult.documentsProcessed}/{cell.shiftResult.documentsTotal}
-              </span>
-              <p className="text-[9px] text-slate-400">Docs Processed</p>
+        (() => {
+          const tr = (cell.shiftResult.taskResults ?? {}) as Record<string, unknown>;
+          const writingScore = typeof tr.writingScore === 'number' ? tr.writingScore : null;
+          const overallScore = typeof tr.overallScore === 'number' ? tr.overallScore : null;
+          const targetWordsHit = typeof tr.targetWordsHit === 'number' ? tr.targetWordsHit : null;
+          const wordsWritten = typeof tr.wordsWritten === 'number'
+            ? tr.wordsWritten
+            : cell.shiftResult.targetWordsUsed;
+          const isMarker = !cell.shiftResult.completedAt;
+          return (
+            <div className="mb-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
+                  Shift Summary (Student View)
+                </p>
+                {isMarker && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                    Not finalized — student hasn't reached ShiftClosing yet
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="text-center">
+                  <span className="text-sm font-semibold text-slate-700">
+                    {cell.shiftResult.documentsProcessed}/{cell.shiftResult.documentsTotal}
+                  </span>
+                  <p className="text-[9px] text-slate-400">Docs Processed</p>
+                </div>
+                <div className="text-center">
+                  <span className="text-sm font-semibold text-slate-700">
+                    {cell.shiftResult.errorsFound}/{cell.shiftResult.errorsTotal}
+                  </span>
+                  <p className="text-[9px] text-slate-400">Errors Found</p>
+                </div>
+                <div className="text-center">
+                  <span className="text-sm font-semibold text-slate-700">
+                    {wordsWritten}
+                  </span>
+                  <p className="text-[9px] text-slate-400">Words Written</p>
+                </div>
+                <div className="text-center">
+                  <span className="text-sm font-semibold text-indigo-600">
+                    {Math.round(cell.shiftResult.vocabScore * 100)}%
+                  </span>
+                  <p className="text-[9px] text-slate-400">Vocab Score</p>
+                </div>
+                <div className="text-center">
+                  <span className="text-sm font-semibold text-indigo-600">
+                    {Math.round(cell.shiftResult.grammarAccuracy * 100)}%
+                  </span>
+                  <p className="text-[9px] text-slate-400">Grammar Accuracy</p>
+                </div>
+                <div className="text-center">
+                  <span className="text-sm font-semibold text-indigo-600">
+                    {writingScore !== null ? `${Math.round(writingScore * 100)}%` : '—'}
+                  </span>
+                  <p className="text-[9px] text-slate-400">Writing Score</p>
+                </div>
+                <div className="text-center">
+                  <span className="text-sm font-semibold text-indigo-700">
+                    {overallScore !== null ? `${Math.round(overallScore * 100)}%` : '—'}
+                  </span>
+                  <p className="text-[9px] text-slate-400">Final Score</p>
+                </div>
+                <div className="text-center">
+                  <span className="text-sm font-semibold text-slate-700">
+                    {targetWordsHit !== null ? targetWordsHit : '—'}
+                  </span>
+                  <p className="text-[9px] text-slate-400">Target Words Hit</p>
+                </div>
+                <div className="text-center">
+                  <span className={`text-sm font-semibold ${cell.shiftResult.concernScoreDelta > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                    {cell.shiftResult.concernScoreDelta.toFixed(1)}
+                  </span>
+                  <p className="text-[9px] text-slate-400">Concern Score</p>
+                </div>
+              </div>
             </div>
-            <div className="text-center">
-              <span className="text-sm font-semibold text-slate-700">
-                {cell.shiftResult.errorsFound}/{cell.shiftResult.errorsTotal}
-              </span>
-              <p className="text-[9px] text-slate-400">Errors Found</p>
-            </div>
-            <div className="text-center">
-              <span className="text-sm font-semibold text-slate-700">
-                {cell.shiftResult.targetWordsUsed}
-              </span>
-              <p className="text-[9px] text-slate-400">Words Used</p>
-            </div>
-            <div className="text-center">
-              <span className="text-sm font-semibold text-indigo-600">
-                {Math.round(cell.shiftResult.vocabScore * 100)}%
-              </span>
-              <p className="text-[9px] text-slate-400">Vocab Score</p>
-            </div>
-            <div className="text-center">
-              <span className="text-sm font-semibold text-indigo-600">
-                {Math.round(cell.shiftResult.grammarAccuracy * 100)}%
-              </span>
-              <p className="text-[9px] text-slate-400">Grammar Accuracy</p>
-            </div>
-            <div className="text-center">
-              <span className={`text-sm font-semibold ${cell.shiftResult.concernScoreDelta > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                {cell.shiftResult.concernScoreDelta.toFixed(1)}
-              </span>
-              <p className="text-[9px] text-slate-400">Concern Score</p>
-            </div>
-          </div>
-        </div>
+          );
+        })()
       )}
 
       <div className="space-y-2">

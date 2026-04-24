@@ -167,6 +167,10 @@ export interface GradebookShiftResult {
   targetWordsUsed: number;
   concernScoreDelta: number;
   completedAt: string | null;
+  /** Extra metrics stashed by ShiftClosing (PR #18): writingScore,
+   *  overallScore, targetWordsHit, wordsWritten. Optional — absent on
+   *  ShiftResults written before the new payload shape existed. */
+  taskResults?: Record<string, unknown> | null;
 }
 
 export interface GradebookStudent {

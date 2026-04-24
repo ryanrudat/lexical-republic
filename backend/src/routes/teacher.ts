@@ -625,6 +625,7 @@ router.get('/gradebook', async (req: Request, res: Response) => {
             grammarAccuracy: true,
             targetWordsUsed: true,
             concernScoreDelta: true,
+            taskResults: true,
             completedAt: true,
           },
         })
