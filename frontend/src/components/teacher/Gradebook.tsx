@@ -415,7 +415,17 @@ function TaskRow({
   const [evalExpanded, setEvalExpanded] = useState(false);
 
   const details = (score?.details ?? {}) as Record<string, unknown>;
-  const hasWriting = !!(details.writingText || details.writingSubmissions || details.text || details.justifications);
+  // hasWriting must reject empty containers like `writingSubmissions: {}` — an
+  // IntakeForm with no writing cards still carries an empty writingSubmissions
+  // object, which would falsely show the "View Writing" button.
+  const nonEmptyObject = (v: unknown): boolean =>
+    !!v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v as object).length > 0;
+  const hasWriting = !!(
+    (typeof details.writingText === 'string' && details.writingText.trim().length > 0) ||
+    (typeof details.text === 'string' && details.text.trim().length > 0) ||
+    nonEmptyObject(details.writingSubmissions) ||
+    nonEmptyObject(details.justifications)
+  );
 
   const handleSave = async () => {
     if (!score) return;

@@ -31,6 +31,9 @@ export default function WordSort({ config, onComplete }: TaskProps) {
   const [wrongFlash, setWrongFlash] = useState<{ word: string; colId: string } | null>(null);
   const [firstTryCorrect, setFirstTryCorrect] = useState<Set<string>>(new Set());
   const [attempted, setAttempted] = useState<Set<string>>(new Set());
+  // Track the first wrong column a student dropped each word into, so
+  // teachers can see which category the student confused the word with.
+  const [firstWrongCol, setFirstWrongCol] = useState<Record<string, string>>({});
 
   const { selectedId, selectItem, clearSelection } = useTapOrDrag();
 
@@ -53,6 +56,7 @@ export default function WordSort({ config, onComplete }: TaskProps) {
       } else {
         setWrongFlash({ word, colId });
         setAttempted((prev) => new Set(prev).add(word));
+        setFirstWrongCol((prev) => (word in prev ? prev : { ...prev, [word]: colId }));
         setTimeout(() => setWrongFlash(null), 400);
       }
       clearSelection();
@@ -85,12 +89,32 @@ export default function WordSort({ config, onComplete }: TaskProps) {
     if (pearlBark) {
       usePearlStore.getState().triggerBark('success', pearlBark);
     }
+    // Build per-word answer log for the teacher Gradebook. `chosen` shows
+    // the student's first wrong column if they missed it, otherwise the
+    // (correct) final column they settled into.
+    const colLabelById = new Map(columns.map((c) => [c.id, c.label] as const));
+    const answerLog = allWords.map((word) => {
+      const correctCol = columns.find((c) => c.correctWords.includes(word));
+      const correctLabel = correctCol?.label ?? word;
+      const firstWrong = firstWrongCol[word];
+      const chosenLabel = firstWrong
+        ? colLabelById.get(firstWrong) ?? firstWrong
+        : correctLabel;
+      return {
+        questionId: word,
+        prompt: `Sort: ${word}`,
+        chosen: chosenLabel,
+        correct: correctLabel,
+        wasCorrect: firstTryCorrect.has(word),
+      };
+    });
     setTimeout(() => {
       onComplete(score, {
         taskType: 'word_sort',
         itemsCorrect: firstTryCorrect.size,
         itemsTotal: allWords.length,
         category: 'vocab',
+        answerLog,
       });
     }, 800);
   }

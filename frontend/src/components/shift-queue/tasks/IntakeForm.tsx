@@ -86,6 +86,12 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
   const [writingPassed, setWritingPassed] = useState(false);
   const [questionAnswers, setQuestionAnswers] = useState<Record<string, number>>({});
   const [questionLocked, setQuestionLocked] = useState<Record<string, boolean>>({});
+  // Track the FIRST option the student tapped per question, so we can show
+  // teachers whether they hit the correct answer on attempt 1 (or which
+  // distractor fooled them). Keyed by question.key.
+  const [firstQuestionPick, setFirstQuestionPick] = useState<Record<string, number>>({});
+  // Per-question tap count for attempts reporting.
+  const [questionAttempts, setQuestionAttempts] = useState<Record<string, number>>({});
 
   const card = cards[currentCard];
   const total = cards.length;
@@ -132,6 +138,31 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
       // IntakeForm is a narrative onboarding form — not a graded vocab/grammar
       // task — so it contributes a neutral 1/1 to the mixed bucket and keeps
       // the useful per-card detail for teacher review.
+      const answerLog: Array<{
+        questionId: string;
+        prompt: string;
+        chosen: string;
+        correct: string;
+        wasCorrect: boolean;
+        attempts?: number;
+      }> = [];
+      for (const c of cards) {
+        if (c.type !== 'intake_questions' || !c.questions) continue;
+        for (const q of c.questions) {
+          const firstIdx = firstQuestionPick[q.key];
+          if (firstIdx === undefined) continue; // student never tapped this question
+          const firstChoiceText = q.options[firstIdx] ?? String(firstIdx);
+          const correctText = q.options[q.correctIndex] ?? String(q.correctIndex);
+          answerLog.push({
+            questionId: q.key,
+            prompt: q.label,
+            chosen: firstChoiceText,
+            correct: correctText,
+            wasCorrect: firstIdx === q.correctIndex,
+            attempts: questionAttempts[q.key] ?? 1,
+          });
+        }
+      }
       const details: Record<string, unknown> = {
         taskType: 'intake_form',
         itemsCorrect: 1,
@@ -140,10 +171,11 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
         cardsCompleted: total,
         dropdownChoices: dropdownValues,
         writingSubmissions,
+        answerLog,
       };
       onComplete(score, details);
     }
-  }, [currentCard, total, cardCompleted, dropdownValues, writingSubmissions, onComplete]);
+  }, [currentCard, total, cardCompleted, cards, dropdownValues, writingSubmissions, firstQuestionPick, questionAttempts, onComplete]);
 
   // ── Writing result handler ───────────────────────────────────
 
@@ -274,6 +306,8 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
       if (questionLocked[q.key]) return;
 
       setQuestionAnswers(prev => ({ ...prev, [q.key]: optionIndex }));
+      setQuestionAttempts(prev => ({ ...prev, [q.key]: (prev[q.key] ?? 0) + 1 }));
+      setFirstQuestionPick(prev => (q.key in prev ? prev : { ...prev, [q.key]: optionIndex }));
 
       if (optionIndex === q.correctIndex) {
         // Correct — lock and auto-advance after delay
