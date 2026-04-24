@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { SocketStatus } from '../utils/socket';
 import type { CharacterMessage, ThreadEntry } from '../types/shiftQueue';
 
-export type TeacherTab = 'class' | 'grades' | 'shifts' | 'dictionary';
+export type TeacherTab = 'class' | 'grades' | 'writing' | 'shifts' | 'dictionary';
 
 export interface OnlineStudent {
   userId: string;
