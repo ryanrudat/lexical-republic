@@ -282,16 +282,18 @@ model Recording {
 }
 
 model MissionScore {
-  id        String   @id @default(uuid())
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id])
-  pairId    String?
-  pair      Pair?    @relation(fields: [pairId], references: [id])
-  missionId String
-  mission   Mission  @relation(fields: [missionId], references: [id])
-  score     Float
-  details   Json?
-  createdAt DateTime @default(now())
+  id              String   @id @default(uuid())
+  userId          String?
+  user            User?    @relation(fields: [userId], references: [id])
+  pairId          String?
+  pair            Pair?    @relation(fields: [pairId], references: [id])
+  missionId       String
+  mission         Mission  @relation(fields: [missionId], references: [id])
+  score           Float
+  details         Json?
+  teacherComment  String?
+  pearlFeedback   String?
+  createdAt       DateTime @default(now())
 
   @@unique([userId, missionId])
   @@unique([pairId, missionId])
