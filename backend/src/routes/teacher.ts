@@ -593,6 +593,8 @@ router.get('/gradebook', async (req: Request, res: Response) => {
             id: true,
             score: true,
             details: true,
+            teacherComment: true,
+            pearlFeedback: true,
             mission: {
               select: {
                 id: true,
@@ -658,6 +660,8 @@ router.get('/gradebook', async (req: Request, res: Response) => {
             id: true,
             score: true,
             details: true,
+            teacherComment: true,
+            pearlFeedback: true,
             mission: {
               select: {
                 id: true,
@@ -706,6 +710,132 @@ router.get('/gradebook', async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/teacher/classes/:classId/writing-review?week=N
+// Class-wide writing review for a single shift. Returns MissionScores containing
+// any written content (writingText / text / writingSubmissions / justifications
+// on `details`), sorted by student designation.
+router.get('/classes/:classId/writing-review', async (req: Request, res: Response) => {
+  try {
+    const teacherId = getTeacherId(req)!;
+    const classId = req.params.classId as string;
+    const weekParam = typeof req.query.week === 'string' ? Number(req.query.week) : NaN;
+
+    if (!Number.isFinite(weekParam) || weekParam < 1 || weekParam > 18) {
+      res.status(400).json({ error: 'week query param must be 1-18' });
+      return;
+    }
+
+    const teacherClassIds = await getTeacherClassIds(teacherId);
+    if (!teacherClassIds.includes(classId)) {
+      res.status(403).json({ error: 'Not your class' });
+      return;
+    }
+
+    const week = await prisma.week.findFirst({
+      where: { weekNumber: weekParam },
+      select: { id: true, weekNumber: true, title: true },
+    });
+    if (!week) {
+      res.status(404).json({ error: 'Week not found' });
+      return;
+    }
+
+    // All missions for this week
+    const missions = await prisma.mission.findMany({
+      where: { weekId: week.id },
+      select: { id: true, missionType: true },
+    });
+    const missionIds = missions.map((m) => m.id);
+    const missionTypeById = new Map(missions.map((m) => [m.id, m.missionType] as const));
+
+    if (missionIds.length === 0) {
+      res.json({ students: [], week });
+      return;
+    }
+
+    // All pairs in the class
+    const pairs = await prisma.pair.findMany({
+      where: { enrollments: { some: { classId } } },
+      select: {
+        id: true,
+        designation: true,
+        studentAName: true,
+        studentBName: true,
+      },
+      orderBy: { designation: 'asc' },
+    });
+    const pairIds = pairs.map((p) => p.id);
+
+    const scores = pairIds.length > 0
+      ? await prisma.missionScore.findMany({
+          where: {
+            pairId: { in: pairIds },
+            missionId: { in: missionIds },
+          },
+          select: {
+            id: true,
+            pairId: true,
+            missionId: true,
+            score: true,
+            details: true,
+            teacherComment: true,
+            pearlFeedback: true,
+            createdAt: true,
+          },
+        })
+      : [];
+
+    // Filter to scores that actually have written content
+    const hasWriting = (details: unknown): boolean => {
+      if (!details || typeof details !== 'object') return false;
+      const d = details as Record<string, unknown>;
+      if (typeof d.writingText === 'string' && d.writingText.trim().length > 0) return true;
+      if (typeof d.text === 'string' && d.text.trim().length > 0) return true;
+      if (d.writingSubmissions && typeof d.writingSubmissions === 'object') {
+        const vals = Object.values(d.writingSubmissions as Record<string, unknown>);
+        if (vals.some((v) => typeof v === 'string' && v.trim().length > 0)) return true;
+      }
+      if (Array.isArray(d.justifications)) {
+        if (d.justifications.some((v) => typeof v === 'string' && v.trim().length > 0)) return true;
+      }
+      return false;
+    };
+
+    const scoresByPair = new Map<string, typeof scores>();
+    for (const s of scores) {
+      if (!s.pairId) continue;
+      if (!hasWriting(s.details)) continue;
+      const list = scoresByPair.get(s.pairId) ?? [];
+      list.push(s);
+      scoresByPair.set(s.pairId, list);
+    }
+
+    const students = pairs
+      .map((p) => ({
+        pairId: p.id,
+        designation: p.designation,
+        displayName: `${p.studentAName}${p.studentBName ? ` & ${p.studentBName}` : ''}`,
+        submissions: (scoresByPair.get(p.id) ?? [])
+          .map((s) => ({
+            scoreId: s.id,
+            missionType: missionTypeById.get(s.missionId) ?? 'unknown',
+            score: s.score,
+            details: (s.details ?? {}) as Record<string, unknown>,
+            teacherComment: s.teacherComment,
+            pearlFeedback: s.pearlFeedback,
+            createdAt: s.createdAt.toISOString(),
+          }))
+          .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+      }))
+      .filter((s) => s.submissions.length > 0);
+
+    res.json({ students, week });
+  } catch (err) {
+    console.error('Teacher writing review fetch error:', err);
+    res.status(500).json({ error: 'Failed to fetch writing review' });
+  }
+});
+
 // ── Grade Management ──────────────────────────────────────────────
 
 // PATCH /api/teacher/scores/:scoreId — Edit a MissionScore
@@ -732,6 +862,64 @@ router.patch('/scores/:scoreId', async (req: Request, res: Response) => {
   } catch (err) {
     console.error('Teacher score edit error:', err);
     res.status(500).json({ error: 'Failed to update score' });
+  }
+});
+
+// PATCH /api/teacher/scores/:scoreId/comment — Set or clear teacher comment on a MissionScore
+router.patch('/scores/:scoreId/comment', async (req: Request, res: Response) => {
+  try {
+    const teacherId = getTeacherId(req)!;
+    const scoreId = req.params.scoreId as string;
+
+    if (!(await teacherOwnsScore(teacherId, scoreId))) {
+      res.status(404).json({ error: 'Score not found' });
+      return;
+    }
+
+    const { comment } = req.body as { comment?: string | null };
+    if (comment !== null && typeof comment !== 'string') {
+      res.status(400).json({ error: 'comment must be a string or null' });
+      return;
+    }
+    if (typeof comment === 'string' && comment.length > 2000) {
+      res.status(400).json({ error: 'comment must be 2000 characters or fewer' });
+      return;
+    }
+
+    const result = await prisma.missionScore.update({
+      where: { id: scoreId },
+      data: { teacherComment: comment ?? null },
+    });
+
+    // Notify any live teacher clients in the relevant class room.
+    // Resolve classId from the score's pair/user enrollment, best-effort.
+    try {
+      const classIds = await getTeacherClassIds(teacherId);
+      const whereClause = result.pairId
+        ? { pairId: result.pairId, classId: { in: classIds } }
+        : result.userId
+          ? { userId: result.userId, classId: { in: classIds } }
+          : null;
+      if (whereClause) {
+        const enr = await prisma.classEnrollment.findFirst({
+          where: whereClause,
+          select: { classId: true },
+        });
+        if (enr?.classId) {
+          io.to(`class:${enr.classId}`).emit('teacher:comment-updated', {
+            scoreId: result.id,
+            teacherComment: result.teacherComment,
+          });
+        }
+      }
+    } catch (socketErr) {
+      console.warn('[TeacherComment] socket emit failed (non-fatal):', socketErr);
+    }
+
+    res.json(result);
+  } catch (err) {
+    console.error('Teacher comment update error:', err);
+    res.status(500).json({ error: 'Failed to update teacher comment' });
   }
 });
 

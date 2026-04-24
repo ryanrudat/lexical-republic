@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
-import { authenticate, requirePair } from '../middleware/auth';
+import { authenticate, requirePair, getPairId } from '../middleware/auth';
 import { getOpenAI, OPENAI_MODEL } from '../utils/openai';
+import prisma from '../utils/prisma';
 
 const router = Router();
 router.use(authenticate);
@@ -53,14 +54,38 @@ interface PearlFeedbackRequest {
   taskContext?: string;
   studentText?: string;
   weekNumber?: number;
+  missionId?: string;
+}
+
+// Persist the generated feedback back onto MissionScore for this pair+mission
+// if a matching row exists. Fail-open: log and continue on any error so the
+// student never sees a failure for a persistence issue.
+async function persistFeedback(pairId: string, missionId: string, pearlFeedback: string): Promise<void> {
+  try {
+    await prisma.missionScore.updateMany({
+      where: { pairId, missionId },
+      data: { pearlFeedback },
+    });
+  } catch (err) {
+    console.warn('[PEARL-Feedback] Failed to persist feedback:', err);
+  }
 }
 
 router.post('/', requirePair, async (req: Request, res: Response) => {
-  const { taskType, taskContext, studentText, weekNumber } = req.body as PearlFeedbackRequest;
+  const { taskType, taskContext, studentText, weekNumber, missionId } = req.body as PearlFeedbackRequest;
+  const pairId = getPairId(req);
+
+  // Single place to send the response + opportunistically persist
+  const send = async (pearlFeedback: string) => {
+    if (pairId && typeof missionId === 'string' && missionId) {
+      await persistFeedback(pairId, missionId, pearlFeedback);
+    }
+    res.json({ pearlFeedback });
+  };
 
   // Validate — but never surface errors to frontend; fall back gracefully.
   if (!studentText || typeof studentText !== 'string' || studentText.trim().length === 0) {
-    res.json({ pearlFeedback: randomFallback() });
+    await send(randomFallback());
     return;
   }
 
@@ -68,7 +93,7 @@ router.post('/', requirePair, async (req: Request, res: Response) => {
 
   // Fail-open: no API key → canned fallback
   if (!client) {
-    res.json({ pearlFeedback: randomFallback() });
+    await send(randomFallback());
     return;
   }
 
@@ -114,10 +139,10 @@ Respond in-character with a single 1-2 sentence PEARL reaction to the CITIZEN'S 
       text = text.slice(0, 197).trimEnd() + '...';
     }
 
-    res.json({ pearlFeedback: text });
+    await send(text);
   } catch (err) {
     console.error('[PEARL-Feedback] Generation failed:', err);
-    res.json({ pearlFeedback: randomFallback() });
+    await send(randomFallback());
   }
 });
 

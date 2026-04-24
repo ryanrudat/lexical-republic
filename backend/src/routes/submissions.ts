@@ -143,35 +143,35 @@ router.post('/evaluate', requirePair, async (req: Request, res: Response) => {
     // ─── Store results ───
     // Save score if we have a missionId
     if (metadata?.missionId) {
+      const detailsPayload = {
+        grammarScore: aiResult.grammarScore,
+        grammarNotes: aiResult.grammarNotes,
+        vocabScore: aiResult.vocabScore,
+        vocabUsed: aiResult.vocabUsed,
+        vocabMissed: aiResult.vocabMissed,
+        taskScore: aiResult.taskScore,
+        taskNotes: aiResult.taskNotes,
+        isDegraded: aiResult.isDegraded,
+        // Persist writing in details so teacher review can display it even if
+        // the client didn't mirror it into taskProgress details.
+        writingText: content,
+        pearlFeedback: aiResult.pearlFeedback,
+      };
+      const computedScore = (aiResult.grammarScore + aiResult.vocabScore + aiResult.taskScore) / 3;
+
       await prisma.missionScore.upsert({
         where: { pairId_missionId: { pairId, missionId: metadata.missionId } },
         update: {
-          score: (aiResult.grammarScore + aiResult.vocabScore + aiResult.taskScore) / 3,
-          details: {
-            grammarScore: aiResult.grammarScore,
-            grammarNotes: aiResult.grammarNotes,
-            vocabScore: aiResult.vocabScore,
-            vocabUsed: aiResult.vocabUsed,
-            vocabMissed: aiResult.vocabMissed,
-            taskScore: aiResult.taskScore,
-            taskNotes: aiResult.taskNotes,
-            isDegraded: aiResult.isDegraded,
-          },
+          score: computedScore,
+          details: detailsPayload,
+          pearlFeedback: aiResult.pearlFeedback,
         },
         create: {
           pairId,
           missionId: metadata.missionId,
-          score: (aiResult.grammarScore + aiResult.vocabScore + aiResult.taskScore) / 3,
-          details: {
-            grammarScore: aiResult.grammarScore,
-            grammarNotes: aiResult.grammarNotes,
-            vocabScore: aiResult.vocabScore,
-            vocabUsed: aiResult.vocabUsed,
-            vocabMissed: aiResult.vocabMissed,
-            taskScore: aiResult.taskScore,
-            taskNotes: aiResult.taskNotes,
-            isDegraded: aiResult.isDegraded,
-          },
+          score: computedScore,
+          details: detailsPayload,
+          pearlFeedback: aiResult.pearlFeedback,
         },
       });
     }
