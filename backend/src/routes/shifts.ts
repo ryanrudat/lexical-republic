@@ -253,10 +253,29 @@ router.post(
         return;
       }
 
-      const result = await prisma.missionScore.upsert({
-        where: ctx.scoreWhere(mission.id),
-        update: { score, details },
-        create: ctx.scoreCreate(mission.id, score, details),
+      // Merge incoming details on top of whatever's already stored so a later
+      // save (e.g. the /shifts/.../score call after a writing task) does NOT
+      // wipe fields written by an earlier save (e.g. grammarScore/pearlFeedback
+      // from /submissions/evaluate). Both endpoints write to the same row.
+      const result = await prisma.$transaction(async (tx) => {
+        const existing = await tx.missionScore.findUnique({
+          where: ctx.scoreWhere(mission.id),
+          select: { details: true },
+        });
+        const existingDetails =
+          existing?.details && typeof existing.details === 'object' && !Array.isArray(existing.details)
+            ? (existing.details as Record<string, unknown>)
+            : {};
+        const incomingDetails =
+          details && typeof details === 'object' && !Array.isArray(details)
+            ? (details as Record<string, unknown>)
+            : {};
+        const mergedDetails = { ...existingDetails, ...incomingDetails } as any;
+        return tx.missionScore.upsert({
+          where: ctx.scoreWhere(mission.id),
+          update: { score, details: mergedDetails },
+          create: ctx.scoreCreate(mission.id, score, mergedDetails),
+        });
       });
 
       res.json(result);

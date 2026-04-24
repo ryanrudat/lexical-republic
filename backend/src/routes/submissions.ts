@@ -143,6 +143,8 @@ router.post('/evaluate', requirePair, async (req: Request, res: Response) => {
     // ─── Store results ───
     // Save score if we have a missionId
     if (metadata?.missionId) {
+      // Pin to a local const so TS narrowing survives the async transaction callback.
+      const missionId: string = metadata.missionId;
       const detailsPayload = {
         grammarScore: aiResult.grammarScore,
         grammarNotes: aiResult.grammarNotes,
@@ -159,20 +161,35 @@ router.post('/evaluate', requirePair, async (req: Request, res: Response) => {
       };
       const computedScore = (aiResult.grammarScore + aiResult.vocabScore + aiResult.taskScore) / 3;
 
-      await prisma.missionScore.upsert({
-        where: { pairId_missionId: { pairId, missionId: metadata.missionId } },
-        update: {
-          score: computedScore,
-          details: detailsPayload,
-          pearlFeedback: aiResult.pearlFeedback,
-        },
-        create: {
-          pairId,
-          missionId: metadata.missionId,
-          score: computedScore,
-          details: detailsPayload,
-          pearlFeedback: aiResult.pearlFeedback,
-        },
+      // Merge new AI eval fields on top of whatever's stored, so we don't wipe
+      // out fields that the /shifts/.../score call (or a previous attempt) put
+      // there — answerLog, writingText on task-side, etc. Both endpoints write
+      // to the same MissionScore row and used to race-overwrite each other.
+      await prisma.$transaction(async (tx) => {
+        const existing = await tx.missionScore.findUnique({
+          where: { pairId_missionId: { pairId, missionId } },
+          select: { details: true },
+        });
+        const existingDetails =
+          existing?.details && typeof existing.details === 'object' && !Array.isArray(existing.details)
+            ? (existing.details as Record<string, unknown>)
+            : {};
+        const mergedDetails = { ...existingDetails, ...detailsPayload } as any;
+        await tx.missionScore.upsert({
+          where: { pairId_missionId: { pairId, missionId } },
+          update: {
+            score: computedScore,
+            details: mergedDetails,
+            pearlFeedback: aiResult.pearlFeedback,
+          },
+          create: {
+            pairId,
+            missionId,
+            score: computedScore,
+            details: mergedDetails,
+            pearlFeedback: aiResult.pearlFeedback,
+          },
+        });
       });
     }
 
