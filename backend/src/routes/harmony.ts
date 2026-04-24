@@ -448,6 +448,10 @@ router.get('/posts', async (req, res) => {
 
     res.json({
       locked: false,
+      // isFirstVisit is true only on the pair's very first feed load (before the
+      // server-side lastHarmonyVisit update we just performed). The banner is
+      // one-time ambient onboarding — see HarmonyApp.tsx.
+      isFirstVisit: viewer.pairId ? lastVisit === null : false,
       posts: sorted.map((post) => ({
         id: post.id,
         designation:

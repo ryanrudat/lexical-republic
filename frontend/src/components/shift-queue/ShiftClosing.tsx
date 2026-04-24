@@ -9,6 +9,7 @@ import { getSocket } from '../../utils/socket';
 import { postShiftResult, patchClearance, patchConcern } from '../../api/shifts';
 import { aggregateTaskResults } from '../../utils/scoreAggregator';
 import type { TaskResultDetails } from '../../types/taskResult';
+import type { Citizen4488ClosingPost } from '../../data/citizen4488Posts';
 import { getCitizen4488PostForWeek } from '../../data/citizen4488Posts';
 
 interface StatItem {
@@ -296,11 +297,13 @@ export default function ShiftClosing() {
 // ── Citizen-4488 case file card ─────────────────────────────────
 
 interface Citizen4488CardProps {
-  post: { title: string; excerpt: string };
+  post: Citizen4488ClosingPost;
   concernDelta: number;
 }
 
 function Citizen4488Card({ post, concernDelta }: Citizen4488CardProps) {
+  const [showNote, setShowNote] = useState(false);
+
   const tone =
     concernDelta >= 0.5
       ? { label: 'CONCERN RISING', text: 'text-rose-700', border: 'border-rose-200', bg: 'bg-rose-50' }
@@ -318,13 +321,34 @@ function Citizen4488Card({ post, concernDelta }: Citizen4488CardProps) {
           {tone.label} &middot; &Delta; {concernDelta.toFixed(2)}
         </span>
       </div>
-      <div className="px-4 py-3 space-y-2 bg-white">
+      <div className="px-4 py-3 space-y-3 bg-white">
         <p className="font-ibm-mono text-[10px] text-[#8B8578] tracking-wider uppercase">
           {post.title}
         </p>
         <p className="text-[12px] text-[#4B5563] leading-relaxed">
           &ldquo;{post.excerpt}&rdquo;
         </p>
+        {post.secondaryExcerpt && (
+          <p className="text-[12px] text-[#4B5563] leading-relaxed pt-2 border-t border-[#E8E4DC]">
+            &ldquo;{post.secondaryExcerpt}&rdquo;
+          </p>
+        )}
+        {post.grammarWatchNote && (
+          <div className="pt-2 border-t border-[#E8E4DC]">
+            <button
+              type="button"
+              onClick={() => setShowNote(v => !v)}
+              className="font-ibm-mono text-[9px] tracking-[0.15em] uppercase text-[#9CA3AF] hover:text-[#4B5563] transition-colors active:scale-95"
+            >
+              {showNote ? 'Hide language note' : 'View language note'}
+            </button>
+            {showNote && (
+              <p className="mt-1.5 text-[11px] italic text-[#8B8578] leading-relaxed">
+                {post.grammarWatchNote}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
