@@ -27,13 +27,19 @@ export default function ComplianceCheckSlotList({ classId, weekNumber }: Props) 
   const reload = async () => {
     setLoading(true);
     setError(null);
+    // Clear stale slot/template state immediately so a previous shift's
+    // rows can't briefly render while the new shift's data loads.
+    setTasks([]);
+    setTemplates([]);
     try {
       const [slotsRes, tplRes] = await Promise.all([
         fetchShiftSlots(weekNumber),
         listComplianceTemplates(classId, weekNumber),
       ]);
       setTasks(slotsRes.tasks);
-      setTemplates(tplRes.templates);
+      // Defensive: only keep templates that match the current shift, even if
+      // the API somehow returns extras.
+      setTemplates(tplRes.templates.filter((t) => t.weekNumber === weekNumber));
     } catch {
       setError('Failed to load Compliance Checks for this shift.');
     } finally {
@@ -53,6 +59,7 @@ export default function ComplianceCheckSlotList({ classId, weekNumber }: Props) 
     ) =>
       templates.find(
         (t) =>
+          t.weekNumber === weekNumber &&
           t.placement === placement &&
           (placement === 'after_task' ? t.afterTaskId === afterTaskId : true),
       ) ?? null;
@@ -73,7 +80,7 @@ export default function ComplianceCheckSlotList({ classId, weekNumber }: Props) 
       template: findTpl('shift_end', null),
     });
     return out;
-  }, [tasks, templates]);
+  }, [tasks, templates, weekNumber]);
 
   const slotLabel = (slot: PlacementSlot): string => {
     if (slot.kind === 'shift_start') return 'Before shift starts';

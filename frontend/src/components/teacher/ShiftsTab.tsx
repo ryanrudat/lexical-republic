@@ -167,6 +167,7 @@ export default function ShiftsTab() {
             Schedule screen-locking vocabulary verifications inside this shift. Per-class — different classes can have different checks for the same shift.
           </p>
           <ComplianceCheckSlotList
+            key={`${selectedClassId}-${selectedWeek.weekNumber}`}
             classId={selectedClassId}
             weekNumber={selectedWeek.weekNumber}
           />
