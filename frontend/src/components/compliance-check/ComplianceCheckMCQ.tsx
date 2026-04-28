@@ -131,20 +131,20 @@ export default function ComplianceCheckMCQ({ questions, onComplete }: Props) {
             const isSelected = state.selectedIdx === displayIdx;
             const isCorrect = state.correctIdx === displayIdx;
             const showResult = state.submitted;
-            let cls = 'border-slate-200 bg-white hover:bg-cyan-50 hover:border-cyan-300';
+            let cls = 'border-slate-200 bg-white text-slate-700 hover:bg-cyan-50 hover:border-cyan-300';
             if (showResult && isCorrect) {
-              cls = 'border-emerald-300 bg-emerald-50';
+              cls = 'border-emerald-300 bg-emerald-50 text-emerald-900';
             } else if (showResult && isSelected && !isCorrect) {
-              cls = 'border-rose-300 bg-rose-50';
+              cls = 'border-rose-300 bg-rose-50 text-rose-900';
             } else if (isSelected) {
-              cls = 'border-cyan-400 bg-cyan-50';
+              cls = 'border-cyan-400 bg-cyan-50 text-cyan-900';
             }
             return (
               <button
                 key={displayIdx}
                 onClick={() => handleSelect(displayIdx)}
                 disabled={state.submitted}
-                className={`w-full text-left text-sm px-3 py-2.5 rounded-lg border-2 transition-all active:scale-[0.99] ${cls} ${
+                className={`w-full text-left text-sm font-sans leading-snug px-3 py-2.5 rounded-lg border-2 transition-all active:scale-[0.99] ${cls} ${
                   state.submitted ? 'cursor-default' : 'cursor-pointer'
                 }`}
               >

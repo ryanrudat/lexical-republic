@@ -918,6 +918,35 @@ body.view-terminal {
   animation: compliance-card-slide-up 400ms ease-out 1700ms forwards;
 }
 
+/* While a Compliance Check is active, suppress the ambient PEARL
+   Dynamic Island so it doesn't overlap the eye. */
+body.compliance-check-active .pearl-island {
+  display: none !important;
+}
+
+/* ─── Compliance Check — whole-modal open/close animations ─── */
+
+@keyframes compliance-modal-enter {
+  0%   { opacity: 0; transform: scale(0.94); filter: blur(6px); }
+  60%  { opacity: 1; filter: blur(0); }
+  100% { opacity: 1; transform: scale(1.0); filter: blur(0); }
+}
+
+@keyframes compliance-modal-exit {
+  0%   { opacity: 1; transform: scale(1.0); filter: blur(0); }
+  100% { opacity: 0; transform: scale(0.94); filter: blur(6px); }
+}
+
+.compliance-modal-shell {
+  animation: compliance-modal-enter 450ms cubic-bezier(0.2, 0.8, 0.25, 1) forwards;
+  transform-origin: center;
+  will-change: transform, opacity, filter;
+}
+
+.compliance-modal-shell.is-closing {
+  animation: compliance-modal-exit 380ms cubic-bezier(0.4, 0, 0.7, 0.2) forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .crt-overlay {
     display: none;
