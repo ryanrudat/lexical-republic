@@ -215,8 +215,13 @@ export default function ShiftQueue() {
   // Fire shift_start clarity check + compliance check (clarity first, then compliance)
   useEffect(() => {
     if (!weekConfig) return;
+    let cancelled = false;
+    const expectedWeek = weekConfig.weekNumber;
     const startCheck = findClarityCheckForPlacement((p) => p === 'shift_start');
     void fetchComplianceCheckFor('shift_start').then((cc) => {
+      // Bail if the student moved to a different shift while we were fetching.
+      if (cancelled) return;
+      if (cc && cc.weekIssued !== expectedWeek) return;
       if (startCheck) {
         setActiveClarityCheck(startCheck);
         pendingComplianceCheckRef.current = cc ?? null;
@@ -224,6 +229,7 @@ export default function ShiftQueue() {
         setActiveComplianceCheck(cc);
       }
     });
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekConfig?.weekNumber]);
 
@@ -232,9 +238,14 @@ export default function ShiftQueue() {
     if (!shiftComplete) return;
     if (activeClarityCheck || activeComplianceCheck) return;
     if (shiftEndComplianceFetched) return;
+    if (!weekConfig) return;
 
+    let cancelled = false;
+    const expectedWeek = weekConfig.weekNumber;
     const endCheck = findClarityCheckForPlacement((p) => p === 'shift_end');
     void fetchComplianceCheckFor('shift_end').then((cc) => {
+      if (cancelled) return;
+      if (cc && cc.weekIssued !== expectedWeek) return;
       if (endCheck) {
         setActiveClarityCheck(endCheck);
         pendingComplianceCheckRef.current = cc ?? null;
@@ -243,7 +254,8 @@ export default function ShiftQueue() {
       }
       setShiftEndComplianceFetched(true);
     });
-  }, [shiftComplete, activeClarityCheck, activeComplianceCheck, shiftEndComplianceFetched, findClarityCheckForPlacement, fetchComplianceCheckFor]);
+    return () => { cancelled = true; };
+  }, [shiftComplete, activeClarityCheck, activeComplianceCheck, shiftEndComplianceFetched, weekConfig?.weekNumber, findClarityCheckForPlacement, fetchComplianceCheckFor]);
 
   // Load messages on mount, then fire shift_start + initial task_start
   useEffect(() => {
@@ -304,7 +316,13 @@ export default function ShiftQueue() {
     const clarityCheckConfig = findClarityCheckForPlacement(
       (p) => typeof p === 'object' && p.afterTaskId === completedTaskId,
     );
-    const complianceCheckConfig = await fetchComplianceCheckFor('after_task', completedTaskId);
+    const expectedWeek = weekConfig.weekNumber;
+    const fetchedComplianceCheck = await fetchComplianceCheckFor('after_task', completedTaskId);
+    // Bail if student moved to a different shift while the fetch was in flight.
+    const complianceCheckConfig =
+      fetchedComplianceCheck && fetchedComplianceCheck.weekIssued === expectedWeek
+        ? fetchedComplianceCheck
+        : null;
 
     await completeTask(currentTask.id, score, details);
 
@@ -492,7 +510,10 @@ export default function ShiftQueue() {
   }
 
   // Compliance Check — teacher-scheduled per-class lockout (mounts after Clarity Check)
-  if (activeComplianceCheck) {
+  // Render-time guard: never show a check whose weekIssued doesn't match the
+  // current shift. Defends against any stale state that escaped the cascade
+  // cancellation (e.g., race during shift change).
+  if (activeComplianceCheck && weekConfig && activeComplianceCheck.weekIssued === weekConfig.weekNumber) {
     return (
       <ComplianceCheckShell
         questions={activeComplianceCheck.questions}
