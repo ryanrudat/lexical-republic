@@ -6,7 +6,21 @@ import ErrorCorrectionDoc from './ErrorCorrectionDoc';
 import type { ErrorCorrectionResult } from './ErrorCorrectionDoc';
 import ComprehensionDoc from './ComprehensionDoc';
 import type { ComprehensionResult } from './ComprehensionDoc';
+import { postNarrativeChoice } from '../../../api/narrative-choices';
 
+
+interface MidTaskChoiceOption {
+  text: string;
+  value: string;
+  responseText?: string;
+}
+
+interface MidTaskChoice {
+  id: string;
+  title: string;
+  message: string;
+  options: MidTaskChoiceOption[];
+}
 
 interface DocumentConfig {
   id: string;
@@ -36,6 +50,8 @@ interface DocumentConfig {
     options: string[];
     correctIndex: number;
   }>;
+  // Mid-task C choice — fires after this doc completes, before advance
+  midTaskChoice?: MidTaskChoice;
 }
 
 interface DocResultDetail {
@@ -46,10 +62,12 @@ interface DocResultDetail {
 
 export default function DocumentReview({
   config,
+  weekConfig,
   onComplete,
 }: TaskProps) {
   const documents = (config.documents as DocumentConfig[]) ?? [];
   const lane = (config.lane as number) ?? 2;
+  const weekNumber = weekConfig.weekNumber;
 
   const [currentDocIndex, setCurrentDocIndex] = useState(0);
   const [completedDocs] = useState<Set<string>>(() => new Set());
@@ -57,6 +75,13 @@ export default function DocumentReview({
   const [docResults, setDocResults] = useState<Record<string, DocResultDetail>>({});
   const [stampStatus, setStampStatus] = useState<'idle' | 'stamping' | 'stamped'>('idle');
   const stampTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Mid-task C choice state (fires between stamp and advance if the just-
+  // completed doc has a `midTaskChoice` config). Non-skippable.
+  const [activeMidTaskChoice, setActiveMidTaskChoice] = useState<MidTaskChoice | null>(null);
+  const [midTaskChoicePicked, setMidTaskChoicePicked] = useState<MidTaskChoiceOption | null>(null);
+  const [midTaskChoiceSubmitting, setMidTaskChoiceSubmitting] = useState(false);
+  const resolvedChoicesRef = useRef<Set<string>>(new Set());
 
   // Clean up timer on unmount
   useEffect(() => {
@@ -134,6 +159,55 @@ export default function DocumentReview({
     }
   }, [currentDocIndex, completedDocs, docScores, docResults, documents, onComplete]);
 
+  /**
+   * Check whether the just-completed doc has a mid-task C choice. If so,
+   * show the overlay instead of advancing. Otherwise advance normally.
+   */
+  const checkChoiceOrAdvance = useCallback(() => {
+    const completedDoc = documents[currentDocIndex];
+    const choice = completedDoc?.midTaskChoice;
+    if (choice && !resolvedChoicesRef.current.has(choice.id)) {
+      setActiveMidTaskChoice(choice);
+      return;
+    }
+    advanceToNext();
+  }, [currentDocIndex, documents, advanceToNext]);
+
+  const handleMidTaskChoicePick = useCallback(
+    async (option: MidTaskChoiceOption) => {
+      if (!activeMidTaskChoice || midTaskChoicePicked) return;
+      setMidTaskChoicePicked(option);
+      setMidTaskChoiceSubmitting(true);
+      try {
+        await postNarrativeChoice({
+          choiceKey: activeMidTaskChoice.id,
+          value: option.value,
+          weekNumber,
+          context: {
+            momentType: 'doc_review_choice',
+            docReviewTask: true,
+            optionText: option.text,
+          },
+        });
+      } catch (err) {
+        // Fail-open — network errors should not block progression.
+        console.error('Failed to save mid-task choice:', err);
+      } finally {
+        setMidTaskChoiceSubmitting(false);
+      }
+    },
+    [activeMidTaskChoice, midTaskChoicePicked, weekNumber],
+  );
+
+  const handleMidTaskChoiceContinue = useCallback(() => {
+    if (activeMidTaskChoice) {
+      resolvedChoicesRef.current.add(activeMidTaskChoice.id);
+    }
+    setActiveMidTaskChoice(null);
+    setMidTaskChoicePicked(null);
+    advanceToNext();
+  }, [activeMidTaskChoice, advanceToNext]);
+
   const markDocComplete = useCallback(
     (docId: string, score: number, result?: DocResultDetail) => {
       completedDocs.add(docId);
@@ -146,11 +220,11 @@ export default function DocumentReview({
       setStampStatus('stamping');
       stampTimerRef.current = setTimeout(() => {
         setStampStatus('stamped');
-        // After stamp shows, advance
-        setTimeout(() => advanceToNext(), 600);
+        // After stamp shows, check for mid-task choice or advance
+        setTimeout(() => checkChoiceOrAdvance(), 600);
       }, 1200);
     },
-    [completedDocs, advanceToNext],
+    [completedDocs, checkChoiceOrAdvance],
   );
 
   // Handle approve-type document
@@ -191,6 +265,75 @@ export default function DocumentReview({
         <span className="font-ibm-mono text-xs text-[#B8B3AA] tracking-wider">
           No documents in queue
         </span>
+      </div>
+    );
+  }
+
+  // Mid-task C choice — non-skippable overlay that replaces the doc view.
+  // Fires between stamp and advance when the completed doc has a midTaskChoice.
+  if (activeMidTaskChoice) {
+    return (
+      <div className="flex flex-col gap-4 max-w-xl mx-auto w-full animate-fade-in">
+        <div className="bg-white border-2 border-amber-300 rounded-xl p-5 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+            <p className="font-ibm-mono text-[10px] text-amber-700 tracking-widest uppercase">
+              P.E.A.R.L. — Archive Control
+            </p>
+          </div>
+          <h3 className="font-special-elite text-base text-amber-800 tracking-wider mb-3">
+            {activeMidTaskChoice.title}
+          </h3>
+          <p className="text-sm text-[#2C3340] leading-relaxed mb-4">
+            {activeMidTaskChoice.message}
+          </p>
+
+          {midTaskChoicePicked === null ? (
+            <div className="space-y-2 pt-2">
+              {activeMidTaskChoice.options.map((option, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleMidTaskChoicePick(option)}
+                  disabled={midTaskChoiceSubmitting}
+                  className="w-full text-left bg-[#FAFAF7] border border-[#E8E4DC] hover:border-amber-300 hover:bg-amber-50 rounded-xl p-3.5 transition-colors active:scale-[0.99] disabled:opacity-50"
+                >
+                  <p className="text-sm text-[#4B5563] leading-relaxed font-medium">
+                    {option.text}
+                  </p>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <>
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 mt-2">
+                <p className="font-ibm-mono text-[9px] text-amber-700 tracking-wider uppercase mb-1.5">
+                  Selection Logged
+                </p>
+                <p className="text-sm text-[#4B5563] leading-relaxed italic">
+                  &ldquo;{midTaskChoicePicked.text}&rdquo;
+                </p>
+              </div>
+
+              {midTaskChoicePicked.responseText && (
+                <div className="bg-white border border-[#D4CFC6] rounded-xl p-3.5 mt-3 animate-fade-in">
+                  <p className="text-sm text-[#2C3340] leading-relaxed">
+                    {midTaskChoicePicked.responseText}
+                  </p>
+                </div>
+              )}
+
+              <div className="pt-3 text-center animate-fade-in">
+                <button
+                  onClick={handleMidTaskChoiceContinue}
+                  disabled={midTaskChoiceSubmitting}
+                  className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 active:bg-sky-800 active:scale-[0.98] transition-colors disabled:opacity-50"
+                >
+                  Continue
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     );
   }

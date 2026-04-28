@@ -18,10 +18,6 @@ import { useSeasonStore } from './stores/seasonStore';
 import { useHarmonyStore } from './stores/harmonyStore';
 import { useViewStore } from './stores/viewStore';
 import ComplianceCheckPreview from './pages/ComplianceCheckPreview';
-import { useComplianceCheckStore } from './stores/complianceCheckStore';
-import type { ComplianceCheckIssuedEvent } from './types/complianceCheck';
-import ComplianceCheckShell from './components/compliance-check/ComplianceCheckShell';
-import { submitComplianceCheck } from './api/compliance-check';
 
 export default function App() {
   const { user, loading, refresh } = useStudentStore();
@@ -151,10 +147,6 @@ export default function App() {
         }
       };
 
-      const onComplianceCheckIssued = (data: ComplianceCheckIssuedEvent) => {
-        useComplianceCheckStore.getState().setPending(data);
-      };
-
       sock.on('connect_error', onError);
       sock.on('session:paused', onPaused);
       sock.on('session:resumed', onResumed);
@@ -164,7 +156,6 @@ export default function App() {
       sock.on('session:shift-changed', onShiftChanged);
       sock.on('session:clarity-message', onClarityMessage);
       sock.on('harmony:new-content', onHarmonyNewContent);
-      sock.on('compliance-check:issued', onComplianceCheckIssued);
 
       return () => {
         sock.off('connect_error', onError);
@@ -176,7 +167,6 @@ export default function App() {
         sock.off('session:shift-changed', onShiftChanged);
         sock.off('session:clarity-message', onClarityMessage);
         sock.off('harmony:new-content', onHarmonyNewContent);
-        sock.off('compliance-check:issued', onComplianceCheckIssued);
       };
     }
   }, [user?.id, user?.role, user?.designation, user?.displayName, navigate]);
@@ -244,54 +234,25 @@ export default function App() {
     : <GameShell />;
 
   return (
-    <>
-      <Routes>
-        {/* Teacher dashboard — only at /teacher, only for teachers */}
-        <Route
-          path="/teacher"
-          element={user.role === 'teacher' ? <TeacherDashboard /> : <Navigate to="/" replace />}
-        />
-        <Route path="/" element={studentHome} />
-        <Route path="/terminal" element={<Navigate to="/" replace />} />
-        <Route
-          path="/season"
-          element={
-            GUIDED_STUDENT_MODE
-              ? <Navigate to="/" replace />
-              : <GameShell initialView="terminal" initialApp="duty-roster" />
-          }
-        />
-        <Route path="/shift/:weekNumber" element={studentHome} />
-        <Route path="/shift/:weekNumber/:stepId" element={studentHome} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-      <ComplianceCheckMount />
-    </>
-  );
-}
-
-function ComplianceCheckMount() {
-  const pendingCheck = useComplianceCheckStore((s) => s.pendingCheck);
-  const clearPending = useComplianceCheckStore((s) => s.clearPending);
-
-  if (!pendingCheck) return null;
-
-  const handleComplete = async (
-    results: Array<{ word: string; correct: boolean }>,
-  ) => {
-    try {
-      await submitComplianceCheck({ checkId: pendingCheck.checkId, words: results });
-    } catch (err) {
-      console.error('[ComplianceCheck] submission failed:', err);
-    }
-    setTimeout(() => clearPending(), 2500);
-  };
-
-  return (
-    <ComplianceCheckShell
-      key={pendingCheck.checkId}
-      questions={pendingCheck.questions}
-      onComplete={handleComplete}
-    />
+    <Routes>
+      {/* Teacher dashboard — only at /teacher, only for teachers */}
+      <Route
+        path="/teacher"
+        element={user.role === 'teacher' ? <TeacherDashboard /> : <Navigate to="/" replace />}
+      />
+      <Route path="/" element={studentHome} />
+      <Route path="/terminal" element={<Navigate to="/" replace />} />
+      <Route
+        path="/season"
+        element={
+          GUIDED_STUDENT_MODE
+            ? <Navigate to="/" replace />
+            : <GameShell initialView="terminal" initialApp="duty-roster" />
+        }
+      />
+      <Route path="/shift/:weekNumber" element={studentHome} />
+      <Route path="/shift/:weekNumber/:stepId" element={studentHome} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }

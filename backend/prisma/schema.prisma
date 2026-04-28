@@ -66,6 +66,7 @@ model User {
   enrollments        ClassEnrollment[]
   teacherClasses     Class[]          @relation("TeacherClasses")
   complianceCheckResults ComplianceCheckResult[] @relation("TeacherIssuedComplianceChecks")
+  complianceCheckTemplates ComplianceCheckTemplate[] @relation("TeacherComplianceTemplates")
 
   @@map("users")
 }
@@ -152,6 +153,29 @@ model PairDictionaryProgress {
   @@map("pair_dictionary_progress")
 }
 
+model ComplianceCheckTemplate {
+  id                    String    @id @default(uuid())
+  classId               String
+  class                 Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
+  weekNumber            Int
+  placement             String
+  afterTaskId           String?
+  title                 String?
+  words                 Json
+  questionCount         Int       @default(3)
+  cumulativeReviewCount Int       @default(2)
+  createdById           String
+  createdBy             User      @relation("TeacherComplianceTemplates", fields: [createdById], references: [id])
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  results               ComplianceCheckResult[]
+
+  @@unique([classId, weekNumber, placement, afterTaskId])
+  @@index([classId, weekNumber])
+  @@map("compliance_check_templates")
+}
+
 model ComplianceCheckResult {
   id            String    @id @default(uuid())
   pairId        String
@@ -159,6 +183,8 @@ model ComplianceCheckResult {
   teacherId     String?
   teacher       User?     @relation("TeacherIssuedComplianceChecks", fields: [teacherId], references: [id])
   classId       String?
+  templateId    String?
+  template      ComplianceCheckTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
   weekIssued    Int
   questions     Json
   results       Json?
@@ -167,8 +193,10 @@ model ComplianceCheckResult {
   issuedAt      DateTime  @default(now())
   completedAt   DateTime?
 
+  @@unique([pairId, templateId])
   @@index([pairId])
   @@index([classId, weekIssued])
+  @@index([templateId])
   @@map("compliance_check_results")
 }
 
@@ -454,6 +482,7 @@ model Class {
   enrollments  ClassEnrollment[]
   weekUnlocks  ClassWeekUnlock[]
   harmonyPosts HarmonyPost[]
+  complianceCheckTemplates ComplianceCheckTemplate[]
 
   @@map("classes")
 }

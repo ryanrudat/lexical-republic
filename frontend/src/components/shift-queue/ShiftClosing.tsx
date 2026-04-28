@@ -10,6 +10,7 @@ import { postShiftResult, patchClearance, patchConcern } from '../../api/shifts'
 import { aggregateTaskResults, countTargetWordsHit } from '../../utils/scoreAggregator';
 import type { TaskResultDetails } from '../../types/taskResult';
 import { getCitizen4488PostForWeek } from '../../data/citizen4488Posts';
+import { fetchNarrativeChoices, type NarrativeChoiceRecord } from '../../api/narrative-choices';
 
 interface StatItem {
   label: string;
@@ -32,6 +33,7 @@ export default function ShiftClosing() {
   const navigate = useNavigate();
   const hasPosted = useRef(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [narrativeChoices, setNarrativeChoices] = useState<NarrativeChoiceRecord[]>([]);
 
   const weekConfig = useShiftQueueStore(s => s.weekConfig);
   const taskProgress = useShiftQueueStore(s => s.taskProgress);
@@ -84,6 +86,33 @@ export default function ShiftClosing() {
     () => countTargetWordsHit(aggregatorInputs),
     [aggregatorInputs],
   );
+
+  // Fetch this shift's narrative choices (B moments + mid-task C choices).
+  // Used by W4+ PEARL observation cards conditioned on student decisions.
+  useEffect(() => {
+    if (!weekConfig) return;
+    let active = true;
+    fetchNarrativeChoices(weekConfig.weekNumber)
+      .then(choices => { if (active) setNarrativeChoices(choices); })
+      .catch(() => { /* fail-open — observation is optional */ });
+    return () => { active = false; };
+  }, [weekConfig?.weekNumber]);
+
+  // W4 C echo: conditioned on the Fragment 3 reclassification choice
+  // (Task 2 mid-task). Compliant vs curious branches get different PEARL
+  // observations at shift close.
+  const w4FragmentObservation = useMemo(() => {
+    if (!weekConfig || weekConfig.weekNumber !== 4) return null;
+    const choice = narrativeChoices.find(c => c.choiceKey === 'w4_doc_review_frag3');
+    if (!choice) return null;
+    if (choice.value === 'compliant') {
+      return "Citizen, your timeline compliance was exemplary. Fragment 3 is no longer part of any working record. The Party thanks you for your precision.";
+    }
+    if (choice.value === 'curious') {
+      return "Citizen, your working record contained an unauthorized fragment. We have amended your file. The official record does not include this fragment. The Party thanks you for your thorough documentation.";
+    }
+    return null;
+  }, [weekConfig, narrativeChoices]);
 
   // W3 MVP reactive echo: pull the student's first writing sentence from the
   // Priority Briefing writing card and quote it back at shift close. Tests
@@ -263,6 +292,18 @@ export default function ShiftClosing() {
           </p>
           <p className="text-xs text-[#4B5563] leading-relaxed text-center">
             Your first principle — <span className="italic">&ldquo;{partyObservation}&rdquo;</span> — has been logged. The Party values specificity, Citizen.
+          </p>
+        </div>
+      )}
+
+      {/* W4 C echo — conditional on Fragment 3 reclassification choice */}
+      {w4FragmentObservation && (
+        <div className="bg-white border border-sky-200 rounded-xl p-4 animate-fade-in">
+          <p className="font-ibm-mono text-[10px] text-sky-600 tracking-wider uppercase mb-2 text-center">
+            P.E.A.R.L. — Observation
+          </p>
+          <p className="text-xs text-[#4B5563] leading-relaxed text-center">
+            {w4FragmentObservation}
           </p>
         </div>
       )}

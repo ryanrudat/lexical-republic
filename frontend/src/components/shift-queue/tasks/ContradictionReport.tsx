@@ -427,7 +427,7 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
           <summary className="px-4 py-2 cursor-pointer font-ibm-mono text-[10px] text-[#8B8578] tracking-wider uppercase">
             Reference: Both memo versions
           </summary>
-          <div className="px-4 pb-3 flex flex-col md:flex-row gap-4">
+          <div className="px-4 pb-3 grid grid-cols-1 md:grid-cols-2 gap-4">
             {renderMemoCard(effectiveMemo, 'ORIGINAL — March 3')}
             {renderMemoCard(effectiveMemoRevised, 'REVISED — March 10')}
           </div>
@@ -499,7 +499,7 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
           <summary className="px-4 py-2 cursor-pointer font-ibm-mono text-[10px] text-[#8B8578] tracking-wider uppercase">
             View both memos for reference
           </summary>
-          <div className="px-4 pb-3 flex flex-col md:flex-row gap-4">
+          <div className="px-4 pb-3 grid grid-cols-1 md:grid-cols-2 gap-4">
             {renderMemoCard(effectiveMemo, 'ORIGINAL — March 3')}
             {renderMemoCard(effectiveMemoRevised, 'REVISED — March 10')}
           </div>

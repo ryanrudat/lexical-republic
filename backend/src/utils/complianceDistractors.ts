@@ -1,13 +1,10 @@
 import prisma from './prisma';
-import { getWeekConfig } from '../data/week-configs';
 
 export interface ComplianceQuestion {
   word: string;
   correctDefinition: string;
   distractors: string[];
 }
-
-const KNOWN_WEEKS = [1, 2, 3, 4];
 
 function shuffle<T>(arr: T[]): T[] {
   const out = arr.slice();
@@ -19,69 +16,79 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 /**
- * Build N Compliance Check questions for the target week.
+ * Build N Compliance Check questions from a teacher-curated word list.
  *
- * - Picks `count` random words from `weekNumber`'s targetWords
- * - Looks up each word's definition in the DictionaryWord table
- * - Distractors: 3 random definitions from OTHER weeks' words (excluding current word)
- *
- * Falls back gracefully if dictionary entries are missing.
+ * - Picks `questionCount` random words from `selectedWords`
+ * - Looks up each word's definition in DictionaryWord
+ * - Distractors: 3 random definitions from words NOT in `selectedWords`
+ *   (deliberate — the student isn't being tested on those, so they're
+ *    valid foils that don't double-test)
  */
 export async function buildComplianceQuestions(
-  weekNumber: number,
-  count: number,
+  selectedWords: string[],
+  questionCount: number,
 ): Promise<ComplianceQuestion[]> {
-  const targetWeek = getWeekConfig(weekNumber);
-  if (!targetWeek) return [];
-
-  const targetWords = shuffle(targetWeek.targetWords).slice(0, Math.max(1, Math.min(count, 5)));
-  if (targetWords.length === 0) return [];
-
-  const otherWords: string[] = [];
-  for (const w of KNOWN_WEEKS) {
-    if (w === weekNumber) continue;
-    const cfg = getWeekConfig(w);
-    if (cfg) otherWords.push(...cfg.targetWords);
-  }
-
-  const allLookupWords = Array.from(
-    new Set([...targetWords, ...otherWords].map((w) => w.toLowerCase())),
+  const cleaned = Array.from(
+    new Set(
+      selectedWords
+        .map((w) => (typeof w === 'string' ? w.trim().toLowerCase() : ''))
+        .filter((w) => w.length > 0),
+    ),
   );
+  if (cleaned.length === 0) return [];
 
-  const dictRows = await prisma.dictionaryWord.findMany({
-    where: { word: { in: allLookupWords } },
+  const targetCount = Math.max(1, Math.min(questionCount, cleaned.length, 5));
+  const targetWords = shuffle(cleaned).slice(0, targetCount);
+
+  const targetRows = await prisma.dictionaryWord.findMany({
+    where: { word: { in: targetWords } },
     select: { word: true, definition: true },
   });
 
+  const selectedSet = new Set(cleaned);
+  const distractorPool = await prisma.dictionaryWord.findMany({
+    where: {
+      word: { notIn: cleaned },
+      definition: { not: '' },
+    },
+    select: { word: true, definition: true },
+    take: 200,
+  });
+
+  const distractorDefs = shuffle(
+    distractorPool
+      .map((d) => d.definition)
+      .filter((d): d is string => typeof d === 'string' && d.trim().length > 0),
+  );
+
   const defByWord = new Map<string, string>();
-  for (const row of dictRows) {
-    if (!defByWord.has(row.word.toLowerCase()) && row.definition) {
-      defByWord.set(row.word.toLowerCase(), row.definition);
+  for (const r of targetRows) {
+    if (r.definition && !defByWord.has(r.word.toLowerCase())) {
+      defByWord.set(r.word.toLowerCase(), r.definition);
     }
   }
 
   const questions: ComplianceQuestion[] = [];
+  let distractorIdx = 0;
+
   for (const word of targetWords) {
     const correctDef = defByWord.get(word.toLowerCase());
     if (!correctDef) continue;
 
-    const distractorPool = shuffle(
-      otherWords.filter((w) => w.toLowerCase() !== word.toLowerCase()),
-    );
-
     const distractors: string[] = [];
-    for (const candidate of distractorPool) {
-      if (distractors.length >= 3) break;
-      const def = defByWord.get(candidate.toLowerCase());
-      if (def && def !== correctDef && !distractors.includes(def)) {
-        distractors.push(def);
+    while (distractors.length < 3 && distractorIdx < distractorDefs.length) {
+      const d = distractorDefs[distractorIdx++]!;
+      if (d !== correctDef && !distractors.includes(d)) {
+        distractors.push(d);
       }
     }
-
     if (distractors.length < 2) continue;
 
     questions.push({ word, correctDefinition: correctDef, distractors });
   }
+
+  // Suppress unused-warning while keeping the variable readable
+  void selectedSet;
 
   return questions;
 }

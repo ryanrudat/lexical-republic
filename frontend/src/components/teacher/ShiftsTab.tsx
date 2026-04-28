@@ -5,6 +5,7 @@ import client from '../../api/client';
 import { resolveUploadUrl } from '../../api/client';
 import { useTeacherStore } from '../../stores/teacherStore';
 import ShiftStoryboard from './ShiftStoryboard';
+import ComplianceCheckSlotList from './compliance-check/ComplianceCheckSlotList';
 
 export default function ShiftsTab() {
   const selectedClassId = useTeacherStore(s => s.selectedClassId);
@@ -152,6 +153,36 @@ export default function ShiftsTab() {
         <div className="text-sm text-slate-400 py-4">No shift data found.</div>
       )}
     </section>
+
+    {/* Compliance Checks for the selected shift */}
+    {selectedClassId && selectedWeekId && (() => {
+      const selectedWeek = weekBriefings.find(w => w.id === selectedWeekId);
+      if (!selectedWeek) return null;
+      return (
+        <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+          <h2 className="text-lg font-semibold text-slate-800 mb-1">
+            Compliance Checks
+          </h2>
+          <p className="text-sm text-slate-500 mb-4">
+            Schedule screen-locking vocabulary verifications inside this shift. Per-class — different classes can have different checks for the same shift.
+          </p>
+          <ComplianceCheckSlotList
+            classId={selectedClassId}
+            weekNumber={selectedWeek.weekNumber}
+          />
+        </section>
+      );
+    })()}
+    {!selectedClassId && (
+      <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+        <h2 className="text-lg font-semibold text-slate-800 mb-1">
+          Compliance Checks
+        </h2>
+        <p className="text-sm text-slate-400 italic">
+          Select a class above to schedule Compliance Checks for this shift.
+        </p>
+      </section>
+    )}
     </div>
   );
 }

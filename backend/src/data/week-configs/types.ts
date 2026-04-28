@@ -26,6 +26,44 @@ export interface WeekConfig {
   narrativeHook: { title: string; body: string; borderColor: string };
   citizen4488Post: Citizen4488Config;
   shiftClosing: ShiftClosingConfig;
+  /**
+   * Inter-task B moments keyed by the task ID the moment fires AFTER.
+   * Used for non-skippable character choice-points (narrative-as-activity
+   * layer B) that live in the terminal flow between tasks.
+   */
+  interTaskMoments?: Record<string, InterTaskMomentConfig>;
+  /**
+   * Clarity Checks — screen-locking pop-up vocabulary verifications.
+   * Fire at shift_start, shift_end, or after a specific task (by id).
+   * Non-skippable; student must answer all MCQs to proceed.
+   */
+  clarityChecks?: ClarityCheckConfig[];
+}
+
+// ─── Inter-Task Moment (B-layer) ──────────────────────────────────
+
+export interface InterTaskMomentReply {
+  text: string;
+  /** Character's one-line response after student picks this reply. null = silent. */
+  responseText: string | null;
+  /** Tag stored on NarrativeChoice.value. Conventional: "compliant" | "curious" | "guarded". */
+  value: string;
+}
+
+export interface InterTaskMomentConfig {
+  /** Unique moment id, e.g. "w4_betty_aftertask1". Used as NarrativeChoice.choiceKey. */
+  id: string;
+  /** "character" = choice-required. "ambient" = no-choice glitch/atmosphere beat. */
+  type: "character" | "ambient";
+  // Character variant:
+  characterName?: string;
+  designation?: string;
+  messageText?: string;
+  replies?: InterTaskMomentReply[];
+  // Ambient variant:
+  glitchText?: string;
+  /** Minimum display time in ms before the Continue button appears. Default 2000. */
+  durationMs?: number;
 }
 
 export interface TaskConfig {
@@ -36,6 +74,36 @@ export interface TaskConfig {
   clipBefore?: string;
   clipAfter?: string;
   config: Record<string, unknown>;
+}
+
+// ─── Clarity Check (screen-locking pop-up vocab quiz) ───────────────
+
+/** Where a Clarity Check fires within the shift flow. */
+export type ClarityCheckPlacement =
+  | "shift_start"
+  | "shift_end"
+  | { afterTaskId: string };
+
+export interface ClarityCheckQuestion {
+  /** The target word being tested. */
+  word: string;
+  /** The correct definition (will appear in options, scrambled). */
+  correctDefinition: string;
+  /** 2-3 distractor definitions. */
+  distractors: string[];
+}
+
+export interface ClarityCheckConfig {
+  /** Unique id, e.g. "clarity-w2-start". */
+  id: string;
+  /** Where in the shift this check fires. */
+  placement: ClarityCheckPlacement;
+  /** Short title shown at the top of the lock screen, e.g. "Clarity Check — Vocabulary Verification". */
+  title: string;
+  /** One-line Ministry framing, e.g. "Standard spot review. Complete all items to continue." */
+  subtitle?: string;
+  /** 2-4 MCQ items. */
+  questions: ClarityCheckQuestion[];
 }
 
 export interface HarmonyConfig {
@@ -142,6 +210,30 @@ export interface DocumentConfig {
   errors?: ErrorConfig[];
   questions?: ComprehensionQuestion[];
   laneHints?: Record<string, string[]>;
+  /**
+   * Mid-task C choice that fires AFTER this document completes (between the
+   * stamp animation and advancing to the next document). Non-skippable — the
+   * student must pick an option. Stored as NarrativeChoice.choiceKey = id.
+   */
+  midTaskChoice?: MidTaskChoiceConfig;
+}
+
+export interface MidTaskChoiceOption {
+  text: string;
+  /** Tag stored on NarrativeChoice.value. Conventional: "compliant" | "curious" | "guarded". */
+  value: string;
+  /** Optional short follow-up shown in-place after the student picks this option. */
+  responseText?: string;
+}
+
+export interface MidTaskChoiceConfig {
+  /** Unique key, used as NarrativeChoice.choiceKey. */
+  id: string;
+  /** Short header label (e.g. "RECLASSIFICATION NOTICE"). */
+  title: string;
+  /** Primary message text (PEARL's dramatic line). */
+  message: string;
+  options: MidTaskChoiceOption[];
 }
 
 export interface ErrorConfig {

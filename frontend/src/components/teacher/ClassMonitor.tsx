@@ -7,7 +7,6 @@ import { STEP_ORDER } from '../../types/shifts';
 import type { StudentSummary } from '../../types/shifts';
 import ClarityMinderThread from './ClarityMinderThread';
 import ShiftReviewModal from './ShiftReviewModal';
-import IssueComplianceCheckModal, { type ComplianceTarget } from './IssueComplianceCheckModal';
 import { getAvailableShifts } from '../../data/narrative-routes';
 
 const stepLabel = (stepId: string) =>
@@ -51,7 +50,6 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
   const [showReviewShiftSelector, setShowReviewShiftSelector] = useState(false);
   const [reviewShiftNumber, setReviewShiftNumber] = useState<number | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [complianceTarget, setComplianceTarget] = useState<ComplianceTarget | null>(null);
   // Cache of shift status fetched from backend for offline students
   const [offlineStatus, setOfflineStatus] = useState<Map<string, ShiftStatus>>(new Map());
   const [statusLoading, setStatusLoading] = useState<Set<string>>(new Set());
@@ -336,19 +334,6 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
             }`}
           >
             Move Class to Shift
-          </button>
-        )}
-        {students.length > 0 && classId && (
-          <button
-            onClick={() => setComplianceTarget({
-              kind: 'class',
-              id: classId,
-              label: `${students.length} student${students.length === 1 ? '' : 's'}`,
-            })}
-            className="px-3 py-2 text-xs rounded-lg border bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100 transition-colors"
-            title="Send a screen-locking vocab quiz to every student"
-          >
-            Issue Compliance Check
           </button>
         )}
       </div>
@@ -684,16 +669,6 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
                     >
                       Reset Shift
                     </button>
-                    <button
-                      className="px-2.5 py-1 text-[11px] rounded-md bg-cyan-50 text-cyan-700 border border-cyan-200 hover:bg-cyan-100 transition-colors"
-                      onClick={() => setComplianceTarget({
-                        kind: 'student',
-                        id: student.id,
-                        label: student.designation ?? '??',
-                      })}
-                    >
-                      Issue Compliance Check
-                    </button>
                   </div>
 
                   {/* Send to specific task — works for BOTH online and offline students */}
@@ -903,13 +878,6 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
           classId={classId}
           weekNumber={reviewShiftNumber}
           onClose={() => setReviewShiftNumber(null)}
-        />
-      )}
-      {complianceTarget && (
-        <IssueComplianceCheckModal
-          target={complianceTarget}
-          availableShifts={AVAILABLE_SHIFTS}
-          onClose={() => setComplianceTarget(null)}
         />
       )}
     </div>

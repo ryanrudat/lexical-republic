@@ -2150,4 +2150,36 @@ router.post('/classes/:classId/move-to-shift', async (req: Request, res: Respons
   }
 });
 
+// GET /api/teacher/dictionary-words/grouped — for the Compliance Check word picker.
+// Returns dictionary words grouped by weekIntroduced. ?toeicOnly=true filters out world-building words.
+router.get('/dictionary-words/grouped', async (req: Request, res: Response) => {
+  try {
+    const toeicOnly = req.query.toeicOnly === 'true' || req.query.toeicOnly === '1';
+    const where: { isWorldBuilding?: boolean } = {};
+    if (toeicOnly) where.isWorldBuilding = false;
+    const rows = await prisma.dictionaryWord.findMany({
+      where,
+      orderBy: [{ weekIntroduced: 'asc' }, { word: 'asc' }],
+      select: {
+        word: true,
+        partOfSpeech: true,
+        definition: true,
+        weekIntroduced: true,
+        toeicCategory: true,
+        isWorldBuilding: true,
+      },
+    });
+    const grouped: Record<number, typeof rows> = {};
+    for (const r of rows) {
+      const wk = r.weekIntroduced;
+      if (!grouped[wk]) grouped[wk] = [];
+      grouped[wk].push(r);
+    }
+    res.json({ grouped });
+  } catch (err) {
+    console.error('Dictionary grouped fetch error:', err);
+    res.status(500).json({ error: 'Failed to fetch dictionary words' });
+  }
+});
+
 export default router;

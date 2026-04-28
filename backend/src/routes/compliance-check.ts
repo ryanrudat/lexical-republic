@@ -1,23 +1,13 @@
 import { Router } from 'express';
 import { authenticate, requireRole, getPairId, getTeacherId } from '../middleware/auth';
 import prisma from '../utils/prisma';
-import { io } from '../socketServer';
 import { buildComplianceQuestions } from '../utils/complianceDistractors';
+import { getWeekConfig } from '../data/week-configs';
 
 const router = Router();
 router.use(authenticate);
 
-async function teacherOwnsPair(teacherId: string, pairId: string): Promise<boolean> {
-  const classes = await prisma.class.findMany({
-    where: { teacherId },
-    select: { id: true },
-  });
-  if (classes.length === 0) return false;
-  const enrollment = await prisma.classEnrollment.findFirst({
-    where: { pairId, classId: { in: classes.map((c) => c.id) } },
-  });
-  return !!enrollment;
-}
+const PLACEMENT_VALUES = new Set(['shift_start', 'shift_end', 'after_task']);
 
 async function teacherOwnsClass(teacherId: string, classId: string): Promise<boolean> {
   const cls = await prisma.class.findUnique({
@@ -27,132 +17,270 @@ async function teacherOwnsClass(teacherId: string, classId: string): Promise<boo
   return !!cls && cls.teacherId === teacherId;
 }
 
-/**
- * POST /api/compliance-check/teacher/students/:studentId/issue
- * Teacher issues a Compliance Check to one student.
- * Body: { weekNumber, questionCount }
- */
-router.post('/teacher/students/:studentId/issue', requireRole('teacher'), async (req, res) => {
+async function teacherOwnsTemplate(teacherId: string, templateId: string): Promise<boolean> {
+  const tpl = await prisma.complianceCheckTemplate.findUnique({
+    where: { id: templateId },
+    select: { class: { select: { teacherId: true } } },
+  });
+  return !!tpl && tpl.class.teacherId === teacherId;
+}
+
+function normalizeWords(input: unknown): string[] {
+  if (!Array.isArray(input)) return [];
+  return Array.from(
+    new Set(
+      input
+        .filter((w): w is string => typeof w === 'string')
+        .map((w) => w.trim().toLowerCase())
+        .filter((w) => w.length > 0),
+    ),
+  );
+}
+
+// ─── Teacher: Slot resolver (for Shifts tab) ────────────────────
+
+router.get('/teacher/shifts/:weekNumber/slots', requireRole('teacher'), (req, res) => {
+  const weekNumber = Number(req.params.weekNumber);
+  const cfg = getWeekConfig(weekNumber);
+  if (!cfg) {
+    res.json({ weekNumber, tasks: [] });
+    return;
+  }
+  const tasks = cfg.tasks.map((t) => ({
+    id: t.id,
+    type: t.type,
+    label: t.label || t.id,
+  }));
+  res.json({ weekNumber, tasks });
+});
+
+// ─── Teacher: Template CRUD ─────────────────────────────────────
+
+router.get('/templates', requireRole('teacher'), async (req, res) => {
   try {
     const teacherId = getTeacherId(req)!;
-    const pairId = req.params.studentId as string;
-    const weekNumber = Number(req.body?.weekNumber);
-    const questionCount = Math.max(1, Math.min(5, Number(req.body?.questionCount) || 3));
-
-    if (!Number.isFinite(weekNumber) || weekNumber < 1) {
-      res.status(400).json({ error: 'weekNumber required' });
+    const classId = typeof req.query.classId === 'string' ? req.query.classId : '';
+    const weekFilter = req.query.weekNumber ? Number(req.query.weekNumber) : null;
+    if (!classId) {
+      res.status(400).json({ error: 'classId required' });
       return;
     }
-
-    if (!(await teacherOwnsPair(teacherId, pairId))) {
-      res.status(403).json({ error: 'Not your student' });
+    if (!(await teacherOwnsClass(teacherId, classId))) {
+      res.status(403).json({ error: 'Not your class' });
       return;
     }
-
-    const questions = await buildComplianceQuestions(weekNumber, questionCount);
-    if (questions.length === 0) {
-      res.status(400).json({ error: 'No vocabulary available for that week' });
-      return;
-    }
-
-    const enrollment = await prisma.classEnrollment.findFirst({
-      where: { pairId, class: { teacherId } },
-      select: { classId: true },
+    const where: { classId: string; weekNumber?: number } = { classId };
+    if (weekFilter && Number.isFinite(weekFilter)) where.weekNumber = weekFilter;
+    const rows = await prisma.complianceCheckTemplate.findMany({
+      where,
+      orderBy: [{ weekNumber: 'asc' }, { placement: 'asc' }],
     });
-
-    const record = await prisma.complianceCheckResult.create({
-      data: {
-        pairId,
-        teacherId,
-        classId: enrollment?.classId ?? null,
-        weekIssued: weekNumber,
-        questions: questions as object,
-        totalCount: questions.length,
-      },
-    });
-
-    io.to(`student:${pairId}`).emit('compliance-check:issued', {
-      checkId: record.id,
-      weekIssued: weekNumber,
-      questions,
-    });
-
-    res.json({ success: true, checkId: record.id, totalCount: questions.length });
+    res.json({ templates: rows });
   } catch (err) {
-    console.error('Compliance check issue error:', err);
-    res.status(500).json({ error: 'Failed to issue compliance check' });
+    console.error('Compliance template list error:', err);
+    res.status(500).json({ error: 'Failed to load templates' });
   }
 });
 
-/**
- * POST /api/compliance-check/teacher/classes/:classId/issue
- * Teacher issues a Compliance Check to ALL students in a class.
- * Body: { weekNumber, questionCount }
- */
-router.post('/teacher/classes/:classId/issue', requireRole('teacher'), async (req, res) => {
+router.post('/templates', requireRole('teacher'), async (req, res) => {
   try {
     const teacherId = getTeacherId(req)!;
-    const classId = req.params.classId as string;
+    const classId = typeof req.body?.classId === 'string' ? req.body.classId : '';
     const weekNumber = Number(req.body?.weekNumber);
+    const placement = typeof req.body?.placement === 'string' ? req.body.placement : '';
+    const afterTaskId = typeof req.body?.afterTaskId === 'string' ? req.body.afterTaskId : null;
+    const title = typeof req.body?.title === 'string' && req.body.title.trim() ? req.body.title.trim() : null;
+    const words = normalizeWords(req.body?.words);
     const questionCount = Math.max(1, Math.min(5, Number(req.body?.questionCount) || 3));
+    const cumulativeReviewCount = Math.max(0, Math.min(10, Number(req.body?.cumulativeReviewCount) ?? 2));
 
-    if (!Number.isFinite(weekNumber) || weekNumber < 1) {
-      res.status(400).json({ error: 'weekNumber required' });
+    if (!classId || !Number.isFinite(weekNumber) || !PLACEMENT_VALUES.has(placement)) {
+      res.status(400).json({ error: 'classId, weekNumber, placement required' });
       return;
     }
-
+    if (placement === 'after_task' && !afterTaskId) {
+      res.status(400).json({ error: 'afterTaskId required when placement is after_task' });
+      return;
+    }
+    if (words.length === 0) {
+      res.status(400).json({ error: 'At least one word required' });
+      return;
+    }
     if (!(await teacherOwnsClass(teacherId, classId))) {
       res.status(403).json({ error: 'Not your class' });
       return;
     }
 
-    const enrollments = await prisma.classEnrollment.findMany({
-      where: { classId, pairId: { not: null } },
-      select: { pairId: true },
-    });
-
-    if (enrollments.length === 0) {
-      res.status(400).json({ error: 'No students in class' });
-      return;
-    }
-
-    let issued = 0;
-    for (const enr of enrollments) {
-      if (!enr.pairId) continue;
-      const questions = await buildComplianceQuestions(weekNumber, questionCount);
-      if (questions.length === 0) continue;
-
-      const record = await prisma.complianceCheckResult.create({
+    try {
+      const tpl = await prisma.complianceCheckTemplate.create({
         data: {
-          pairId: enr.pairId,
-          teacherId,
           classId,
-          weekIssued: weekNumber,
-          questions: questions as object,
-          totalCount: questions.length,
+          weekNumber,
+          placement,
+          afterTaskId,
+          title,
+          words: words as object,
+          questionCount,
+          cumulativeReviewCount,
+          createdById: teacherId,
         },
       });
-
-      io.to(`student:${enr.pairId}`).emit('compliance-check:issued', {
-        checkId: record.id,
-        weekIssued: weekNumber,
-        questions,
-      });
-      issued++;
+      res.json({ template: tpl });
+    } catch (err) {
+      if ((err as { code?: string })?.code === 'P2002') {
+        res.status(409).json({ error: 'Template already exists for this slot — edit it instead' });
+        return;
+      }
+      throw err;
     }
-
-    res.json({ success: true, issued, classId, weekNumber });
   } catch (err) {
-    console.error('Compliance check class-issue error:', err);
-    res.status(500).json({ error: 'Failed to issue compliance check to class' });
+    console.error('Compliance template create error:', err);
+    res.status(500).json({ error: 'Failed to create template' });
   }
 });
 
-/**
- * POST /api/compliance-check/complete
- * Student submits results for a previously-issued check.
- * Body: { checkId, words: [{ word, correct }] }
- */
+router.put('/templates/:id', requireRole('teacher'), async (req, res) => {
+  try {
+    const teacherId = getTeacherId(req)!;
+    const id = req.params.id as string;
+    if (!(await teacherOwnsTemplate(teacherId, id))) {
+      res.status(403).json({ error: 'Not your template' });
+      return;
+    }
+    const data: {
+      title?: string | null;
+      words?: object;
+      questionCount?: number;
+      cumulativeReviewCount?: number;
+    } = {};
+    if ('title' in req.body) {
+      data.title = typeof req.body.title === 'string' && req.body.title.trim() ? req.body.title.trim() : null;
+    }
+    if ('words' in req.body) {
+      const words = normalizeWords(req.body.words);
+      if (words.length === 0) {
+        res.status(400).json({ error: 'At least one word required' });
+        return;
+      }
+      data.words = words as object;
+    }
+    if ('questionCount' in req.body) {
+      data.questionCount = Math.max(1, Math.min(5, Number(req.body.questionCount) || 3));
+    }
+    if ('cumulativeReviewCount' in req.body) {
+      data.cumulativeReviewCount = Math.max(0, Math.min(10, Number(req.body.cumulativeReviewCount) || 0));
+    }
+    const tpl = await prisma.complianceCheckTemplate.update({ where: { id }, data });
+    res.json({ template: tpl });
+  } catch (err) {
+    console.error('Compliance template update error:', err);
+    res.status(500).json({ error: 'Failed to update template' });
+  }
+});
+
+router.delete('/templates/:id', requireRole('teacher'), async (req, res) => {
+  try {
+    const teacherId = getTeacherId(req)!;
+    const id = req.params.id as string;
+    if (!(await teacherOwnsTemplate(teacherId, id))) {
+      res.status(403).json({ error: 'Not your template' });
+      return;
+    }
+    await prisma.complianceCheckTemplate.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Compliance template delete error:', err);
+    res.status(500).json({ error: 'Failed to delete template' });
+  }
+});
+
+// ─── Student: Pending check fetch (cascade-driven) ──────────────
+
+router.get('/pending', async (req, res) => {
+  try {
+    const pairId = getPairId(req);
+    if (!pairId) {
+      res.status(403).json({ error: 'Pair auth required' });
+      return;
+    }
+    const weekNumber = Number(req.query.weekNumber);
+    const placement = typeof req.query.placement === 'string' ? req.query.placement : '';
+    const afterTaskId = typeof req.query.afterTaskId === 'string' ? req.query.afterTaskId : null;
+
+    if (!Number.isFinite(weekNumber) || !PLACEMENT_VALUES.has(placement)) {
+      res.status(400).json({ error: 'weekNumber + placement required' });
+      return;
+    }
+
+    // Find the student's class enrollment(s) — pick the first one with a matching template.
+    const enrollments = await prisma.classEnrollment.findMany({
+      where: { pairId },
+      select: { classId: true },
+    });
+    if (enrollments.length === 0) {
+      res.json({ pending: null });
+      return;
+    }
+
+    const template = await prisma.complianceCheckTemplate.findFirst({
+      where: {
+        classId: { in: enrollments.map((e) => e.classId) },
+        weekNumber,
+        placement,
+        afterTaskId: placement === 'after_task' ? afterTaskId : null,
+      },
+    });
+    if (!template) {
+      res.json({ pending: null });
+      return;
+    }
+
+    // One-shot: skip if this pair already completed this template
+    const existing = await prisma.complianceCheckResult.findUnique({
+      where: { pairId_templateId: { pairId, templateId: template.id } },
+    });
+    if (existing && existing.completedAt) {
+      res.json({ pending: null });
+      return;
+    }
+
+    const words = Array.isArray(template.words) ? (template.words as unknown[]).filter((w): w is string => typeof w === 'string') : [];
+    const questions = await buildComplianceQuestions(words, template.questionCount);
+    if (questions.length === 0) {
+      res.json({ pending: null });
+      return;
+    }
+
+    // Create or reuse the in-flight ComplianceCheckResult row so completion can update it
+    const record = existing ?? await prisma.complianceCheckResult.create({
+      data: {
+        pairId,
+        templateId: template.id,
+        teacherId: template.createdById,
+        classId: template.classId,
+        weekIssued: template.weekNumber,
+        questions: questions as object,
+        totalCount: questions.length,
+      },
+    });
+
+    res.json({
+      pending: {
+        checkId: record.id,
+        templateId: template.id,
+        weekIssued: template.weekNumber,
+        title: template.title,
+        questions,
+      },
+    });
+  } catch (err) {
+    console.error('Compliance pending fetch error:', err);
+    res.status(500).json({ error: 'Failed to fetch pending compliance check' });
+  }
+});
+
+// ─── Student: Complete (records answers + mastery bump) ─────────
+
 router.post('/complete', async (req, res) => {
   try {
     const pairId = getPairId(req);
@@ -228,16 +356,6 @@ router.post('/complete', async (req, res) => {
       }
     });
 
-    if (record.classId) {
-      io.to(`class:${record.classId}`).emit('compliance-check:completed', {
-        checkId,
-        pairId,
-        weekIssued: record.weekIssued,
-        correctCount,
-        totalCount: record.totalCount,
-      });
-    }
-
     res.json({ success: true, checkId, correctCount, totalCount: record.totalCount, masteryUpdates });
   } catch (err) {
     console.error('Compliance check complete error:', err);
@@ -245,10 +363,8 @@ router.post('/complete', async (req, res) => {
   }
 });
 
-/**
- * GET /api/compliance-check/teacher/classes/:classId/results
- * Teacher result review. Optional ?weekNumber=N filter.
- */
+// ─── Teacher: Results review ────────────────────────────────────
+
 router.get('/teacher/classes/:classId/results', requireRole('teacher'), async (req, res) => {
   try {
     const teacherId = getTeacherId(req)!;
@@ -280,6 +396,7 @@ router.get('/teacher/classes/:classId/results', requireRole('teacher'), async (r
         pairId: r.pairId,
         designation: r.pair?.designation ?? null,
         weekIssued: r.weekIssued,
+        templateId: r.templateId,
         totalCount: r.totalCount,
         correctCount: r.correctCount,
         issuedAt: r.issuedAt,
