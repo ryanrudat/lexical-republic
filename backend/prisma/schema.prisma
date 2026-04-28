@@ -65,6 +65,7 @@ model User {
   harmonyPosts       HarmonyPost[]
   enrollments        ClassEnrollment[]
   teacherClasses     Class[]          @relation("TeacherClasses")
+  complianceCheckResults ComplianceCheckResult[] @relation("TeacherIssuedComplianceChecks")
 
   @@map("users")
 }
@@ -101,6 +102,7 @@ model Pair {
   citizen4488Interactions Citizen4488Interaction[]
   censureResponses       HarmonyCensureResponse[]
   shiftResults           ShiftResult[]
+  complianceCheckResults ComplianceCheckResult[]
 
   @@map("pairs")
 }
@@ -148,6 +150,26 @@ model PairDictionaryProgress {
 
   @@unique([pairId, wordId])
   @@map("pair_dictionary_progress")
+}
+
+model ComplianceCheckResult {
+  id            String    @id @default(uuid())
+  pairId        String
+  pair          Pair      @relation(fields: [pairId], references: [id], onDelete: Cascade)
+  teacherId     String?
+  teacher       User?     @relation("TeacherIssuedComplianceChecks", fields: [teacherId], references: [id])
+  classId       String?
+  weekIssued    Int
+  questions     Json
+  results       Json?
+  correctCount  Int?
+  totalCount    Int
+  issuedAt      DateTime  @default(now())
+  completedAt   DateTime?
+
+  @@index([pairId])
+  @@index([classId, weekIssued])
+  @@map("compliance_check_results")
 }
 
 model WordStatusEvent {
