@@ -785,6 +785,11 @@ function EvaluationDisplay({
   score: GradebookMissionScore;
   details: Record<string, unknown>;
 }) {
+  // New rubric (post-2026-04-29 on-topic + vocab redesign)
+  const onTopic = typeof details.onTopic === 'boolean' ? details.onTopic : null;
+  const onTopicReason = typeof details.onTopicReason === 'string' ? details.onTopicReason : '';
+  const grammarAdvisory = typeof details.grammarAdvisory === 'string' ? details.grammarAdvisory : '';
+  // Legacy fields — only present on rows written before the redesign.
   const grammarScore = typeof details.grammarScore === 'number' ? details.grammarScore : null;
   const grammarNotes = asStringArray(details.grammarNotes);
   const vocabScore = typeof details.vocabScore === 'number' ? details.vocabScore : null;
@@ -795,6 +800,8 @@ function EvaluationDisplay({
   const pearlFeedback = typeof score.pearlFeedback === 'string' ? score.pearlFeedback : null;
 
   const hasAnyEval =
+    onTopic !== null ||
+    grammarAdvisory !== '' ||
     grammarScore !== null ||
     grammarNotes.length > 0 ||
     vocabScore !== null ||
@@ -818,24 +825,50 @@ function EvaluationDisplay({
           PEARL &amp; AI Evaluation
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {/* Grammar panel */}
+          {/* On-Topic panel (post-2026-04-29 rubric) — replaces the old Grammar panel.
+              Falls back to legacy grammar score if this is a pre-redesign row. */}
           <div className="bg-white rounded-lg border border-slate-200 p-3">
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
-                Grammar
+                {onTopic !== null ? 'On-Topic' : 'Grammar (legacy)'}
               </span>
-              <span className="text-xs font-semibold text-indigo-600">
-                {grammarScore !== null ? `${Math.round(grammarScore * 100)}%` : '—'}
+              <span
+                className={`text-xs font-semibold ${
+                  onTopic === true ? 'text-emerald-600'
+                    : onTopic === false ? 'text-rose-600'
+                    : 'text-indigo-600'
+                }`}
+              >
+                {onTopic === true
+                  ? 'Yes'
+                  : onTopic === false
+                  ? 'No'
+                  : grammarScore !== null
+                  ? `${Math.round(grammarScore * 100)}%`
+                  : '—'}
               </span>
             </div>
-            {grammarNotes.length > 0 ? (
+            {onTopic !== null ? (
+              <>
+                {onTopicReason ? (
+                  <p className="text-xs text-slate-700">{onTopicReason}</p>
+                ) : (
+                  <div className="text-xs text-slate-400 italic">No reason recorded.</div>
+                )}
+                {grammarAdvisory && (
+                  <p className="text-[11px] text-slate-500 italic mt-1.5 pt-1.5 border-t border-slate-100">
+                    Grammar note (advisory): {grammarAdvisory}
+                  </p>
+                )}
+              </>
+            ) : grammarNotes.length > 0 ? (
               <ul className="list-disc pl-4 space-y-0.5 text-xs text-slate-700">
                 {grammarNotes.map((note, i) => (
                   <li key={i}>{note}</li>
                 ))}
               </ul>
             ) : (
-              <div className="text-xs text-slate-400 italic">No grammar notes saved.</div>
+              <div className="text-xs text-slate-400 italic">No on-topic verdict saved.</div>
             )}
           </div>
 

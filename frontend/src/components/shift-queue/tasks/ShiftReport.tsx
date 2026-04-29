@@ -41,8 +41,10 @@ export default function ShiftReport({ config, weekConfig, onComplete }: TaskProp
       if (!result.passed) return;
       setPassed(true);
 
-      // Clamped gradient score so no single submission registers as perfect or zero.
-      const raw = (result.grammarScore + result.vocabScore) / 2;
+      // Score is now vocab-only (grammar removed from rubric, on-topic veto
+      // already applied server-side). Clamped to [0.1, 1.0] so no submission
+      // registers as zero or perfect.
+      const raw = result.vocabScore;
       const score = Math.min(1, Math.max(0.1, Number.isFinite(raw) ? raw : 0.3));
 
       setTimeout(() => {
@@ -54,8 +56,13 @@ export default function ShiftReport({ config, weekConfig, onComplete }: TaskProp
           writingText: fullText,
           wordCount: fullText.split(/\s+/).filter(Boolean).length,
           attempt,
-          grammarScore: result.grammarScore,
+          // New rubric fields (additive — old rows still readable)
+          onTopic: result.onTopic,
+          onTopicReason: result.onTopicReason,
           vocabScore: result.vocabScore,
+          vocabUsed: result.vocabUsed,
+          vocabMissed: result.vocabMissed,
+          grammarAdvisory: result.grammarAdvisory,
           submittedAnyway: result.submittedAnyway ?? false,
           // Gradebook WritingDisplay reads `text` for the "Shift Report" label.
           text: fullText,

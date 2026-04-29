@@ -40,13 +40,16 @@ export type ClipState = 'before' | 'content' | 'after';
 
 export interface EvaluationResult {
   passed: boolean;
-  grammarScore: number;
-  grammarNotes: string[];
+  /** True when the writing addresses the assigned prompt. False vetoes the score to 0.0. */
+  onTopic: boolean;
+  /** One-sentence rationale for onTopic verdict. */
+  onTopicReason: string;
+  /** Meaningful vocabulary use score (0-1). */
   vocabScore: number;
   vocabUsed: string[];
   vocabMissed: string[];
-  taskScore: number;
-  taskNotes: string;
+  /** Non-scoring grammar observation surfaced to the teacher only. */
+  grammarAdvisory: string;
   pearlFeedback: string;
   concernScoreChange: number;
   isDegraded: boolean;

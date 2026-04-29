@@ -809,6 +809,12 @@ router.get('/classes/:classId/writing-review', async (req: Request, res: Respons
       writingText: string;
       label: string | null;
       submittedAnyway: boolean;
+      // New rubric fields (post-2026-04-29)
+      onTopic: boolean | null;
+      onTopicReason: string | null;
+      vocabScore: number | null;
+      grammarAdvisory: string | null;
+      // Legacy fields preserved for pre-redesign rows; new rows leave these null.
       grammarScore: number | null;
       grammarNotes: string[];
       vocabUsed: string[];
@@ -867,6 +873,12 @@ router.get('/classes/:classId/writing-review', async (req: Request, res: Respons
         return true;
       });
 
+      // New rubric fields (post-2026-04-29 on-topic+vocab redesign)
+      const onTopic = typeof details.onTopic === 'boolean' ? details.onTopic : null;
+      const onTopicReason = typeof details.onTopicReason === 'string' ? details.onTopicReason : null;
+      const vocabScore = typeof details.vocabScore === 'number' ? details.vocabScore : null;
+      const grammarAdvisory = typeof details.grammarAdvisory === 'string' ? details.grammarAdvisory : null;
+      // Legacy fields — present on rows written before the redesign; null on new rows.
       const grammarScore = typeof details.grammarScore === 'number' ? details.grammarScore : null;
       const grammarNotes = asStringArray(details.grammarNotes);
       const vocabUsed = asStringArray(details.vocabUsed);
@@ -895,6 +907,10 @@ router.get('/classes/:classId/writing-review', async (req: Request, res: Respons
           writingText: t.text,
           label: t.label,
           submittedAnyway,
+          onTopic,
+          onTopicReason,
+          vocabScore,
+          grammarAdvisory,
           grammarScore,
           grammarNotes,
           vocabUsed,

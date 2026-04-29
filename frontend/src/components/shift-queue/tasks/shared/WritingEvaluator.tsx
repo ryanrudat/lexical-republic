@@ -6,12 +6,16 @@ import { getSocket } from '../../../../utils/socket';
 
 export interface EvalResult {
   passed: boolean;
-  grammarScore: number;
+  /** True when the writing addresses the assigned prompt. False vetoes the score to 0.0 — Submit Anyway is blocked. */
+  onTopic: boolean;
+  /** One-sentence rationale for onTopic verdict. */
+  onTopicReason?: string;
+  /** Meaningful vocabulary use score (0-1). */
   vocabScore: number;
   vocabUsed?: string[];
   vocabMissed?: string[];
-  taskScore?: number;
-  taskNotes?: string;
+  /** Non-scoring grammar observation (≤80 chars typical). Surfaced to teacher only — never to student. */
+  grammarAdvisory?: string;
   pearlFeedback?: string;
   isDegraded?: boolean;
   /** True when the student forced submission after a failed AI evaluation. */
@@ -73,12 +77,28 @@ export default function WritingEvaluator({
       let result: EvalResult;
 
       if (attempt >= 3) {
-        result = {
-          passed: true,
-          grammarScore: 0.3,
-          vocabScore: 0.3,
-          pearlFeedback: 'Submission recorded. Continue to next task.',
-        };
+        // Attempt-3 auto-pass — but ONLY if the last result was on-topic.
+        // Off-topic submissions never auto-pass; the student must rewrite to
+        // the prompt. Otherwise an off-topic essay passes on attempt 3.
+        const lastWasOnTopic = lastResult ? lastResult.onTopic : true;
+        if (lastWasOnTopic) {
+          result = {
+            passed: true,
+            onTopic: true,
+            vocabScore: 0.3,
+            pearlFeedback: 'Submission recorded. Continue to next task.',
+          };
+        } else {
+          // Force the student to make at least one on-topic attempt.
+          result = {
+            passed: false,
+            onTopic: false,
+            onTopicReason: lastResult?.onTopicReason ?? 'Submission does not address the assigned topic.',
+            vocabScore: 0,
+            pearlFeedback: 'Citizen, this submission still does not address the day\'s directive. Review the prompt and write a response that answers it.',
+            isDegraded: false,
+          };
+        }
       } else {
         const response = await client.post('/submissions/evaluate', {
           content: text,
@@ -100,26 +120,27 @@ export default function WritingEvaluator({
         if (attempt === 1) {
           result = {
             passed: data.passed === true,
-            grammarScore: data.grammarScore ?? 0,
+            onTopic: data.onTopic === true,
+            onTopicReason: data.onTopicReason,
             vocabScore: data.vocabScore ?? 0,
             vocabUsed: data.vocabUsed,
             vocabMissed: data.vocabMissed,
-            taskScore: data.taskScore,
-            taskNotes: data.taskNotes,
+            grammarAdvisory: data.grammarAdvisory,
             pearlFeedback: data.pearlFeedback,
             isDegraded: data.isDegraded,
           };
         } else {
-          const gs = data.grammarScore ?? 0;
+          // Attempt 2 retry: only pass if on-topic AND meets a relaxed vocab floor.
+          const onTopic = data.onTopic === true;
           const vs = data.vocabScore ?? 0;
           result = {
-            passed: gs >= 0.3 || vs >= 0.3,
-            grammarScore: gs,
+            passed: onTopic && vs >= 0.3,
+            onTopic,
+            onTopicReason: data.onTopicReason,
             vocabScore: vs,
             vocabUsed: data.vocabUsed,
             vocabMissed: data.vocabMissed,
-            taskScore: data.taskScore,
-            taskNotes: data.taskNotes,
+            grammarAdvisory: data.grammarAdvisory,
             pearlFeedback: data.pearlFeedback,
             isDegraded: data.isDegraded,
           };
@@ -154,7 +175,7 @@ export default function WritingEvaluator({
       setNudgeCount(0);
       const result: EvalResult = {
         passed: false,
-        grammarScore: 0,
+        onTopic: true, // fail-open: don't accuse student of off-topic on a network error
         vocabScore: 0,
         pearlFeedback: 'Evaluation unavailable. Try again.',
         isDegraded: true,
@@ -167,13 +188,18 @@ export default function WritingEvaluator({
   }
 
   const submitAnyway = useCallback(() => {
-    // Fall back to the degraded 0.3 floor so this path and the attempt-3 auto-pass land at the same score.
+    // Off-topic submissions cannot bypass via Submit Anyway — the on-topic
+    // veto is the entire point of the rubric. Student must rewrite first.
+    if (lastResult && !lastResult.onTopic) return;
+
+    // Fall back to a 0.3 vocab floor so this path and the attempt-3 auto-pass land at the same score.
     const result: EvalResult = {
       passed: true,
-      grammarScore: lastResult?.grammarScore ?? 0.3,
+      onTopic: true,
       vocabScore: lastResult?.vocabScore ?? 0.3,
       vocabUsed: lastResult?.vocabUsed,
       vocabMissed: lastResult?.vocabMissed,
+      grammarAdvisory: lastResult?.grammarAdvisory,
       submittedAnyway: true,
     };
     setLastResult(result);
@@ -212,6 +238,9 @@ export default function WritingEvaluator({
   const hasText = trimmedText.length > 0;
   const hasFailedOnce = lastResult !== null && !lastResult.passed;
   const meetsMinWords = trimmedText.split(/\s+/).filter(Boolean).length >= minWords;
+  // Off-topic submissions cannot use Submit Anyway — must rewrite to address the prompt.
+  const isOffTopic = lastResult !== null && lastResult.onTopic === false;
+  const canSubmitAnyway = hasFailedOnce && !isOffTopic;
 
   return (
     <div className="flex flex-col items-start gap-3">
@@ -243,7 +272,7 @@ export default function WritingEvaluator({
           )}
         </button>
 
-        {hasFailedOnce && (
+        {canSubmitAnyway && (
           <button
             className="px-4 py-2.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-700 text-xs font-medium tracking-wider hover:bg-amber-100 disabled:opacity-40 disabled:hover:bg-amber-50 transition-colors"
             disabled={!meetsMinWords || evaluating}
@@ -259,9 +288,15 @@ export default function WritingEvaluator({
         )}
       </div>
 
-      {hasFailedOnce && !meetsMinWords && (
+      {canSubmitAnyway && !meetsMinWords && (
         <p className="font-ibm-mono text-[10px] text-[#8B8578] tracking-wider">
           Reach {minWords} words to submit as-is.
+        </p>
+      )}
+
+      {isOffTopic && (
+        <p className="font-ibm-mono text-[10px] text-rose-600 tracking-wider">
+          Submission must address the assigned topic — Submit Anyway is unavailable.
         </p>
       )}
 

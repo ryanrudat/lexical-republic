@@ -221,7 +221,16 @@ export interface WritingReviewEntry {
   label: string | null;
   /** Optional per-score submittedAnyway flag populated by Unit 1's ShiftReport fallback. */
   submittedAnyway: boolean;
-  /** AI evaluation metadata — may be absent on legacy scores. */
+  // ── New rubric fields (post-2026-04-29 on-topic + vocab redesign) ──
+  /** Did the writing address the assigned prompt? Null on legacy rows. */
+  onTopic: boolean | null;
+  /** One-sentence rationale for the on-topic verdict. */
+  onTopicReason: string | null;
+  /** Meaningful vocab use score 0-1. Null on legacy rows. */
+  vocabScore: number | null;
+  /** Non-scoring grammar observation, teacher-only. */
+  grammarAdvisory: string | null;
+  // ── Legacy fields (pre-redesign) — null on new rows; preserved for old data ──
   grammarScore: number | null;
   grammarNotes: string[];
   vocabUsed: string[];
@@ -308,6 +317,11 @@ function entriesFromScoreDetails(
     : [];
   const taskNotes = typeof details.taskNotes === 'string' ? details.taskNotes : null;
   const submittedAnyway = details.submittedAnyway === true;
+  // New rubric fields (post-2026-04-29). Null on legacy rows.
+  const onTopic = typeof details.onTopic === 'boolean' ? details.onTopic : null;
+  const onTopicReason = typeof details.onTopicReason === 'string' ? details.onTopicReason : null;
+  const vocabScore = typeof details.vocabScore === 'number' ? details.vocabScore : null;
+  const grammarAdvisory = typeof details.grammarAdvisory === 'string' ? details.grammarAdvisory : null;
 
   return unique.map((t) => ({
     scoreId: score.id,
@@ -321,6 +335,10 @@ function entriesFromScoreDetails(
     writingText: t.text,
     label: t.label,
     submittedAnyway,
+    onTopic,
+    onTopicReason,
+    vocabScore,
+    grammarAdvisory,
     grammarScore,
     grammarNotes,
     vocabUsed,

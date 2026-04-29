@@ -23,15 +23,21 @@ interface EvaluationRequest {
   };
 }
 
+// ─── Writing rubric (post-2026-04-29 redesign) ───
+// Grammar is no longer scored on open writing. The rubric is:
+//   1. on-topic veto (binary) — off-topic submissions get score 0.0
+//   2. meaningful vocab use (0-1) — the score itself
+// Grammar still surfaces as advisory text for teachers, never affects score.
+// Why: AI grammar scoring is unstable on short A2-B1 L2 text and double-tests
+// what Cloze Fill / Error Correction Doc / Word Sort already test deterministically.
 interface EvaluationResult {
   passed: boolean;
-  grammarScore: number;
-  grammarNotes: string[];
+  onTopic: boolean;
+  onTopicReason: string;
   vocabScore: number;
   vocabUsed: string[];
   vocabMissed: string[];
-  taskScore: number;
-  taskNotes: string;
+  grammarAdvisory: string;
   pearlFeedback: string;
   concernScoreChange: number;
   isDegraded: boolean;
@@ -132,20 +138,18 @@ router.post('/evaluate', requirePair, async (req: Request, res: Response) => {
         const raw = completion.choices[0]?.message?.content;
         if (raw) {
           const parsed = JSON.parse(raw);
-          const gs = clamp(parsed.grammarScore ?? 0.5, 0, 1);
+          const onTopic = parsed.onTopic === true;
           const vs = clamp(parsed.vocabScore ?? 0.5, 0, 1);
-          const ts = clamp(parsed.taskScore ?? 0.5, 0, 1);
-          // Pass if average score >= 0.4 (lenient for A2-B1 learners)
-          const avg = (gs + vs + ts) / 3;
+          // Veto: off-topic submissions cannot pass, regardless of vocab use.
+          // Pass requires both on-topic AND vocabScore >= 0.4 (lenient for A2-B1).
           aiResult = {
-            passed: avg >= 0.4,
-            grammarScore: gs,
-            grammarNotes: Array.isArray(parsed.grammarNotes) ? parsed.grammarNotes : [],
+            passed: onTopic && vs >= 0.4,
+            onTopic,
+            onTopicReason: typeof parsed.onTopicReason === 'string' ? parsed.onTopicReason : '',
             vocabScore: vs,
             vocabUsed,
             vocabMissed,
-            taskScore: ts,
-            taskNotes: parsed.taskNotes || '',
+            grammarAdvisory: typeof parsed.grammarAdvisory === 'string' ? parsed.grammarAdvisory : '',
             pearlFeedback: parsed.pearlFeedback || 'Your submission has been filed, Citizen. The Ministry thanks you for your contribution.',
             concernScoreChange: 0,
             isDegraded: false,
@@ -167,20 +171,22 @@ router.post('/evaluate', requirePair, async (req: Request, res: Response) => {
       // Pin to a local const so TS narrowing survives the async transaction callback.
       const missionId: string = metadata.missionId;
       const detailsPayload = {
-        grammarScore: aiResult.grammarScore,
-        grammarNotes: aiResult.grammarNotes,
+        // New rubric fields
+        onTopic: aiResult.onTopic,
+        onTopicReason: aiResult.onTopicReason,
         vocabScore: aiResult.vocabScore,
         vocabUsed: aiResult.vocabUsed,
         vocabMissed: aiResult.vocabMissed,
-        taskScore: aiResult.taskScore,
-        taskNotes: aiResult.taskNotes,
+        grammarAdvisory: aiResult.grammarAdvisory,
         isDegraded: aiResult.isDegraded,
         // Persist writing in details so teacher review can display it even if
         // the client didn't mirror it into taskProgress details.
         writingText: content,
         pearlFeedback: aiResult.pearlFeedback,
       };
-      const computedScore = (aiResult.grammarScore + aiResult.vocabScore + aiResult.taskScore) / 3;
+      // Off-topic submissions score 0.0 regardless of vocab use. On-topic
+      // submissions score = vocabScore (the only remaining numeric axis).
+      const computedScore = aiResult.onTopic ? aiResult.vocabScore : 0;
 
       // Merge new AI eval fields on top of whatever's stored, so we don't wipe
       // out fields that the /shifts/.../score call (or a previous attempt) put
@@ -268,17 +274,20 @@ function buildFallbackResult(
 ): EvaluationResult {
   const coherence = checkCoherence(content);
   const vocabScore = totalVocab > 0 ? vocabUsed.length / totalVocab : 0.5;
+  // Without OpenAI we cannot judge on-topic — fail open and assume on-topic
+  // so the student isn't penalised for our outage. Grammar advisory text
+  // falls back to the heuristic coherence note.
+  const onTopic = true;
   const passed = coherence.passed && vocabScore >= 0.3;
 
   return {
     passed,
-    grammarScore: coherence.score,
-    grammarNotes: coherence.notes,
+    onTopic,
+    onTopicReason: 'Topic check unavailable — assumed on-topic.',
     vocabScore,
     vocabUsed,
     vocabMissed,
-    taskScore: passed ? 0.5 : 0.2,
-    taskNotes: '',
+    grammarAdvisory: coherence.notes.join(' ') || '',
     pearlFeedback: passed
       ? `Your submission has been filed, Citizen. Vocabulary compliance: ${vocabUsed.length} of ${totalVocab} terms noted. Continue refining your word choices — clarity builds with care.`
       : coherence.feedback,
@@ -406,33 +415,46 @@ function buildEvaluationPrompt(
 CONTEXT:
 - Week ${weekNumber} of 18
 - Activity type: ${activityType}
-- Grammar target: ${metadata?.grammarTarget || 'general accuracy'}
+- Grammar target (for advisory text only — DO NOT score grammar): ${metadata?.grammarTarget || 'general accuracy'}
 - Student lane (1=support, 2=standard, 3=challenge): ${metadata?.lane || 2}
 ${contextSection}
 ${promptSection}
 EVALUATION CRITERIA:
-1. Grammar (0.0-1.0): Focus on the week's grammar target. For A2-B1 learners, reward correct usage rather than penalizing minor errors. Score below 0.3 if sentences are grammatically broken or nonsensical.
-2. Vocabulary (0.0-1.0): Check target vocabulary usage IN MEANINGFUL CONTEXT (not just presence). Simply listing words or inserting them into nonsense sentences should score below 0.2. Higher score for natural, varied integration of more target words.
-3. Relevance (0.0-1.0): Does the student's writing ADDRESS THE WRITING PROMPT and make sense in context? Score based on:
-   - 0.0-0.2: Content has no connection to the writing prompt; random or off-topic sentences
-   - 0.3-0.5: Partially addresses the prompt but misses key aspects or is mostly generic
-   - 0.6-0.8: Addresses the prompt with reasonable coverage and some specific detail
-   - 0.9-1.0: Fully addresses all aspects of the prompt with specific, relevant detail
-   If no writing prompt is provided, score based on general coherence and whether the writing forms a meaningful, connected response (not disconnected sentences).
 
-IMPORTANT: Do NOT be lenient with nonsensical, random, or clearly non-effort submissions. A student who writes word salad or gibberish incorporating target words should receive scores below 0.3 across all criteria. A student who writes coherent sentences that completely ignore the writing prompt should score below 0.3 on relevance.
+1. ON-TOPIC (boolean) — STRICT VETO AXIS. Does the writing address the assigned writing prompt?
+   - true: The writing makes a recognizable attempt to answer the prompt, even shallowly. Partial or imperfect on-topic writing is still on-topic.
+   - false: The writing is about an unrelated subject. A grammatically correct sentence using target vocabulary about an unrelated topic (e.g., bodily functions, random anecdotes, song lyrics) is OFF-TOPIC. Off-topic submissions cannot pass — be strict here.
+   If no writing prompt is provided, judge against the task context. If no context either, default onTopic=true.
+
+2. VOCABULARY (0.0-1.0) — Are target vocabulary words used in MEANINGFUL, prompt-relevant context?
+   - 0.0-0.2: Words appear in nonsense or off-topic context (e.g., padding, listing)
+   - 0.3-0.5: Words appear correctly but in shallow or filler-like contexts
+   - 0.6-0.8: Words used naturally with reasonable accuracy
+   - 0.9-1.0: Words integrated naturally with varied, accurate usage that serves the prompt
+
+GRAMMAR (advisory text only — NEVER scored):
+   Optionally include ONE short observation about grammar that the teacher may want to address. Keep it under 80 characters. Do not output a list. Do not output a number. Examples:
+   - "Subject-verb agreement issue in sentence 2."
+   - "Modal usage is consistent and correct."
+   - "Several missing articles — typical L1 transfer."
+   - "" (empty string when no advisory needed)
+
+IMPORTANT:
+- Do NOT score grammar. Grammar is observational text only.
+- A grammatically perfect sentence about an unrelated topic is OFF-TOPIC. Mark onTopic=false.
+- A grammatically rough but on-topic attempt is ON-TOPIC. Score on vocabulary, not grammar.
+- If onTopic=false, set vocabScore=0.0 and write a PEARL feedback line that explicitly cites the topic mismatch.
 
 RESPONSE FORMAT (JSON):
 {
-  "grammarScore": 0.0-1.0,
-  "grammarNotes": ["specific observation about grammar usage"],
+  "onTopic": true|false,
+  "onTopicReason": "one short sentence — why on-topic or off-topic, ≤120 chars",
   "vocabScore": 0.0-1.0,
-  "taskScore": 0.0-1.0,
-  "taskNotes": "brief relevance assessment — does the writing address the prompt?",
-  "pearlFeedback": "In-character PEARL response. Ministry-bureaucratic tone. Reference vocabulary compliance as a metric. If relevance is low, mention that the report does not address the assigned topic. Never use grades or percentages — use Ministry language like 'detected', 'filed', 'compliance level'. 2-3 sentences max."
+  "grammarAdvisory": "short observation for the teacher, or empty string",
+  "pearlFeedback": "In-character PEARL response, 2-3 sentences max. Ministry-bureaucratic tone. If off-topic, EXPLICITLY state that the submission does not address the day's directive. Never use grades or percentages — use Ministry language like 'detected', 'filed', 'compliance level'."
 }
 
-Be encouraging but maintain the dystopian bureaucratic tone. Students are A2-B1 level Taiwanese Grade 10 learners.`;
+Be encouraging but firm. Students are A2-B1 level Taiwanese Grade 10 learners.`;
 }
 
 export default router;

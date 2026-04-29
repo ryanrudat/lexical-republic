@@ -54,4 +54,21 @@ export interface TaskResultDetails {
   skipped?: boolean;
   /** Per-question answer trail for the teacher Gradebook / Writing Review UI. Additive — legacy details shapes without this field still aggregate correctly. */
   answerLog?: TaskAnswerLogEntry[];
+
+  // ── Writing rubric (post-2026-04-29 redesign) ──────────────────
+  // Grammar is no longer scored on open writing (too noisy at A2-B1, not
+  // worth the OpenAI cost). The rubric is now: on-topic veto + meaningful
+  // vocab use. Grammar still surfaces as advisory text only.
+  /** True when the student's writing addresses the assigned prompt. False vetoes the score to 0.0. */
+  onTopic?: boolean;
+  /** One-sentence rationale for onTopic verdict — visible to teacher in Gradebook/Writing Review. */
+  onTopicReason?: string;
+  /** Meaningful vocabulary use score (0-1). On-topic vetoes this to 0.0; otherwise the writing's score is this value. */
+  vocabScore?: number;
+  /** Words the student missed from the target list (already on this list pre-redesign; retained for teacher review). */
+  vocabMissed?: string[];
+  /** Non-scoring grammar observation for the teacher. Replaces the old grammarNotes[] — short text instead of a list. */
+  grammarAdvisory?: string;
+  /** True when the student forced submission via "Submit Anyway" after a failed eval. Off-topic submissions cannot bypass via Submit Anyway. */
+  submittedAnyway?: boolean;
 }

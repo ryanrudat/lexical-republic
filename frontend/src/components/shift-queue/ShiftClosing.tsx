@@ -87,6 +87,18 @@ export default function ShiftClosing() {
     [aggregatorInputs],
   );
 
+  // Off-topic writing in this shift? Surface a small banner so students see
+  // why their Writing/Final score is low. Reads details.onTopic which the
+  // post-2026-04-29 writing rubric stamps onto every writing-task result.
+  const offTopicCount = useMemo(() => {
+    let count = 0;
+    for (const t of completedTasks) {
+      const onTopic = (t.details as Record<string, unknown> | undefined)?.onTopic;
+      if (onTopic === false) count++;
+    }
+    return count;
+  }, [completedTasks]);
+
   // Fetch this shift's narrative choices (B moments + mid-task C choices).
   // Used by W4+ PEARL observation cards conditioned on student decisions.
   useEffect(() => {
@@ -248,6 +260,23 @@ export default function ShiftClosing() {
           SHIFT {weekConfig.weekNumber} — PROCESSING SUMMARY
         </p>
       </div>
+
+      {/* Off-topic alert — explains a low Writing Score before the cards do. */}
+      {offTopicCount > 0 && (
+        <div className="bg-rose-50 border border-rose-200 rounded-xl px-4 py-2.5 flex items-start gap-2">
+          <span className="text-rose-500 mt-0.5">⚠</span>
+          <div className="flex-1">
+            <p className="font-ibm-mono text-[10px] text-rose-700 tracking-wider uppercase mb-0.5">
+              Topic compliance noted
+            </p>
+            <p className="text-xs text-rose-600 leading-relaxed">
+              {offTopicCount === 1
+                ? '1 written submission did not address its assigned prompt. The Ministry registers vocabulary effort but cannot file off-topic reports.'
+                : `${offTopicCount} written submissions did not address their assigned prompts. The Ministry registers vocabulary effort but cannot file off-topic reports.`}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Stats grid: 9 cards. 2 cols on narrow viewports, 3 cols on sm+ so 9 fills 3x3. */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">

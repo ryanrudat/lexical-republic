@@ -25,6 +25,7 @@ function scorePillClass(pct: number): string {
 
 function needsAttention(entry: WritingReviewEntry): boolean {
   if (entry.submittedAnyway) return true;
+  if (entry.onTopic === false) return true;
   if (entry.score < 0.5) return true;
   if (!entry.teacherComment || entry.teacherComment.trim().length === 0) return true;
   return false;
@@ -265,6 +266,9 @@ function EntryCard({
 
   const pct = Math.round(entry.score * 100);
   const hasAiEval =
+    entry.onTopic !== null ||
+    entry.vocabScore !== null ||
+    (entry.grammarAdvisory != null && entry.grammarAdvisory.length > 0) ||
     entry.grammarScore != null ||
     entry.grammarNotes.length > 0 ||
     entry.vocabUsed.length > 0 ||
@@ -311,6 +315,16 @@ function EntryCard({
           >
             {pct}%
           </span>
+          {entry.onTopic === false && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full border bg-rose-50 text-rose-700 border-rose-200 font-medium">
+              Off-Topic
+            </span>
+          )}
+          {entry.onTopic === true && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200 font-medium">
+              On-Topic
+            </span>
+          )}
           {entry.submittedAnyway && (
             <span className="text-[10px] px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200 font-medium">
               Submitted Anyway
@@ -345,11 +359,23 @@ function EntryCard({
             AI Evaluation
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-            {entry.grammarScore != null && (
+            {/* On-topic verdict (post-2026-04-29 rubric) */}
+            {entry.onTopic !== null && (
+              <div className="md:col-span-2">
+                <span className="text-slate-500">On-topic: </span>
+                <span className={`font-semibold ${entry.onTopic ? 'text-emerald-700' : 'text-rose-700'}`}>
+                  {entry.onTopic ? 'Yes' : 'No'}
+                </span>
+                {entry.onTopicReason && (
+                  <span className="text-slate-600 ml-2">— {entry.onTopicReason}</span>
+                )}
+              </div>
+            )}
+            {entry.vocabScore != null && (
               <div>
-                <span className="text-slate-500">Grammar score: </span>
+                <span className="text-slate-500">Vocab score: </span>
                 <span className="font-semibold text-slate-700">
-                  {Math.round(entry.grammarScore * 100)}%
+                  {Math.round(entry.vocabScore * 100)}%
                 </span>
               </div>
             )}
@@ -369,9 +395,25 @@ function EntryCard({
                 </span>
               </div>
             )}
-            {entry.grammarNotes.length > 0 && (
+            {/* Grammar advisory — non-scoring observation, post-redesign */}
+            {entry.grammarAdvisory && (
               <div className="md:col-span-2">
-                <span className="text-slate-500">Grammar notes: </span>
+                <span className="text-slate-500">Grammar note (advisory only): </span>
+                <span className="text-slate-700 italic">{entry.grammarAdvisory}</span>
+              </div>
+            )}
+            {/* ── Legacy fields (pre-redesign rows) ── */}
+            {entry.onTopic === null && entry.grammarScore != null && (
+              <div>
+                <span className="text-slate-500">Grammar score (legacy): </span>
+                <span className="font-semibold text-slate-700">
+                  {Math.round(entry.grammarScore * 100)}%
+                </span>
+              </div>
+            )}
+            {entry.onTopic === null && entry.grammarNotes.length > 0 && (
+              <div className="md:col-span-2">
+                <span className="text-slate-500">Grammar notes (legacy): </span>
                 <ul className="mt-1 list-disc list-inside text-slate-700 space-y-0.5">
                   {entry.grammarNotes.map((n, i) => (
                     <li key={i}>{n}</li>
@@ -379,9 +421,9 @@ function EntryCard({
                 </ul>
               </div>
             )}
-            {entry.taskNotes && (
+            {entry.onTopic === null && entry.taskNotes && (
               <div className="md:col-span-2">
-                <span className="text-slate-500">Task notes: </span>
+                <span className="text-slate-500">Task notes (legacy): </span>
                 <span className="text-slate-700">{entry.taskNotes}</span>
               </div>
             )}
