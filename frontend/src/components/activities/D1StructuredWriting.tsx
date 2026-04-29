@@ -116,7 +116,7 @@ export default function D1StructuredWriting({ phaseConfig, onComplete }: D1Props
   const handleFinish = useCallback(() => {
     setPhase('complete');
     onComplete({
-      score: evaluation?.taskScore ?? 1,
+      score: evaluation?.vocabScore ?? 1,
       text,
       wordCount,
       vocabUsed,

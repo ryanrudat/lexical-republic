@@ -321,9 +321,9 @@ export default function WritingEvaluator({
           <p className="text-xs text-rose-600 leading-relaxed">
             {lastResult.pearlFeedback}
           </p>
-          {lastResult.taskNotes && (
+          {lastResult.onTopicReason && lastResult.onTopic === false && (
             <p className="text-[10px] text-rose-400 mt-1 font-ibm-mono tracking-wider">
-              {lastResult.taskNotes}
+              {lastResult.onTopicReason}
             </p>
           )}
         </div>
