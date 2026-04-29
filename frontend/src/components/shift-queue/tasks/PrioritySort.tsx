@@ -128,25 +128,36 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
   const currentCascadeCase = cases[currentCascadeIdx];
   const allCasesClassified = currentCascadeIdx >= cases.length;
 
-  // ── Auto-verify after the last case is classified ──────────────
-  // Triggered by the cascade reaching the end. Brief "verifying..." beat
-  // before flipping to the verified results panel — gives the cascade a
-  // visible closure moment instead of snapping to results.
+  // ── Cascade → 'verifying' transition ───────────────────────────
+  // When the last case lands in a folder, brief 400ms beat then flip to
+  // the verifying state. Single-shot timeout per state — split from the
+  // verifying→verified effect because if both lived in one useEffect, the
+  // setSortStage('verifying') here would re-trigger that effect, the
+  // cleanup would fire, and the verified-transition timeout would be
+  // cleared mid-flight (root cause of the 8-minute "VERIFYING
+  // CLASSIFICATION..." freeze in the prior shipping version).
   useEffect(() => {
     if (sortStage !== 'cascade' || !allCasesClassified) return;
-    const t1 = setTimeout(() => setSortStage('verifying'), 400);
-    const t2 = setTimeout(() => {
+    const t = setTimeout(() => setSortStage('verifying'), 400);
+    return () => clearTimeout(t);
+  }, [sortStage, allCasesClassified]);
+
+  // ── 'verifying' → 'verified' transition ────────────────────────
+  // Once we're in the verifying state, hold the spinner for ~1s, then run
+  // verification and reveal results. Independent effect = independent
+  // cleanup window; this timeout cannot be cancelled by the prior effect's
+  // state change.
+  useEffect(() => {
+    if (sortStage !== 'verifying') return;
+    const t = setTimeout(() => {
       runVerification();
       setSortStage('verified');
-    }, 1400);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
+    }, 1000);
+    return () => clearTimeout(t);
     // runVerification is intentionally omitted — it depends on `columns`
     // which we want at-trigger-time, not via stale closure.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortStage, allCasesClassified]);
+  }, [sortStage]);
 
   // ── Disappearing-case handler (W3 narrative beat) ──────────────
   // After verified, run the dystopian "case 5 reassigned to Wellness"
@@ -290,6 +301,7 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
     }
     return (
       <CascadeStage
+        lane={lane}
         cases={cases}
         currentCascadeIdx={currentCascadeIdx}
         currentCascadeCase={currentCascadeCase}
@@ -508,12 +520,42 @@ function FolderExplainer({
   );
 }
 
+// Compact variant for the inline Examples & Tips panel — no folder icon,
+// label as a colored chip instead. Tighter so the cascade isn't pushed
+// off-screen when expanded.
+function ExampleRow({
+  column,
+  headline,
+  detail,
+  example,
+}: {
+  column: ColumnName;
+  headline: string;
+  detail: string;
+  example: string;
+}) {
+  const c = COLOR_CONFIG[column];
+  return (
+    <div className="flex items-start gap-2">
+      <span className={`shrink-0 px-1.5 py-0.5 rounded font-ibm-mono text-[9px] tracking-wider uppercase ${c.text} ${c.pillBg} border ${c.pillBorder} mt-0.5`}>
+        {column}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs text-[#2C3340] font-medium leading-tight">{headline}</p>
+        <p className="text-[11px] text-[#6B7280] leading-snug">{detail}</p>
+        <p className="text-[11px] text-[#8B8578] italic mt-0.5">e.g. {example}</p>
+      </div>
+    </div>
+  );
+}
+
 // ─── CascadeStage ────────────────────────────────────────────────
 // The terminal-screen layout matching the briefing video: header
 // banner, active case centered above, three folders with counters,
 // terminal footer.
 
 interface CascadeStageProps {
+  lane: number;
   cases: CaseConfig[];
   currentCascadeIdx: number;
   currentCascadeCase: CaseConfig | undefined;
@@ -528,6 +570,7 @@ interface CascadeStageProps {
 }
 
 function CascadeStage({
+  lane,
   cases,
   currentCascadeIdx,
   currentCascadeCase,
@@ -540,6 +583,13 @@ function CascadeStage({
   disappearBarkText,
   onFolderClick,
 }: CascadeStageProps) {
+  // Examples & Tips panel default state — Lane 1 (Guided) gets it expanded
+  // by default since these students need maximum scaffold during first
+  // exposure. Lane 2/3 get it collapsed but accessible. Cognitive load
+  // theory: keeping discrimination heuristics reliably accessible during
+  // performance frees working memory for the actual task (parsing English,
+  // identifying signals) instead of holding the rules in mind.
+  const [tipsOpen, setTipsOpen] = useState(lane === 1);
   const totalCases = cases.length;
   const correctCount = useMemo(
     () => cases.filter(c => sortResults[c.caseId]).length,
@@ -594,6 +644,66 @@ function CascadeStage({
             <span><span className="text-sky-600 font-bold">HOLD</span> <span className="text-[#8B8578]">— wait or escalate</span></span>
           </div>
         </div>
+      )}
+
+      {/* Examples & Tips collapsible — Lane 1 expanded by default, Lane 2/3
+          collapsed. Hidden during verifying/verified. Reduces working-memory
+          load by keeping discrimination heuristics + examples one click away
+          rather than requiring memorisation. */}
+      {sortStage === 'cascade' && (
+        <details
+          open={tipsOpen}
+          onToggle={(e) => setTipsOpen((e.target as HTMLDetailsElement).open)}
+          className="bg-[#FAFAF7] border border-[#E8E4DC] rounded-lg group"
+        >
+          <summary className="px-4 py-2 cursor-pointer flex items-center justify-between list-none select-none hover:bg-[#F5F1EB] rounded-lg transition-colors">
+            <span className="font-ibm-mono text-[9px] text-[#8B8578] tracking-[0.25em] uppercase">
+              Examples &amp; Tips
+            </span>
+            <span className="text-[#B8B3AA] text-xs font-ibm-mono group-open:rotate-90 transition-transform">
+              ▸
+            </span>
+          </summary>
+          <div className="px-4 pb-4 pt-1 space-y-3 border-t border-[#E8E4DC]">
+            <ExampleRow
+              column="URGENT"
+              headline="Cases that demand immediate processing."
+              detail="Lives, deadlines, or safety are affected."
+              example={lane === 1
+                ? 'A clinic must change appointments tomorrow.'
+                : 'A regional clinic must reschedule three patients tomorrow.'}
+            />
+            <ExampleRow
+              column="ROUTINE"
+              headline="Cases that follow standard schedule."
+              detail="No immediate operational impact."
+              example={lane === 1
+                ? 'New labels arrive next month.'
+                : 'The Records Division ordered new filing labels for next month.'}
+            />
+            <ExampleRow
+              column="HOLD"
+              headline="Cases that can wait or need more information."
+              detail="Process later, or escalate if unclear."
+              example={lane === 1
+                ? 'A form update marked "not urgent."'
+                : 'An associate submitted a contact-information update marked "not urgent."'}
+            />
+
+            <div className="bg-white border border-[#E8E4DC] rounded-md px-3 py-2 mt-2">
+              <p className="font-ibm-mono text-[9px] text-[#8B8578] tracking-wider uppercase mb-1.5">
+                How to identify
+              </p>
+              <ul className="text-[11px] text-[#4B5563] leading-relaxed space-y-0.5 list-disc list-inside">
+                <li>Read the <span className="font-medium">whole</span> case body — small details matter.</li>
+                <li>Look for <span className="font-medium">time signals</span>: &ldquo;tomorrow,&rdquo; &ldquo;immediate,&rdquo; &ldquo;next month.&rdquo;</li>
+                <li>Look for <span className="font-medium">impact signals</span>: lives, deadlines, services affected.</li>
+                <li>If the case explicitly says &ldquo;not urgent&rdquo; → HOLD or ROUTINE.</li>
+                <li>If a citizen is in distress → likely URGENT.</li>
+              </ul>
+            </div>
+          </div>
+        </details>
       )}
 
       {/* Active case zone */}
