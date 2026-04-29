@@ -80,9 +80,22 @@ const PAUSE_BEFORE_NEXT_CASE_MS = 700;
 // ─── Component ───────────────────────────────────────────────────
 
 export default function PrioritySort({ config, weekConfig, onComplete }: TaskProps) {
-  // useMemo so referential stability holds across renders; the deps of the
-  // cascade/verify effects compare against this without triggering churn.
-  const cases = useMemo(() => (config.cases ?? []) as CaseConfig[], [config.cases]);
+  // Fisher-Yates shuffle on mount so each shift attempt presents cases in a
+  // different order — prevents pattern-memorisation across class peers and
+  // across re-attempts. Correctness data (correctColumn, disappears) is on
+  // each case object, so order is purely presentational and doesn't affect
+  // scoring or the disappearing-case narrative beat (case 5 still vanishes
+  // wherever it lands in the queue). useMemo keeps the order stable across
+  // re-renders within a single mount.
+  const cases = useMemo(() => {
+    const raw = (config.cases ?? []) as CaseConfig[];
+    const shuffled = [...raw];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }, [config.cases]);
   const modalPrompt = (config.modalPrompt as string) ?? 'Explain why this case received its priority level.';
 
   const addConcern = useShiftQueueStore(s => s.addConcern);
@@ -558,6 +571,30 @@ function CascadeStage({
           Read Carefully · Classify Each Case
         </p>
       </div>
+
+      {/* Persistent directions — quick reference once cascade has begun.
+          Shown only during the cascade itself; hidden during verifying/verified
+          so the results panel reads cleanly. Full instructions live in the
+          ClassificationTraining overlay shown before the cascade starts. */}
+      {sortStage === 'cascade' && (
+        <div className="bg-white border border-[#E8E4DC] rounded-lg px-4 py-2.5">
+          <p className="font-ibm-mono text-[9px] text-[#B8B3AA] tracking-[0.25em] uppercase mb-1.5">
+            Directions
+          </p>
+          <ol className="text-xs text-[#4B5563] leading-relaxed list-decimal list-inside space-y-0.5">
+            <li>Read each case carefully.</li>
+            <li>Click the folder that matches its priority.</li>
+            <li>Cases arrive one at a time — classify all {totalCases}.</li>
+          </ol>
+          <div className="flex items-center gap-3 mt-2 pt-2 border-t border-[#F0EDE6] flex-wrap font-ibm-mono text-[10px] tracking-wider">
+            <span><span className="text-rose-600 font-bold">URGENT</span> <span className="text-[#8B8578]">— act now</span></span>
+            <span className="text-[#D4CFC6]">·</span>
+            <span><span className="text-amber-600 font-bold">ROUTINE</span> <span className="text-[#8B8578]">— standard schedule</span></span>
+            <span className="text-[#D4CFC6]">·</span>
+            <span><span className="text-sky-600 font-bold">HOLD</span> <span className="text-[#8B8578]">— wait or escalate</span></span>
+          </div>
+        </div>
+      )}
 
       {/* Active case zone */}
       <div className="min-h-[160px] flex items-center justify-center relative">
