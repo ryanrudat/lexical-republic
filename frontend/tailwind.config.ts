@@ -113,6 +113,9 @@ export default {
         'scan-line': 'scanLine 2s ease-in-out infinite',
         'doc-slide-in': 'docSlideIn 0.5s cubic-bezier(0.16,1,0.3,1) forwards',
         'doc-slide-up': 'docSlideUp 0.4s cubic-bezier(0.16,1,0.3,1) both',
+        'typing-dot': 'typingDot 1.2s ease-in-out infinite',
+        'message-rise': 'messageRise 0.4s cubic-bezier(0.16,1,0.3,1) forwards',
+        'bubble-pop-in': 'bubblePopIn 0.35s cubic-bezier(0.16,1,0.3,1) forwards',
       },
       keyframes: {
         docSlideIn: {
@@ -142,6 +145,18 @@ export default {
         fadeIn: {
           from: { opacity: '0' },
           to: { opacity: '1' },
+        },
+        typingDot: {
+          '0%, 60%, 100%': { transform: 'translateY(0)', opacity: '0.35' },
+          '30%': { transform: 'translateY(-3px)', opacity: '1' },
+        },
+        messageRise: {
+          from: { opacity: '0', transform: 'translateY(4px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
+        bubblePopIn: {
+          from: { opacity: '0', transform: 'translateY(8px) scale(0.97)' },
+          to: { opacity: '1', transform: 'translateY(0) scale(1)' },
         },
         cursorBlink: {
           '0%, 100%': { opacity: '1' },

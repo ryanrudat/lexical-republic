@@ -6,6 +6,14 @@ import WritingEvaluator from './shared/WritingEvaluator';
 import type { EvalResult } from './shared/WritingEvaluator';
 import LaneScaffolding from './shared/LaneScaffolding';
 
+// ─── Message sequencing constants ────────────────────────────────
+// Tuned to feel like a chat: ~5s of "typing" per bubble, brief gap between speakers.
+const PEARL_TYPING_MS = 4500;
+const INTER_MESSAGE_GAP_MS = 1800;
+const BETTY_TYPING_MS = 4500;
+
+type BubbleState = 'hidden' | 'typing' | 'revealed';
+
 // ─── Types ───────────────────────────────────────────────────────
 
 interface QueueAnimation {
@@ -44,6 +52,12 @@ export default function PriorityBriefing({ config, weekConfig, onComplete }: Tas
   const [writingPassed, setWritingPassed] = useState(false);
   const [cardCompleted, setCardCompleted] = useState<boolean[]>(() => cards.map(() => false));
 
+  // Per queue_status card: PEARL bubble shows typing dots → reveals message,
+  // then Betty bubble does the same after a short gap. Acknowledge stays
+  // disabled until every present message has revealed.
+  const [pearlState, setPearlState] = useState<BubbleState>('hidden');
+  const [bettyState, setBettyState] = useState<BubbleState>('hidden');
+
   const card = cards[currentCard];
   const total = cards.length;
 
@@ -69,6 +83,36 @@ export default function PriorityBriefing({ config, weekConfig, onComplete }: Tas
     }, intervalMs);
 
     return () => clearInterval(timer);
+  }, [card, currentCard]);
+
+  // ── Message sequencing (PEARL → Betty with typing indicators) ─
+  useEffect(() => {
+    if (!card || card.type !== 'queue_status') return;
+
+    const queueCard = card as QueueStatusCard;
+    const hasPearl = Boolean(queueCard.pearlBark);
+    const hasBetty = Boolean(queueCard.bettyOverlay);
+
+    setPearlState(hasPearl ? 'typing' : 'hidden');
+    setBettyState('hidden');
+
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    let elapsed = 0;
+    if (hasPearl) {
+      elapsed += PEARL_TYPING_MS;
+      timers.push(setTimeout(() => setPearlState('revealed'), elapsed));
+    }
+    if (hasBetty) {
+      elapsed += hasPearl ? INTER_MESSAGE_GAP_MS : 0;
+      timers.push(setTimeout(() => setBettyState('typing'), elapsed));
+      elapsed += BETTY_TYPING_MS;
+      timers.push(setTimeout(() => setBettyState('revealed'), elapsed));
+    }
+
+    return () => {
+      timers.forEach(clearTimeout);
+    };
   }, [card, currentCard]);
 
   // ── Navigation ─────────────────────────────────────────────────
@@ -106,6 +150,10 @@ export default function PriorityBriefing({ config, weekConfig, onComplete }: Tas
   // ── Render: Queue Status card ──────────────────────────────────
 
   function renderQueueStatusCard(c: QueueStatusCard) {
+    const pearlReady = !c.pearlBark || pearlState === 'revealed';
+    const bettyReady = !c.bettyOverlay || bettyState === 'revealed';
+    const allRevealed = pearlReady && bettyReady;
+
     return (
       <div className="space-y-4">
         {/* Animated counter */}
@@ -118,35 +166,37 @@ export default function PriorityBriefing({ config, weekConfig, onComplete }: Tas
           </p>
         </div>
 
-        {/* PEARL bark */}
-        {c.pearlBark && (
-          <div className="bg-[#FAFAF7] border border-sky-200 rounded-xl p-4">
-            <p className="font-ibm-mono text-[10px] text-sky-500 tracking-wider uppercase mb-2">
-              P.E.A.R.L.
-            </p>
-            <p className="text-sm text-[#4B5563] leading-relaxed">
-              {c.pearlBark}
-            </p>
-          </div>
+        {/* PEARL bubble */}
+        {c.pearlBark && pearlState !== 'hidden' && (
+          <MessageBubble
+            speaker="P.E.A.R.L."
+            color="sky"
+            state={pearlState}
+            text={c.pearlBark}
+          />
         )}
 
-        {/* Betty overlay */}
-        {c.bettyOverlay && (
-          <div className="bg-[#FAFAF7] border border-emerald-200 rounded-xl p-4">
-            <p className="font-ibm-mono text-[10px] text-emerald-500 tracking-wider uppercase mb-2">
-              Betty (Welcome Associate-14)
-            </p>
-            <p className="text-sm text-[#4B5563] leading-relaxed">
-              {c.bettyOverlay}
-            </p>
-          </div>
+        {/* Betty bubble */}
+        {c.bettyOverlay && bettyState !== 'hidden' && (
+          <MessageBubble
+            speaker="Betty (Welcome Associate-14)"
+            color="emerald"
+            state={bettyState}
+            text={c.bettyOverlay}
+          />
         )}
 
         {/* Acknowledge */}
         <div className="pt-2 text-center">
           <button
-            className="px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 active:bg-sky-800 active:scale-[0.98] transition-colors"
-            onClick={advanceCard}
+            disabled={!allRevealed}
+            aria-disabled={!allRevealed}
+            className={
+              allRevealed
+                ? 'px-6 py-2.5 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 active:bg-sky-800 active:scale-[0.98] transition-colors'
+                : 'px-6 py-2.5 rounded-xl bg-slate-200 text-slate-400 text-xs font-medium tracking-wider cursor-not-allowed transition-colors'
+            }
+            onClick={allRevealed ? advanceCard : undefined}
           >
             Acknowledge
           </button>
@@ -230,6 +280,57 @@ export default function PriorityBriefing({ config, weekConfig, onComplete }: Tas
         {card.type === 'queue_status' && renderQueueStatusCard(card as QueueStatusCard)}
         {card.type === 'writing' && renderWritingCard(card as WritingCard)}
       </div>
+    </div>
+  );
+}
+
+// ─── MessageBubble (typing → reveal) ─────────────────────────────
+
+interface MessageBubbleProps {
+  speaker: string;
+  color: 'sky' | 'emerald';
+  state: BubbleState;
+  text: string;
+}
+
+function MessageBubble({ speaker, color, state, text }: MessageBubbleProps) {
+  const borderClass = color === 'sky' ? 'border-sky-200' : 'border-emerald-200';
+  const labelClass = color === 'sky' ? 'text-sky-500' : 'text-emerald-500';
+  const dotClass = color === 'sky' ? 'bg-sky-400' : 'bg-emerald-400';
+
+  return (
+    <div
+      className={`bg-[#FAFAF7] border ${borderClass} rounded-xl p-4 animate-bubble-pop-in transition-all duration-300`}
+    >
+      <p
+        className={`font-ibm-mono text-[10px] ${labelClass} tracking-wider uppercase mb-2`}
+      >
+        {speaker}
+      </p>
+      {state === 'typing' ? (
+        <div
+          className="flex items-center gap-1.5 h-5"
+          role="status"
+          aria-label={`${speaker} is typing`}
+        >
+          <span
+            className={`block w-2 h-2 rounded-full ${dotClass} animate-typing-dot motion-reduce:animate-none`}
+            style={{ animationDelay: '0ms' }}
+          />
+          <span
+            className={`block w-2 h-2 rounded-full ${dotClass} animate-typing-dot motion-reduce:animate-none`}
+            style={{ animationDelay: '180ms' }}
+          />
+          <span
+            className={`block w-2 h-2 rounded-full ${dotClass} animate-typing-dot motion-reduce:animate-none`}
+            style={{ animationDelay: '360ms' }}
+          />
+        </div>
+      ) : (
+        <p className="text-sm text-[#4B5563] leading-relaxed animate-message-rise">
+          {text}
+        </p>
+      )}
     </div>
   );
 }
