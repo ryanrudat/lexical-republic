@@ -116,6 +116,11 @@ export default {
         'typing-dot': 'typingDot 1.2s ease-in-out infinite',
         'message-rise': 'messageRise 0.4s cubic-bezier(0.16,1,0.3,1) forwards',
         'bubble-pop-in': 'bubblePopIn 0.35s cubic-bezier(0.16,1,0.3,1) forwards',
+        'case-slide-in': 'caseSlideIn 0.35s cubic-bezier(0.16,1,0.3,1) forwards',
+        'case-pip-in': 'casePipIn 0.6s ease-out forwards',
+        'folder-receive': 'folderReceive 0.32s cubic-bezier(0.34,1.56,0.64,1)',
+        'counter-tick': 'counterTick 0.4s cubic-bezier(0.34,1.56,0.64,1)',
+        'incoming-glitch': 'incomingGlitch 0.6s ease-in-out',
       },
       keyframes: {
         docSlideIn: {
@@ -157,6 +162,30 @@ export default {
         bubblePopIn: {
           from: { opacity: '0', transform: 'translateY(8px) scale(0.97)' },
           to: { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
+        caseSlideIn: {
+          from: { opacity: '0', transform: 'translateY(-30px) scale(0.96)' },
+          to: { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
+        casePipIn: {
+          '0%': { opacity: '0', transform: 'translateY(-6px)' },
+          '20%, 80%': { opacity: '1', transform: 'translateY(0)' },
+          '100%': { opacity: '0', transform: 'translateY(0)' },
+        },
+        folderReceive: {
+          '0%, 100%': { transform: 'translateY(0) scale(1)' },
+          '50%': { transform: 'translateY(-3px) scale(1.06)' },
+        },
+        counterTick: {
+          '0%, 100%': { transform: 'scale(1)' },
+          '40%': { transform: 'scale(1.25)' },
+        },
+        incomingGlitch: {
+          '0%, 100%': { transform: 'translate(0, 0)', opacity: '1' },
+          '20%': { transform: 'translate(-2px, 0)', opacity: '0.85' },
+          '40%': { transform: 'translate(2px, 1px)', opacity: '0.7' },
+          '60%': { transform: 'translate(-1px, -1px)', opacity: '0.85' },
+          '80%': { transform: 'translate(0, 0)', opacity: '0' },
         },
         cursorBlink: {
           '0%, 100%': { opacity: '1' },
