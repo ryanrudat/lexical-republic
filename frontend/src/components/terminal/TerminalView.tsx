@@ -12,6 +12,7 @@ import ClarityQueueApp from './apps/ClarityQueueApp';
 import DutyRosterApp from './apps/DutyRosterApp';
 import HarmonyApp from './apps/HarmonyApp';
 import MyFileApp from './apps/MyFileApp';
+import ConcernTooltip from './ConcernTooltip';
 import PearlEye from '../pearl/PearlEye';
 import PearlPanel from '../pearl/PearlPanel';
 import DictionarySidebar from '../dictionary/DictionarySidebar';
@@ -20,6 +21,7 @@ import SystemAuditOverlay from '../shift/SystemAuditOverlay';
 import MessageBadge from '../messaging/MessageBadge';
 import PearlMessageStrip from '../pearl/PearlMessageStrip';
 import { useMessagingStore } from '../../stores/messagingStore';
+import { useCountDownAnimation } from '../../hooks/useCountDownAnimation';
 
 const APP_CONFIG = {
   'clarity-queue': { title: 'Clarity Queue', component: ClarityQueueApp },
@@ -39,6 +41,9 @@ export default function TerminalView() {
   const concernScore = useSessionStore((s) => s.concernScore);
   const [pearlOpen, setPearlOpen] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [concernTooltipOpen, setConcernTooltipOpen] = useState(false);
+  const { displayValue: animatedConcern, isAnimating: concernAnimating } =
+    useCountDownAnimation(concernScore);
 
   const doExit = useCallback(() => {
     setShowExitConfirm(false);
@@ -135,22 +140,38 @@ export default function TerminalView() {
 
             {/* Center: Concern counter — only visible when > 0 */}
             {concernScore > 0 && (
-              <div className="retro-pill px-2 py-1 flex items-center gap-1.5 shrink-0">
-                <div className={`retro-indicator ${
-                  concernScore >= 3.0 ? 'text-red-400 animate-pulse' :
-                  concernScore >= 1.0 ? 'text-[#C9944A] animate-pulse' :
-                  'text-[#C9944A]'
-                }`} style={{ backgroundColor: 'currentColor' }} />
-                <span className="font-ibm-mono text-[8px] text-[#6B5D45] tracking-wider uppercase">
-                  CONCERN
-                </span>
-                <span className={`font-ibm-mono text-sm font-bold tracking-wider tabular-nums ${
-                  concernScore >= 3.0 ? 'text-red-400' :
-                  concernScore >= 1.0 ? 'text-[#C9944A]' :
-                  'text-[#C9944A]/70'
-                }`}>
-                  {concernScore.toFixed(1)}
-                </span>
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setConcernTooltipOpen((v) => !v)}
+                  aria-label={`Concern score ${concernScore.toFixed(1)}. Click for details.`}
+                  aria-expanded={concernTooltipOpen}
+                  className="retro-pill px-2 py-1 flex items-center gap-1.5 hover:border-[#C9944A]/30 active:scale-95 transition-all"
+                >
+                  <div className={`retro-indicator ${
+                    concernAnimating ? 'text-emerald-400' :
+                    concernScore >= 3.0 ? 'text-red-400 animate-pulse' :
+                    concernScore >= 1.0 ? 'text-[#C9944A] animate-pulse' :
+                    'text-[#C9944A]'
+                  }`} style={{ backgroundColor: 'currentColor' }} />
+                  <span className="font-ibm-mono text-[8px] text-[#6B5D45] tracking-wider uppercase">
+                    CONCERN
+                  </span>
+                  <span className={`font-ibm-mono text-sm font-bold tracking-wider tabular-nums ${
+                    concernAnimating ? 'text-emerald-400' :
+                    concernScore >= 3.0 ? 'text-red-400' :
+                    concernScore >= 1.0 ? 'text-[#C9944A]' :
+                    'text-[#C9944A]/70'
+                  }`}>
+                    {animatedConcern.toFixed(1)}
+                  </span>
+                </button>
+                {concernTooltipOpen && (
+                  <ConcernTooltip
+                    concernScore={concernScore}
+                    onClose={() => setConcernTooltipOpen(false)}
+                  />
+                )}
               </div>
             )}
 
