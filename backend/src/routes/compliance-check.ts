@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authenticate, requireRole, getPairId, getTeacherId } from '../middleware/auth';
 import prisma from '../utils/prisma';
 import { buildComplianceQuestions } from '../utils/complianceDistractors';
-import { getWeekConfig } from '../data/week-configs';
+import { getWeekConfig, getComplianceWordsByWeek } from '../data/week-configs';
 
 const router = Router();
 router.use(authenticate);
@@ -38,18 +38,19 @@ function normalizeWords(input: unknown): string[] {
 }
 
 /**
- * Returns the input list keeping only words that exist in the dictionary AND
- * are TOEIC (NOT world-building / story words). Compliance Checks are
- * TOEIC-only by doctrine — this enforces it server-side so a hand-crafted
- * request can't sneak a world-building word into a template.
+ * Returns the input list keeping only words that appear in some
+ * WeekConfig.targetWords list. Compliance Checks may only quiz on the
+ * explicit per-shift TOEIC target-word lists — story / world-building /
+ * previous-shift leftover words are not allowed even if they happen to live
+ * in the DictionaryWord table. Source of truth is `WeekConfig.targetWords`.
  */
-async function filterToToeicOnly(words: string[]): Promise<string[]> {
+function filterToTargetWords(words: string[]): string[] {
   if (words.length === 0) return [];
-  const rows = await prisma.dictionaryWord.findMany({
-    where: { word: { in: words }, isWorldBuilding: false },
-    select: { word: true },
-  });
-  const allowed = new Set(rows.map((r) => r.word.toLowerCase()));
+  const allowedByWeek = getComplianceWordsByWeek();
+  const allowed = new Set<string>();
+  for (const wordSet of Object.values(allowedByWeek)) {
+    for (const w of wordSet) allowed.add(w);
+  }
   return words.filter((w) => allowed.has(w));
 }
 
@@ -107,7 +108,7 @@ router.post('/templates', requireRole('teacher'), async (req, res) => {
     const afterTaskId = typeof req.body?.afterTaskId === 'string' ? req.body.afterTaskId : null;
     const title = typeof req.body?.title === 'string' && req.body.title.trim() ? req.body.title.trim() : null;
     const rawWords = normalizeWords(req.body?.words);
-    const words = await filterToToeicOnly(rawWords);
+    const words = filterToTargetWords(rawWords);
     const questionCount = Math.max(1, Math.min(6, Number(req.body?.questionCount) || 3));
     const cumulativeReviewCount = Math.max(0, Math.min(10, Number(req.body?.cumulativeReviewCount) ?? 2));
 
@@ -122,7 +123,7 @@ router.post('/templates', requireRole('teacher'), async (req, res) => {
     if (words.length === 0) {
       const dropped = rawWords.length - words.length;
       const msg = dropped > 0
-        ? 'Compliance Checks are TOEIC-only — none of the words you picked are TOEIC vocab.'
+        ? 'None of the words you picked are in any shift’s TOEIC target list. Compliance Checks may only quiz on per-shift target words.'
         : 'At least one word required';
       res.status(400).json({ error: msg });
       return;
@@ -179,11 +180,11 @@ router.put('/templates/:id', requireRole('teacher'), async (req, res) => {
     }
     if ('words' in req.body) {
       const rawWords = normalizeWords(req.body.words);
-      const words = await filterToToeicOnly(rawWords);
+      const words = filterToTargetWords(rawWords);
       if (words.length === 0) {
         const dropped = rawWords.length - words.length;
         const msg = dropped > 0
-          ? 'Compliance Checks are TOEIC-only — none of the words you picked are TOEIC vocab.'
+          ? 'None of the words you picked are in any shift’s TOEIC target list. Compliance Checks may only quiz on per-shift target words.'
           : 'At least one word required';
         res.status(400).json({ error: msg });
         return;

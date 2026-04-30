@@ -7,7 +7,7 @@ import { uploadVideo, withMulterError } from '../middleware/upload';
 import prisma from '../utils/prisma';
 import { io, getOnlineStudents, purgeOnlineStudent } from '../socketServer';
 import { findAlternative } from '../data/activityPool';
-import { getWeekConfig } from '../data/week-configs';
+import { getWeekConfig, getComplianceWordsByWeek } from '../data/week-configs';
 import { getNarrativeRoute } from '../data/narrative-routes';
 
 const router = Router();
@@ -2259,11 +2259,27 @@ router.get('/dictionary-words/grouped', async (req: Request, res: Response) => {
         isWorldBuilding: true,
       },
     });
+    // Compliance Check picker is gated to TOEIC target-word lists from each
+    // shift's WeekConfig — story / world-building / previous-shift overflow
+    // words never appear as options. When ?toeicOnly=true, intersect each
+    // dictionary row with the WeekConfig.targetWords for the row's week.
+    // (Falsy ?toeicOnly leaves the old "everything" behavior for any other
+    // caller of this endpoint.)
+    const filtered = rows;
     const grouped: Record<number, typeof rows> = {};
-    for (const r of rows) {
-      const wk = r.weekIntroduced;
-      if (!grouped[wk]) grouped[wk] = [];
-      grouped[wk].push(r);
+    if (toeicOnly) {
+      const allowedByWeek = getComplianceWordsByWeek();
+      for (const r of filtered) {
+        const allowed = allowedByWeek[r.weekIntroduced];
+        if (!allowed || !allowed.has(r.word.toLowerCase())) continue;
+        if (!grouped[r.weekIntroduced]) grouped[r.weekIntroduced] = [];
+        grouped[r.weekIntroduced].push(r);
+      }
+    } else {
+      for (const r of filtered) {
+        if (!grouped[r.weekIntroduced]) grouped[r.weekIntroduced] = [];
+        grouped[r.weekIntroduced].push(r);
+      }
     }
     res.json({ grouped });
   } catch (err) {
