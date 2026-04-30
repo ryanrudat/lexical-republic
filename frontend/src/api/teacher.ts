@@ -488,6 +488,36 @@ export async function moveStudentToShift(studentId: string, weekNumber: number):
   await client.post(`/teacher/students/${studentId}/move-to-shift`, { weekNumber });
 }
 
+// ── Remediation Events ──────────────────────────────────────────
+//
+// Per-shift remediation event log surfaced in the Gradebook drill-down
+// (Unit 5). Backed by `GET /api/teacher/remediation-events?pairId=X&week=N`.
+
+export interface RemediationEvent {
+  id: string;
+  pairId: string;
+  designation: string | null;
+  weekNumber: number;
+  triggerReason: 'rate_warned' | 'rate_double' | 'absolute_3';
+  concernAtTrigger: number;
+  concernAfterCooldown: number | null;
+  correctCount: number | null;
+  totalCount: number;
+  clawedBack: boolean;
+  triggeredAt: string;
+  completedAt: string | null;
+}
+
+export async function fetchRemediationEventsForShift(
+  pairId: string,
+  weekNumber: number,
+): Promise<RemediationEvent[]> {
+  const { data } = await client.get('/teacher/remediation-events', {
+    params: { pairId, week: weekNumber },
+  });
+  return (data as { events: RemediationEvent[] }).events;
+}
+
 export async function moveClassToShift(classId: string, weekNumber: number): Promise<void> {
   await client.post(`/teacher/classes/${classId}/move-to-shift`, { weekNumber });
 }
