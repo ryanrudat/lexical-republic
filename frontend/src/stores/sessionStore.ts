@@ -1,13 +1,28 @@
 import { create } from 'zustand';
 import type { GrammarError } from '../api/ai';
-import type { RemediationQuestion, RemediationTriggerReason } from '../api/remediation';
+import type {
+  RemediationQuestion,
+  RemediationResultEntry,
+  RemediationTriggerReason,
+} from '../api/remediation';
+import {
+  clawbackRemediation,
+  completeRemediation,
+  triggerRemediation,
+} from '../api/remediation';
+import {
+  REMEDIATION_CLAWBACK_BARKS,
+  REMEDIATION_WARNING_BARKS,
+  usePearlStore,
+} from './pearlStore';
+import { useShiftQueueStore } from './shiftQueueStore';
 
 /**
  * Session store for compliance mechanics.
  * Concern score is hydrated from DB on login; other fields reset on refresh.
  */
 
-/** Remediation Module state. The full rate-trigger state machine lands in Phase 1 Unit 1. */
+/** Remediation Module state. */
 export type RemediationStage = 'idle' | 'warned' | 'modal-open' | 'cooling-down';
 
 export interface ActiveRemediation {
@@ -15,6 +30,25 @@ export interface ActiveRemediation {
   weekNumber: number;
   triggerReason: RemediationTriggerReason;
   questions: RemediationQuestion[];
+}
+
+interface RateBufferEntry {
+  at: number;
+  delta: number;
+}
+
+// ─── Rate-trigger thresholds (calibrated for 0–5 score range) ───────────────
+const STAGE_A_WINDOW_MS = 30_000;
+const STAGE_A_THRESHOLD = 0.4;
+const STAGE_B_WINDOW_MS = 60_000;
+const STAGE_B_THRESHOLD = 0.7;
+const SECOND_TRIP_WINDOW_MS = 90_000;
+const ABSOLUTE_BACKSTOP = 3.0;
+const COOLDOWN_WINDOW_MS = 60_000;
+const RATE_BUFFER_RETENTION_MS = 60_000;
+
+function pickBark(pool: readonly string[]): string {
+  return pool[Math.floor(Math.random() * pool.length)] ?? pool[0]!;
 }
 
 interface SessionState {
@@ -30,12 +64,21 @@ interface SessionState {
   /** Whether a System Audit is currently active */
   isAuditActive: boolean;
 
-  /**
-   * Remediation Module state machine. The state machine logic lands in Phase 1 Unit 1.
-   * Foundation only declares the shape so the modal mount (Phase 1 Unit 2) can read it.
-   */
+  /** Remediation Module state machine. */
   remediationStage: RemediationStage;
   activeRemediation: ActiveRemediation | null;
+
+  /** Sliding 60s window of positive concern deltas (ALL deltas, both stores). */
+  concernRateBuffer: RateBufferEntry[];
+
+  /** Timestamp when Stage A warning fired (for second-trip detection). */
+  warningIssuedAt: number | null;
+
+  /** Timestamp when remediation modal closed (for cooldown / clawback window). */
+  modalClosedAt: number | null;
+
+  /** ID of the most recently completed remediation (for clawback target). */
+  lastCompletedModuleId: string | null;
 
   hydrateConcern: (score: number) => void;
   addConcern: (amount: number) => void;
@@ -45,49 +88,309 @@ interface SessionState {
   setLastGrammarError: (error: GrammarError | null) => void;
   setAuditActive: (active: boolean) => void;
 
-  /** Stubs used by Phase 1 Unit 2; full state-machine wiring lands in Unit 1. */
+  /** Direct setters used by Unit 2 modal mount. State machine prefers `closeRemediation`. */
   setActiveRemediation: (active: ActiveRemediation | null) => void;
   setRemediationStage: (stage: RemediationStage) => void;
+
+  /**
+   * Records a positive delta event in the rate buffer and runs the trigger
+   * state machine. Does NOT modify concernScore — score updates are owned by
+   * `addConcern` (here) and `shiftQueueStore.addConcern` separately.
+   */
+  recordRateEvent: (delta: number) => void;
+
+  /** Called by remediation modal (Unit 2) on close — applies server cooldown. */
+  closeRemediation: (correctCount: number, results: RemediationResultEntry[]) => Promise<void>;
 }
 
-export const useSessionStore = create<SessionState>((set, get) => ({
-  concernScore: 0,
-  attemptCounts: {},
-  lastGrammarError: null,
-  isAuditActive: false,
+export const useSessionStore = create<SessionState>((set, get) => {
+  // Module-scoped timer for cooling-down → idle auto-transition. Cleared on
+  // every state change that exits cooling-down (clawback or stage move).
+  let cooldownTimer: ReturnType<typeof setTimeout> | null = null;
 
-  hydrateConcern: (score) => set({ concernScore: score }),
+  // Module-scoped guard: only one clawback POST in flight at a time. The server
+  // is idempotent, but this saves a wasted round-trip when multiple deltas
+  // arrive within milliseconds (e.g. two task completions in quick succession).
+  let clawbackInFlight = false;
 
-  addConcern: (amount) => {
-    const newScore = get().concernScore + amount;
-    set({ concernScore: newScore });
-
-    // Trigger audit at 100
-    if (newScore >= 100) {
-      set({ isAuditActive: true });
+  function clearCooldownTimer() {
+    if (cooldownTimer !== null) {
+      clearTimeout(cooldownTimer);
+      cooldownTimer = null;
     }
-  },
+  }
 
-  resetConcern: () => set({ concernScore: 0, isAuditActive: false }),
+  function startCooldownTimer() {
+    clearCooldownTimer();
+    cooldownTimer = setTimeout(() => {
+      cooldownTimer = null;
+      // Only transition if we're still in cooling-down — guards against
+      // clawback or other state changes that already moved us along.
+      if (get().remediationStage === 'cooling-down') {
+        set({ remediationStage: 'idle', modalClosedAt: null, lastCompletedModuleId: null });
+      }
+    }, COOLDOWN_WINDOW_MS);
+  }
 
-  incrementAttempt: (missionId) => {
-    const counts = { ...get().attemptCounts };
-    counts[missionId] = (counts[missionId] || 0) + 1;
-    set({ attemptCounts: counts });
-    return counts[missionId];
-  },
+  function resolveWeekNumber(): number | null {
+    const wn = useShiftQueueStore.getState().weekConfig?.weekNumber;
+    return typeof wn === 'number' && Number.isFinite(wn) ? wn : null;
+  }
 
-  getAttemptCount: (missionId) => {
-    return get().attemptCounts[missionId] || 0;
-  },
+  async function fireTrigger(reason: RemediationTriggerReason) {
+    const weekNumber = resolveWeekNumber();
+    if (weekNumber === null) {
+      // Student isn't in a shift — skip trigger entirely. State stays as-is.
+      return;
+    }
 
-  setLastGrammarError: (error) => set({ lastGrammarError: error }),
+    // Snapshot stage so we can detect concurrent state changes by the time the
+    // promise resolves (e.g. teacher reset, refresh, another trigger flushed).
+    const expectedStage = get().remediationStage;
 
-  setAuditActive: (active) => set({ isAuditActive: active }),
+    let response;
+    try {
+      response = await triggerRemediation(weekNumber, reason);
+    } catch (err) {
+      // Network / 5xx — leave stage where it was so retries can happen on next delta.
+      console.error('Remediation trigger failed:', err);
+      return;
+    }
 
-  remediationStage: 'idle',
-  activeRemediation: null,
+    // If state moved on under us, ignore the result (stale).
+    if (get().remediationStage !== expectedStage) return;
 
-  setActiveRemediation: (active) => set({ activeRemediation: active }),
-  setRemediationStage: (stage) => set({ remediationStage: stage }),
-}));
+    if (response.debounced) {
+      // Server says "too soon" — stay in current stage; do not retry.
+      return;
+    }
+    if (response.noQuestionsAvailable) {
+      // Dictionary wasn't deep enough — silently drop. Stay where we are.
+      return;
+    }
+    if (!response.moduleId || !response.questions || !response.triggerReason || response.weekNumber === undefined) {
+      // Defensive: incomplete payload.
+      return;
+    }
+
+    set({
+      activeRemediation: {
+        moduleId: response.moduleId,
+        weekNumber: response.weekNumber,
+        triggerReason: response.triggerReason,
+        questions: response.questions,
+      },
+      remediationStage: 'modal-open',
+      // Clear warning markers — modal supersedes them.
+      warningIssuedAt: null,
+    });
+  }
+
+  function fireWarning() {
+    usePearlStore.getState().triggerBark('notice', pickBark(REMEDIATION_WARNING_BARKS));
+    set({ remediationStage: 'warned', warningIssuedAt: Date.now() });
+  }
+
+  /** Called from `recordRateEvent` for stages 'idle' and 'warned' only. */
+  function evaluateStateMachine() {
+    const { remediationStage, concernRateBuffer, warningIssuedAt, concernScore } = get();
+    const now = Date.now();
+
+    let sum30 = 0;
+    let sum60 = 0;
+    for (const entry of concernRateBuffer) {
+      const age = now - entry.at;
+      if (age <= STAGE_B_WINDOW_MS) sum60 += entry.delta;
+      if (age <= STAGE_A_WINDOW_MS) sum30 += entry.delta;
+    }
+
+    if (remediationStage === 'idle') {
+      // Backstop takes priority: absolute concern at/above 3.0 → Stage B.
+      if (concernScore >= ABSOLUTE_BACKSTOP) {
+        void fireTrigger('absolute_3');
+        return;
+      }
+      // Stage B route (a): +0.7 within 60s.
+      if (sum60 >= STAGE_B_THRESHOLD) {
+        void fireTrigger('rate_warned');
+        return;
+      }
+      // Stage A: +0.4 within 30s.
+      if (sum30 >= STAGE_A_THRESHOLD) {
+        fireWarning();
+      }
+      return;
+    }
+
+    if (remediationStage === 'warned') {
+      // Continued grinding past +0.7 in the 60s window also escalates.
+      if (sum60 >= STAGE_B_THRESHOLD) {
+        void fireTrigger('rate_warned');
+        return;
+      }
+      // Stage B route (b): second Stage-A trip within 90s of the first warning.
+      if (
+        sum30 >= STAGE_A_THRESHOLD &&
+        warningIssuedAt !== null &&
+        now - warningIssuedAt <= SECOND_TRIP_WINDOW_MS
+      ) {
+        void fireTrigger('rate_double');
+      }
+    }
+  }
+
+  return {
+    concernScore: 0,
+    attemptCounts: {},
+    lastGrammarError: null,
+    isAuditActive: false,
+
+    remediationStage: 'idle',
+    activeRemediation: null,
+    concernRateBuffer: [],
+    warningIssuedAt: null,
+    modalClosedAt: null,
+    lastCompletedModuleId: null,
+
+    hydrateConcern: (score) => set({ concernScore: score }),
+
+    addConcern: (amount) => {
+      const newScore = get().concernScore + amount;
+      set({ concernScore: newScore });
+
+      if (newScore >= 100) {
+        set({ isAuditActive: true });
+      }
+
+      // Positive deltas feed the rate-trigger machine; negative/zero (resets,
+      // server-side cooldown writes) skip the buffer.
+      if (amount > 0) {
+        get().recordRateEvent(amount);
+      }
+    },
+
+    resetConcern: () => {
+      clearCooldownTimer();
+      clawbackInFlight = false;
+      set({
+        concernScore: 0,
+        isAuditActive: false,
+        concernRateBuffer: [],
+        warningIssuedAt: null,
+        modalClosedAt: null,
+        lastCompletedModuleId: null,
+        remediationStage: 'idle',
+        activeRemediation: null,
+      });
+    },
+
+    incrementAttempt: (missionId) => {
+      const counts = { ...get().attemptCounts };
+      counts[missionId] = (counts[missionId] || 0) + 1;
+      set({ attemptCounts: counts });
+      return counts[missionId];
+    },
+
+    getAttemptCount: (missionId) => {
+      return get().attemptCounts[missionId] || 0;
+    },
+
+    setLastGrammarError: (error) => set({ lastGrammarError: error }),
+
+    setAuditActive: (active) => set({ isAuditActive: active }),
+
+    setActiveRemediation: (active) => set({ activeRemediation: active }),
+    setRemediationStage: (stage) => set({ remediationStage: stage }),
+
+    recordRateEvent: (delta) => {
+      if (!Number.isFinite(delta) || delta <= 0) return;
+
+      const now = Date.now();
+
+      // 1. Append + evict. Keep retention generous (60s) since Stage B reads 60s.
+      const buffer = get()
+        .concernRateBuffer.filter((e) => now - e.at <= RATE_BUFFER_RETENTION_MS);
+      buffer.push({ at: now, delta });
+      set({ concernRateBuffer: buffer });
+
+      const stage = get().remediationStage;
+
+      // Cooling-down clawback path: any positive delta within 60s of close
+      // restores the cooldown server-side and bounces stage back to idle.
+      if (stage === 'cooling-down') {
+        const { modalClosedAt: closedAt, lastCompletedModuleId: completedId } = get();
+        if (
+          !clawbackInFlight &&
+          closedAt !== null &&
+          completedId &&
+          now - closedAt <= COOLDOWN_WINDOW_MS
+        ) {
+          clawbackInFlight = true;
+          clawbackRemediation(completedId)
+            .then((response) => {
+              // Only apply if we're still in cooling-down with the same module.
+              if (
+                get().remediationStage !== 'cooling-down' ||
+                get().lastCompletedModuleId !== completedId
+              ) {
+                return;
+              }
+              if (
+                typeof response.newConcernScore === 'number' &&
+                Number.isFinite(response.newConcernScore)
+              ) {
+                set({ concernScore: response.newConcernScore });
+              }
+              usePearlStore.getState().triggerBark('concern', pickBark(REMEDIATION_CLAWBACK_BARKS));
+              clearCooldownTimer();
+              set({
+                remediationStage: 'idle',
+                modalClosedAt: null,
+                lastCompletedModuleId: null,
+              });
+            })
+            .catch((err) => {
+              console.error('Clawback failed:', err);
+            })
+            .finally(() => {
+              clawbackInFlight = false;
+            });
+        }
+        return;
+      }
+
+      // While modal is open, buffer fills for telemetry but we don't re-trigger.
+      if (stage === 'modal-open') return;
+
+      evaluateStateMachine();
+    },
+
+    closeRemediation: async (correctCount, results) => {
+      const active = get().activeRemediation;
+      if (!active) return;
+
+      let response;
+      try {
+        response = await completeRemediation(active.moduleId, correctCount, results);
+      } catch (err) {
+        console.error('Remediation complete failed:', err);
+        // Best-effort: clear modal so the student isn't stuck. Cooldown not applied.
+        set({ activeRemediation: null, remediationStage: 'idle' });
+        return;
+      }
+
+      const newScore = response.newConcernScore;
+      set({
+        concernScore: typeof newScore === 'number' && Number.isFinite(newScore) ? newScore : get().concernScore,
+        activeRemediation: null,
+        remediationStage: 'cooling-down',
+        modalClosedAt: Date.now(),
+        lastCompletedModuleId: active.moduleId,
+        // Clear rate buffer so post-modal grinding starts a fresh window.
+        concernRateBuffer: [],
+        warningIssuedAt: null,
+      });
+      startCooldownTimer();
+    },
+  };
+});

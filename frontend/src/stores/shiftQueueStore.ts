@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { WeekConfig, TaskProgress, TaskStatus } from '../types/shiftQueue';
 import { fetchWeekConfig, patchConcern, resetWeekScores } from '../api/shifts';
+import { useSessionStore } from './sessionStore';
 import { useShiftStore } from './shiftStore';
 
 interface ShiftQueueState {
@@ -154,6 +155,17 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
 
   addConcern: (delta: number) => {
     set(state => ({ concernScoreDelta: state.concernScoreDelta + delta }));
+    // Forward positive deltas to the rate-trigger state machine in sessionStore.
+    // The HUD reads sessionStore.concernScore (not concernScoreDelta), so we
+    // only need to forward — NOT call sessionStore.addConcern here, which would
+    // double-count the score until the next task-complete flush.
+    if (delta > 0) {
+      try {
+        useSessionStore.getState().recordRateEvent(delta);
+      } catch {
+        // Non-fatal — don't block shift gameplay on a state-machine bug.
+      }
+    }
   },
 
   nextTask: () => {
