@@ -676,3 +676,34 @@ export async function uploadStepVideo(
     videoClipFilename: data.videoClipFilename || data.dismissalClipFilename,
   };
 }
+
+// ── Remediation Module ──────────────────────────────────────────
+//
+// Remediation events fire when a student grinds their concernScore (Phase 1).
+// This client mirrors `GET /api/teacher/remediation-events`. Live updates
+// arrive via the `student:remediation-fired/-completed/-clawback` socket
+// events wired in `useTeacherSocket`.
+
+export interface RemediationEvent {
+  id: string;
+  pairId: string;
+  designation: string | null;
+  weekNumber: number;
+  triggerReason: 'rate_warned' | 'rate_double' | 'absolute_3';
+  concernAtTrigger: number;
+  concernAfterCooldown: number | null;
+  correctCount: number | null;
+  totalCount: number;
+  clawedBack: boolean;
+  triggeredAt: string;
+  completedAt: string | null;
+}
+
+export async function fetchRemediationEvents(params?: {
+  classId?: string;
+  pairId?: string;
+  week?: number;
+}): Promise<RemediationEvent[]> {
+  const { data } = await client.get('/teacher/remediation-events', { params });
+  return (data as { events: RemediationEvent[] }).events;
+}

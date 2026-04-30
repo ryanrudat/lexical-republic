@@ -59,6 +59,13 @@ interface TeacherState {
   clarityReplyTick: number;
   bumpClarityReplyTick: () => void;
   appendClarityEntry: (pairId: string, messageId: string, entry: ThreadEntry) => void;
+
+  /** Remediation Module: per-pair event count + last-3 trigger reasons (most recent first). */
+  remediationCounts: Record<string, number>;
+  remediationLastTriggers: Record<string, string[]>;
+  setRemediationCounts: (counts: Record<string, number>) => void;
+  setRemediationLastTriggers: (m: Record<string, string[]>) => void;
+  incrementRemediation: (pairId: string, triggerReason: string) => void;
 }
 
 export const useTeacherStore = create<TeacherState>((set) => ({
@@ -149,5 +156,21 @@ export const useTeacherStore = create<TeacherState>((set) => ({
         })
       );
       return { clarityThreads: next };
+    }),
+
+  remediationCounts: {},
+  remediationLastTriggers: {},
+  setRemediationCounts: (counts) => set({ remediationCounts: counts }),
+  setRemediationLastTriggers: (m) => set({ remediationLastTriggers: m }),
+  incrementRemediation: (pairId, triggerReason) =>
+    set((state) => {
+      const prevCount = state.remediationCounts[pairId] ?? 0;
+      const prevTriggers = state.remediationLastTriggers[pairId] ?? [];
+      // Most recent first, capped at 3
+      const nextTriggers = [triggerReason, ...prevTriggers].slice(0, 3);
+      return {
+        remediationCounts: { ...state.remediationCounts, [pairId]: prevCount + 1 },
+        remediationLastTriggers: { ...state.remediationLastTriggers, [pairId]: nextTriggers },
+      };
     }),
 }));
