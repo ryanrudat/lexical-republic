@@ -61,19 +61,14 @@ export default function ComplianceCheckEditor({
   const [previewKey, setPreviewKey] = useState(0);
   const [dictRows, setDictRows] = useState<Record<string, DictionaryWordRow[]>>({});
 
-  // Load dictionary so we can do auto-seed + live preview
+  // Load dictionary so the live preview + ↻ Auto-fill button can use it.
+  // Note: we deliberately do NOT auto-seed words here. The editor opens with
+  // an empty selection so the teacher manually picks words and the question
+  // count before saving. The previous auto-seed produced a confusing "modal
+  // briefly opens then advances without input" effect for the teacher.
   useEffect(() => {
     fetchDictionaryWordsGrouped(true).then((res) => setDictRows(res.grouped)).catch(() => {});
   }, []);
-
-  // Auto-seed on first open ONLY if there's no existing template AND the user hasn't selected anything yet
-  const [seeded, setSeeded] = useState(!!existing);
-  useEffect(() => {
-    if (seeded || existing || Object.keys(dictRows).length === 0) return;
-    seedFromDict(cumulativeReviewCount);
-    setSeeded(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dictRows]);
 
   const seedFromDict = (priorCount: number) => {
     // All current-week words

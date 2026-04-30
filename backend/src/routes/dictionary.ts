@@ -6,6 +6,7 @@ import { getCurrentWeekNumberForPair } from '../utils/progression';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { withMulterError } from '../middleware/upload';
 
 const rawUploadPath = process.env.UPLOAD_DIR || 'uploads';
 const uploadPath = path.isAbsolute(rawUploadPath)
@@ -185,7 +186,7 @@ const welcomeStorage = multer.diskStorage({
 });
 const welcomeUpload = multer({ storage: welcomeStorage, limits: { fileSize: 200 * 1024 * 1024 } });
 
-router.post('/welcome-video', requireRole('teacher'), welcomeUpload.single('video'), async (req: Request, res: Response) => {
+router.post('/welcome-video', requireRole('teacher'), withMulterError(welcomeUpload.single('video')), async (req: Request, res: Response) => {
   try {
     if (!req.file) {
       res.status(400).json({ error: 'No video file provided' });

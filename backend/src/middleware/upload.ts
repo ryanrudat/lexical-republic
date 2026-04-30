@@ -2,6 +2,7 @@ import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import type { Request, Response, NextFunction, RequestHandler } from 'express';
 
 const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || '10485760', 10);
 const MAX_VIDEO_FILE_SIZE = parseInt(process.env.MAX_VIDEO_FILE_SIZE || '157286400', 10); // 150MB
@@ -84,3 +85,32 @@ export const uploadVideo = multer({
     }
   },
 });
+
+/**
+ * Wraps a multer middleware so its errors are returned as JSON to the client
+ * instead of bubbling to Express' default HTML error page. Without this, the
+ * frontend axios catch block sees a generic 500 with HTML body and can only
+ * report "Failed to upload video" — masking real causes (file too large,
+ * disallowed mime, disk write failure, etc.).
+ */
+export function withMulterError(handler: RequestHandler): RequestHandler {
+  return (req: Request, res: Response, next: NextFunction) => {
+    handler(req, res, (err: unknown) => {
+      if (!err) {
+        next();
+        return;
+      }
+      // Multer 2.x exposes a `MulterError` with a `code` field; everything
+      // else (incl. fileFilter rejections) comes through as a plain Error.
+      const code = (err as { code?: string }).code ?? null;
+      const message = err instanceof Error ? err.message : 'Upload failed';
+      console.error('[upload] multer error:', { code, message });
+      const status = code === 'LIMIT_FILE_SIZE' ? 413 : 400;
+      res.status(status).json({
+        error: message,
+        code,
+        maxBytes: MAX_VIDEO_FILE_SIZE,
+      });
+    });
+  };
+}

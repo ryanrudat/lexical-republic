@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import axios from 'axios';
 import {
   fetchWeekStoryboard,
   updateStepActivity,
@@ -9,6 +10,23 @@ import {
 import type { StoryboardData, StoryboardStep } from '../../api/teacher';
 import { resolveUploadUrl } from '../../api/client';
 import MonitorPlayer from '../shared/MonitorPlayer';
+
+// Pulls the most informative message out of an axios/fetch failure so the
+// teacher sees the real cause (413 too-large, 415 mime, 401, etc.) instead
+// of a generic "Failed to upload video".
+function describeError(err: unknown, fallback: string): string {
+  if (axios.isAxiosError(err)) {
+    const status = err.response?.status;
+    const data = err.response?.data as { error?: string; code?: string } | undefined;
+    const serverMsg = typeof data?.error === 'string' ? data.error : null;
+    const code = data?.code ? ` [${data.code}]` : '';
+    if (status && serverMsg) return `${fallback}: ${status} ${serverMsg}${code}`;
+    if (status) return `${fallback}: HTTP ${status}`;
+    if (err.message) return `${fallback}: ${err.message}`;
+  }
+  if (err instanceof Error && err.message) return `${fallback}: ${err.message}`;
+  return fallback;
+}
 
 interface ShiftStoryboardProps {
   weekId: string;
@@ -30,7 +48,11 @@ function SavedToast({ visible }: { visible: boolean }) {
 export default function ShiftStoryboard({ weekId, classId }: ShiftStoryboardProps) {
   const [data, setData] = useState<StoryboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // loadError blanks the view (we have nothing to render).
+  // opError shows as a dismissible banner above the still-rendered cards
+  // so a single upload failure no longer hides the whole shift.
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [opError, setOpError] = useState<string | null>(null);
   const [savedStep, setSavedStep] = useState<string | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeGates, setActiveGates] = useState<number[]>([]);
@@ -39,12 +61,12 @@ export default function ShiftStoryboard({ weekId, classId }: ShiftStoryboardProp
   const load = useCallback(async () => {
     if (!weekId) return;
     setLoading(true);
-    setError(null);
+    setLoadError(null);
     try {
       const result = await fetchWeekStoryboard(weekId);
       setData(result);
-    } catch {
-      setError('Failed to load storyboard');
+    } catch (err) {
+      setLoadError(describeError(err, 'Failed to load storyboard'));
     } finally {
       setLoading(false);
     }
@@ -74,8 +96,8 @@ export default function ShiftStoryboard({ weekId, classId }: ShiftStoryboardProp
         : [...activeGates, index].sort((a, b) => a - b);
       await setTaskGates(classId, weekId, next);
       setActiveGates(next);
-    } catch {
-      setError('Failed to update gate');
+    } catch (err) {
+      setOpError(describeError(err, 'Failed to update gate'));
     } finally {
       setGateLoading(false);
     }
@@ -87,8 +109,8 @@ export default function ShiftStoryboard({ weekId, classId }: ShiftStoryboardProp
     try {
       await setTaskGates(classId, weekId, []);
       setActiveGates([]);
-    } catch {
-      setError('Failed to remove gates');
+    } catch (err) {
+      setOpError(describeError(err, 'Failed to remove gates'));
     } finally {
       setGateLoading(false);
     }
@@ -102,8 +124,8 @@ export default function ShiftStoryboard({ weekId, classId }: ShiftStoryboardProp
       const next = activeGates.slice(1);
       await setTaskGates(classId, weekId, next);
       setActiveGates(next);
-    } catch {
-      setError('Failed to advance gate');
+    } catch (err) {
+      setOpError(describeError(err, 'Failed to advance gate'));
     } finally {
       setGateLoading(false);
     }
@@ -121,30 +143,32 @@ export default function ShiftStoryboard({ weekId, classId }: ShiftStoryboardProp
       await updateStepActivity(data.weekId, step.missionType, { removeVideo: true });
       flashSaved(step.missionType);
       await load();
-    } catch {
-      setError('Failed to remove video');
+    } catch (err) {
+      setOpError(describeError(err, 'Failed to remove video'));
     }
   };
 
   const handleUploadStepVideo = async (step: StoryboardStep, file: File) => {
     if (!data) return;
+    setOpError(null);
     try {
       await uploadStepVideo(data.weekId, step.missionType, file);
       flashSaved(step.missionType);
       await load();
-    } catch {
-      setError('Failed to upload video');
+    } catch (err) {
+      setOpError(describeError(err, `Failed to upload video for "${step.label}"`));
     }
   };
 
   const handleUploadDismissalVideo = async (step: StoryboardStep, file: File) => {
     if (!data) return;
+    setOpError(null);
     try {
       await uploadStepVideo(data.weekId, step.missionType, file, 'dismissal');
       flashSaved(step.missionType);
       await load();
-    } catch {
-      setError('Failed to upload dismissal video');
+    } catch (err) {
+      setOpError(describeError(err, `Failed to upload dismissal video for "${step.label}"`));
     }
   };
 
@@ -154,8 +178,8 @@ export default function ShiftStoryboard({ weekId, classId }: ShiftStoryboardProp
       await updateStepActivity(data.weekId, step.missionType, { removeDismissalVideo: true });
       flashSaved(step.missionType);
       await load();
-    } catch {
-      setError('Failed to remove dismissal video');
+    } catch (err) {
+      setOpError(describeError(err, 'Failed to remove dismissal video'));
     }
   };
 
@@ -165,8 +189,8 @@ export default function ShiftStoryboard({ weekId, classId }: ShiftStoryboardProp
       await updateStepActivity(data.weekId, step.missionType, { videoClipEmbedUrl: embedUrl });
       flashSaved(step.missionType);
       await load();
-    } catch {
-      setError('Failed to update embed URL');
+    } catch (err) {
+      setOpError(describeError(err, 'Failed to update embed URL'));
     }
   };
 
@@ -176,8 +200,8 @@ export default function ShiftStoryboard({ weekId, classId }: ShiftStoryboardProp
       await updateStepActivity(data.weekId, step.missionType, { videoClipHidden: hidden });
       flashSaved(step.missionType);
       await load();
-    } catch {
-      setError('Failed to toggle video visibility');
+    } catch (err) {
+      setOpError(describeError(err, 'Failed to toggle video visibility'));
     }
   };
 
@@ -189,10 +213,14 @@ export default function ShiftStoryboard({ weekId, classId }: ShiftStoryboardProp
     );
   }
 
-  if (error) {
+  // Only the initial fetch failure replaces the whole view. Per-step
+  // operation failures (upload, embed, gate) surface as an inline banner
+  // below so the cards stay visible and the user can retry from the same
+  // upload button instead of losing the page.
+  if (loadError) {
     return (
       <div className="text-sm text-red-500 py-4">
-        {error}
+        {loadError}
         <button
           onClick={() => void load()}
           className="ml-3 text-indigo-600 hover:text-indigo-500 transition-colors font-medium"
@@ -223,6 +251,21 @@ export default function ShiftStoryboard({ weekId, classId }: ShiftStoryboardProp
           {data.steps.length} steps
         </span>
       </div>
+
+      {opError && (
+        <div className="flex items-start gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-lg">
+          <svg className="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+          </svg>
+          <span className="flex-1 text-xs text-red-700 leading-snug break-words">{opError}</span>
+          <button
+            onClick={() => setOpError(null)}
+            className="text-xs font-medium text-red-600 hover:text-red-700 px-2 py-0.5"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Gate control bar */}
       {classId ? (

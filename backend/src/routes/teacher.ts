@@ -3,7 +3,7 @@ import { Router, Request, Response } from 'express';
 import { authenticate, requireRole, getTeacherId } from '../middleware/auth';
 import path from 'path';
 import fs from 'fs';
-import { uploadVideo } from '../middleware/upload';
+import { uploadVideo, withMulterError } from '../middleware/upload';
 import prisma from '../utils/prisma';
 import { io, getOnlineStudents, purgeOnlineStudent } from '../socketServer';
 import { findAlternative } from '../data/activityPool';
@@ -308,12 +308,12 @@ async function handleBriefingVideoUpload(req: Request, res: Response, slot: Vide
 }
 
 // POST /api/teacher/weeks/:weekId/briefing/video — upload primary briefing video file
-router.post('/weeks/:weekId/briefing/video', uploadVideo.single('video'), async (req: Request, res: Response) => {
+router.post('/weeks/:weekId/briefing/video', withMulterError(uploadVideo.single('video')), async (req: Request, res: Response) => {
   await handleBriefingVideoUpload(req, res, 'primary');
 });
 
 // POST /api/teacher/weeks/:weekId/briefing/video/:slot — upload clipA or clipB
-router.post('/weeks/:weekId/briefing/video/:slot', uploadVideo.single('video'), async (req: Request, res: Response) => {
+router.post('/weeks/:weekId/briefing/video/:slot', withMulterError(uploadVideo.single('video')), async (req: Request, res: Response) => {
   const slot = req.params.slot as string;
   if (slot !== 'clipA' && slot !== 'clipB') {
     res.status(400).json({ error: "slot must be 'clipA' or 'clipB'" });
@@ -1519,7 +1519,7 @@ router.patch('/weeks/:weekId/steps/:missionType', async (req: Request, res: Resp
 });
 
 // POST /api/teacher/weeks/:weekId/steps/:missionType/video — Upload video clip to any step
-router.post('/weeks/:weekId/steps/:missionType/video', uploadVideo.single('video'), async (req: Request, res: Response) => {
+router.post('/weeks/:weekId/steps/:missionType/video', withMulterError(uploadVideo.single('video')), async (req: Request, res: Response) => {
   try {
     const weekId = req.params.weekId as string;
     const missionType = req.params.missionType as string;
