@@ -37,6 +37,22 @@ function normalizeWords(input: unknown): string[] {
   );
 }
 
+/**
+ * Returns the input list keeping only words that exist in the dictionary AND
+ * are TOEIC (NOT world-building / story words). Compliance Checks are
+ * TOEIC-only by doctrine — this enforces it server-side so a hand-crafted
+ * request can't sneak a world-building word into a template.
+ */
+async function filterToToeicOnly(words: string[]): Promise<string[]> {
+  if (words.length === 0) return [];
+  const rows = await prisma.dictionaryWord.findMany({
+    where: { word: { in: words }, isWorldBuilding: false },
+    select: { word: true },
+  });
+  const allowed = new Set(rows.map((r) => r.word.toLowerCase()));
+  return words.filter((w) => allowed.has(w));
+}
+
 // ─── Teacher: Slot resolver (for Shifts tab) ────────────────────
 
 router.get('/teacher/shifts/:weekNumber/slots', requireRole('teacher'), (req, res) => {
@@ -90,7 +106,8 @@ router.post('/templates', requireRole('teacher'), async (req, res) => {
     const placement = typeof req.body?.placement === 'string' ? req.body.placement : '';
     const afterTaskId = typeof req.body?.afterTaskId === 'string' ? req.body.afterTaskId : null;
     const title = typeof req.body?.title === 'string' && req.body.title.trim() ? req.body.title.trim() : null;
-    const words = normalizeWords(req.body?.words);
+    const rawWords = normalizeWords(req.body?.words);
+    const words = await filterToToeicOnly(rawWords);
     const questionCount = Math.max(1, Math.min(6, Number(req.body?.questionCount) || 3));
     const cumulativeReviewCount = Math.max(0, Math.min(10, Number(req.body?.cumulativeReviewCount) ?? 2));
 
@@ -103,7 +120,11 @@ router.post('/templates', requireRole('teacher'), async (req, res) => {
       return;
     }
     if (words.length === 0) {
-      res.status(400).json({ error: 'At least one word required' });
+      const dropped = rawWords.length - words.length;
+      const msg = dropped > 0
+        ? 'Compliance Checks are TOEIC-only — none of the words you picked are TOEIC vocab.'
+        : 'At least one word required';
+      res.status(400).json({ error: msg });
       return;
     }
     if (!(await teacherOwnsClass(teacherId, classId))) {
@@ -157,15 +178,20 @@ router.put('/templates/:id', requireRole('teacher'), async (req, res) => {
       data.title = typeof req.body.title === 'string' && req.body.title.trim() ? req.body.title.trim() : null;
     }
     if ('words' in req.body) {
-      const words = normalizeWords(req.body.words);
+      const rawWords = normalizeWords(req.body.words);
+      const words = await filterToToeicOnly(rawWords);
       if (words.length === 0) {
-        res.status(400).json({ error: 'At least one word required' });
+        const dropped = rawWords.length - words.length;
+        const msg = dropped > 0
+          ? 'Compliance Checks are TOEIC-only — none of the words you picked are TOEIC vocab.'
+          : 'At least one word required';
+        res.status(400).json({ error: msg });
         return;
       }
       data.words = words as object;
     }
     if ('questionCount' in req.body) {
-      data.questionCount = Math.max(1, Math.min(5, Number(req.body.questionCount) || 3));
+      data.questionCount = Math.max(1, Math.min(6, Number(req.body.questionCount) || 3));
     }
     if ('cumulativeReviewCount' in req.body) {
       data.cumulativeReviewCount = Math.max(0, Math.min(10, Number(req.body.cumulativeReviewCount) || 0));

@@ -15,18 +15,19 @@ export default function WordPicker({ selectedWords, onChange, focusWeek }: Props
   const [grouped, setGrouped] = useState<Record<string, DictionaryWordRow[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [toeicOnly, setToeicOnly] = useState(true);
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const [search, setSearch] = useState('');
 
+  // Compliance Checks are TOEIC-only by doctrine — world-building / story
+  // words are never offered as options to the teacher.
   useEffect(() => {
     setLoading(true);
     setError(null);
-    fetchDictionaryWordsGrouped(toeicOnly)
+    fetchDictionaryWordsGrouped(true)
       .then((res) => setGrouped(res.grouped))
       .catch(() => setError('Failed to load dictionary'))
       .finally(() => setLoading(false));
-  }, [toeicOnly]);
+  }, []);
 
   // Default-expand: focus week, plus any week that already has selected words
   useEffect(() => {
@@ -88,15 +89,9 @@ export default function WordPicker({ selectedWords, onChange, focusWeek }: Props
     <div className="space-y-2">
       {/* Top filter row */}
       <div className="flex items-center gap-3">
-        <label className="flex items-center gap-1.5 text-[11px] text-slate-600 select-none cursor-pointer">
-          <input
-            type="checkbox"
-            checked={toeicOnly}
-            onChange={(e) => setToeicOnly(e.target.checked)}
-            className="accent-cyan-600"
-          />
+        <span className="text-[10px] font-mono text-cyan-700 bg-cyan-50 border border-cyan-200 px-2 py-0.5 rounded whitespace-nowrap uppercase tracking-wider">
           TOEIC only
-        </label>
+        </span>
         <input
           type="text"
           value={search}
