@@ -91,7 +91,7 @@ router.post('/templates', requireRole('teacher'), async (req, res) => {
     const afterTaskId = typeof req.body?.afterTaskId === 'string' ? req.body.afterTaskId : null;
     const title = typeof req.body?.title === 'string' && req.body.title.trim() ? req.body.title.trim() : null;
     const words = normalizeWords(req.body?.words);
-    const questionCount = Math.max(1, Math.min(5, Number(req.body?.questionCount) || 3));
+    const questionCount = Math.max(1, Math.min(6, Number(req.body?.questionCount) || 3));
     const cumulativeReviewCount = Math.max(0, Math.min(10, Number(req.body?.cumulativeReviewCount) ?? 2));
 
     if (!classId || !Number.isFinite(weekNumber) || !PLACEMENT_VALUES.has(placement)) {

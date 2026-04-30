@@ -244,7 +244,7 @@ export default function ComplianceCheckEditor({
                 Number of questions
               </label>
               <div className="flex gap-1.5">
-                {[1, 2, 3, 4, 5].map((n) => (
+                {[1, 2, 3, 4, 5, 6].map((n) => (
                   <button
                     key={n}
                     type="button"
