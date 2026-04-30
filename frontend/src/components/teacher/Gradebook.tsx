@@ -5,6 +5,7 @@ import {
   deleteScore,
   resetWeekProgress,
   patchMissionScoreComment,
+  fetchRemediationEventsForShift,
 } from '../../api/teacher';
 import type {
   GradebookData,
@@ -13,6 +14,7 @@ import type {
   GradebookMissionScore,
   GradebookShiftResult,
   AnswerLogEntry,
+  RemediationEvent,
 } from '../../api/teacher';
 import { STEP_ORDER } from '../../types/shifts';
 
@@ -256,6 +258,8 @@ function DrillDown({
 }) {
   const [resetting, setResetting] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [remediationExpanded, setRemediationExpanded] = useState(false);
+  const [remediationEvents, setRemediationEvents] = useState<RemediationEvent[] | null>(null);
 
   const handleReset = async () => {
     setResetting(true);
@@ -266,6 +270,18 @@ function DrillDown({
     } catch {
       setResetting(false);
     }
+  };
+
+  const handleExpandRemediation = async () => {
+    if (!remediationExpanded && remediationEvents === null) {
+      try {
+        const events = await fetchRemediationEventsForShift(student.id, week.weekNumber);
+        setRemediationEvents(events);
+      } catch {
+        setRemediationEvents([]);
+      }
+    }
+    setRemediationExpanded(prev => !prev);
   };
 
   // Determine task list based on week type
@@ -408,6 +424,21 @@ function DrillDown({
           );
         })()
       )}
+
+      {/* Lazy-loaded on first expand so we don't fire a request per gradebook cell. */}
+      <div className="mb-4 space-y-2">
+        <button
+          onClick={handleExpandRemediation}
+          className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 hover:bg-amber-100"
+        >
+          {remediationExpanded
+            ? 'Hide Remediation'
+            : `Remediation Events${remediationEvents !== null ? ` (${remediationEvents.length})` : ''}`}
+        </button>
+        {remediationExpanded && remediationEvents && (
+          <RemediationEventsTable events={remediationEvents} />
+        )}
+      </div>
 
       <div className="space-y-2">
         {taskList.map((task) => {
@@ -1108,6 +1139,90 @@ function WritingDisplay({ details }: { details: Record<string, unknown> }) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+const TRIGGER_REASON_LABEL: Record<RemediationEvent['triggerReason'], string> = {
+  rate_warned: 'Warning',
+  rate_double: 'Repeated grinding',
+  absolute_3: 'Threshold exceeded',
+};
+
+function formatTriggeredAt(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  return `${hh}:${mm}:${ss}`;
+}
+
+function RemediationEventsTable({ events }: { events: RemediationEvent[] }) {
+  if (events.length === 0) {
+    return (
+      <div className="bg-slate-50 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-400 italic">
+        No remediation events for this shift.
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
+      <div className="px-3 py-2 border-b border-slate-200 bg-white/60">
+        <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
+          Remediation Events ({events.length})
+        </span>
+      </div>
+      <table className="w-full text-xs">
+        <thead className="bg-white/40">
+          <tr className="text-left text-[10px] uppercase tracking-wider text-slate-500">
+            <th className="px-3 py-1.5 font-medium w-[20%] font-mono">Time</th>
+            <th className="px-2 py-1.5 font-medium w-[35%]">Trigger</th>
+            <th className="px-2 py-1.5 font-medium w-[30%]">Score</th>
+            <th className="px-2 py-1.5 font-medium w-[15%]">Clawback</th>
+          </tr>
+        </thead>
+        <tbody>
+          {events.map((e) => {
+            const incomplete = e.correctCount === null && e.completedAt === null;
+            return (
+              <tr key={e.id} className="border-t border-slate-200/70 align-top">
+                <td className="px-3 py-1.5 text-slate-700 font-mono">
+                  {formatTriggeredAt(e.triggeredAt)}
+                </td>
+                <td className="px-2 py-1.5 text-slate-700">
+                  {TRIGGER_REASON_LABEL[e.triggerReason] ?? e.triggerReason}
+                </td>
+                <td className="px-2 py-1.5 text-slate-700">
+                  {incomplete ? (
+                    <>
+                      <span>—</span>
+                      <span className="ml-1 text-[10px] text-slate-400 italic">(incomplete)</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-mono">
+                        {e.correctCount ?? 0}/{e.totalCount}
+                      </span>
+                      {e.clawedBack && (
+                        <span className="ml-1 text-[10px] text-amber-600 italic">(clawed back)</span>
+                      )}
+                    </>
+                  )}
+                </td>
+                <td className="px-2 py-1.5 text-slate-700">
+                  {e.clawedBack ? (
+                    <span className="text-emerald-600">✓</span>
+                  ) : (
+                    <span className="text-slate-300">—</span>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
