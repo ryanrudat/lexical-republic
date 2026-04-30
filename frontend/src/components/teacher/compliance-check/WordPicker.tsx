@@ -4,6 +4,25 @@ import {
   type DictionaryWordRow,
 } from '../../../api/compliance-check';
 
+// Per-shift TOEIC target word lists. Mirrors backend WeekConfig.targetWords —
+// kept here so the picker stays correct even if the backend filter hasn't
+// redeployed yet. Source of truth is still the backend WeekConfig; this is a
+// defense-in-depth filter on top of the API response.
+// IMPORTANT: keep in sync with backend/src/data/week-configs/week{N}.ts
+//   targetWords. Adding a new shift means adding its list here.
+const TARGET_WORDS_BY_WEEK: Record<number, string[]> = {
+  1: ['arrive', 'follow', 'check', 'report', 'submit', 'approve', 'describe', 'assign', 'standard', 'confirm'],
+  2: ['notice', 'compare', 'replace', 'update', 'request', 'remove', 'change', 'include', 'require', 'inform'],
+  3: ['process', 'complete', 'review', 'delay', 'schedule', 'respond', 'identify', 'separate', 'maintain', 'forward'],
+  4: ['arrange', 'collect', 'examine', 'indicate', 'locate', 'organize', 'present', 'record', 'select', 'verify'],
+};
+const ALLOWED_BY_WEEK: Record<number, Set<string>> = Object.fromEntries(
+  Object.entries(TARGET_WORDS_BY_WEEK).map(([wk, list]) => [
+    wk,
+    new Set(list.map((w) => w.toLowerCase())),
+  ]),
+);
+
 interface Props {
   selectedWords: string[];
   onChange: (next: string[]) => void;
@@ -18,13 +37,24 @@ export default function WordPicker({ selectedWords, onChange, focusWeek }: Props
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const [search, setSearch] = useState('');
 
-  // Compliance Checks are TOEIC-only by doctrine — world-building / story
-  // words are never offered as options to the teacher.
+  // Compliance Checks are gated to per-shift TOEIC target word lists. We
+  // intersect the API response with TARGET_WORDS_BY_WEEK on the client so
+  // the picker is correct even if the backend filter hasn't deployed yet.
   useEffect(() => {
     setLoading(true);
     setError(null);
     fetchDictionaryWordsGrouped(true)
-      .then((res) => setGrouped(res.grouped))
+      .then((res) => {
+        const filtered: Record<string, DictionaryWordRow[]> = {};
+        for (const [wkStr, rows] of Object.entries(res.grouped)) {
+          const wk = Number(wkStr);
+          const allowed = ALLOWED_BY_WEEK[wk];
+          if (!allowed) continue; // Drop unknown weeks (no target list defined)
+          const kept = rows.filter((r) => allowed.has(r.word.toLowerCase()));
+          if (kept.length > 0) filtered[wkStr] = kept;
+        }
+        setGrouped(filtered);
+      })
       .catch(() => setError('Failed to load dictionary'))
       .finally(() => setLoading(false));
   }, []);
