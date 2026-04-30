@@ -39,6 +39,13 @@ function shuffle<T>(arr: T[]): T[] {
   return out;
 }
 
+// Two-step wizard:
+//   1. Configure — title + question count + prior-shift count
+//   2. Words    — manual word picking + live preview
+// Save lives only on Step 2 so the teacher must consciously walk through both
+// choices before a Compliance Check is created.
+type WizardStep = 1 | 2;
+
 export default function ComplianceCheckEditor({
   classId,
   weekNumber,
@@ -48,6 +55,7 @@ export default function ComplianceCheckEditor({
   onDeleted,
   onClose,
 }: Props) {
+  const [step, setStep] = useState<WizardStep>(1);
   const [title, setTitle] = useState<string>(existing?.title ?? '');
   const [words, setWords] = useState<string[]>(existing?.words ?? []);
   const [questionCount, setQuestionCount] = useState<number>(existing?.questionCount ?? 3);
@@ -62,20 +70,16 @@ export default function ComplianceCheckEditor({
   const [dictRows, setDictRows] = useState<Record<string, DictionaryWordRow[]>>({});
 
   // Load dictionary so the live preview + ↻ Auto-fill button can use it.
-  // Note: we deliberately do NOT auto-seed words here. The editor opens with
-  // an empty selection so the teacher manually picks words and the question
-  // count before saving. The previous auto-seed produced a confusing "modal
-  // briefly opens then advances without input" effect for the teacher.
+  // We deliberately do NOT auto-seed words: the editor opens empty and the
+  // teacher walks through the wizard manually.
   useEffect(() => {
     fetchDictionaryWordsGrouped(true).then((res) => setDictRows(res.grouped)).catch(() => {});
   }, []);
 
   const seedFromDict = (priorCount: number) => {
-    // All current-week words
     const currentRows = dictRows[String(weekNumber)] ?? [];
     const currentWords = currentRows.map((r) => r.word.toLowerCase());
 
-    // priorCount per prior shift, randomized
     const priorWords: string[] = [];
     for (let wk = 1; wk < weekNumber; wk++) {
       const rows = dictRows[String(wk)] ?? [];
@@ -112,6 +116,7 @@ export default function ComplianceCheckEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [words, dictRows, previewKey]);
 
+  const canAdvance = questionCount >= 1;
   const canSave = words.length > 0 && questionCount >= 1;
 
   const handleSave = async () => {
@@ -194,53 +199,57 @@ export default function ComplianceCheckEditor({
           </button>
         </div>
 
-        <div className="px-5 py-4 space-y-5">
-          <div>
-            <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">
-              Title (optional)
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Vocabulary Verification"
-              className="w-full text-sm px-3 py-2 rounded-md border border-slate-200 focus:border-cyan-300 focus:outline-none focus:ring-1 focus:ring-cyan-200"
-            />
+        {/* Step indicator */}
+        <div className="px-5 pt-4">
+          <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-wider">
+            <span
+              className={`px-2 py-0.5 rounded ${
+                step === 1
+                  ? 'bg-cyan-100 text-cyan-700 border border-cyan-300 font-semibold'
+                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              }`}
+            >
+              {step === 1 ? '1' : '✓'} Configure
+            </span>
+            <span className="text-slate-300">→</span>
+            <span
+              className={`px-2 py-0.5 rounded ${
+                step === 2
+                  ? 'bg-cyan-100 text-cyan-700 border border-cyan-300 font-semibold'
+                  : 'bg-slate-50 text-slate-400 border border-slate-200'
+              }`}
+            >
+              2 Words
+            </span>
           </div>
+        </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                Words to verify
+        {step === 1 && (
+          <div className="px-5 py-4 space-y-5">
+            <div>
+              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">
+                Title (optional)
               </label>
-              <button
-                type="button"
-                onClick={reseed}
-                className="text-[10px] text-cyan-600 hover:text-cyan-700 underline"
-                title="Auto-fill: all current-shift words + N words from each prior shift"
-              >
-                ↻ Auto-fill
-              </button>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Vocabulary Verification"
+                className="w-full text-sm px-3 py-2 rounded-md border border-slate-200 focus:border-cyan-300 focus:outline-none focus:ring-1 focus:ring-cyan-200"
+              />
             </div>
-            <WordPicker
-              selectedWords={words}
-              onChange={setWords}
-              focusWeek={weekNumber}
-            />
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">
                 Number of questions
               </label>
-              <div className="flex gap-1">
+              <div className="flex gap-1.5">
                 {[1, 2, 3, 4, 5].map((n) => (
                   <button
                     key={n}
                     type="button"
                     onClick={() => setQuestionCount(n)}
-                    className={`flex-1 px-2 py-1.5 text-xs rounded-md border transition-colors ${
+                    className={`flex-1 px-3 py-2.5 text-sm rounded-md border transition-colors ${
                       questionCount === n
                         ? 'bg-cyan-100 text-cyan-700 border-cyan-300 font-semibold'
                         : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
@@ -250,11 +259,14 @@ export default function ComplianceCheckEditor({
                   </button>
                 ))}
               </div>
-              <p className="text-[10px] text-slate-400 mt-1">Drawn at random from selected words.</p>
+              <p className="text-[11px] text-slate-400 mt-1.5">
+                The student is asked this many questions, drawn at random from the words you'll pick on the next step.
+              </p>
             </div>
+
             <div>
               <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">
-                Auto-fill: prior-shift words
+                Auto-fill: prior-shift words (optional)
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -267,60 +279,94 @@ export default function ComplianceCheckEditor({
                       Math.max(0, Math.min(10, Number(e.target.value) || 0)),
                     )
                   }
-                  className="w-16 text-sm px-2 py-1.5 rounded-md border border-slate-200 focus:border-cyan-300 focus:outline-none focus:ring-1 focus:ring-cyan-200"
+                  className="w-20 text-sm px-2 py-1.5 rounded-md border border-slate-200 focus:border-cyan-300 focus:outline-none focus:ring-1 focus:ring-cyan-200"
                 />
-                <span className="text-[11px] text-slate-500">per prior shift</span>
+                <span className="text-[11px] text-slate-500">words per prior shift</span>
               </div>
-              <p className="text-[10px] text-slate-400 mt-1">
-                Used by ↻ Auto-fill. Default 2.
+              <p className="text-[11px] text-slate-400 mt-1.5">
+                Only used if you press the ↻ Auto-fill button on the next step. Leave at 0 if you want to pick everything by hand.
               </p>
             </div>
-          </div>
 
-          {sampleQuestion && (
-            <div className="rounded-lg border-2 border-cyan-200 bg-cyan-50/40 p-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] font-mono text-cyan-700 tracking-[0.2em] uppercase">
-                  Live Preview
-                </p>
+            {error && (
+              <div className="px-3 py-2 rounded-md bg-rose-50 border border-rose-200 text-xs text-rose-700">
+                {error}
+              </div>
+            )}
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="px-5 py-4 space-y-5">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  Words to verify
+                </label>
                 <button
                   type="button"
-                  onClick={() => setPreviewKey((k) => k + 1)}
+                  onClick={reseed}
                   className="text-[10px] text-cyan-600 hover:text-cyan-700 underline"
+                  title="Auto-fill: all current-shift words + N words from each prior shift"
                 >
-                  ↻ Re-roll
+                  ↻ Auto-fill
                 </button>
               </div>
-              <p className="text-xs text-slate-500 mb-1">Select the approved definition of:</p>
-              <p className="text-base font-mono font-semibold text-slate-800 mb-2.5">
-                {sampleQuestion.word}
+              <WordPicker
+                selectedWords={words}
+                onChange={setWords}
+                focusWeek={weekNumber}
+              />
+              <p className="text-[11px] text-slate-400 mt-2">
+                The {questionCount} question{questionCount === 1 ? '' : 's'} will be drawn at random from this list.
               </p>
-              <div className="space-y-1.5">
-                <div className="text-xs px-2 py-1.5 rounded border border-emerald-300 bg-emerald-50 text-emerald-800">
-                  ✓ {sampleQuestion.correctDefinition}
-                </div>
-                {sampleQuestion.distractors.map((d, i) => (
-                  <div
-                    key={i}
-                    className="text-xs px-2 py-1.5 rounded border border-slate-200 bg-white text-slate-600"
-                  >
-                    {d}
-                  </div>
-                ))}
-              </div>
             </div>
-          )}
 
-          {error && (
-            <div className="px-3 py-2 rounded-md bg-rose-50 border border-rose-200 text-xs text-rose-700">
-              {error}
-            </div>
-          )}
-        </div>
+            {sampleQuestion && (
+              <div className="rounded-lg border-2 border-cyan-200 bg-cyan-50/40 p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-mono text-cyan-700 tracking-[0.2em] uppercase">
+                    Live Preview
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewKey((k) => k + 1)}
+                    className="text-[10px] text-cyan-600 hover:text-cyan-700 underline"
+                  >
+                    ↻ Re-roll
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500 mb-1">Select the approved definition of:</p>
+                <p className="text-base font-mono font-semibold text-slate-800 mb-2.5">
+                  {sampleQuestion.word}
+                </p>
+                <div className="space-y-1.5">
+                  <div className="text-xs px-2 py-1.5 rounded border border-emerald-300 bg-emerald-50 text-emerald-800">
+                    ✓ {sampleQuestion.correctDefinition}
+                  </div>
+                  {sampleQuestion.distractors.map((d, i) => (
+                    <div
+                      key={i}
+                      className="text-xs px-2 py-1.5 rounded border border-slate-200 bg-white text-slate-600"
+                    >
+                      {d}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div className="px-3 py-2 rounded-md bg-rose-50 border border-rose-200 text-xs text-rose-700">
+                {error}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="px-5 py-4 border-t border-slate-200 sticky bottom-0 bg-white rounded-b-xl flex items-center justify-between">
           <div>
-            {existing && !confirmDelete && (
+            {existing && step === 1 && !confirmDelete && (
               <button
                 onClick={() => setConfirmDelete(true)}
                 disabled={submitting || deleting}
@@ -329,7 +375,7 @@ export default function ComplianceCheckEditor({
                 Remove Compliance Check
               </button>
             )}
-            {existing && confirmDelete && (
+            {existing && step === 1 && confirmDelete && (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-rose-700">Remove? Past results stay.</span>
                 <button
@@ -348,6 +394,15 @@ export default function ComplianceCheckEditor({
                 </button>
               </div>
             )}
+            {step === 2 && (
+              <button
+                onClick={() => setStep(1)}
+                disabled={submitting}
+                className="text-xs font-semibold text-slate-500 hover:text-slate-700 disabled:opacity-50"
+              >
+                ← Back
+              </button>
+            )}
           </div>
           <div className="flex gap-2">
             <button
@@ -357,13 +412,27 @@ export default function ComplianceCheckEditor({
             >
               Cancel
             </button>
-            <button
-              onClick={handleSave}
-              disabled={submitting || deleting || !canSave}
-              className="px-4 py-1.5 text-xs font-semibold rounded-md bg-cyan-600 text-white hover:bg-cyan-700 active:scale-95 transition-all disabled:opacity-50"
-            >
-              {submitting ? 'Saving…' : existing ? 'Save Changes' : 'Save Compliance Check'}
-            </button>
+            {step === 1 ? (
+              <button
+                onClick={() => setStep(2)}
+                disabled={!canAdvance}
+                className="px-4 py-1.5 text-xs font-semibold rounded-md bg-cyan-600 text-white hover:bg-cyan-700 active:scale-95 transition-all disabled:opacity-50"
+              >
+                Next: Pick Words →
+              </button>
+            ) : (
+              <button
+                onClick={handleSave}
+                disabled={submitting || deleting || !canSave}
+                className="px-4 py-1.5 text-xs font-semibold rounded-md bg-cyan-600 text-white hover:bg-cyan-700 active:scale-95 transition-all disabled:opacity-50"
+              >
+                {submitting
+                  ? 'Saving…'
+                  : existing
+                    ? 'Save Changes'
+                    : `Save Compliance Check (${words.length} word${words.length === 1 ? '' : 's'})`}
+              </button>
+            )}
           </div>
         </div>
       </div>
