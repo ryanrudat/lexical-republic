@@ -2168,6 +2168,80 @@ router.post('/classes/:classId/move-to-shift', async (req: Request, res: Respons
 
 // GET /api/teacher/dictionary-words/grouped — for the Compliance Check word picker.
 // Returns dictionary words grouped by weekIntroduced. ?toeicOnly=true filters out world-building words.
+router.get('/remediation-events', async (req: Request, res: Response) => {
+  try {
+    const teacherId = getTeacherId(req)!;
+    const classIdFilter = typeof req.query.classId === 'string' ? req.query.classId : null;
+    const pairIdFilter = typeof req.query.pairId === 'string' ? req.query.pairId : null;
+    const weekRaw = req.query.week !== undefined ? Number(req.query.week) : null;
+    const weekFilter = weekRaw !== null && Number.isFinite(weekRaw) ? weekRaw : null;
+
+    const teacherClassIds = await getTeacherClassIds(teacherId);
+    if (teacherClassIds.length === 0) {
+      res.json({ events: [] });
+      return;
+    }
+
+    if (classIdFilter && !teacherClassIds.includes(classIdFilter)) {
+      res.status(403).json({ error: 'Not your class' });
+      return;
+    }
+
+    if (pairIdFilter && !(await teacherOwnsPair(teacherId, pairIdFilter))) {
+      res.status(403).json({ error: 'Not your student' });
+      return;
+    }
+
+    const targetClassIds = classIdFilter ? [classIdFilter] : teacherClassIds;
+    const enrollments = await prisma.classEnrollment.findMany({
+      where: { classId: { in: targetClassIds }, pairId: { not: null } },
+      select: { pairId: true },
+    });
+    const pairIds = enrollments
+      .map(e => e.pairId)
+      .filter((p): p is string => !!p);
+
+    const filteredPairIds = pairIdFilter
+      ? pairIds.filter(p => p === pairIdFilter)
+      : pairIds;
+
+    if (filteredPairIds.length === 0) {
+      res.json({ events: [] });
+      return;
+    }
+
+    const rows = await prisma.remediationModuleResult.findMany({
+      where: {
+        pairId: { in: filteredPairIds },
+        ...(weekFilter !== null ? { weekNumber: weekFilter } : {}),
+      },
+      orderBy: { triggeredAt: 'desc' },
+      include: { pair: { select: { id: true, designation: true } } },
+      take: 500,
+    });
+
+    res.json({
+      events: rows.map(r => ({
+        id: r.id,
+        pairId: r.pairId,
+        designation: r.pair?.designation ?? null,
+        weekNumber: r.weekNumber,
+        triggerReason: r.triggerReason,
+        concernAtTrigger: r.concernAtTrigger,
+        concernAfterCooldown: r.concernAfterCooldown,
+        correctCount: r.correctCount,
+        totalCount: r.totalCount,
+        clawedBack: r.clawedBack,
+        triggeredAt: r.triggeredAt,
+        completedAt: r.completedAt,
+      })),
+    });
+  } catch (err) {
+    console.error('Remediation events fetch error:', err);
+    res.status(500).json({ error: 'Failed to fetch remediation events' });
+  }
+});
+
 router.get('/dictionary-words/grouped', async (req: Request, res: Response) => {
   try {
     const toeicOnly = req.query.toeicOnly === 'true' || req.query.toeicOnly === '1';

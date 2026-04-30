@@ -104,6 +104,7 @@ model Pair {
   censureResponses       HarmonyCensureResponse[]
   shiftResults           ShiftResult[]
   complianceCheckResults ComplianceCheckResult[]
+  remediationResults     RemediationModuleResult[]
 
   @@map("pairs")
 }
@@ -198,6 +199,26 @@ model ComplianceCheckResult {
   @@index([classId, weekIssued])
   @@index([templateId])
   @@map("compliance_check_results")
+}
+
+model RemediationModuleResult {
+  id                   String    @id @default(uuid())
+  pairId               String
+  pair                 Pair      @relation(fields: [pairId], references: [id], onDelete: Cascade)
+  weekNumber           Int
+  triggerReason        String    // 'rate_warned' | 'rate_double' | 'absolute_3'
+  concernAtTrigger     Float
+  concernAfterCooldown Float?
+  questions            Json
+  results              Json?
+  correctCount         Int?
+  totalCount           Int       @default(3)
+  clawedBack           Boolean   @default(false)
+  triggeredAt          DateTime  @default(now())
+  completedAt          DateTime?
+
+  @@index([pairId, weekNumber])
+  @@map("remediation_module_results")
 }
 
 model WordStatusEvent {

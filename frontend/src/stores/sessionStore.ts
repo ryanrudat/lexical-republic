@@ -1,10 +1,21 @@
 import { create } from 'zustand';
 import type { GrammarError } from '../api/ai';
+import type { RemediationQuestion, RemediationTriggerReason } from '../api/remediation';
 
 /**
  * Session store for compliance mechanics.
  * Concern score is hydrated from DB on login; other fields reset on refresh.
  */
+
+/** Remediation Module state. The full rate-trigger state machine lands in Phase 1 Unit 1. */
+export type RemediationStage = 'idle' | 'warned' | 'modal-open' | 'cooling-down';
+
+export interface ActiveRemediation {
+  moduleId: string;
+  weekNumber: number;
+  triggerReason: RemediationTriggerReason;
+  questions: RemediationQuestion[];
+}
 
 interface SessionState {
   /** Cumulative concern score (0-100+). At 100 → System Audit, then reset. */
@@ -19,6 +30,13 @@ interface SessionState {
   /** Whether a System Audit is currently active */
   isAuditActive: boolean;
 
+  /**
+   * Remediation Module state machine. The state machine logic lands in Phase 1 Unit 1.
+   * Foundation only declares the shape so the modal mount (Phase 1 Unit 2) can read it.
+   */
+  remediationStage: RemediationStage;
+  activeRemediation: ActiveRemediation | null;
+
   hydrateConcern: (score: number) => void;
   addConcern: (amount: number) => void;
   resetConcern: () => void;
@@ -26,6 +44,10 @@ interface SessionState {
   getAttemptCount: (missionId: string) => number;
   setLastGrammarError: (error: GrammarError | null) => void;
   setAuditActive: (active: boolean) => void;
+
+  /** Stubs used by Phase 1 Unit 2; full state-machine wiring lands in Unit 1. */
+  setActiveRemediation: (active: ActiveRemediation | null) => void;
+  setRemediationStage: (stage: RemediationStage) => void;
 }
 
 export const useSessionStore = create<SessionState>((set, get) => ({
@@ -62,4 +84,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   setLastGrammarError: (error) => set({ lastGrammarError: error }),
 
   setAuditActive: (active) => set({ isAuditActive: active }),
+
+  remediationStage: 'idle',
+  activeRemediation: null,
+
+  setActiveRemediation: (active) => set({ activeRemediation: active }),
+  setRemediationStage: (stage) => set({ remediationStage: stage }),
 }));

@@ -27,6 +27,7 @@ import studentRoutes from './routes/student';
 import narrativeChoicesRoutes from './routes/narrative-choices';
 import clarityCheckRoutes from './routes/clarity-check';
 import complianceCheckRoutes from './routes/compliance-check';
+import remediationRoutes from './routes/remediation';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -116,6 +117,7 @@ app.use('/api/student', studentRoutes);
 app.use('/api/narrative-choices', narrativeChoicesRoutes);
 app.use('/api/clarity-check', clarityCheckRoutes);
 app.use('/api/compliance-check', complianceCheckRoutes);
+app.use('/api/remediation', remediationRoutes);
 
 httpServer.listen(PORT, async () => {
   console.log(`[Lexical Republic] Server running on port ${PORT}`);
