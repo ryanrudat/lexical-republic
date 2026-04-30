@@ -32,7 +32,7 @@ export const WEEK_3_CONFIG: WeekConfig = {
             type: "queue_status",
             animation: { sequence: [2, 4, 5, 6], intervalMs: 800 },
             pearlBark: "Queue volume elevated. Daily processing target: 6 cases. You must process all cases. Maintain accuracy.",
-            bettyOverlay: "Don't you worry, sugar! Just take it one case at a time! You'll do great!",
+            bettyOverlay: "Don't you worry, sugar! Just take it one case at a time. You should review each case before you respond. And if one is too tricky, you can forward it to a supervisor — that's what they're there for! You'll do great!",
           },
           {
             type: "writing",
