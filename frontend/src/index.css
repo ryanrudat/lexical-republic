@@ -924,6 +924,12 @@ body.compliance-check-active .pearl-island {
   display: none !important;
 }
 
+/* While a Remediation Module is active, suppress the ambient PEARL
+   Dynamic Island so it doesn't overlap the modal. */
+body.remediation-active .pearl-island {
+  display: none !important;
+}
+
 /* ─── Compliance Check — whole-modal open/close animations ─── */
 
 @keyframes compliance-modal-enter {

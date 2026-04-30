@@ -18,6 +18,7 @@ import { useSeasonStore } from './stores/seasonStore';
 import { useHarmonyStore } from './stores/harmonyStore';
 import { useViewStore } from './stores/viewStore';
 import ComplianceCheckPreview from './pages/ComplianceCheckPreview';
+import RemediationOverlay from './components/remediation/RemediationOverlay';
 
 export default function App() {
   const { user, loading, refresh } = useStudentStore();
@@ -234,25 +235,31 @@ export default function App() {
     : <GameShell />;
 
   return (
-    <Routes>
-      {/* Teacher dashboard — only at /teacher, only for teachers */}
-      <Route
-        path="/teacher"
-        element={user.role === 'teacher' ? <TeacherDashboard /> : <Navigate to="/" replace />}
-      />
-      <Route path="/" element={studentHome} />
-      <Route path="/terminal" element={<Navigate to="/" replace />} />
-      <Route
-        path="/season"
-        element={
-          GUIDED_STUDENT_MODE
-            ? <Navigate to="/" replace />
-            : <GameShell initialView="terminal" initialApp="duty-roster" />
-        }
-      />
-      <Route path="/shift/:weekNumber" element={studentHome} />
-      <Route path="/shift/:weekNumber/:stepId" element={studentHome} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      <Routes>
+        {/* Teacher dashboard — only at /teacher, only for teachers */}
+        <Route
+          path="/teacher"
+          element={user.role === 'teacher' ? <TeacherDashboard /> : <Navigate to="/" replace />}
+        />
+        <Route path="/" element={studentHome} />
+        <Route path="/terminal" element={<Navigate to="/" replace />} />
+        <Route
+          path="/season"
+          element={
+            GUIDED_STUDENT_MODE
+              ? <Navigate to="/" replace />
+              : <GameShell initialView="terminal" initialApp="duty-roster" />
+          }
+        />
+        <Route path="/shift/:weekNumber" element={studentHome} />
+        <Route path="/shift/:weekNumber/:stepId" element={studentHome} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      {/* Remediation Module — global modal mount for students. Renders only when
+          useSessionStore.activeRemediation is set; guards on student role to avoid
+          mounting in teacher dashboard. */}
+      {user.role === 'student' && <RemediationOverlay />}
+    </>
   );
 }
