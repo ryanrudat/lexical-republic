@@ -276,6 +276,28 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
   // Available shifts — derived from narrative route, filtered to built content
   const AVAILABLE_SHIFTS = getAvailableShifts(narrativeRoute);
 
+  // Mode of (weeksCompleted + 1) across enrolled students — the shift most of
+  // the class is currently on. Used to highlight the matching "Move all to
+  // Shift N" button so the teacher sees where the class is at a glance.
+  // Ties resolve to the lowest shift number (the earliest pin point).
+  const currentClassShift: number | null = (() => {
+    if (students.length === 0) return null;
+    const counts = new Map<number, number>();
+    for (const s of students) {
+      const wk = (s.weeksCompleted ?? 0) + 1;
+      counts.set(wk, (counts.get(wk) ?? 0) + 1);
+    }
+    let best: number | null = null;
+    let bestCount = 0;
+    for (const [wk, n] of counts) {
+      if (n > bestCount || (n === bestCount && best !== null && wk < best)) {
+        best = wk;
+        bestCount = n;
+      }
+    }
+    return best;
+  })();
+
   if (loading && students.length === 0) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -386,22 +408,31 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
         </div>
       )}
       {showClassShiftSelector && (
-        <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-4 py-2">
+        <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-4 py-2 flex-wrap">
           <span className="text-xs text-slate-500 mr-1">Move all students to:</span>
-          {AVAILABLE_SHIFTS.map((wn) => (
-            <button
-              key={wn}
-              className="px-3 py-1 text-xs rounded-md border bg-white text-slate-600 border-slate-200 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 transition-colors"
-              onClick={() => setConfirmAction({
-                studentId: '',
-                designation: '',
-                action: 'move-class-to-shift',
-                weekNumber: wn,
-              })}
-            >
-              Shift {wn}
-            </button>
-          ))}
+          {AVAILABLE_SHIFTS.map((wn) => {
+            const isCurrent = wn === currentClassShift;
+            return (
+              <button
+                key={wn}
+                className={`px-3 py-1 text-xs rounded-md border transition-colors ${
+                  isCurrent
+                    ? 'bg-emerald-100 text-emerald-800 border-emerald-400 font-semibold ring-1 ring-emerald-300'
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300'
+                }`}
+                onClick={() => setConfirmAction({
+                  studentId: '',
+                  designation: '',
+                  action: 'move-class-to-shift',
+                  weekNumber: wn,
+                })}
+                title={isCurrent ? 'Class is currently on this shift' : `Move all students to Shift ${wn}`}
+              >
+                Shift {wn}
+                {isCurrent && <span className="ml-1.5 text-[10px] uppercase tracking-wider">• current</span>}
+              </button>
+            );
+          })}
         </div>
       )}
 
