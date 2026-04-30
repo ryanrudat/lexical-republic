@@ -30,8 +30,8 @@ export const WEEK_3_CONFIG: WeekConfig = {
         cards: [
           {
             type: "queue_status",
-            animation: { sequence: [3, 7, 12, 15], intervalMs: 800 },
-            pearlBark: "Queue volume elevated. Daily processing target: 15 cases. You must process all cases. Maintain accuracy.",
+            animation: { sequence: [2, 4, 5, 6], intervalMs: 800 },
+            pearlBark: "Queue volume elevated. Daily processing target: 6 cases. You must process all cases. Maintain accuracy.",
             bettyOverlay: "Don't you worry, sugar! Just take it one case at a time! You'll do great!",
           },
           {

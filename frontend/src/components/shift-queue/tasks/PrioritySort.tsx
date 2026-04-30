@@ -72,10 +72,13 @@ const COLOR_CONFIG: Record<ColumnName, {
 const COLUMNS: ColumnName[] = ['URGENT', 'ROUTINE', 'HOLD'];
 
 // Cascade timing — clicked-folder → next-case-arrives.
-// Departure 450ms (case shrinks into folder) + receive bounce 320ms,
-// overlapping. Total ~700ms before the next case slide-in fires.
+// Departure 450ms (case shrinks into folder) + receive bounce 320ms (overlapping)
+// + 650ms "FORWARDED TO STANDARD CHANNEL ✓" pip = ~1150ms total before next case.
+// Pip enacts Clip A Scene 4's "Forward each complete classification through the
+// standard channel" so students see what they heard.
 const DEPART_MS = 450;
-const PAUSE_BEFORE_NEXT_CASE_MS = 700;
+const FORWARDED_PIP_MS = 650;
+const PAUSE_BEFORE_NEXT_CASE_MS = DEPART_MS + FORWARDED_PIP_MS + 50;
 
 // ─── Component ───────────────────────────────────────────────────
 
@@ -112,6 +115,9 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
   const [currentCascadeIdx, setCurrentCascadeIdx] = useState(0);
   // The case mid-flight to a folder — drives the depart animation.
   const [departingCase, setDepartingCase] = useState<{ caseId: string; column: ColumnName } | null>(null);
+  // Brief "FORWARDED TO STANDARD CHANNEL ✓" pip rendered between cases —
+  // enacts Clip A Scene 4's "forward… through the standard channel" line.
+  const [forwardingPip, setForwardingPip] = useState(false);
   // Folder bounce trigger — keyed by column, increments to retrigger animation.
   const [folderPulseKey, setFolderPulseKey] = useState<Record<ColumnName, number>>({
     URGENT: 0,
@@ -225,8 +231,14 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
         setFolderPulseKey(prev => ({ ...prev, [column]: prev[column] + 1 }));
       }, DEPART_MS - 100);
 
-      // After full depart, advance to next case.
+      // Once case fully departs, show "FORWARDED TO STANDARD CHANNEL ✓" pip.
       setTimeout(() => {
+        setForwardingPip(true);
+      }, DEPART_MS);
+
+      // After pip dwell, clear everything and advance to next case.
+      setTimeout(() => {
+        setForwardingPip(false);
         setDepartingCase(null);
         setCurrentCascadeIdx(idx => idx + 1);
       }, PAUSE_BEFORE_NEXT_CASE_MS);
@@ -306,6 +318,7 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
         currentCascadeIdx={currentCascadeIdx}
         currentCascadeCase={currentCascadeCase}
         departingCase={departingCase}
+        forwardingPip={forwardingPip}
         columns={columns}
         folderPulseKey={folderPulseKey}
         sortStage={sortStage}
@@ -429,7 +442,7 @@ function ClassificationTraining({
           Priority Classification Training
         </p>
         <p className="font-special-elite text-base text-[#2C3340]">
-          Three folders. Six cases. Read carefully.
+          Three folders. Six cases. Read carefully and respond.
         </p>
       </div>
 
@@ -560,6 +573,7 @@ interface CascadeStageProps {
   currentCascadeIdx: number;
   currentCascadeCase: CaseConfig | undefined;
   departingCase: { caseId: string; column: ColumnName } | null;
+  forwardingPip: boolean;
   columns: Record<ColumnName, string[]>;
   folderPulseKey: Record<ColumnName, number>;
   sortStage: SortStage;
@@ -575,6 +589,7 @@ function CascadeStage({
   currentCascadeIdx,
   currentCascadeCase,
   departingCase,
+  forwardingPip,
   columns,
   folderPulseKey,
   sortStage,
@@ -618,7 +633,7 @@ function CascadeStage({
           {totalCases} CASES — PRIORITY CLASSIFICATION REQUIRED
         </p>
         <p className="font-ibm-mono text-[10px] text-[#8B8578] tracking-[0.2em] uppercase mt-1">
-          Read Carefully · Classify Each Case
+          Read Carefully · Respond to Each Case
         </p>
       </div>
 
@@ -633,8 +648,8 @@ function CascadeStage({
           </p>
           <ol className="text-xs text-[#4B5563] leading-relaxed list-decimal list-inside space-y-0.5">
             <li>Read each case carefully.</li>
-            <li>Click the folder that matches its priority.</li>
-            <li>Cases arrive one at a time — classify all {totalCases}.</li>
+            <li>Respond by clicking the folder that matches the case's priority.</li>
+            <li>Cases arrive one at a time — respond to all {totalCases}.</li>
           </ol>
           <div className="flex items-center gap-3 mt-2 pt-2 border-t border-[#F0EDE6] flex-wrap font-ibm-mono text-[10px] tracking-wider">
             <span><span className="text-rose-600 font-bold">URGENT</span> <span className="text-[#8B8578]">— act now</span></span>
@@ -708,6 +723,18 @@ function CascadeStage({
 
       {/* Active case zone */}
       <div className="min-h-[160px] flex items-center justify-center relative">
+        {/* "Forwarded to standard channel" pip — fires after a case departs
+            into its folder, before the next case slides in. Enacts Clip A
+            Scene 4: "Forward each complete classification through the
+            standard channel." */}
+        {forwardingPip && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <span className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-300 rounded-full font-ibm-mono text-[10px] tracking-[0.2em] uppercase text-emerald-700 animate-bubble-pop-in motion-reduce:animate-none shadow-sm">
+              <span className="text-emerald-500">✓</span>
+              Forwarded to Standard Channel
+            </span>
+          </div>
+        )}
         {showActiveCase && currentCascadeCase && (
           <div
             key={currentCascadeCase.caseId}
