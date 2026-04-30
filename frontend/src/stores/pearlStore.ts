@@ -6,6 +6,21 @@ import type { BarkContext } from '../hooks/useBarkContext';
 import { useShiftQueueStore } from './shiftQueueStore';
 import { useShiftStore } from './shiftStore';
 
+// Remediation-specific bark pools — fired by the rate-trigger state machine
+// in `sessionStore.ts`. Forced-happy dystopian tone: PEARL is "concerned and
+// helpful," never punitive. Even at clawback she's disappointed-but-warm.
+export const REMEDIATION_WARNING_BARKS = [
+  'Citizen, your readings are climbing — steady on. We know you can stay focused!',
+  'A small spike, Citizen. Take a breath. Your focus is appreciated.',
+  "Engagement readings rising. Let's center together — you're doing wonderfully.",
+];
+
+export const REMEDIATION_CLAWBACK_BARKS = [
+  "Your readings remain elevated, Citizen. Disappointing — but we'll keep trying together.",
+  "We had hoped the verification would help. Let's stay focused, Citizen.",
+  'Engagement still elevated, Citizen. Your dedication will be noted.',
+];
+
 // Per-type message pools for contextual barks
 // Canonical lines from Dplan ambient-text-bank.md
 const BARK_POOLS: Record<BarkType, string[]> = {
