@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { fetchStudents, deleteStudent, deleteAllStudents, sendTaskCommand, fetchShiftStatus, setStudentLane, moveStudentToShift, moveClassToShift } from '../../api/teacher';
+import { fetchStudents, deleteStudent, deleteAllStudents, sendTaskCommand, fetchShiftStatus, setStudentLane, moveStudentToShift, moveClassToShift, fetchRemediationEvents } from '../../api/teacher';
 import type { ShiftStatus } from '../../api/teacher';
 import { useTeacherStore } from '../../stores/teacherStore';
 import { getSocket } from '../../utils/socket';
@@ -60,6 +60,10 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
   const registrationTick = useTeacherStore((s) => s.registrationTick);
   const classPaused = useTeacherStore((s) => s.classPaused);
   const selectedClassId = useTeacherStore((s) => s.selectedClassId);
+  const remediationCounts = useTeacherStore((s) => s.remediationCounts);
+  const remediationLastTriggers = useTeacherStore((s) => s.remediationLastTriggers);
+  const setRemediationCounts = useTeacherStore((s) => s.setRemediationCounts);
+  const setRemediationLastTriggers = useTeacherStore((s) => s.setRemediationLastTriggers);
 
   const loadStudents = useCallback(() => {
     setLoading(true);
@@ -78,6 +82,33 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
     const interval = setInterval(loadStudents, AUTO_REFRESH_MS);
     return () => clearInterval(interval);
   }, [loadStudents]);
+
+  // Hydrate remediation counts + last-3 triggers from the backend on mount
+  // and whenever the selected class changes. Live updates after this point
+  // come via the `student:remediation-fired` socket listener (useTeacherSocket).
+  useEffect(() => {
+    let cancelled = false;
+    // Clear stale counts from the previous class so they don't flash during the fetch
+    setRemediationCounts({});
+    setRemediationLastTriggers({});
+    void fetchRemediationEvents(classId ? { classId } : undefined)
+      .then((events) => {
+        if (cancelled) return;
+        const counts: Record<string, number> = {};
+        // Backend orders by `triggeredAt DESC`, so taking the first 3 per pair
+        // gives us the most-recent triggers in display order.
+        const triggers: Record<string, string[]> = {};
+        for (const ev of events) {
+          counts[ev.pairId] = (counts[ev.pairId] ?? 0) + 1;
+          const list = triggers[ev.pairId] ?? (triggers[ev.pairId] = []);
+          if (list.length < 3) list.push(ev.triggerReason);
+        }
+        setRemediationCounts(counts);
+        setRemediationLastTriggers(triggers);
+      })
+      .catch(() => { /* silent — chip just won't render */ });
+    return () => { cancelled = true; };
+  }, [classId, setRemediationCounts, setRemediationLastTriggers]);
 
   // Update time-on-task display every 30 seconds
   useEffect(() => {
@@ -481,6 +512,8 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
           const isExpanded = expandedStudent === student.id;
           const lk = student.lastKnown;
           const shiftStatus = student.offlineShift;
+          const remediationCount = remediationCounts[student.id] ?? 0;
+          const remediationTriggers = remediationLastTriggers[student.id];
 
           // Determine task list for "Send to Task" — prefer online, then last-known (preserved
           // on disconnect), then DB-fetched shift status. lastKnown keeps the task list available
@@ -609,6 +642,16 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
                     {student.lastLoginAt && (
                       <span>
                         Last: {new Date(student.lastLoginAt).toLocaleDateString()}
+                      </span>
+                    )}
+                    {remediationCount > 0 && (
+                      <span
+                        className={remediationCount === 1
+                          ? 'inline-block px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-medium'
+                          : 'inline-block px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 text-xs font-medium animate-pulse'}
+                        title={`Recent triggers: ${remediationTriggers && remediationTriggers.length > 0 ? remediationTriggers.join(', ') : 'unknown'}`}
+                      >
+                        Remediation: {remediationCount}
                       </span>
                     )}
                     <button

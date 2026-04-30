@@ -4,6 +4,17 @@ import { useTeacherStore } from '../stores/teacherStore';
 import type { OnlineStudent } from '../stores/teacherStore';
 import type { ThreadEntry } from '../types/shiftQueue';
 
+/** Payload shape emitted by `student:remediation-fired` (see backend/routes/remediation.ts). */
+interface RemediationFiredPayload {
+  pairId: string;
+  designation: string | null;
+  moduleId: string;
+  weekNumber: number;
+  triggerReason: string;
+  concernAtTrigger: number;
+  triggeredAt: string;
+}
+
 export function useTeacherSocket() {
   const setClassSnapshot = useTeacherStore((s) => s.setClassSnapshot);
   const upsertStudent = useTeacherStore((s) => s.upsertStudent);
@@ -14,6 +25,7 @@ export function useTeacherSocket() {
   const setClassPaused = useTeacherStore((s) => s.setClassPaused);
   const appendClarityEntry = useTeacherStore((s) => s.appendClarityEntry);
   const bumpClarityReplyTick = useTeacherStore((s) => s.bumpClarityReplyTick);
+  const incrementRemediation = useTeacherStore((s) => s.incrementRemediation);
 
   useEffect(() => {
     const sock = connectSocket();
@@ -43,6 +55,10 @@ export function useTeacherSocket() {
     const onDeleted = (data: { userId: string }) => {
       purgeStudent(data.userId);
     };
+    const onRemediationFired = (data: RemediationFiredPayload) => {
+      if (!data?.pairId || !data?.triggerReason) return;
+      incrementRemediation(data.pairId, data.triggerReason);
+    };
 
     sock.on('teacher:class-snapshot', onSnapshot);
     sock.on('student:connected', onConnected);
@@ -52,6 +68,7 @@ export function useTeacherSocket() {
     sock.on('student:registered', onRegistered);
     sock.on('teacher:pause-state', onPauseState);
     sock.on('teacher:clarity-reply', onClarityReply);
+    sock.on('student:remediation-fired', onRemediationFired);
 
     // Track connection status
     const unsubStatus = onSocketStatus((status, error) => {
@@ -69,9 +86,10 @@ export function useTeacherSocket() {
         s.off('student:registered', onRegistered);
         s.off('teacher:pause-state', onPauseState);
         s.off('teacher:clarity-reply', onClarityReply);
+        s.off('student:remediation-fired', onRemediationFired);
       }
       unsubStatus();
       disconnectSocket();
     };
-  }, [setClassSnapshot, upsertStudent, removeStudent, purgeStudent, setSocketStatus, bumpRegistrationTick, setClassPaused, appendClarityEntry, bumpClarityReplyTick]);
+  }, [setClassSnapshot, upsertStudent, removeStudent, purgeStudent, setSocketStatus, bumpRegistrationTick, setClassPaused, appendClarityEntry, bumpClarityReplyTick, incrementRemediation]);
 }
