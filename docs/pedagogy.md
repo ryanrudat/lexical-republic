@@ -263,9 +263,28 @@ decontextualized recall (Vocab Clearance MCQ)
   → randomized reinforcement (Clarity Check)
   → teacher-scheduled spaced retrieval (Compliance Check)
   → peer-context retrieval (Censure Queue)
+  → behavior-corrective retrieval (Remediation Module, opportunistic)
 ```
 
 Bulletin comprehension layers ambiently on top. Note: writing tasks contribute to *retrieval* via the vocab-use axis (still **+0.10** mastery per used target word, gated by the on-topic veto — see §5.1) but no longer contribute to grammar accrual. Grammar mastery is measured only in constrained tasks.
+
+### 6.1.1 Remediation Module — behavioral-correction-as-pedagogy
+
+Added 2026-04-30. The Remediation Module fires automatically when the system detects intentional `concernScore` grinding (rate-trigger state machine, see `frontend/src/stores/sessionStore.ts`). It is screen-locking, amber-accented, and pulls from low-mastery dictionary words within the current and prior shifts.
+
+**Pedagogically defensible because:**
+- The questions are real spaced retrieval — TOEIC vocab from earlier shifts the student has already seen, weighted toward words they haven't mastered (`PairDictionaryProgress.mastery < 0.6`).
+- The cost is time + attention, never grade. The on-topic + vocab writing rubric stays clean (§5.1); concernScore changes never propagate to academic scoring.
+- The dystopian frame *makes sense* of it. PEARL's voice stays warm and forced-happy throughout — even at clawback ("Your readings remain elevated, Citizen. Disappointing — but we'll keep trying together."). The Module never punishes; it cheerfully *helps* the student "re-center."
+- Worst-case outcome: a determined troll fires multiple remediations in a shift and *accidentally studies harder* than the compliant student. That's the core insight — turning the abuse loop into a study loop.
+
+**Pedagogical guardrails (must remain):**
+- **No grade impact.** The cooldown delta touches only `Pair.concernScore`, never `MissionScore`, `ShiftResult.aggregate.overallScore`, or any other academic field.
+- **Two-stage filter** (Stage A warning → Stage B modal) ensures honest strugglers aren't punished. A student who slowly accumulates concern from real mistakes rarely trips both stages within 90s.
+- **Mastery accrues normally** during remediation: `+0.03` per correct answer (same rate as Clarity Check / Compliance Check / Harmony spaced-review).
+- **PEARL voice stays in character.** No bark, no copy, no completion message becomes punitive. The dystopia is the saccharine concern.
+
+**Watch for** in the first deployment week: students firing 3+ remediations per shift while completing tasks honestly (false positives). If observed, raise rate thresholds. Don't pre-tune for hypothetical cases — calibrate based on observed data.
 
 ### 6.2 Mastery accrual rates (summary)
 
@@ -276,6 +295,7 @@ Bulletin comprehension layers ambiently on top. Note: writing tasks contribute t
 | Censure Queue (review-week correct) | **+0.03** | receptive, peer-context |
 | Clarity Check (correct) | **+0.03** | receptive, randomized |
 | Compliance Check (correct) | **+0.03** | receptive, teacher-scheduled |
+| Remediation Module (correct) | **+0.03** | receptive, behavior-triggered |
 
 Mastery accrues to `PairDictionaryProgress.mastery` (Float, capped at 1.0, seeded at 0.1 on first encounter; `backend/prisma/schema.prisma:142-148`). Every update is atomic.
 
