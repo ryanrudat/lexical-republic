@@ -46,6 +46,7 @@ export interface HarmonyReply {
 export interface HarmonyFeedResponse {
   locked: boolean;
   lockMessage?: string;
+  isFirstVisit?: boolean;
   posts: HarmonyPost[];
   currentWeekNumber: number;
   focusWords: string[];

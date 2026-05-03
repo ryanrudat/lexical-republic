@@ -69,6 +69,9 @@ interface HarmonyState {
   // NEW content tracking
   hasNewContent: boolean;
 
+  // First-visit onboarding banner (set by /posts response, cleared on dismiss)
+  isFirstVisit: boolean;
+
   // PEARL ambient annotations (session-based)
   recentCensureResults: boolean[];
   pearlAnnotations: PearlAnnotation[];
@@ -81,6 +84,7 @@ interface HarmonyState {
   loadArchives: (section?: string) => Promise<void>;
   checkNewContent: () => Promise<void>;
   setHasNewContent: (v: boolean) => void;
+  dismissFirstVisit: () => void;
   submitPost: (content: string) => Promise<void>;
   openThread: (postId: string) => Promise<void>;
   closeThread: () => void;
@@ -117,6 +121,7 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
   archivesLoading: false,
 
   hasNewContent: false,
+  isFirstVisit: false,
 
   recentCensureResults: [],
   pearlAnnotations: [],
@@ -128,6 +133,13 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const feed = await fetchHarmonyPosts();
+      // First-visit banner: only surface when the server confirms first visit
+      // AND the pair has not already dismissed it locally (survives page reloads
+      // during a single first-visit session if user somehow double-loads).
+      const serverFirstVisit = Boolean(feed.isFirstVisit);
+      const localDismissed =
+        typeof localStorage !== 'undefined' &&
+        localStorage.getItem('harmony_first_visit_dismissed') === '1';
       set({
         posts: feed.posts,
         currentWeekNumber: feed.currentWeekNumber,
@@ -136,11 +148,19 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
         deepReviewWords: feed.deepReviewWords,
         locked: feed.locked,
         lockMessage: feed.lockMessage ?? null,
+        isFirstVisit: serverFirstVisit && !localDismissed,
         loading: false,
       });
     } catch {
       set({ loading: false, error: 'Failed to load feed' });
     }
+  },
+
+  dismissFirstVisit: () => {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('harmony_first_visit_dismissed', '1');
+    }
+    set({ isFirstVisit: false });
   },
 
   loadCensureQueue: async () => {
