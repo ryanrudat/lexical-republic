@@ -36,6 +36,14 @@ const onlineStudents = new Map<string, StudentStatus>();
 const disconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const DISCONNECT_GRACE_MS = 5000;
 
+// ── Class pause state (in-memory; lost on restart — acceptable for now) ──
+// Used to replay `session:paused` to late-joining or refreshing students so
+// they don't bypass the lock-screen overlay while their classmates are still locked.
+type ClassPauseState = { paused: boolean; message?: string; ts: number };
+const classPauseState = new Map<string, ClassPauseState>();
+
+const DEFAULT_PAUSE_MESSAGE = 'ATTENTION: SUPERVISOR BRIEFING IN PROGRESS. PLEASE LOOK UP.';
+
 export function getOnlineStudents(classId?: string): StudentStatus[] {
   const all = Array.from(onlineStudents.values());
   if (classId) return all.filter((s) => s.classId === classId);
@@ -50,6 +58,14 @@ export function purgeOnlineStudent(entityId: string): void {
   if (timer) {
     clearTimeout(timer);
     disconnectTimers.delete(entityId);
+  }
+}
+
+/** Emit to the class room of an online student, or no-op if classless. */
+function emitToStudentClass(studentId: string, event: string, payload: unknown): void {
+  const classId = onlineStudents.get(studentId)?.classId;
+  if (classId) {
+    io.to(`class:${classId}`).emit(event, payload);
   }
 }
 
@@ -120,48 +136,96 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
     const entityId = (socket as any).entityId as string;
     const role = (socket as any).role as string;
 
-    // ── Teacher auto-joins teacher room ──
+    // ── Teacher: join per-class rooms + personal room ──
     if (role === 'teacher') {
-      socket.join('teacher');
-      // Send current class snapshot
-      socket.emit('teacher:class-snapshot', getOnlineStudents());
-    }
+      const teacherId = entityId;
+      let teacherClassIds: string[] = [];
+      try {
+        const classes = await prisma.class.findMany({
+          where: { teacherId },
+          select: { id: true },
+        });
+        teacherClassIds = classes.map((c) => c.id);
+      } catch {
+        // Non-fatal: proceed with empty class list (teacher will just see no students)
+      }
 
-    // ── Teacher pause/resume ──
-    if (role === 'teacher') {
-      socket.on('teacher:pause-all', (data?: { classId?: string }) => {
-        const msg = 'ATTENTION: SUPERVISOR BRIEFING IN PROGRESS. PLEASE LOOK UP.';
-        if (data?.classId) {
-          io.to(`class:${data.classId}`).emit('session:paused', { message: msg });
-        } else {
-          io.emit('session:paused', { message: msg });
-        }
-        io.to('teacher').emit('teacher:pause-state', { paused: true });
+      // Personal room for teacher-targeted events with no per-student context
+      socket.join(`teacher:${teacherId}`);
+      // Per-class rooms — receives student events scoped to this teacher's classes
+      for (const classId of teacherClassIds) {
+        socket.join(`class:${classId}`);
+      }
+
+      // Send filtered class snapshot — only this teacher's students
+      const ownedClassIds = new Set(teacherClassIds);
+      const filteredSnapshot = Array.from(onlineStudents.values()).filter(
+        (s) => s.classId !== null && ownedClassIds.has(s.classId),
+      );
+      socket.emit('teacher:class-snapshot', filteredSnapshot);
+
+      // ── Teacher pause/resume — class-scoped, ownership-checked ──
+      socket.on('teacher:pause-all', async (data?: { classId?: string; message?: string }) => {
+        const classId = data?.classId;
+        if (!classId) return; // refuse to fall back to a global broadcast
+        const owned = await prisma.class.findFirst({
+          where: { id: classId, teacherId },
+          select: { id: true },
+        });
+        if (!owned) return;
+
+        const message = data?.message || DEFAULT_PAUSE_MESSAGE;
+        const ts = Date.now();
+        classPauseState.set(classId, { paused: true, message, ts });
+        io.to(`class:${classId}`).emit('session:paused', { message, ts });
+        // Notify all teacher sockets joined to this class room (including this one)
+        io.to(`class:${classId}`).emit('teacher:pause-state', { classId, paused: true });
       });
 
-      socket.on('teacher:resume-all', (data?: { classId?: string }) => {
-        if (data?.classId) {
-          io.to(`class:${data.classId}`).emit('session:resumed');
-        } else {
-          io.emit('session:resumed');
-        }
-        io.to('teacher').emit('teacher:pause-state', { paused: false });
+      socket.on('teacher:resume-all', async (data?: { classId?: string }) => {
+        const classId = data?.classId;
+        if (!classId) return;
+        const owned = await prisma.class.findFirst({
+          where: { id: classId, teacherId },
+          select: { id: true },
+        });
+        if (!owned) return;
+
+        classPauseState.delete(classId);
+        io.to(`class:${classId}`).emit('session:resumed');
+        io.to(`class:${classId}`).emit('teacher:pause-state', { classId, paused: false });
       });
 
-      // ── Per-student task controls ──
-      socket.on('teacher:skip-task', (data: { studentId: string }) => {
+      // ── Per-student task controls — ownership-checked ──
+      const verifyOwnsStudent = async (studentId: string): Promise<boolean> => {
+        if (!studentId) return false;
+        const enrollment = await prisma.classEnrollment.findFirst({
+          where: {
+            OR: [{ pairId: studentId }, { userId: studentId }],
+            class: { teacherId },
+          },
+          select: { id: true },
+        });
+        return enrollment !== null;
+      };
+
+      socket.on('teacher:skip-task', async (data: { studentId: string }) => {
+        if (!(await verifyOwnsStudent(data.studentId))) return;
         io.to(`student:${data.studentId}`).emit('session:task-command', { action: 'skip-task' });
       });
 
-      socket.on('teacher:reset-task', (data: { studentId: string }) => {
+      socket.on('teacher:reset-task', async (data: { studentId: string }) => {
+        if (!(await verifyOwnsStudent(data.studentId))) return;
         io.to(`student:${data.studentId}`).emit('session:task-command', { action: 'reset-task' });
       });
 
-      socket.on('teacher:reset-shift', (data: { studentId: string }) => {
+      socket.on('teacher:reset-shift', async (data: { studentId: string }) => {
+        if (!(await verifyOwnsStudent(data.studentId))) return;
         io.to(`student:${data.studentId}`).emit('session:task-command', { action: 'reset-shift' });
       });
 
-      socket.on('teacher:send-to-task', (data: { studentId: string; taskId: string }) => {
+      socket.on('teacher:send-to-task', async (data: { studentId: string; taskId: string }) => {
+        if (!(await verifyOwnsStudent(data.studentId))) return;
         io.to(`student:${data.studentId}`).emit('session:task-command', {
           action: 'send-to-task',
           taskId: data.taskId,
@@ -229,9 +293,13 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
       socket.join(`student:${entityId}`);
       if (classId) {
         socket.join(`class:${classId}`);
+        // Replay pause state — late joiner / refresher must not bypass the overlay
+        const pause = classPauseState.get(classId);
+        if (pause?.paused) {
+          socket.emit('session:paused', { message: pause.message, ts: pause.ts });
+        }
+        io.to(`class:${classId}`).emit('student:connected', status);
       }
-
-      io.to('teacher').emit('student:connected', status);
     }
 
     // ── Student shift/step events ──
@@ -241,7 +309,7 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
         existing.weekNumber = data.weekNumber;
         existing.stepId = data.stepId || null;
         existing.lastActivityAt = new Date().toISOString();
-        io.to('teacher').emit('student:status-updated', existing);
+        emitToStudentClass(entityId, 'student:status-updated', existing);
       }
     });
 
@@ -250,7 +318,7 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
       if (existing) {
         existing.stepId = data.stepId;
         existing.lastActivityAt = new Date().toISOString();
-        io.to('teacher').emit('student:status-updated', existing);
+        emitToStudentClass(entityId, 'student:status-updated', existing);
       }
     });
 
@@ -258,7 +326,7 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
       const existing = onlineStudents.get(entityId);
       if (existing) {
         existing.tasks = Array.isArray(data) ? data : [];
-        io.to('teacher').emit('student:status-updated', existing);
+        emitToStudentClass(entityId, 'student:status-updated', existing);
       }
     });
 
@@ -277,7 +345,7 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
         existing.taskLabel = data.taskLabel;
         existing.lastActivityAt = new Date().toISOString();
         if (data.failCount !== undefined) existing.failCount = data.failCount;
-        io.to('teacher').emit('student:status-updated', existing);
+        emitToStudentClass(entityId, 'student:status-updated', existing);
       }
     });
 
@@ -316,11 +384,17 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
           if (currentSockets && currentSockets.size > 0) return;
 
           const status = onlineStudents.get(entityId);
+          // Capture classId BEFORE deleting the map entry so we can scope the emit.
+          const classIdAtDisconnect = status?.classId ?? null;
           onlineStudents.delete(entityId);
-          io.to('teacher').emit('student:disconnected', {
+
+          const payload = {
             userId: entityId,
             designation: status?.designation ?? null,
-          });
+          };
+          if (classIdAtDisconnect) {
+            io.to(`class:${classIdAtDisconnect}`).emit('student:disconnected', payload);
+          }
         }, DISCONNECT_GRACE_MS);
         disconnectTimers.set(entityId, timer);
       }
