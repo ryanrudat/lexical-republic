@@ -300,12 +300,18 @@ router.post('/:id/thread', async (req: Request, res: Response) => {
     const entry = thread[thread.length - 1];
 
     if (!isTeacher) {
-      // Student sent — notify teacher
-      io.to('teacher').emit('teacher:clarity-reply', {
-        messageId: id,
-        pairId: message.pairId,
-        entry,
+      // Student sent — notify teacher (per-class room)
+      const enr = await prisma.classEnrollment.findFirst({
+        where: { pairId: message.pairId },
+        select: { classId: true },
       });
+      if (enr?.classId) {
+        io.to(`class:${enr.classId}`).emit('teacher:clarity-reply', {
+          messageId: id,
+          pairId: message.pairId,
+          entry,
+        });
+      }
     } else {
       // Teacher sent — notify student
       io.to(`student:${message.pairId}`).emit('session:clarity-message', {

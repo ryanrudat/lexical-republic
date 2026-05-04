@@ -127,15 +127,21 @@ router.post('/trigger', async (req, res) => {
       },
     });
 
-    io.to('teacher').emit('student:remediation-fired', {
-      pairId,
-      designation: pair?.designation ?? null,
-      moduleId: row.id,
-      weekNumber,
-      triggerReason,
-      concernAtTrigger,
-      triggeredAt: row.triggeredAt,
+    const enr = await prisma.classEnrollment.findFirst({
+      where: { pairId },
+      select: { classId: true },
     });
+    if (enr?.classId) {
+      io.to(`class:${enr.classId}`).emit('student:remediation-fired', {
+        pairId,
+        designation: pair?.designation ?? null,
+        moduleId: row.id,
+        weekNumber,
+        triggerReason,
+        concernAtTrigger,
+        triggeredAt: row.triggeredAt,
+      });
+    }
 
     res.json({
       moduleId: row.id,
@@ -251,17 +257,23 @@ router.post('/:id/complete', async (req, res) => {
       return { newScore, designation: pair?.designation ?? null };
     });
 
-    io.to('teacher').emit('student:remediation-completed', {
-      pairId,
-      designation: updated.designation,
-      moduleId: id,
-      weekNumber: row.weekNumber,
-      correctCount,
-      totalCount: row.totalCount,
-      cooldownApplied,
-      newConcernScore: updated.newScore,
-      completedAt: new Date(),
+    const enr = await prisma.classEnrollment.findFirst({
+      where: { pairId },
+      select: { classId: true },
     });
+    if (enr?.classId) {
+      io.to(`class:${enr.classId}`).emit('student:remediation-completed', {
+        pairId,
+        designation: updated.designation,
+        moduleId: id,
+        weekNumber: row.weekNumber,
+        correctCount,
+        totalCount: row.totalCount,
+        cooldownApplied,
+        newConcernScore: updated.newScore,
+        completedAt: new Date(),
+      });
+    }
 
     res.json({
       success: true,
@@ -337,14 +349,20 @@ router.post('/:id/clawback', async (req, res) => {
       return { newScore, designation: pair?.designation ?? null };
     });
 
-    io.to('teacher').emit('student:remediation-clawback', {
-      pairId,
-      designation: updated.designation,
-      moduleId: id,
-      weekNumber: row.weekNumber,
-      restoredAmount,
-      newConcernScore: updated.newScore,
+    const enr = await prisma.classEnrollment.findFirst({
+      where: { pairId },
+      select: { classId: true },
     });
+    if (enr?.classId) {
+      io.to(`class:${enr.classId}`).emit('student:remediation-clawback', {
+        pairId,
+        designation: updated.designation,
+        moduleId: id,
+        weekNumber: row.weekNumber,
+        restoredAmount,
+        newConcernScore: updated.newScore,
+      });
+    }
 
     res.json({
       success: true,

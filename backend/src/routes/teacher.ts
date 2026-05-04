@@ -1198,6 +1198,13 @@ router.delete('/students/:studentId', async (req: Request, res: Response) => {
     const teacherId = getTeacherId(req)!;
     const studentId = req.params.studentId as string;
 
+    // Capture classId BEFORE cascade (classEnrollment rows are deleted in the transaction)
+    const enr = await prisma.classEnrollment.findFirst({
+      where: { OR: [{ pairId: studentId }, { userId: studentId }] },
+      select: { classId: true },
+    });
+    const classId = enr?.classId;
+
     // Try Pair first, then legacy User
     const pair = await prisma.pair.findUnique({ where: { id: studentId } });
     if (pair) {
@@ -1222,7 +1229,7 @@ router.delete('/students/:studentId', async (req: Request, res: Response) => {
       ]);
       // Clean up in-memory tracking and notify teachers
       purgeOnlineStudent(studentId);
-      io.to('teacher').emit('student:deleted', { userId: studentId });
+      if (classId) io.to(`class:${classId}`).emit('student:deleted', { userId: studentId });
       res.json({ deleted: true, type: 'pair' });
       return;
     }
@@ -1254,7 +1261,7 @@ router.delete('/students/:studentId', async (req: Request, res: Response) => {
       ]);
       // Clean up in-memory tracking and notify teachers
       purgeOnlineStudent(studentId);
-      io.to('teacher').emit('student:deleted', { userId: studentId });
+      if (classId) io.to(`class:${classId}`).emit('student:deleted', { userId: studentId });
       res.json({ deleted: true, type: 'user' });
       return;
     }
@@ -1294,6 +1301,13 @@ router.delete('/students', async (req: Request, res: Response) => {
 
     // Delete all pairs with cascade
     for (const pair of allPairs) {
+      // Capture classId BEFORE cascade (classEnrollment rows are deleted)
+      const enr = await prisma.classEnrollment.findFirst({
+        where: { pairId: pair.id },
+        select: { classId: true },
+      });
+      const classId = enr?.classId;
+
       await prisma.$transaction([
         prisma.pairDictionaryProgress.deleteMany({ where: { pairId: pair.id } }),
         prisma.missionScore.deleteMany({ where: { pairId: pair.id } }),
@@ -1309,11 +1323,17 @@ router.delete('/students', async (req: Request, res: Response) => {
         prisma.pair.delete({ where: { id: pair.id } }),
       ]);
       purgeOnlineStudent(pair.id);
-      io.to('teacher').emit('student:deleted', { userId: pair.id });
+      if (classId) io.to(`class:${classId}`).emit('student:deleted', { userId: pair.id });
     }
 
     // Delete all legacy students with cascade
     for (const stu of allLegacyStudents) {
+      const enr = await prisma.classEnrollment.findFirst({
+        where: { userId: stu.id },
+        select: { classId: true },
+      });
+      const classId = enr?.classId;
+
       await prisma.$transaction([
         prisma.studentVocabulary.deleteMany({ where: { userId: stu.id } }),
         prisma.missionScore.deleteMany({ where: { userId: stu.id } }),
@@ -1325,7 +1345,7 @@ router.delete('/students', async (req: Request, res: Response) => {
         prisma.user.delete({ where: { id: stu.id } }),
       ]);
       purgeOnlineStudent(stu.id);
-      io.to('teacher').emit('student:deleted', { userId: stu.id });
+      if (classId) io.to(`class:${classId}`).emit('student:deleted', { userId: stu.id });
     }
 
     res.json({ deleted: true, pairsDeleted: allPairs.length, usersDeleted: allLegacyStudents.length });
