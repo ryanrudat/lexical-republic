@@ -76,25 +76,15 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(cookieParser());
+// /uploads is intentionally public: <video> tags can't send auth headers. Filenames are UUIDs.
 app.use('/uploads', express.static(uploadPath));
 
-// Health check
+// Health check intentionally minimal — do not leak filesystem paths or directory listings.
 app.get('/api/health', (_req, res) => {
-  const briefingFiles = fs.existsSync(briefingPath)
-    ? fs.readdirSync(briefingPath).slice(0, 10)
-    : [];
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    uploads: {
-      __dirname,
-      uploadPath,
-      briefingPath,
-      uploadDirExists: fs.existsSync(uploadPath),
-      briefingDirExists: fs.existsSync(briefingPath),
-      briefingFileCount: briefingFiles.length,
-      briefingFiles,
-    },
+    uptime: process.uptime(),
   });
 });
 
