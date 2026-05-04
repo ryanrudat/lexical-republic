@@ -275,6 +275,26 @@ router.post(
         return;
       }
 
+      // Reject score writes for weeks the student's class hasn't unlocked yet,
+      // otherwise students can pre-credit themselves on future weeks. Row
+      // presence in ClassWeekUnlock is the unlock signal — there's no boolean.
+      const enrollment = await prisma.classEnrollment.findFirst({
+        where: ctx.enrollmentWhere,
+        select: { classId: true },
+      });
+      if (!enrollment) {
+        res.status(403).json({ error: 'Not enrolled in any class' });
+        return;
+      }
+      const unlock = await prisma.classWeekUnlock.findFirst({
+        where: { classId: enrollment.classId, weekId },
+        select: { id: true },
+      });
+      if (!unlock) {
+        res.status(403).json({ error: 'Week is not unlocked for this class' });
+        return;
+      }
+
       // Merge incoming details on top of whatever's already stored so a later
       // save (e.g. the /shifts/.../score call after a writing task) does NOT
       // wipe fields written by an earlier save (e.g. grammarScore/pearlFeedback
@@ -360,13 +380,32 @@ router.post(
         return;
       }
 
-      const result = await prisma.missionScore.upsert({
-        where: ctx.scoreWhere(mission.id),
-        update: {
-          score: status === 'complete' ? 1 : 0,
-          details: { status, ...data },
-        },
-        create: ctx.scoreCreate(mission.id, status === 'complete' ? 1 : 0, { status, ...data }),
+      // Merge incoming details on top of existing — without this, a status-only
+      // update from this path would clobber writingText/pearlFeedback/answerLog
+      // already stored by /submissions/evaluate or the /score handler above
+      // (both endpoints write to the same MissionScore row).
+      const newScore = status === 'complete' ? 1 : 0;
+      const incomingDetails: Record<string, unknown> = {
+        status,
+        ...(data && typeof data === 'object' && !Array.isArray(data)
+          ? (data as Record<string, unknown>)
+          : {}),
+      };
+      const result = await prisma.$transaction(async (tx) => {
+        const existing = await tx.missionScore.findUnique({
+          where: ctx.scoreWhere(mission.id),
+          select: { details: true },
+        });
+        const existingDetails =
+          existing?.details && typeof existing.details === 'object' && !Array.isArray(existing.details)
+            ? (existing.details as Record<string, unknown>)
+            : {};
+        const mergedDetails = mergeDetails(existingDetails, incomingDetails) as any;
+        return tx.missionScore.upsert({
+          where: ctx.scoreWhere(mission.id),
+          update: { score: newScore, details: mergedDetails },
+          create: ctx.scoreCreate(mission.id, newScore, mergedDetails),
+        });
       });
 
       res.json(result);
@@ -551,11 +590,16 @@ router.patch('/concern', async (req: Request, res: Response) => {
       res.status(403).json({ error: 'Pair auth required' });
       return;
     }
-    const { delta } = req.body;
-    if (typeof delta !== 'number') {
-      res.status(400).json({ error: 'delta (number) required' });
+    // Clamp to ±1.0 per request — matches the Remediation Module's documented
+    // per-event thresholds (Stage A +0.4/30s, Stage B +0.7/60s) so a single
+    // client call can't self-zero or fake-trigger Remediation by sending a
+    // huge value. NaN/Infinity rejected outright.
+    const rawDelta = req.body?.delta;
+    if (typeof rawDelta !== 'number' || !Number.isFinite(rawDelta)) {
+      res.status(400).json({ error: 'delta must be a finite number' });
       return;
     }
+    const delta = Math.max(-1, Math.min(1, rawDelta));
     const pair = await prisma.pair.update({
       where: { id: pairId },
       data: { concernScore: { increment: delta } },
