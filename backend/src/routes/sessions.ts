@@ -1,10 +1,31 @@
 import { Router, Request, Response } from 'express';
-import type { Prisma } from '@prisma/client';
 import { authenticate, requirePair, getPairId } from '../middleware/auth';
 import prisma from '../utils/prisma';
 
 const router = Router();
 router.use(authenticate);
+
+// Merge details JSON while protecting non-empty string fields from being clobbered
+// by an empty-string snapshot. Mirrors the helper in shifts.ts so phase-completion
+// upserts here don't wipe fields (writingText, pearlFeedback, vocabUsed, answerLog,
+// etc.) written by /shifts/.../score or /submissions/evaluate against the same
+// MissionScore row.
+function mergeDetails(
+  existing: Record<string, unknown>,
+  incoming: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...existing };
+  for (const [key, value] of Object.entries(incoming)) {
+    if (typeof value === 'string' && value.length === 0) {
+      const existingVal = out[key];
+      if (typeof existingVal === 'string' && existingVal.length > 0) {
+        continue;
+      }
+    }
+    out[key] = value;
+  }
+  return out;
+}
 
 // GET /api/sessions/week/:weekId — return SessionConfig with expanded phase configs
 router.get('/week/:weekId', async (req: Request, res: Response) => {
@@ -130,20 +151,43 @@ router.post(
         return;
       }
 
-      // Upsert mission score
-      const detailsJson = (details ?? { status: 'complete' }) as Prisma.InputJsonValue;
-      const result = await prisma.missionScore.upsert({
-        where: { pairId_missionId: { pairId, missionId: phase.missionId } },
-        update: {
-          score: score ?? 1.0,
-          details: detailsJson,
-        },
-        create: {
-          pairId,
-          missionId: phase.missionId,
-          score: score ?? 1.0,
-          details: detailsJson,
-        },
+      // Pin missionId to a local const so TS narrowing survives into the
+      // $transaction callback (TS drops nullable narrowing across that boundary).
+      const missionId: string = phase.missionId;
+      const finalScore = score ?? 1.0;
+      const incomingDetails =
+        details && typeof details === 'object' && !Array.isArray(details)
+          ? (details as Record<string, unknown>)
+          : ({ status: 'complete' } as Record<string, unknown>);
+
+      // Merge incoming details on top of whatever's already stored so this
+      // phase-completion save does NOT wipe fields written by an earlier
+      // /shifts/.../score or /submissions/evaluate against the same row
+      // (writingText, pearlFeedback, vocabUsed, answerLog, etc.). mergeDetails
+      // additionally protects non-empty string fields from empty-string clobber.
+      const result = await prisma.$transaction(async (tx) => {
+        const current = await tx.missionScore.findUnique({
+          where: { pairId_missionId: { pairId, missionId } },
+          select: { details: true },
+        });
+        const existingDetails =
+          current?.details && typeof current.details === 'object' && !Array.isArray(current.details)
+            ? (current.details as Record<string, unknown>)
+            : {};
+        const mergedDetails = mergeDetails(existingDetails, incomingDetails) as any;
+        return tx.missionScore.upsert({
+          where: { pairId_missionId: { pairId, missionId } },
+          update: {
+            score: finalScore,
+            details: mergedDetails,
+          },
+          create: {
+            pairId,
+            missionId,
+            score: finalScore,
+            details: mergedDetails,
+          },
+        });
       });
 
       res.json({
