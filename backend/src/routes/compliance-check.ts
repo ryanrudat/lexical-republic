@@ -278,9 +278,15 @@ router.get('/pending', async (req, res) => {
       return;
     }
 
-    // Create or reuse the in-flight ComplianceCheckResult row so completion can update it
-    const record = existing ?? await prisma.complianceCheckResult.create({
-      data: {
+    // Create or reuse the in-flight ComplianceCheckResult row so completion can update it.
+    // Atomic upsert to avoid race condition where two concurrent /pending requests both
+    // pass the findUnique check, both attempt create, and the second hits the
+    // (pairId, templateId) unique constraint and 500s.
+    // update: {} preserves completedAt/correctCount/etc. on hit.
+    const record = await prisma.complianceCheckResult.upsert({
+      where: { pairId_templateId: { pairId, templateId: template.id } },
+      update: {},
+      create: {
         pairId,
         templateId: template.id,
         teacherId: template.createdById,
