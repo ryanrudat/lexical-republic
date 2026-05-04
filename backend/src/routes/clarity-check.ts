@@ -37,21 +37,29 @@ router.post('/complete', async (req, res) => {
       return;
     }
 
+    const existing = await prisma.clarityCheckResult.findUnique({
+      where: { pairId_checkId: { pairId, checkId } },
+      select: { completedAt: true },
+    });
+    if (existing?.completedAt) {
+      res.json({ success: true, alreadyCompleted: true });
+      return;
+    }
+
     const correctWords = words
       .filter((w) => w && typeof w.word === 'string' && w.correct === true)
       .map((w) => w.word.trim().toLowerCase())
       .filter((w) => w.length > 0);
 
-    if (correctWords.length === 0) {
-      res.json({ success: true, masteryUpdates: 0 });
-      return;
-    }
+    const totalCount = words.length;
+    const correctCount = correctWords.length;
 
-    // Look up dictionary ids for the correct words
-    const dictWords = await prisma.dictionaryWord.findMany({
-      where: { word: { in: correctWords } },
-      select: { id: true, word: true },
-    });
+    const dictWords = correctWords.length
+      ? await prisma.dictionaryWord.findMany({
+          where: { word: { in: correctWords } },
+          select: { id: true, word: true },
+        })
+      : [];
 
     let updates = 0;
     await prisma.$transaction(async (tx) => {
@@ -75,13 +83,19 @@ router.post('/complete', async (req, res) => {
           updates++;
         }
       }
+
+      await tx.clarityCheckResult.upsert({
+        where: { pairId_checkId: { pairId, checkId } },
+        update: { completedAt: new Date(), correctCount, totalCount, weekNumber },
+        create: { pairId, checkId, weekNumber, totalCount, correctCount, completedAt: new Date() },
+      });
     });
 
     res.json({
       success: true,
       checkId,
       weekNumber,
-      correctCount: correctWords.length,
+      correctCount,
       masteryUpdates: updates,
     });
   } catch (err) {
