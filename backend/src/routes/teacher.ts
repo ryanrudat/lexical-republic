@@ -13,6 +13,29 @@ import { getNarrativeRoute } from '../data/narrative-routes';
 const router = Router();
 router.use(authenticate, requireRole('teacher'));
 
+// ── JSON details merge ────────────────────────────────────────────
+// Mirror of `mergeDetails` in shifts.ts / submissions.ts. When two endpoints
+// upsert the same MissionScore.details JSON blob, a plain `update: { details }`
+// REPLACES the field — silently destroying writingText / pearlFeedback / answerLog
+// stored by the other endpoint. mergeDetails preserves existing keys and refuses
+// to let an incoming empty string overwrite a non-empty stored string.
+function mergeDetails(
+  existing: Record<string, unknown>,
+  incoming: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...existing };
+  for (const [key, value] of Object.entries(incoming)) {
+    if (typeof value === 'string' && value.length === 0) {
+      const existingVal = out[key];
+      if (typeof existingVal === 'string' && existingVal.length > 0) {
+        continue;
+      }
+    }
+    out[key] = value;
+  }
+  return out;
+}
+
 // ── Ownership helpers ──────────────────────────────────────────────
 
 /** Returns class IDs owned by this teacher. */
@@ -950,14 +973,40 @@ router.patch('/scores/:scoreId', async (req: Request, res: Response) => {
     }
 
     const { score, details } = req.body;
-    const updateData: Record<string, unknown> = {};
-    if (typeof score === 'number') updateData.score = score;
-    if (details !== undefined) updateData.details = details;
+    const hasScore = typeof score === 'number';
+    const hasDetails = details !== undefined;
 
-    const result = await prisma.missionScore.update({
-      where: { id: scoreId },
-      data: updateData,
+    // Merge incoming details on top of existing rather than replace, so a
+    // teacher edit that only sends a score adjustment doesn't wipe writingText
+    // / answerLog / pearlFeedback the student tasks already wrote.
+    const result = await prisma.$transaction(async (tx) => {
+      let mergedDetails: Record<string, unknown> | undefined;
+      if (hasDetails) {
+        const existing = await tx.missionScore.findUnique({
+          where: { id: scoreId },
+          select: { details: true },
+        });
+        const existingDetails =
+          existing?.details && typeof existing.details === 'object' && !Array.isArray(existing.details)
+            ? (existing.details as Record<string, unknown>)
+            : {};
+        const incomingDetails =
+          details && typeof details === 'object' && !Array.isArray(details)
+            ? (details as Record<string, unknown>)
+            : {};
+        mergedDetails = mergeDetails(existingDetails, incomingDetails);
+      }
+
+      const updateData: Record<string, unknown> = {};
+      if (hasScore) updateData.score = score;
+      if (mergedDetails !== undefined) updateData.details = mergedDetails as Prisma.InputJsonValue;
+
+      return tx.missionScore.update({
+        where: { id: scoreId },
+        data: updateData,
+      });
     });
+
     res.json(result);
   } catch (err) {
     console.error('Teacher score edit error:', err);
@@ -1152,6 +1201,10 @@ router.delete('/students/:studentId', async (req: Request, res: Response) => {
     // Try Pair first, then legacy User
     const pair = await prisma.pair.findUnique({ where: { id: studentId } });
     if (pair) {
+      if (!(await teacherOwnsPair(teacherId, studentId))) {
+        res.status(403).json({ error: 'Not authorized to delete this student' });
+        return;
+      }
       // Cascade delete all Pair-related records
       await prisma.$transaction([
         prisma.pairDictionaryProgress.deleteMany({ where: { pairId: studentId } }),
@@ -1177,6 +1230,18 @@ router.delete('/students/:studentId', async (req: Request, res: Response) => {
     // Legacy User-based student
     const user = await prisma.user.findUnique({ where: { id: studentId } });
     if (user && user.role === 'student') {
+      // Ownership gate for legacy User students — must be enrolled in one of teacher's classes
+      const teacherClassIds = await getTeacherClassIds(teacherId);
+      const enrollment =
+        teacherClassIds.length > 0
+          ? await prisma.classEnrollment.findFirst({
+              where: { userId: studentId, classId: { in: teacherClassIds } },
+            })
+          : null;
+      if (!enrollment) {
+        res.status(403).json({ error: 'Not authorized to delete this student' });
+        return;
+      }
       await prisma.$transaction([
         prisma.studentVocabulary.deleteMany({ where: { userId: studentId } }),
         prisma.missionScore.deleteMany({ where: { userId: studentId } }),
@@ -1205,11 +1270,25 @@ router.delete('/students/:studentId', async (req: Request, res: Response) => {
 router.delete('/students', async (req: Request, res: Response) => {
   try {
     const teacherId = getTeacherId(req)!;
+    const teacherClassIds = await getTeacherClassIds(teacherId);
 
-    // Get all pairs and legacy students
-    const allPairs = await prisma.pair.findMany({ select: { id: true } });
+    // Scope to teacher's classes only — previously this fetched ALL pairs/users
+    // in the database with no where clause, so any logged-in teacher could wipe
+    // every student record across every other teacher's classes.
+    if (teacherClassIds.length === 0) {
+      res.json({ deleted: true, pairsDeleted: 0, usersDeleted: 0 });
+      return;
+    }
+
+    const allPairs = await prisma.pair.findMany({
+      where: { enrollments: { some: { classId: { in: teacherClassIds } } } },
+      select: { id: true },
+    });
     const allLegacyStudents = await prisma.user.findMany({
-      where: { role: 'student' },
+      where: {
+        role: 'student',
+        enrollments: { some: { classId: { in: teacherClassIds } } },
+      },
       select: { id: true },
     });
 
@@ -1605,42 +1684,16 @@ router.post('/weeks/:weekId/steps/:missionType/video', withMulterError(uploadVid
   }
 });
 
-// PATCH /api/teacher/dictionary/:wordId — Teacher edits dictionary word fields
-router.patch('/dictionary/:wordId', async (req: Request, res: Response) => {
-  try {
-    const wordId = req.params.wordId as string;
-    const {
-      definition,
-      exampleSentence,
-      translationZhTw,
-      initialStatus,
-      isWorldBuilding,
-      toeicCategory,
-    } = req.body;
-
-    const data: Record<string, unknown> = {};
-    if (definition !== undefined) data.definition = definition;
-    if (exampleSentence !== undefined) data.exampleSentence = exampleSentence;
-    if (translationZhTw !== undefined) data.translationZhTw = translationZhTw;
-    if (initialStatus !== undefined) data.initialStatus = initialStatus;
-    if (isWorldBuilding !== undefined) data.isWorldBuilding = isWorldBuilding;
-    if (toeicCategory !== undefined) data.toeicCategory = toeicCategory;
-
-    if (Object.keys(data).length === 0) {
-      res.status(400).json({ error: 'No fields to update' });
-      return;
-    }
-
-    const updated = await prisma.dictionaryWord.update({
-      where: { id: wordId },
-      data,
-    });
-
-    res.json(updated);
-  } catch (err) {
-    console.error('Teacher dictionary edit error:', err);
-    res.status(500).json({ error: 'Failed to update dictionary word' });
-  }
+// PATCH /api/teacher/dictionary/:wordId — Edit a global dictionary word.
+// Dictionary entries are shared across all teachers/classes, so any teacher
+// mutating one of these rows would silently affect every other class. Gated
+// to admin only; until the admin role lands (see Dplan/Admin_God_Access_Plan.md)
+// this route refuses every call.
+router.patch('/dictionary/:wordId', async (_req: Request, res: Response) => {
+  res.status(403).json({
+    error:
+      'Dictionary edits require admin role (pending Admin God Access — see Dplan/Admin_God_Access_Plan.md)',
+  });
 });
 
 // GET /api/teacher/debug/uploads — Check what files exist in the uploads directory
@@ -1864,11 +1917,25 @@ router.post('/students/:studentId/task-command', async (req: Request, res: Respo
           res.json({ success: true, message: 'No task to skip — all complete' });
           return;
         }
-        const mission = missions[currentIdx];
-        await prisma.missionScore.upsert({
-          where: { pairId_missionId: { pairId, missionId: mission.id } },
-          create: { pairId, missionId: mission.id, score: 0, details: { status: 'complete', skipped: true } },
-          update: { score: 0, details: { status: 'complete', skipped: true } },
+        const missionId = missions[currentIdx].id;
+        // Merge skip marker on top of any existing details so the skip flag
+        // doesn't wipe writingText / answerLog / pearlFeedback that earlier
+        // task progress wrote to this MissionScore.
+        await prisma.$transaction(async (tx) => {
+          const existing = await tx.missionScore.findUnique({
+            where: { pairId_missionId: { pairId, missionId } },
+            select: { details: true },
+          });
+          const existingDetails =
+            existing?.details && typeof existing.details === 'object' && !Array.isArray(existing.details)
+              ? (existing.details as Record<string, unknown>)
+              : {};
+          const merged = mergeDetails(existingDetails, { status: 'complete', skipped: true });
+          return tx.missionScore.upsert({
+            where: { pairId_missionId: { pairId, missionId } },
+            create: { pairId, missionId, score: 0, details: merged as Prisma.InputJsonValue },
+            update: { score: 0, details: merged as Prisma.InputJsonValue },
+          });
         });
         break;
       }
