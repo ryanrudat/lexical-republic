@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authenticate, getPairId } from '../middleware/auth';
 import prisma from '../utils/prisma';
 import { buildComplianceQuestions } from '../utils/complianceDistractors';
+import { getComplianceWordsByWeek } from '../data/week-configs';
 import { io } from '../socketServer';
 
 const router = Router();
@@ -21,6 +22,22 @@ function debounceSecondsForPriorCount(priorCompletedCount: number): number {
 }
 
 async function pickRemediationWords(pairId: string, weekNumber: number): Promise<string[]> {
+  // Build the allowed TOEIC target-word set for shifts 1..weekNumber.
+  // Same gate as Compliance Check: only `WeekConfig.targetWords` for shifts
+  // the student has reached. Story / world-building / off-target words from
+  // `DictionaryWord` are excluded — vocabulary is TOEIC-first by doctrine.
+  const wordsByWeek = getComplianceWordsByWeek();
+  const allowed = new Set<string>();
+  for (const [wkStr, set] of Object.entries(wordsByWeek)) {
+    if (Number(wkStr) <= weekNumber) {
+      for (const w of set) allowed.add(w);
+    }
+  }
+  if (allowed.size === 0) return [];
+
+  // Mastery-prioritized words from the student's progress, then post-filter
+  // to the allowed TOEIC set (Prisma `in` is case-sensitive; we lowercase
+  // here to match `getComplianceWordsByWeek`'s lowercase keys).
   const progress = await prisma.pairDictionaryProgress.findMany({
     where: {
       pairId,
@@ -29,24 +46,26 @@ async function pickRemediationWords(pairId: string, weekNumber: number): Promise
     },
     include: { word: { select: { word: true } } },
     orderBy: [{ mastery: 'asc' }, { lastSeenAt: 'asc' }],
-    take: 30,
+    take: 100,
   });
 
   const candidateWords: string[] = [];
   for (const p of progress) {
     const w = p.word?.word?.toLowerCase().trim();
-    if (w && !candidateWords.includes(w)) candidateWords.push(w);
+    if (w && allowed.has(w) && !candidateWords.includes(w)) candidateWords.push(w);
   }
 
+  // Fallback: any allowed TOEIC word the student hasn't mastered yet shows
+  // up here even without a progress row (e.g. brand-new student on Shift 1).
   if (candidateWords.length < 5) {
     const fallback = await prisma.dictionaryWord.findMany({
       where: { weekIntroduced: { lte: weekNumber } },
       select: { word: true },
-      take: 30,
+      take: 100,
     });
     for (const row of fallback) {
       const w = row.word.toLowerCase().trim();
-      if (w && !candidateWords.includes(w)) candidateWords.push(w);
+      if (w && allowed.has(w) && !candidateWords.includes(w)) candidateWords.push(w);
     }
   }
 
@@ -127,21 +146,15 @@ router.post('/trigger', async (req, res) => {
       },
     });
 
-    const enr = await prisma.classEnrollment.findFirst({
-      where: { pairId },
-      select: { classId: true },
+    io.to('teacher').emit('student:remediation-fired', {
+      pairId,
+      designation: pair?.designation ?? null,
+      moduleId: row.id,
+      weekNumber,
+      triggerReason,
+      concernAtTrigger,
+      triggeredAt: row.triggeredAt,
     });
-    if (enr?.classId) {
-      io.to(`class:${enr.classId}`).emit('student:remediation-fired', {
-        pairId,
-        designation: pair?.designation ?? null,
-        moduleId: row.id,
-        weekNumber,
-        triggerReason,
-        concernAtTrigger,
-        triggeredAt: row.triggeredAt,
-      });
-    }
 
     res.json({
       moduleId: row.id,
@@ -257,23 +270,17 @@ router.post('/:id/complete', async (req, res) => {
       return { newScore, designation: pair?.designation ?? null };
     });
 
-    const enr = await prisma.classEnrollment.findFirst({
-      where: { pairId },
-      select: { classId: true },
+    io.to('teacher').emit('student:remediation-completed', {
+      pairId,
+      designation: updated.designation,
+      moduleId: id,
+      weekNumber: row.weekNumber,
+      correctCount,
+      totalCount: row.totalCount,
+      cooldownApplied,
+      newConcernScore: updated.newScore,
+      completedAt: new Date(),
     });
-    if (enr?.classId) {
-      io.to(`class:${enr.classId}`).emit('student:remediation-completed', {
-        pairId,
-        designation: updated.designation,
-        moduleId: id,
-        weekNumber: row.weekNumber,
-        correctCount,
-        totalCount: row.totalCount,
-        cooldownApplied,
-        newConcernScore: updated.newScore,
-        completedAt: new Date(),
-      });
-    }
 
     res.json({
       success: true,
@@ -349,20 +356,14 @@ router.post('/:id/clawback', async (req, res) => {
       return { newScore, designation: pair?.designation ?? null };
     });
 
-    const enr = await prisma.classEnrollment.findFirst({
-      where: { pairId },
-      select: { classId: true },
+    io.to('teacher').emit('student:remediation-clawback', {
+      pairId,
+      designation: updated.designation,
+      moduleId: id,
+      weekNumber: row.weekNumber,
+      restoredAmount,
+      newConcernScore: updated.newScore,
     });
-    if (enr?.classId) {
-      io.to(`class:${enr.classId}`).emit('student:remediation-clawback', {
-        pairId,
-        designation: updated.designation,
-        moduleId: id,
-        weekNumber: row.weekNumber,
-        restoredAmount,
-        newConcernScore: updated.newScore,
-      });
-    }
 
     res.json({
       success: true,

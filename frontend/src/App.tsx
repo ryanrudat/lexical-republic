@@ -19,6 +19,7 @@ import { useHarmonyStore } from './stores/harmonyStore';
 import { useViewStore } from './stores/viewStore';
 import ComplianceCheckPreview from './pages/ComplianceCheckPreview';
 import RemediationOverlay from './components/remediation/RemediationOverlay';
+import RemediationDevTrigger from './components/dev/RemediationDevTrigger';
 
 export default function App() {
   const { user, loading, refresh } = useStudentStore();
@@ -260,6 +261,7 @@ export default function App() {
           useSessionStore.activeRemediation is set; guards on student role to avoid
           mounting in teacher dashboard. */}
       {user.role === 'student' && <RemediationOverlay />}
+      {user.role === 'student' && import.meta.env.DEV && <RemediationDevTrigger />}
     </>
   );
 }

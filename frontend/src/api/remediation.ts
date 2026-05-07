@@ -6,6 +6,12 @@ export interface RemediationQuestion {
   word: string;
   correctDefinition: string;
   distractors: string[];
+  /** IPA pronunciation, displayed on the lane-aware study card. */
+  phonetic?: string;
+  /** Mandarin gloss for Lane 1 / Lane 2 study cards; null/missing for Lane 3. */
+  translationZhTw?: string | null;
+  /** Example sentence shown on Lane 1 / Lane 2 study cards. */
+  exampleSentence?: string;
 }
 
 export interface RemediationResultEntry {

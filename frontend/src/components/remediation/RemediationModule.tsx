@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { RemediationQuestion, RemediationResultEntry } from '../../api/remediation';
+import { useStudentStore } from '../../stores/studentStore';
+
+const STUDY_PAUSE_SECONDS = 5;
 
 interface RemediationModuleProps {
   /** Used to key initial-shuffle memoization so a fresh remediation re-shuffles. */
@@ -46,6 +49,15 @@ export default function RemediationModule({
   const completedFiredRef = useRef(false);
   const autoDismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Student lane drives study-card depth: 1 = full bilingual, 2 = English + example,
+  // 3 = English-only minimal. Falls back to 2 (Standard) if unknown.
+  const lane = useStudentStore((s) => s.user?.lane ?? 2);
+
+  // Per-question countdown timer started when a wrong answer is submitted. Resets on advance.
+  const [studyRemaining, setStudyRemaining] = useState(0);
+  const [showMandarin, setShowMandarin] = useState(false);
+  const studyTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   // Build initial states once, scoped to this moduleId.
   // useMemo keyed on moduleId so a fresh remediation gets a fresh shuffle.
   const initialStates = useMemo<QuestionState[]>(() => {
@@ -80,6 +92,7 @@ export default function RemediationModule({
       window.removeEventListener('popstate', blockBack);
       document.body.classList.remove('remediation-active');
       if (autoDismissTimerRef.current) clearTimeout(autoDismissTimerRef.current);
+      if (studyTimerRef.current) clearInterval(studyTimerRef.current);
     };
   }, []);
 
@@ -105,9 +118,27 @@ export default function RemediationModule({
 
   const handleCheck = () => {
     if (state.selectedIdx === null) return;
+    const wasCorrect = state.selectedIdx === state.correctIdx;
     setStates((prev) =>
       prev.map((s, i) => (i === currentIdx ? { ...s, submitted: true } : s)),
     );
+    // Wrong answer → start the study-pause countdown so the Continue button
+    // is locked while the bilingual study card is on screen. Forced exposure,
+    // not punishment — see CLAUDE.md doctrine on remediation.
+    if (!wasCorrect) {
+      setStudyRemaining(STUDY_PAUSE_SECONDS);
+      if (studyTimerRef.current) clearInterval(studyTimerRef.current);
+      studyTimerRef.current = setInterval(() => {
+        setStudyRemaining((prev) => {
+          if (prev <= 1) {
+            if (studyTimerRef.current) clearInterval(studyTimerRef.current);
+            studyTimerRef.current = null;
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
   };
 
   const fireComplete = () => {
@@ -122,6 +153,14 @@ export default function RemediationModule({
   };
 
   const goNext = () => {
+    // Reset per-question study UI state when advancing.
+    if (studyTimerRef.current) {
+      clearInterval(studyTimerRef.current);
+      studyTimerRef.current = null;
+    }
+    setStudyRemaining(0);
+    setShowMandarin(false);
+
     if (currentIdx < questions.length - 1) {
       setCurrentIdx(currentIdx + 1);
       return;
@@ -242,6 +281,74 @@ export default function RemediationModule({
               })}
             </div>
 
+            {/* Study card — appears only after a wrong answer is submitted.
+                Lane 1: word + IPA + correct def + Mandarin + example.
+                Lane 2: word + IPA + correct def + example, Mandarin tap-to-reveal.
+                Lane 3: word + IPA + correct def, no L1 by default.
+                Continue button is locked for STUDY_PAUSE_SECONDS — forced exposure. */}
+            {state.submitted && state.selectedIdx !== state.correctIdx && (
+              <div className="rounded-lg border-2 border-amber-300 bg-amber-50/60 p-4 space-y-3">
+                <div className="flex items-baseline gap-3">
+                  <span className="text-lg font-semibold text-[#2C3340] font-ibm-mono">
+                    {question.word}
+                  </span>
+                  {question.phonetic && (
+                    <span className="text-xs text-amber-700 font-ibm-mono">
+                      /{question.phonetic}/
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <p className="text-[10px] font-ibm-mono text-amber-700 tracking-wider uppercase mb-1">
+                    Approved Definition
+                  </p>
+                  <p className="text-sm text-[#2C3340] leading-snug">
+                    {question.correctDefinition}
+                  </p>
+                </div>
+                {/* Lane 1: always show Mandarin. Lane 2: tap-to-reveal. Lane 3: hidden. */}
+                {question.translationZhTw && lane === 1 && (
+                  <div>
+                    <p className="text-[10px] font-ibm-mono text-amber-700 tracking-wider uppercase mb-1">
+                      中文
+                    </p>
+                    <p className="text-sm text-[#2C3340]">{question.translationZhTw}</p>
+                  </div>
+                )}
+                {question.translationZhTw && lane === 2 && (
+                  <div>
+                    {showMandarin ? (
+                      <>
+                        <p className="text-[10px] font-ibm-mono text-amber-700 tracking-wider uppercase mb-1">
+                          中文
+                        </p>
+                        <p className="text-sm text-[#2C3340]">{question.translationZhTw}</p>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowMandarin(true)}
+                        className="text-xs text-amber-700 underline hover:text-amber-800"
+                      >
+                        Show 中文
+                      </button>
+                    )}
+                  </div>
+                )}
+                {/* Example sentence: Lane 1 + Lane 2 only. */}
+                {question.exampleSentence && lane !== 3 && (
+                  <div>
+                    <p className="text-[10px] font-ibm-mono text-amber-700 tracking-wider uppercase mb-1">
+                      Example
+                    </p>
+                    <p className="text-sm text-[#4B5563] italic leading-snug">
+                      {question.exampleSentence}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex items-center justify-end gap-2 pt-1">
               {!state.submitted ? (
                 <button
@@ -254,9 +361,12 @@ export default function RemediationModule({
               ) : (
                 <button
                   onClick={goNext}
-                  className="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 active:scale-95 transition-all"
+                  disabled={studyRemaining > 0}
+                  className="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-amber-700 active:scale-95 transition-all"
                 >
-                  {currentIdx < totalCount - 1 ? 'Next' : 'Finish'}
+                  {studyRemaining > 0
+                    ? `${currentIdx < totalCount - 1 ? 'Next' : 'Finish'} (${studyRemaining})`
+                    : currentIdx < totalCount - 1 ? 'Next' : 'Finish'}
                 </button>
               )}
             </div>
