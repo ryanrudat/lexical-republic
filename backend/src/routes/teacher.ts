@@ -9,6 +9,78 @@ import { io, getOnlineStudents, purgeOnlineStudent } from '../socketServer';
 import { findAlternative } from '../data/activityPool';
 import { getWeekConfig, getComplianceWordsByWeek } from '../data/week-configs';
 import { getNarrativeRoute } from '../data/narrative-routes';
+import { getCurrentWeekNumberForPair } from '../utils/progression';
+
+// ── Shared shape ───────────────────────────────────────────────────
+
+export interface ShiftStatus {
+  weekNumber: number;
+  weekTitle: string | null;
+  tasks: Array<{ id: string; label: string; complete: boolean }>;
+  currentTaskIndex: number;
+  totalTasks: number;
+  completedTasks: number;
+}
+
+/**
+ * Compute the current shift progress for a pair. Returns null if the pair has
+ * no active week (e.g. unfilled WeekConfig). Same logic that the
+ * GET /students/:id/shift-status route returns; extracted so the bulk
+ * /students list can include it without N round trips from the client.
+ */
+async function buildShiftStatusForPair(pairId: string): Promise<ShiftStatus | null> {
+  const weekNumber = await getCurrentWeekNumberForPair(pairId);
+
+  const week = await prisma.week.findFirst({
+    where: { weekNumber },
+    select: { id: true, title: true },
+  });
+  if (!week) return null;
+
+  const weekConfig = getWeekConfig(weekNumber);
+  const configTasks = weekConfig?.tasks ?? [];
+  if (configTasks.length === 0) return null;
+  const configTypes = new Set(configTasks.map(t => t.type as string));
+
+  const allMissions = await prisma.mission.findMany({
+    where: { weekId: week.id },
+    orderBy: { orderIndex: 'asc' },
+    select: { id: true, missionType: true },
+  });
+  const missions = allMissions.filter(m => configTypes.has(m.missionType));
+
+  const existingScores = await prisma.missionScore.findMany({
+    where: { pairId, missionId: { in: missions.map(m => m.id) } },
+    select: { missionId: true, details: true },
+  });
+  const scoreMap = new Map(existingScores.map(s => [s.missionId, s]));
+
+  const configTaskMap = new Map(missions.map(m => [m.missionType, m]));
+  const tasks = configTasks
+    .filter(t => configTaskMap.has(t.type as string))
+    .map(t => {
+      const mission = configTaskMap.get(t.type as string)!;
+      const score = scoreMap.get(mission.id);
+      const isComplete = score?.details &&
+        (score.details as Record<string, unknown>).status === 'complete';
+      return {
+        id: t.id,
+        label: t.label,
+        complete: !!isComplete,
+      };
+    });
+
+  const currentTaskIndex = tasks.findIndex(t => !t.complete);
+
+  return {
+    weekNumber,
+    weekTitle: week.title,
+    tasks,
+    currentTaskIndex,
+    totalTasks: tasks.length,
+    completedTasks: tasks.filter(t => t.complete).length,
+  };
+}
 
 const router = Router();
 router.use(authenticate, requireRole('teacher'));
@@ -123,6 +195,22 @@ router.get('/students', async (req: Request, res: Response) => {
       orderBy: { designation: 'asc' },
     });
 
+    // Compute current shift progress for every pair in parallel so the
+    // teacher dashboard can show "Shift X: Y/Z tasks done" on initial load
+    // without N round trips from the client. Failures are non-fatal — a pair
+    // missing progress just renders without the in-shift line.
+    const progressByPairId = new Map<string, ShiftStatus | null>();
+    await Promise.all(
+      pairs.map(async (p) => {
+        try {
+          progressByPairId.set(p.id, await buildShiftStatusForPair(p.id));
+        } catch (err) {
+          console.error(`Failed to compute shift progress for pair ${p.id}:`, err);
+          progressByPairId.set(p.id, null);
+        }
+      })
+    );
+
     const pairResults = pairs.map((p) => {
       // ShiftResult is the canonical completion record; fall back to
       // clock_out/shift_report MissionScore for legacy data
@@ -153,6 +241,7 @@ router.get('/students', async (req: Request, res: Response) => {
         classId: enrollment?.class.id ?? null,
         className: enrollment?.class.name ?? null,
         isPair: true,
+        currentShiftProgress: progressByPairId.get(p.id) ?? null,
       };
     });
 
@@ -1810,66 +1899,13 @@ router.get('/students/:studentId/shift-status', async (req: Request, res: Respon
       return;
     }
 
-    const { getCurrentWeekNumberForPair } = await import('../utils/progression');
-    const weekNumber = await getCurrentWeekNumberForPair(pairId);
-
-    const week = await prisma.week.findFirst({
-      where: { weekNumber },
-      select: { id: true, title: true },
-    });
-    if (!week) {
+    const status = await buildShiftStatusForPair(pairId);
+    if (!status) {
+      const weekNumber = await getCurrentWeekNumberForPair(pairId);
       res.json({ weekNumber, weekTitle: null, tasks: [], currentTaskIndex: -1, totalTasks: 0, completedTasks: 0 });
       return;
     }
-
-    // Use WeekConfig as the authoritative task list — the Mission table may
-    // contain legacy storyboard entries (recap, briefing, grammar, etc.) that
-    // aren't part of the actual student shift.
-    const weekConfig = getWeekConfig(weekNumber);
-    const configTasks = weekConfig?.tasks ?? [];
-    const configTypes = new Set(configTasks.map(t => t.type as string));
-
-    // Get only missions that match the current config's task types
-    const allMissions = await prisma.mission.findMany({
-      where: { weekId: week.id },
-      orderBy: { orderIndex: 'asc' },
-      select: { id: true, missionType: true, title: true, orderIndex: true },
-    });
-    const missions = allMissions.filter(m => configTypes.has(m.missionType));
-
-    // Get existing scores
-    const existingScores = await prisma.missionScore.findMany({
-      where: { pairId, missionId: { in: missions.map(m => m.id) } },
-      select: { missionId: true, details: true },
-    });
-    const scoreMap = new Map(existingScores.map(s => [s.missionId, s]));
-
-    // Build task list in WeekConfig order (not DB orderIndex) with labels from config
-    const configTaskMap = new Map(missions.map(m => [m.missionType, m]));
-    const tasks = configTasks
-      .filter(t => configTaskMap.has(t.type as string))
-      .map(t => {
-        const mission = configTaskMap.get(t.type as string)!;
-        const score = scoreMap.get(mission.id);
-        const isComplete = score?.details &&
-          (score.details as Record<string, unknown>).status === 'complete';
-        return {
-          id: t.id,
-          label: t.label,
-          complete: !!isComplete,
-        };
-      });
-
-    const currentTaskIndex = tasks.findIndex(t => !t.complete);
-
-    res.json({
-      weekNumber,
-      weekTitle: week.title,
-      tasks,
-      currentTaskIndex,
-      totalTasks: tasks.length,
-      completedTasks: tasks.filter(t => t.complete).length,
-    });
+    res.json(status);
   } catch (err) {
     console.error('Shift status error:', err);
     res.status(500).json({ error: 'Failed to get shift status' });
@@ -2321,6 +2357,9 @@ router.get('/remediation-events', async (req: Request, res: Response) => {
         clawedBack: r.clawedBack,
         triggeredAt: r.triggeredAt,
         completedAt: r.completedAt,
+        // Surfaced for the Gradebook drill-down: per-row question + result detail.
+        questions: r.questions,
+        results: r.results,
       })),
     });
   } catch (err) {

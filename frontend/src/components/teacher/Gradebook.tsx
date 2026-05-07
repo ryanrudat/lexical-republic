@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { Fragment, useEffect, useState, useCallback, useRef } from 'react';
 import {
   fetchGradebook,
   updateScore,
@@ -15,6 +15,8 @@ import type {
   GradebookShiftResult,
   AnswerLogEntry,
   RemediationEvent,
+  RemediationQuestion,
+  RemediationResultEntry,
 } from '../../api/teacher';
 import { STEP_ORDER } from '../../types/shifts';
 
@@ -1159,6 +1161,8 @@ function formatTriggeredAt(iso: string): string {
 }
 
 function RemediationEventsTable({ events }: { events: RemediationEvent[] }) {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
   if (events.length === 0) {
     return (
       <div className="bg-slate-50 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-400 italic">
@@ -1166,6 +1170,15 @@ function RemediationEventsTable({ events }: { events: RemediationEvent[] }) {
       </div>
     );
   }
+
+  const toggle = (id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   return (
     <div className="bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
@@ -1177,8 +1190,9 @@ function RemediationEventsTable({ events }: { events: RemediationEvent[] }) {
       <table className="w-full text-xs">
         <thead className="bg-white/40">
           <tr className="text-left text-[10px] uppercase tracking-wider text-slate-500">
-            <th className="px-3 py-1.5 font-medium w-[20%] font-mono">Time</th>
-            <th className="px-2 py-1.5 font-medium w-[35%]">Trigger</th>
+            <th className="px-2 py-1.5 font-medium w-[4%]"></th>
+            <th className="px-3 py-1.5 font-medium w-[18%] font-mono">Time</th>
+            <th className="px-2 py-1.5 font-medium w-[33%]">Trigger</th>
             <th className="px-2 py-1.5 font-medium w-[30%]">Score</th>
             <th className="px-2 py-1.5 font-medium w-[15%]">Clawback</th>
           </tr>
@@ -1186,43 +1200,127 @@ function RemediationEventsTable({ events }: { events: RemediationEvent[] }) {
         <tbody>
           {events.map((e) => {
             const incomplete = e.correctCount === null && e.completedAt === null;
+            const isOpen = expanded.has(e.id);
+            const hasQuestions = (e.questions?.length ?? 0) > 0;
             return (
-              <tr key={e.id} className="border-t border-slate-200/70 align-top">
-                <td className="px-3 py-1.5 text-slate-700 font-mono">
-                  {formatTriggeredAt(e.triggeredAt)}
-                </td>
-                <td className="px-2 py-1.5 text-slate-700">
-                  {TRIGGER_REASON_LABEL[e.triggerReason] ?? e.triggerReason}
-                </td>
-                <td className="px-2 py-1.5 text-slate-700">
-                  {incomplete ? (
-                    <>
-                      <span>—</span>
-                      <span className="ml-1 text-[10px] text-slate-400 italic">(incomplete)</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="font-mono">
-                        {e.correctCount ?? 0}/{e.totalCount}
-                      </span>
-                      {e.clawedBack && (
-                        <span className="ml-1 text-[10px] text-amber-600 italic">(clawed back)</span>
-                      )}
-                    </>
-                  )}
-                </td>
-                <td className="px-2 py-1.5 text-slate-700">
-                  {e.clawedBack ? (
-                    <span className="text-emerald-600">✓</span>
-                  ) : (
-                    <span className="text-slate-300">—</span>
-                  )}
-                </td>
-              </tr>
+              <Fragment key={e.id}>
+                <tr
+                  className={`border-t border-slate-200/70 align-top ${hasQuestions ? 'cursor-pointer hover:bg-white/40' : ''}`}
+                  onClick={hasQuestions ? () => toggle(e.id) : undefined}
+                >
+                  <td className="px-2 py-1.5 text-slate-400 text-center">
+                    {hasQuestions ? (isOpen ? '▼' : '▶') : ''}
+                  </td>
+                  <td className="px-3 py-1.5 text-slate-700 font-mono">
+                    {formatTriggeredAt(e.triggeredAt)}
+                  </td>
+                  <td className="px-2 py-1.5 text-slate-700">
+                    {TRIGGER_REASON_LABEL[e.triggerReason] ?? e.triggerReason}
+                  </td>
+                  <td className="px-2 py-1.5 text-slate-700">
+                    {incomplete ? (
+                      <>
+                        <span>—</span>
+                        <span className="ml-1 text-[10px] text-slate-400 italic">(incomplete)</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-mono">
+                          {e.correctCount ?? 0}/{e.totalCount}
+                        </span>
+                        {e.clawedBack && (
+                          <span className="ml-1 text-[10px] text-amber-600 italic">(clawed back)</span>
+                        )}
+                      </>
+                    )}
+                  </td>
+                  <td className="px-2 py-1.5 text-slate-700">
+                    {e.clawedBack ? (
+                      <span className="text-emerald-600">✓</span>
+                    ) : (
+                      <span className="text-slate-300">—</span>
+                    )}
+                  </td>
+                </tr>
+                {isOpen && hasQuestions && (
+                  <tr className="border-t border-slate-200/70 bg-white/40">
+                    <td></td>
+                    <td colSpan={4} className="px-3 py-2">
+                      <RemediationQuestionsPanel
+                        questions={e.questions ?? []}
+                        results={e.results ?? null}
+                      />
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
             );
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function RemediationQuestionsPanel({
+  questions,
+  results,
+}: {
+  questions: RemediationQuestion[];
+  results: RemediationResultEntry[] | null;
+}) {
+  // Map word → correct/incorrect for quick lookup. Missing word = unanswered.
+  const resultByWord = new Map(
+    (results ?? []).map((r) => [r.word.toLowerCase(), r.correct]),
+  );
+
+  return (
+    <div className="space-y-3">
+      {questions.map((q, idx) => {
+        const wordKey = q.word.toLowerCase();
+        const status = resultByWord.has(wordKey)
+          ? resultByWord.get(wordKey)
+            ? 'correct'
+            : 'incorrect'
+          : 'unanswered';
+        return (
+          <div
+            key={`${q.word}-${idx}`}
+            className="rounded-md border border-slate-200 bg-white p-2.5"
+          >
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
+                Q{idx + 1}
+              </span>
+              <span className="text-sm font-mono text-slate-800">{q.word}</span>
+              {status === 'correct' && (
+                <span className="text-[10px] text-emerald-600 ml-auto">✓ correct</span>
+              )}
+              {status === 'incorrect' && (
+                <span className="text-[10px] text-rose-600 ml-auto">✗ incorrect</span>
+              )}
+              {status === 'unanswered' && (
+                <span className="text-[10px] text-slate-400 italic ml-auto">no response</span>
+              )}
+            </div>
+            <ul className="space-y-1">
+              <li className="flex items-start gap-2 text-[11px]">
+                <span className="text-emerald-600 mt-0.5">●</span>
+                <span className="text-slate-700">{q.correctDefinition}</span>
+              </li>
+              {q.distractors.map((d, di) => (
+                <li
+                  key={di}
+                  className="flex items-start gap-2 text-[11px] text-slate-500"
+                >
+                  <span className="text-slate-300 mt-0.5">●</span>
+                  <span>{d}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
     </div>
   );
 }
