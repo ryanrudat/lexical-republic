@@ -186,7 +186,10 @@ router.get('/has-new', async (req, res) => {
         ...getClassFilter(viewer.accessibleClassIds),
         status: 'approved',
         parentId: null,
-        createdAt: { gt: pair.lastHarmonyVisit },
+        // ingestedAt is the real insert time. createdAt is intentionally
+        // backdated by staggeredCreatedAt() for narrative texture, so it
+        // can't be trusted to detect newly-arrived content.
+        ingestedAt: { gt: pair.lastHarmonyVisit },
       },
     });
     res.json({ hasNew: count > 0 });
@@ -465,7 +468,7 @@ router.get('/posts', async (req, res) => {
         weekNumber: post.weekNumber,
         postType: post.postType,
         bulletinData: post.bulletinData ?? null,
-        isNew: lastVisit ? post.createdAt > lastVisit : false,
+        isNew: lastVisit ? post.ingestedAt > lastVisit : false,
       })),
       ...reviewContext,
     });
