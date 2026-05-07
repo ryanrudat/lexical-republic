@@ -57,6 +57,10 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
 
   // Teacher review trail — one entry per item appended as it's finalized.
   const answerLogRef = useRef<TaskAnswerLogEntry[]>([]);
+  // Captures the FIRST wrong option the student picked on the current item,
+  // so when they recover (eventually pick correctly), the answer log shows
+  // the actual confusion instead of the canonical correct text.
+  const firstWrongTextRef = useRef<string | null>(null);
 
   const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -79,6 +83,7 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
       setShowResult(false);
       setEliminatedOptions(new Set());
       setAttempt(1);
+      firstWrongTextRef.current = null;
     } else {
       const score = total > 0 ? finalCorrectCount / total : 1;
       onComplete(score, {
@@ -107,12 +112,19 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
       const chosenText = item.options[optionIndex];
 
       if (isCorrect) {
+        const wasFirstTry = attempt === 1;
+        // If they got it right after a wrong attempt, log THAT wrong pick as
+        // `chosen` so teachers see the actual confusion. First-try-correct
+        // rows show the canonical correct text (which is what they picked).
+        const loggedChosen = wasFirstTry
+          ? chosenText
+          : (firstWrongTextRef.current ?? chosenText);
         answerLogRef.current.push({
           questionId,
           prompt: item.question,
-          chosen: chosenText,
+          chosen: loggedChosen,
           correct: correctText,
-          wasCorrect: attempt === 1,
+          wasCorrect: wasFirstTry,
           attempts: attempt,
         });
         setShowResult(true);
@@ -120,7 +132,11 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
         setCorrectCount(newCount);
         advanceTimerRef.current = setTimeout(() => advanceToNext(newCount), 1200);
       } else if (attempt < maxAttempts) {
-        // Still has attempts left — eliminate wrong option, let them retry
+        // Still has attempts left — eliminate wrong option, let them retry.
+        // Capture the FIRST wrong pick so the answer log can surface it on recovery.
+        if (firstWrongTextRef.current === null) {
+          firstWrongTextRef.current = chosenText;
+        }
         setShowResult(true);
         // Tier 1: only add concern on final miss; Tier 2/3: every miss
         if (lane !== 1) addConcern(0.05);
@@ -131,11 +147,13 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
           setAttempt(prev => prev + 1);
         }, 800);
       } else {
-        // Final attempt missed — lock and advance
+        // Final attempt missed — lock and advance. Prefer the FIRST wrong pick
+        // (what they confused first) over the final wrong pick when both exist.
+        const loggedChosen = firstWrongTextRef.current ?? chosenText;
         answerLogRef.current.push({
           questionId,
           prompt: item.question,
-          chosen: chosenText,
+          chosen: loggedChosen,
           correct: correctText,
           wasCorrect: false,
           attempts: attempt,
