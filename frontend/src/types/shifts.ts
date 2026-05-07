@@ -105,6 +105,15 @@ export interface StudentSummary {
   lastLoginAt: string | null;
   classId?: string | null;
   className?: string | null;
+  /** Server-provided initial shift progress so the in-shift line renders without a click. */
+  currentShiftProgress?: {
+    weekNumber: number;
+    weekTitle: string | null;
+    tasks: Array<{ id: string; label: string; complete: boolean }>;
+    currentTaskIndex: number;
+    totalTasks: number;
+    completedTasks: number;
+  } | null;
 }
 
 export type MasteryState = 'new' | 'learning' | 'practicing' | 'mastered' | 'struggling';

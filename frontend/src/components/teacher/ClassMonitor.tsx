@@ -312,7 +312,9 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
       ...s,
       online: onlineStudents.get(s.id) ?? null,
       lastKnown: lastKnownStatus.get(s.id) ?? null,
-      offlineShift: offlineStatus.get(s.id) ?? null,
+      // Prefer freshly-fetched data (after a click or task command) over the
+      // server's initial snapshot. Both have the same shape.
+      offlineShift: offlineStatus.get(s.id) ?? s.currentShiftProgress ?? null,
     }))
     .sort((a, b) => {
       if (a.online && !b.online) return -1;
