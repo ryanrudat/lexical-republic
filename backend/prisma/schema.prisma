@@ -486,6 +486,7 @@ model HarmonyPost {
   bulletinData Json?
   isGenerated  Boolean       @default(false)
   createdAt   DateTime      @default(now())
+  ingestedAt  DateTime      @default(now())
 
   censureResponses HarmonyCensureResponse[]
 
