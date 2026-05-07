@@ -6,7 +6,7 @@
     "dev": "tsx watch src/index.ts",
     "prebuild": "vitest run",
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "npx prisma migrate deploy && node dist/index.js",
     "seed": "tsx prisma/seed.ts",
     "db:migrate": "npx prisma migrate dev",
     "db:generate": "npx prisma generate",
