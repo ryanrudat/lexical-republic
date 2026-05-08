@@ -27,7 +27,7 @@ interface Props {
 function placementLabel(slot: PlacementSlot): string {
   if (slot.kind === 'shift_start') return 'Before shift starts';
   if (slot.kind === 'shift_end') return 'At shift end';
-  return `Before ${slot.afterTaskLabel}`;
+  return `After ${slot.afterTaskLabel}`;
 }
 
 function shuffle<T>(arr: T[]): T[] {

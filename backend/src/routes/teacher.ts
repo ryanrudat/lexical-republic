@@ -86,7 +86,10 @@ router.get('/students', async (req: Request, res: Response) => {
     const pairs = await prisma.pair.findMany({
       where: { enrollments: { some: { classId: { in: filterClassIds } } } },
       include: {
-        shiftResults: { select: { weekNumber: true } },
+        shiftResults: {
+          where: { completedAt: { not: null } },
+          select: { weekNumber: true },
+        },
         missionScores: {
           include: {
             mission: { select: { weekId: true, missionType: true } },
@@ -1356,6 +1359,7 @@ router.get('/weeks/:weekId/storyboard', async (req: Request, res: Response) => {
         orderIndex: idx,
         missionId: mission?.id || null,
         missionType: task.type,
+        taskId: task.id,
         label: task.label,
         icon: TASK_ICONS[task.type] || '\uD83D\uDCCB',
         location: task.location,
