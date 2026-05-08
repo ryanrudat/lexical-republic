@@ -103,6 +103,8 @@ export interface StudentSummary {
   streak: number;
   weeksCompleted: number;
   lastLoginAt: string | null;
+  /** Updated on every authenticated request (throttled to 60s). Survives backend restarts. */
+  lastSeenAt?: string | null;
   classId?: string | null;
   className?: string | null;
   /** Server-provided initial shift progress so the in-shift line renders without a click. */
