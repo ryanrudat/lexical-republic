@@ -1,7 +1,7 @@
 {
   "headers": [
     {
-      "source": "**/index.html",
+      "source": "**/@(index.html|version.json)",
       "headers": [
         {
           "key": "Cache-Control",
