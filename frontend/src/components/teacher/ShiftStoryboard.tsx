@@ -8,6 +8,14 @@ import {
   setTaskGates,
 } from '../../api/teacher';
 import type { StoryboardData, StoryboardStep } from '../../api/teacher';
+import {
+  listComplianceTemplates,
+  type ComplianceCheckTemplate,
+} from '../../api/compliance-check';
+import ComplianceCheckEditor, {
+  type PlacementSlot,
+} from './compliance-check/ComplianceCheckEditor';
+import ComplianceCheckMarker from './compliance-check/ComplianceCheckMarker';
 import { resolveUploadUrl } from '../../api/client';
 import MonitorPlayer from '../shared/MonitorPlayer';
 
@@ -57,6 +65,11 @@ export default function ShiftStoryboard({ weekId, classId }: ShiftStoryboardProp
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeGates, setActiveGates] = useState<number[]>([]);
   const [gateLoading, setGateLoading] = useState(false);
+  const [complianceTemplates, setComplianceTemplates] = useState<ComplianceCheckTemplate[]>([]);
+  const [editingCompliance, setEditingCompliance] = useState<{
+    slot: PlacementSlot;
+    existing: ComplianceCheckTemplate | null;
+  } | null>(null);
 
   const load = useCallback(async () => {
     if (!weekId) return;
@@ -86,6 +99,48 @@ export default function ShiftStoryboard({ weekId, classId }: ShiftStoryboardProp
       setActiveGates([]);
     }
   }, [classId, weekId]);
+
+  // Fetch Compliance Check templates for this class + shift
+  const reloadComplianceTemplates = useCallback(async () => {
+    if (!classId || !data?.weekNumber) {
+      setComplianceTemplates([]);
+      return;
+    }
+    try {
+      const res = await listComplianceTemplates(classId, data.weekNumber);
+      setComplianceTemplates(
+        res.templates.filter(t => t.weekNumber === data.weekNumber),
+      );
+    } catch {
+      setComplianceTemplates([]);
+    }
+  }, [classId, data?.weekNumber]);
+
+  useEffect(() => {
+    void reloadComplianceTemplates();
+  }, [reloadComplianceTemplates]);
+
+  const findCompliance = useCallback(
+    (
+      placement: 'shift_start' | 'shift_end' | 'after_task',
+      afterTaskId: string | null,
+    ): ComplianceCheckTemplate | null => {
+      return (
+        complianceTemplates.find(
+          t =>
+            t.placement === placement &&
+            (placement === 'after_task' ? t.afterTaskId === afterTaskId : true),
+        ) ?? null
+      );
+    },
+    [complianceTemplates],
+  );
+
+  const slotLabel = (slot: PlacementSlot): string => {
+    if (slot.kind === 'shift_start') return 'Before shift starts';
+    if (slot.kind === 'shift_end') return 'At shift end';
+    return `After ${slot.afterTaskLabel}`;
+  };
 
   const handleToggleGate = async (index: number) => {
     if (!classId) return;
@@ -307,6 +362,20 @@ export default function ShiftStoryboard({ weekId, classId }: ShiftStoryboardProp
         </div>
       )}
 
+      {/* Compliance Check before first step (shift_start) */}
+      {classId && (
+        <ComplianceCheckMarker
+          label={slotLabel({ kind: 'shift_start' })}
+          template={findCompliance('shift_start', null)}
+          onClick={() =>
+            setEditingCompliance({
+              slot: { kind: 'shift_start' },
+              existing: findCompliance('shift_start', null),
+            })
+          }
+        />
+      )}
+
       {/* Gate at position 0 — before first step */}
       {classId && (
         <GateMarker
@@ -317,29 +386,71 @@ export default function ShiftStoryboard({ weekId, classId }: ShiftStoryboardProp
         />
       )}
 
-      {data.steps.map((step, i) => (
-        <div key={step.missionType}>
-          <StoryboardCard
-            step={step}
-            saved={savedStep === step.missionType}
-            onRemoveVideo={() => handleRemoveVideo(step)}
-            onUploadVideo={(file) => handleUploadStepVideo(step, file)}
-            onEmbedUrlChange={(url) => handleEmbedUrlChange(step, url)}
-            onToggleHidden={(hidden) => handleToggleHidden(step, hidden)}
-            onUploadDismissalVideo={(file) => handleUploadDismissalVideo(step, file)}
-            onRemoveDismissalVideo={() => handleRemoveDismissalVideo(step)}
-          />
-          {/* Gate insertion point between steps */}
-          {classId && i < data.steps.length - 1 && (
-            <GateMarker
-              index={i + 1}
-              isActive={activeGates.includes(i + 1)}
-              disabled={gateLoading}
-              onToggle={() => handleToggleGate(i + 1)}
+      {data.steps.map((step, i) => {
+        const slot: PlacementSlot = {
+          kind: 'after_task',
+          afterTaskId: step.taskId,
+          afterTaskLabel: step.label,
+        };
+        const tpl = findCompliance('after_task', step.taskId);
+        return (
+          <div key={step.missionType}>
+            <StoryboardCard
+              step={step}
+              saved={savedStep === step.missionType}
+              onRemoveVideo={() => handleRemoveVideo(step)}
+              onUploadVideo={(file) => handleUploadStepVideo(step, file)}
+              onEmbedUrlChange={(url) => handleEmbedUrlChange(step, url)}
+              onToggleHidden={(hidden) => handleToggleHidden(step, hidden)}
+              onUploadDismissalVideo={(file) => handleUploadDismissalVideo(step, file)}
+              onRemoveDismissalVideo={() => handleRemoveDismissalVideo(step)}
             />
-          )}
-        </div>
-      ))}
+            {/* Compliance Check after this task */}
+            {classId && (
+              <ComplianceCheckMarker
+                label={slotLabel(slot)}
+                template={tpl}
+                onClick={() => setEditingCompliance({ slot, existing: tpl })}
+              />
+            )}
+            {/* Gate insertion point between steps */}
+            {classId && i < data.steps.length - 1 && (
+              <GateMarker
+                index={i + 1}
+                isActive={activeGates.includes(i + 1)}
+                disabled={gateLoading}
+                onToggle={() => handleToggleGate(i + 1)}
+              />
+            )}
+          </div>
+        );
+      })}
+
+      {/* Compliance Check at shift end */}
+      {classId && (
+        <ComplianceCheckMarker
+          label={slotLabel({ kind: 'shift_end' })}
+          template={findCompliance('shift_end', null)}
+          onClick={() =>
+            setEditingCompliance({
+              slot: { kind: 'shift_end' },
+              existing: findCompliance('shift_end', null),
+            })
+          }
+        />
+      )}
+
+      {classId && data?.weekNumber && editingCompliance && (
+        <ComplianceCheckEditor
+          classId={classId}
+          weekNumber={data.weekNumber}
+          slot={editingCompliance.slot}
+          existing={editingCompliance.existing}
+          onSaved={() => void reloadComplianceTemplates()}
+          onDeleted={() => void reloadComplianceTemplates()}
+          onClose={() => setEditingCompliance(null)}
+        />
+      )}
     </div>
   );
 }

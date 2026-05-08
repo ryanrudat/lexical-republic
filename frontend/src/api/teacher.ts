@@ -648,6 +648,7 @@ export interface StoryboardStep {
   orderIndex: number;
   missionId: string | null;
   missionType: string;
+  taskId: string;
   label: string;
   icon: string;
   location: string;
