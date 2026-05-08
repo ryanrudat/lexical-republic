@@ -13,6 +13,18 @@ interface ThreadEntry {
 const router = Router();
 router.use(authenticate);
 
+/**
+ * Returns true if the pair belongs to one of the teacher's classes.
+ * Used to gate teacher-side endpoints from cross-tenant access.
+ */
+async function teacherOwnsPair(teacherId: string, pairId: string): Promise<boolean> {
+  const enr = await prisma.classEnrollment.findFirst({
+    where: { pairId, class: { teacherId } },
+    select: { id: true },
+  });
+  return Boolean(enr);
+}
+
 // GET /api/messages — List character messages for the authenticated pair
 router.get('/', async (req: Request, res: Response) => {
   try {
@@ -149,10 +161,11 @@ router.post('/direct', async (req: Request, res: Response) => {
       return;
     }
 
-    // Validate pairId exists
-    const pair = await prisma.pair.findUnique({ where: { id: pairId } });
-    if (!pair) {
-      res.status(404).json({ error: 'Student not found' });
+    // Cross-tenant guard: teacher must own the student's class.
+    // Also implicitly handles non-existent pairs (no enrollment row) without
+    // leaking a 404-vs-403 oracle that would reveal pair existence across tenants.
+    if (!(await teacherOwnsPair(teacherId, pairId))) {
+      res.status(403).json({ error: 'Not authorized to message this student' });
       return;
     }
 
@@ -189,6 +202,12 @@ router.get('/direct/:pairId', async (req: Request, res: Response) => {
       return;
     }
     const pairId = req.params.pairId as string;
+
+    // Cross-tenant guard: teacher must own the student's class
+    if (!(await teacherOwnsPair(teacherId, pairId))) {
+      res.status(403).json({ error: 'Not authorized to view messages for this student' });
+      return;
+    }
 
     const messages = await prisma.characterMessage.findMany({
       where: { pairId, replyType: 'thread' },
@@ -238,6 +257,15 @@ router.post('/:id/thread', async (req: Request, res: Response) => {
       // Auth check: student must own the message
       if (!isTeacher && msg.pairId !== pairId) return null;
 
+      // Cross-tenant guard: teacher must own the student's class
+      if (isTeacher && teacherId) {
+        const owns = await tx.classEnrollment.findFirst({
+          where: { pairId: msg.pairId, class: { teacherId } },
+          select: { id: true },
+        });
+        if (!owns) throw new Error('NOT_OWNER');
+      }
+
       // Must be a thread-type message
       if (msg.replyType !== 'thread') return null;
 
@@ -272,12 +300,18 @@ router.post('/:id/thread', async (req: Request, res: Response) => {
     const entry = thread[thread.length - 1];
 
     if (!isTeacher) {
-      // Student sent — notify teacher
-      io.to('teacher').emit('teacher:clarity-reply', {
-        messageId: id,
-        pairId: message.pairId,
-        entry,
+      // Student sent — notify teacher (per-class room)
+      const enr = await prisma.classEnrollment.findFirst({
+        where: { pairId: message.pairId },
+        select: { classId: true },
       });
+      if (enr?.classId) {
+        io.to(`class:${enr.classId}`).emit('teacher:clarity-reply', {
+          messageId: id,
+          pairId: message.pairId,
+          entry,
+        });
+      }
     } else {
       // Teacher sent — notify student
       io.to(`student:${message.pairId}`).emit('session:clarity-message', {
@@ -290,6 +324,10 @@ router.post('/:id/thread', async (req: Request, res: Response) => {
   } catch (err) {
     if (err instanceof Error && err.message === 'THREAD_CAP') {
       res.status(400).json({ error: 'Thread has reached the maximum of 50 messages' });
+      return;
+    }
+    if (err instanceof Error && err.message === 'NOT_OWNER') {
+      res.status(403).json({ error: 'Not authorized to append to this thread' });
       return;
     }
     console.error('Thread append error:', err);

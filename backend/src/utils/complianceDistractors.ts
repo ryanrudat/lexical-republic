@@ -4,6 +4,12 @@ export interface ComplianceQuestion {
   word: string;
   correctDefinition: string;
   distractors: string[];
+  /** IPA pronunciation, displayed on study cards (lane-aware). */
+  phonetic?: string;
+  /** Mandarin gloss for Lane 1 / Lane 2 study cards; null for Lane 3. */
+  translationZhTw?: string | null;
+  /** Example sentence shown on Lane 1 / Lane 2 study cards. */
+  exampleSentence?: string;
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -42,7 +48,13 @@ export async function buildComplianceQuestions(
 
   const targetRows = await prisma.dictionaryWord.findMany({
     where: { word: { in: targetWords } },
-    select: { word: true, definition: true },
+    select: {
+      word: true,
+      definition: true,
+      phonetic: true,
+      translationZhTw: true,
+      exampleSentence: true,
+    },
   });
 
   const selectedSet = new Set(cleaned);
@@ -61,10 +73,22 @@ export async function buildComplianceQuestions(
       .filter((d): d is string => typeof d === 'string' && d.trim().length > 0),
   );
 
-  const defByWord = new Map<string, string>();
+  type EnrichedRow = {
+    definition: string;
+    phonetic?: string;
+    translationZhTw?: string | null;
+    exampleSentence?: string;
+  };
+  const rowByWord = new Map<string, EnrichedRow>();
   for (const r of targetRows) {
-    if (r.definition && !defByWord.has(r.word.toLowerCase())) {
-      defByWord.set(r.word.toLowerCase(), r.definition);
+    const key = r.word.toLowerCase();
+    if (r.definition && !rowByWord.has(key)) {
+      rowByWord.set(key, {
+        definition: r.definition,
+        phonetic: r.phonetic ?? undefined,
+        translationZhTw: r.translationZhTw,
+        exampleSentence: r.exampleSentence ?? undefined,
+      });
     }
   }
 
@@ -72,8 +96,9 @@ export async function buildComplianceQuestions(
   let distractorIdx = 0;
 
   for (const word of targetWords) {
-    const correctDef = defByWord.get(word.toLowerCase());
-    if (!correctDef) continue;
+    const row = rowByWord.get(word.toLowerCase());
+    if (!row) continue;
+    const correctDef = row.definition;
 
     const distractors: string[] = [];
     while (distractors.length < 3 && distractorIdx < distractorDefs.length) {
@@ -84,7 +109,14 @@ export async function buildComplianceQuestions(
     }
     if (distractors.length < 2) continue;
 
-    questions.push({ word, correctDefinition: correctDef, distractors });
+    questions.push({
+      word,
+      correctDefinition: correctDef,
+      distractors,
+      phonetic: row.phonetic,
+      translationZhTw: row.translationZhTw,
+      exampleSentence: row.exampleSentence,
+    });
   }
 
   // Suppress unused-warning while keeping the variable readable

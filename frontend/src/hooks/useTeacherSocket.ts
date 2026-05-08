@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { connectSocket, disconnectSocket, getSocket, onSocketStatus } from '../utils/socket';
+import { connectSocket, getSocket, onSocketStatus } from '../utils/socket';
 import { useTeacherStore } from '../stores/teacherStore';
 import type { OnlineStudent } from '../stores/teacherStore';
 import type { ThreadEntry } from '../types/shiftQueue';
@@ -75,6 +75,7 @@ export function useTeacherSocket() {
       setSocketStatus(status, error);
     });
 
+    // Per-handler off() only — never call disconnectSocket() here. The socket is a shared singleton; destroying it wipes App.tsx listeners.
     return () => {
       const s = getSocket();
       if (s) {
@@ -89,7 +90,6 @@ export function useTeacherSocket() {
         s.off('student:remediation-fired', onRemediationFired);
       }
       unsubStatus();
-      disconnectSocket();
     };
   }, [setClassSnapshot, upsertStudent, removeStudent, purgeStudent, setSocketStatus, bumpRegistrationTick, setClassPaused, appendClarityEntry, bumpClarityReplyTick, incrementRemediation]);
 }

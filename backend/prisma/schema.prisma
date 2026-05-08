@@ -53,6 +53,7 @@ model User {
   xp            Int       @default(0)
   streak        Int       @default(0)
   lastLoginAt   DateTime?
+  lastSeenAt    DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -82,6 +83,7 @@ model Pair {
   concernScore  Float     @default(0)
   hasWatchedWelcome Boolean @default(false)
   lastLoginAt   DateTime?
+  lastSeenAt    DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -104,6 +106,7 @@ model Pair {
   censureResponses       HarmonyCensureResponse[]
   shiftResults           ShiftResult[]
   complianceCheckResults ComplianceCheckResult[]
+  clarityCheckResults    ClarityCheckResult[]
   remediationResults     RemediationModuleResult[]
 
   @@map("pairs")
@@ -199,6 +202,24 @@ model ComplianceCheckResult {
   @@index([classId, weekIssued])
   @@index([templateId])
   @@map("compliance_check_results")
+}
+
+model ClarityCheckResult {
+  id            String    @id @default(cuid())
+  pairId        String
+  pair          Pair      @relation(fields: [pairId], references: [id], onDelete: Cascade)
+  checkId       String
+  weekNumber    Int
+  totalCount    Int       @default(0)
+  correctCount  Int       @default(0)
+  startedAt     DateTime  @default(now())
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([pairId, checkId])
+  @@index([pairId])
+  @@map("clarity_check_results")
 }
 
 model RemediationModuleResult {
@@ -467,6 +488,7 @@ model HarmonyPost {
   bulletinData Json?
   isGenerated  Boolean       @default(false)
   createdAt   DateTime      @default(now())
+  ingestedAt  DateTime      @default(now())
 
   censureResponses HarmonyCensureResponse[]
 

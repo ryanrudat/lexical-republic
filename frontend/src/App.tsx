@@ -19,12 +19,20 @@ import { useHarmonyStore } from './stores/harmonyStore';
 import { useViewStore } from './stores/viewStore';
 import ComplianceCheckPreview from './pages/ComplianceCheckPreview';
 import RemediationOverlay from './components/remediation/RemediationOverlay';
+import RemediationDevTrigger from './components/dev/RemediationDevTrigger';
+import UpdateBanner from './components/system/UpdateBanner';
+import { useUpdateChecker } from './hooks/useUpdateChecker';
 
 export default function App() {
   const { user, loading, refresh } = useStudentStore();
   const [, forceBootRefresh] = useState(0);
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Polls /version.json every 5 min + on tab focus. Flips updateAvailable
+  // when the deployed build differs from the running one. UpdateBanner reads
+  // the flag and renders at top of screen.
+  useUpdateChecker();
 
   useEffect(() => {
     refresh();
@@ -260,6 +268,9 @@ export default function App() {
           useSessionStore.activeRemediation is set; guards on student role to avoid
           mounting in teacher dashboard. */}
       {user.role === 'student' && <RemediationOverlay />}
+      {user.role === 'student' && import.meta.env.DEV && <RemediationDevTrigger />}
+      {/* New-version banner. Self-gates on `updateAvailable` from updateStore. */}
+      <UpdateBanner />
     </>
   );
 }

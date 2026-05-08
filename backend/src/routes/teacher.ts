@@ -9,9 +9,104 @@ import { io, getOnlineStudents, purgeOnlineStudent } from '../socketServer';
 import { findAlternative } from '../data/activityPool';
 import { getWeekConfig, getComplianceWordsByWeek } from '../data/week-configs';
 import { getNarrativeRoute } from '../data/narrative-routes';
+import { getCurrentWeekNumberForPair } from '../utils/progression';
+
+// ── Shared shape ───────────────────────────────────────────────────
+
+export interface ShiftStatus {
+  weekNumber: number;
+  weekTitle: string | null;
+  tasks: Array<{ id: string; label: string; complete: boolean }>;
+  currentTaskIndex: number;
+  totalTasks: number;
+  completedTasks: number;
+}
+
+/**
+ * Compute the current shift progress for a pair. Returns null if the pair has
+ * no active week (e.g. unfilled WeekConfig). Same logic that the
+ * GET /students/:id/shift-status route returns; extracted so the bulk
+ * /students list can include it without N round trips from the client.
+ */
+async function buildShiftStatusForPair(pairId: string): Promise<ShiftStatus | null> {
+  const weekNumber = await getCurrentWeekNumberForPair(pairId);
+
+  const week = await prisma.week.findFirst({
+    where: { weekNumber },
+    select: { id: true, title: true },
+  });
+  if (!week) return null;
+
+  const weekConfig = getWeekConfig(weekNumber);
+  const configTasks = weekConfig?.tasks ?? [];
+  if (configTasks.length === 0) return null;
+  const configTypes = new Set(configTasks.map(t => t.type as string));
+
+  const allMissions = await prisma.mission.findMany({
+    where: { weekId: week.id },
+    orderBy: { orderIndex: 'asc' },
+    select: { id: true, missionType: true },
+  });
+  const missions = allMissions.filter(m => configTypes.has(m.missionType));
+
+  const existingScores = await prisma.missionScore.findMany({
+    where: { pairId, missionId: { in: missions.map(m => m.id) } },
+    select: { missionId: true, details: true },
+  });
+  const scoreMap = new Map(existingScores.map(s => [s.missionId, s]));
+
+  const configTaskMap = new Map(missions.map(m => [m.missionType, m]));
+  const tasks = configTasks
+    .filter(t => configTaskMap.has(t.type as string))
+    .map(t => {
+      const mission = configTaskMap.get(t.type as string)!;
+      const score = scoreMap.get(mission.id);
+      const isComplete = score?.details &&
+        (score.details as Record<string, unknown>).status === 'complete';
+      return {
+        id: t.id,
+        label: t.label,
+        complete: !!isComplete,
+      };
+    });
+
+  const currentTaskIndex = tasks.findIndex(t => !t.complete);
+
+  return {
+    weekNumber,
+    weekTitle: week.title,
+    tasks,
+    currentTaskIndex,
+    totalTasks: tasks.length,
+    completedTasks: tasks.filter(t => t.complete).length,
+  };
+}
 
 const router = Router();
 router.use(authenticate, requireRole('teacher'));
+
+// ── JSON details merge ────────────────────────────────────────────
+// Mirror of `mergeDetails` in shifts.ts / submissions.ts. When two endpoints
+// upsert the same MissionScore.details JSON blob, a plain `update: { details }`
+// REPLACES the field — silently destroying writingText / pearlFeedback / answerLog
+// stored by the other endpoint. mergeDetails preserves existing keys and refuses
+// to let an incoming empty string overwrite a non-empty stored string.
+function mergeDetails(
+  existing: Record<string, unknown>,
+  incoming: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...existing };
+  for (const [key, value] of Object.entries(incoming)) {
+    if (typeof value === 'string' && value.length === 0) {
+      const existingVal = out[key];
+      if (typeof existingVal === 'string' && existingVal.length > 0) {
+        continue;
+      }
+    }
+    out[key] = value;
+  }
+  return out;
+}
 
 // ── Ownership helpers ──────────────────────────────────────────────
 
@@ -103,6 +198,22 @@ router.get('/students', async (req: Request, res: Response) => {
       orderBy: { designation: 'asc' },
     });
 
+    // Compute current shift progress for every pair in parallel so the
+    // teacher dashboard can show "Shift X: Y/Z tasks done" on initial load
+    // without N round trips from the client. Failures are non-fatal — a pair
+    // missing progress just renders without the in-shift line.
+    const progressByPairId = new Map<string, ShiftStatus | null>();
+    await Promise.all(
+      pairs.map(async (p) => {
+        try {
+          progressByPairId.set(p.id, await buildShiftStatusForPair(p.id));
+        } catch (err) {
+          console.error(`Failed to compute shift progress for pair ${p.id}:`, err);
+          progressByPairId.set(p.id, null);
+        }
+      })
+    );
+
     const pairResults = pairs.map((p) => {
       // ShiftResult is the canonical completion record; fall back to
       // clock_out/shift_report MissionScore for legacy data
@@ -130,9 +241,11 @@ router.get('/students', async (req: Request, res: Response) => {
         concernScore: p.concernScore,
         weeksCompleted: completedWeeks.size,
         lastLoginAt: p.lastLoginAt,
+        lastSeenAt: p.lastSeenAt,
         classId: enrollment?.class.id ?? null,
         className: enrollment?.class.name ?? null,
         isPair: true,
+        currentShiftProgress: progressByPairId.get(p.id) ?? null,
       };
     });
 
@@ -176,6 +289,7 @@ router.get('/students', async (req: Request, res: Response) => {
         concernScore: 0,
         weeksCompleted: clockedOutWeeks.size,
         lastLoginAt: s.lastLoginAt,
+        lastSeenAt: s.lastSeenAt,
         classId: enrollment?.class.id ?? null,
         className: enrollment?.class.name ?? null,
         isPair: false,
@@ -953,14 +1067,40 @@ router.patch('/scores/:scoreId', async (req: Request, res: Response) => {
     }
 
     const { score, details } = req.body;
-    const updateData: Record<string, unknown> = {};
-    if (typeof score === 'number') updateData.score = score;
-    if (details !== undefined) updateData.details = details;
+    const hasScore = typeof score === 'number';
+    const hasDetails = details !== undefined;
 
-    const result = await prisma.missionScore.update({
-      where: { id: scoreId },
-      data: updateData,
+    // Merge incoming details on top of existing rather than replace, so a
+    // teacher edit that only sends a score adjustment doesn't wipe writingText
+    // / answerLog / pearlFeedback the student tasks already wrote.
+    const result = await prisma.$transaction(async (tx) => {
+      let mergedDetails: Record<string, unknown> | undefined;
+      if (hasDetails) {
+        const existing = await tx.missionScore.findUnique({
+          where: { id: scoreId },
+          select: { details: true },
+        });
+        const existingDetails =
+          existing?.details && typeof existing.details === 'object' && !Array.isArray(existing.details)
+            ? (existing.details as Record<string, unknown>)
+            : {};
+        const incomingDetails =
+          details && typeof details === 'object' && !Array.isArray(details)
+            ? (details as Record<string, unknown>)
+            : {};
+        mergedDetails = mergeDetails(existingDetails, incomingDetails);
+      }
+
+      const updateData: Record<string, unknown> = {};
+      if (hasScore) updateData.score = score;
+      if (mergedDetails !== undefined) updateData.details = mergedDetails as Prisma.InputJsonValue;
+
+      return tx.missionScore.update({
+        where: { id: scoreId },
+        data: updateData,
+      });
     });
+
     res.json(result);
   } catch (err) {
     console.error('Teacher score edit error:', err);
@@ -1152,9 +1292,20 @@ router.delete('/students/:studentId', async (req: Request, res: Response) => {
     const teacherId = getTeacherId(req)!;
     const studentId = req.params.studentId as string;
 
+    // Capture classId BEFORE cascade (classEnrollment rows are deleted in the transaction)
+    const enr = await prisma.classEnrollment.findFirst({
+      where: { OR: [{ pairId: studentId }, { userId: studentId }] },
+      select: { classId: true },
+    });
+    const classId = enr?.classId;
+
     // Try Pair first, then legacy User
     const pair = await prisma.pair.findUnique({ where: { id: studentId } });
     if (pair) {
+      if (!(await teacherOwnsPair(teacherId, studentId))) {
+        res.status(403).json({ error: 'Not authorized to delete this student' });
+        return;
+      }
       // Cascade delete all Pair-related records
       await prisma.$transaction([
         prisma.pairDictionaryProgress.deleteMany({ where: { pairId: studentId } }),
@@ -1172,7 +1323,7 @@ router.delete('/students/:studentId', async (req: Request, res: Response) => {
       ]);
       // Clean up in-memory tracking and notify teachers
       purgeOnlineStudent(studentId);
-      io.to('teacher').emit('student:deleted', { userId: studentId });
+      if (classId) io.to(`class:${classId}`).emit('student:deleted', { userId: studentId });
       res.json({ deleted: true, type: 'pair' });
       return;
     }
@@ -1180,6 +1331,18 @@ router.delete('/students/:studentId', async (req: Request, res: Response) => {
     // Legacy User-based student
     const user = await prisma.user.findUnique({ where: { id: studentId } });
     if (user && user.role === 'student') {
+      // Ownership gate for legacy User students — must be enrolled in one of teacher's classes
+      const teacherClassIds = await getTeacherClassIds(teacherId);
+      const enrollment =
+        teacherClassIds.length > 0
+          ? await prisma.classEnrollment.findFirst({
+              where: { userId: studentId, classId: { in: teacherClassIds } },
+            })
+          : null;
+      if (!enrollment) {
+        res.status(403).json({ error: 'Not authorized to delete this student' });
+        return;
+      }
       await prisma.$transaction([
         prisma.studentVocabulary.deleteMany({ where: { userId: studentId } }),
         prisma.missionScore.deleteMany({ where: { userId: studentId } }),
@@ -1192,7 +1355,7 @@ router.delete('/students/:studentId', async (req: Request, res: Response) => {
       ]);
       // Clean up in-memory tracking and notify teachers
       purgeOnlineStudent(studentId);
-      io.to('teacher').emit('student:deleted', { userId: studentId });
+      if (classId) io.to(`class:${classId}`).emit('student:deleted', { userId: studentId });
       res.json({ deleted: true, type: 'user' });
       return;
     }
@@ -1208,16 +1371,37 @@ router.delete('/students/:studentId', async (req: Request, res: Response) => {
 router.delete('/students', async (req: Request, res: Response) => {
   try {
     const teacherId = getTeacherId(req)!;
+    const teacherClassIds = await getTeacherClassIds(teacherId);
 
-    // Get all pairs and legacy students
-    const allPairs = await prisma.pair.findMany({ select: { id: true } });
+    // Scope to teacher's classes only — previously this fetched ALL pairs/users
+    // in the database with no where clause, so any logged-in teacher could wipe
+    // every student record across every other teacher's classes.
+    if (teacherClassIds.length === 0) {
+      res.json({ deleted: true, pairsDeleted: 0, usersDeleted: 0 });
+      return;
+    }
+
+    const allPairs = await prisma.pair.findMany({
+      where: { enrollments: { some: { classId: { in: teacherClassIds } } } },
+      select: { id: true },
+    });
     const allLegacyStudents = await prisma.user.findMany({
-      where: { role: 'student' },
+      where: {
+        role: 'student',
+        enrollments: { some: { classId: { in: teacherClassIds } } },
+      },
       select: { id: true },
     });
 
     // Delete all pairs with cascade
     for (const pair of allPairs) {
+      // Capture classId BEFORE cascade (classEnrollment rows are deleted)
+      const enr = await prisma.classEnrollment.findFirst({
+        where: { pairId: pair.id },
+        select: { classId: true },
+      });
+      const classId = enr?.classId;
+
       await prisma.$transaction([
         prisma.pairDictionaryProgress.deleteMany({ where: { pairId: pair.id } }),
         prisma.missionScore.deleteMany({ where: { pairId: pair.id } }),
@@ -1233,11 +1417,17 @@ router.delete('/students', async (req: Request, res: Response) => {
         prisma.pair.delete({ where: { id: pair.id } }),
       ]);
       purgeOnlineStudent(pair.id);
-      io.to('teacher').emit('student:deleted', { userId: pair.id });
+      if (classId) io.to(`class:${classId}`).emit('student:deleted', { userId: pair.id });
     }
 
     // Delete all legacy students with cascade
     for (const stu of allLegacyStudents) {
+      const enr = await prisma.classEnrollment.findFirst({
+        where: { userId: stu.id },
+        select: { classId: true },
+      });
+      const classId = enr?.classId;
+
       await prisma.$transaction([
         prisma.studentVocabulary.deleteMany({ where: { userId: stu.id } }),
         prisma.missionScore.deleteMany({ where: { userId: stu.id } }),
@@ -1249,7 +1439,7 @@ router.delete('/students', async (req: Request, res: Response) => {
         prisma.user.delete({ where: { id: stu.id } }),
       ]);
       purgeOnlineStudent(stu.id);
-      io.to('teacher').emit('student:deleted', { userId: stu.id });
+      if (classId) io.to(`class:${classId}`).emit('student:deleted', { userId: stu.id });
     }
 
     res.json({ deleted: true, pairsDeleted: allPairs.length, usersDeleted: allLegacyStudents.length });
@@ -1609,42 +1799,16 @@ router.post('/weeks/:weekId/steps/:missionType/video', withMulterError(uploadVid
   }
 });
 
-// PATCH /api/teacher/dictionary/:wordId — Teacher edits dictionary word fields
-router.patch('/dictionary/:wordId', async (req: Request, res: Response) => {
-  try {
-    const wordId = req.params.wordId as string;
-    const {
-      definition,
-      exampleSentence,
-      translationZhTw,
-      initialStatus,
-      isWorldBuilding,
-      toeicCategory,
-    } = req.body;
-
-    const data: Record<string, unknown> = {};
-    if (definition !== undefined) data.definition = definition;
-    if (exampleSentence !== undefined) data.exampleSentence = exampleSentence;
-    if (translationZhTw !== undefined) data.translationZhTw = translationZhTw;
-    if (initialStatus !== undefined) data.initialStatus = initialStatus;
-    if (isWorldBuilding !== undefined) data.isWorldBuilding = isWorldBuilding;
-    if (toeicCategory !== undefined) data.toeicCategory = toeicCategory;
-
-    if (Object.keys(data).length === 0) {
-      res.status(400).json({ error: 'No fields to update' });
-      return;
-    }
-
-    const updated = await prisma.dictionaryWord.update({
-      where: { id: wordId },
-      data,
-    });
-
-    res.json(updated);
-  } catch (err) {
-    console.error('Teacher dictionary edit error:', err);
-    res.status(500).json({ error: 'Failed to update dictionary word' });
-  }
+// PATCH /api/teacher/dictionary/:wordId — Edit a global dictionary word.
+// Dictionary entries are shared across all teachers/classes, so any teacher
+// mutating one of these rows would silently affect every other class. Gated
+// to admin only; until the admin role lands (see Dplan/Admin_God_Access_Plan.md)
+// this route refuses every call.
+router.patch('/dictionary/:wordId', async (_req: Request, res: Response) => {
+  res.status(403).json({
+    error:
+      'Dictionary edits require admin role (pending Admin God Access — see Dplan/Admin_God_Access_Plan.md)',
+  });
 });
 
 // GET /api/teacher/debug/uploads — Check what files exist in the uploads directory
@@ -1741,66 +1905,13 @@ router.get('/students/:studentId/shift-status', async (req: Request, res: Respon
       return;
     }
 
-    const { getCurrentWeekNumberForPair } = await import('../utils/progression');
-    const weekNumber = await getCurrentWeekNumberForPair(pairId);
-
-    const week = await prisma.week.findFirst({
-      where: { weekNumber },
-      select: { id: true, title: true },
-    });
-    if (!week) {
+    const status = await buildShiftStatusForPair(pairId);
+    if (!status) {
+      const weekNumber = await getCurrentWeekNumberForPair(pairId);
       res.json({ weekNumber, weekTitle: null, tasks: [], currentTaskIndex: -1, totalTasks: 0, completedTasks: 0 });
       return;
     }
-
-    // Use WeekConfig as the authoritative task list — the Mission table may
-    // contain legacy storyboard entries (recap, briefing, grammar, etc.) that
-    // aren't part of the actual student shift.
-    const weekConfig = getWeekConfig(weekNumber);
-    const configTasks = weekConfig?.tasks ?? [];
-    const configTypes = new Set(configTasks.map(t => t.type as string));
-
-    // Get only missions that match the current config's task types
-    const allMissions = await prisma.mission.findMany({
-      where: { weekId: week.id },
-      orderBy: { orderIndex: 'asc' },
-      select: { id: true, missionType: true, title: true, orderIndex: true },
-    });
-    const missions = allMissions.filter(m => configTypes.has(m.missionType));
-
-    // Get existing scores
-    const existingScores = await prisma.missionScore.findMany({
-      where: { pairId, missionId: { in: missions.map(m => m.id) } },
-      select: { missionId: true, details: true },
-    });
-    const scoreMap = new Map(existingScores.map(s => [s.missionId, s]));
-
-    // Build task list in WeekConfig order (not DB orderIndex) with labels from config
-    const configTaskMap = new Map(missions.map(m => [m.missionType, m]));
-    const tasks = configTasks
-      .filter(t => configTaskMap.has(t.type as string))
-      .map(t => {
-        const mission = configTaskMap.get(t.type as string)!;
-        const score = scoreMap.get(mission.id);
-        const isComplete = score?.details &&
-          (score.details as Record<string, unknown>).status === 'complete';
-        return {
-          id: t.id,
-          label: t.label,
-          complete: !!isComplete,
-        };
-      });
-
-    const currentTaskIndex = tasks.findIndex(t => !t.complete);
-
-    res.json({
-      weekNumber,
-      weekTitle: week.title,
-      tasks,
-      currentTaskIndex,
-      totalTasks: tasks.length,
-      completedTasks: tasks.filter(t => t.complete).length,
-    });
+    res.json(status);
   } catch (err) {
     console.error('Shift status error:', err);
     res.status(500).json({ error: 'Failed to get shift status' });
@@ -1868,11 +1979,25 @@ router.post('/students/:studentId/task-command', async (req: Request, res: Respo
           res.json({ success: true, message: 'No task to skip — all complete' });
           return;
         }
-        const mission = missions[currentIdx];
-        await prisma.missionScore.upsert({
-          where: { pairId_missionId: { pairId, missionId: mission.id } },
-          create: { pairId, missionId: mission.id, score: 0, details: { status: 'complete', skipped: true } },
-          update: { score: 0, details: { status: 'complete', skipped: true } },
+        const missionId = missions[currentIdx].id;
+        // Merge skip marker on top of any existing details so the skip flag
+        // doesn't wipe writingText / answerLog / pearlFeedback that earlier
+        // task progress wrote to this MissionScore.
+        await prisma.$transaction(async (tx) => {
+          const existing = await tx.missionScore.findUnique({
+            where: { pairId_missionId: { pairId, missionId } },
+            select: { details: true },
+          });
+          const existingDetails =
+            existing?.details && typeof existing.details === 'object' && !Array.isArray(existing.details)
+              ? (existing.details as Record<string, unknown>)
+              : {};
+          const merged = mergeDetails(existingDetails, { status: 'complete', skipped: true });
+          return tx.missionScore.upsert({
+            where: { pairId_missionId: { pairId, missionId } },
+            create: { pairId, missionId, score: 0, details: merged as Prisma.InputJsonValue },
+            update: { score: 0, details: merged as Prisma.InputJsonValue },
+          });
         });
         break;
       }
@@ -2238,6 +2363,9 @@ router.get('/remediation-events', async (req: Request, res: Response) => {
         clawedBack: r.clawedBack,
         triggeredAt: r.triggeredAt,
         completedAt: r.completedAt,
+        // Surfaced for the Gradebook drill-down: per-row question + result detail.
+        questions: r.questions,
+        results: r.results,
       })),
     });
   } catch (err) {

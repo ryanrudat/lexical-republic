@@ -32,6 +32,49 @@ function formatElapsed(ms: number): string {
   return `${Math.floor(totalSec / 60)}m`;
 }
 
+// ── Activity state ──────────────────────────────────────────────
+// Derived from socket presence (`student.online`) and DB-backed
+// `lastSeenAt`. Surviving a backend restart matters: the in-memory
+// onlineStudents Map gets wiped on every Railway redeploy, so Active
+// alone isn't enough — Recent/Idle picks up students who were active
+// just before the restart and haven't reconnected yet.
+type ActivityState = 'active' | 'recent' | 'idle' | 'offline';
+const RECENT_WINDOW_MS = 5 * 60 * 1000;   // 5 min
+const IDLE_WINDOW_MS = 30 * 60 * 1000;    // 30 min
+
+function getActivityState(
+  online: unknown,
+  lastSeenAt: string | null | undefined,
+  nowMs: number,
+): ActivityState {
+  if (online) return 'active';
+  if (!lastSeenAt) return 'offline';
+  const ageMs = nowMs - new Date(lastSeenAt).getTime();
+  if (ageMs < 0) return 'active';        // clock skew safety
+  if (ageMs < RECENT_WINDOW_MS) return 'recent';
+  if (ageMs < IDLE_WINDOW_MS) return 'idle';
+  return 'offline';
+}
+
+const ACTIVITY_DOT: Record<ActivityState, string> = {
+  active: 'bg-emerald-500',
+  recent: 'bg-sky-500',
+  idle: 'bg-amber-500',
+  offline: 'bg-slate-300',
+};
+
+function formatLastSeen(lastSeenAt: string | null | undefined, nowMs: number): string {
+  if (!lastSeenAt) return 'Never seen';
+  const ageMs = nowMs - new Date(lastSeenAt).getTime();
+  if (ageMs < 60_000) return 'Just now';
+  const minutes = Math.floor(ageMs / 60_000);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
 export default function ClassMonitor({ classId, narrativeRoute }: { classId?: string | null; narrativeRoute?: string }) {
   const [students, setStudents] = useState<StudentSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -312,7 +355,9 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
       ...s,
       online: onlineStudents.get(s.id) ?? null,
       lastKnown: lastKnownStatus.get(s.id) ?? null,
-      offlineShift: offlineStatus.get(s.id) ?? null,
+      // Prefer freshly-fetched data (after a click or task command) over the
+      // server's initial snapshot. Both have the same shape.
+      offlineShift: offlineStatus.get(s.id) ?? s.currentShiftProgress ?? null,
     }))
     .sort((a, b) => {
       if (a.online && !b.online) return -1;
@@ -587,11 +632,28 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span
-                      className={`inline-block w-2 h-2 rounded-full shrink-0 ${
-                        student.online ? 'bg-emerald-500' : 'bg-slate-300'
-                      }`}
-                    />
+                    {(() => {
+                      const activity = getActivityState(
+                        student.online,
+                        student.lastSeenAt ?? null,
+                        now,
+                      );
+                      const label = activity === 'active'
+                        ? 'Active — currently connected'
+                        : activity === 'recent'
+                        ? `Active ${formatLastSeen(student.lastSeenAt ?? null, now)} — likely still in class`
+                        : activity === 'idle'
+                        ? `Idle — last seen ${formatLastSeen(student.lastSeenAt ?? null, now)}`
+                        : student.lastSeenAt
+                        ? `Offline — last seen ${formatLastSeen(student.lastSeenAt, now)}`
+                        : 'Offline — never seen';
+                      return (
+                        <span
+                          className={`inline-block w-2 h-2 rounded-full shrink-0 ${ACTIVITY_DOT[activity]}`}
+                          title={label}
+                        />
+                      );
+                    })()}
                     <h3 className="text-sm font-medium text-slate-800 truncate">
                       {student.displayName}
                     </h3>
@@ -644,16 +706,35 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
                     </div>
                   ) : (
                     <div className="mt-1 space-y-0.5">
-                      <div className="text-xs text-slate-400">
-                        Offline
-                        {/* Show last-known shift/task from socket memory */}
-                        {lk?.weekNumber && (
-                          <span className="text-slate-500 ml-1">
-                            — last seen: Shift {lk.weekNumber}
-                            {lk.taskLabel && <>, {lk.taskLabel}</>}
-                          </span>
-                        )}
-                      </div>
+                      {(() => {
+                        const activity = getActivityState(
+                          student.online,
+                          student.lastSeenAt ?? null,
+                          now,
+                        );
+                        const head =
+                          activity === 'recent'
+                            ? <span className="text-sky-700 font-medium">Recently active</span>
+                            : activity === 'idle'
+                            ? <span className="text-amber-700 font-medium">Idle</span>
+                            : <span>Offline</span>;
+                        return (
+                          <div className="text-xs text-slate-400">
+                            {head}
+                            {student.lastSeenAt && (
+                              <span className="text-slate-500 ml-1">
+                                — last seen {formatLastSeen(student.lastSeenAt, now)}
+                              </span>
+                            )}
+                            {lk?.weekNumber && (
+                              <span className="text-slate-500 ml-1">
+                                · Shift {lk.weekNumber}
+                                {lk.taskLabel && <>, {lk.taskLabel}</>}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
                       {/* Show DB-based progress if fetched */}
                       {shiftStatus && (
                         <div className="text-[11px] text-indigo-500">

@@ -493,6 +493,17 @@ export async function moveStudentToShift(studentId: string, weekNumber: number):
 // Per-shift remediation event log surfaced in the Gradebook drill-down
 // (Unit 5). Backed by `GET /api/teacher/remediation-events?pairId=X&week=N`.
 
+export interface RemediationQuestion {
+  word: string;
+  correctDefinition: string;
+  distractors: string[];
+}
+
+export interface RemediationResultEntry {
+  word: string;
+  correct: boolean;
+}
+
 export interface RemediationEvent {
   id: string;
   pairId: string;
@@ -506,6 +517,10 @@ export interface RemediationEvent {
   clawedBack: boolean;
   triggeredAt: string;
   completedAt: string | null;
+  /** Questions issued at trigger time. */
+  questions: RemediationQuestion[] | null;
+  /** Per-word right/wrong; null if remediation never completed. */
+  results: RemediationResultEntry[] | null;
 }
 
 export async function fetchRemediationEventsForShift(
@@ -713,22 +728,8 @@ export async function uploadStepVideo(
 // Remediation events fire when a student grinds their concernScore (Phase 1).
 // This client mirrors `GET /api/teacher/remediation-events`. Live updates
 // arrive via the `student:remediation-fired/-completed/-clawback` socket
-// events wired in `useTeacherSocket`.
-
-export interface RemediationEvent {
-  id: string;
-  pairId: string;
-  designation: string | null;
-  weekNumber: number;
-  triggerReason: 'rate_warned' | 'rate_double' | 'absolute_3';
-  concernAtTrigger: number;
-  concernAfterCooldown: number | null;
-  correctCount: number | null;
-  totalCount: number;
-  clawedBack: boolean;
-  triggeredAt: string;
-  completedAt: string | null;
-}
+// events wired in `useTeacherSocket`. The RemediationEvent type lives at the
+// top of this file (Gradebook drill-down section); this section reuses it.
 
 export async function fetchRemediationEvents(params?: {
   classId?: string;

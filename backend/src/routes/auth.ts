@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcrypt';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import prisma from '../utils/prisma';
 import { signToken } from '../utils/jwt';
 import { authenticate, getPairId, getTeacherId } from '../middleware/auth';
@@ -7,6 +8,23 @@ import { isTeacherPayload, isPairPayload } from '../utils/jwt';
 import { io } from '../socketServer';
 
 const router = Router();
+
+// Defends student PIN brute-force: 10 attempts per 15 min keyed on IP+designation.
+// Teacher login (username+password) is intentionally NOT rate-limited here so
+// teachers aren't locked out mid-class. Applies only when designation+pin is sent.
+const studentLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  keyGenerator: (req: Request) => {
+    const ipKey = ipKeyGenerator(req.ip || 'unknown');
+    const designation = (req.body?.designation || '').toString().trim().toLowerCase();
+    return designation ? `${ipKey}:${designation}` : ipKey;
+  },
+  skip: (req: Request) => !(req.body?.designation && req.body?.pin),
+  message: { error: 'Too many login attempts. Please wait 15 minutes and try again.' },
+});
 
 const configuredSameSite = (process.env.COOKIE_SAMESITE || (process.env.NODE_ENV === 'production' ? 'none' : 'lax')).toLowerCase();
 const sameSite: 'lax' | 'strict' | 'none' = configuredSameSite === 'strict'
@@ -26,7 +44,7 @@ function setCookie(res: Response, token: string) {
 }
 
 // POST /api/auth/login
-router.post('/login', async (req: Request, res: Response) => {
+router.post('/login', studentLoginLimiter, async (req: Request, res: Response) => {
   const { designation, pin, username, password } = req.body;
 
   try {
@@ -293,7 +311,7 @@ router.post('/register', async (req: Request, res: Response) => {
 
     // Notify teacher dashboard that a new student registered
     if (io) {
-      io.to('teacher').emit('student:registered', {
+      io.to(`class:${cls.id}`).emit('student:registered', {
         id: pair.id,
         designation: pair.designation,
         displayName: `${pair.studentAName}${pair.studentBName ? ` & ${pair.studentBName}` : ''}`,

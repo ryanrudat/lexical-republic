@@ -36,7 +36,6 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
 
   // Teacher review trail (refs — read once at completion, don't drive re-renders).
   const lastWrongPickRef = useRef<Record<number, string>>({});
-  const autoFilledRef = useRef<Set<number>>(new Set());
 
   const { selectedId, selectItem, clearSelection } = useTapOrDrag();
 
@@ -109,7 +108,6 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
         if (newCount >= maxAttempts) {
           // Max attempts reached — auto-fill with correct word
           if (lane === 1) addConcern(0.05);
-          autoFilledRef.current.add(blankIndex);
           setWrongFlash(blankIndex);
           setTimeout(() => {
             setWrongFlash(null);
@@ -178,17 +176,19 @@ export default function ClozeFill({ config, onComplete }: TaskProps) {
       usePearlStore.getState().triggerBark('success', pearlBark);
     }
     const answerLog: TaskAnswerLogEntry[] = blanks.map((blank) => {
-      // Auto-filled blanks never ended on a student-chosen word; surface the
-      // student's last wrong guess so teachers see what they actually tried.
-      const autoFilled = autoFilledRef.current.has(blank.index);
+      // For any non-first-try blank (recovered OR auto-filled), surface the
+      // student's last wrong guess as `chosen` so teachers see the actual
+      // confusion — not the canonical correct word. First-try-correct rows
+      // show the canonical word (which is also what they picked).
+      const wasCorrect = firstTryCorrect.has(blank.index);
       const lastWrong = lastWrongPickRef.current[blank.index];
-      const chosen = autoFilled && lastWrong ? lastWrong : blank.correctWord;
+      const chosen = !wasCorrect && lastWrong ? lastWrong : blank.correctWord;
       return {
         questionId: String(blank.index),
         prompt: buildBlankPrompt(blank.index),
         chosen,
         correct: blank.correctWord,
-        wasCorrect: firstTryCorrect.has(blank.index),
+        wasCorrect,
         attempts: (attemptCounts[blank.index] ?? 0) + 1,
       };
     });

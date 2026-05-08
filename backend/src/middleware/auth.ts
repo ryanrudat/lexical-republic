@@ -1,6 +1,37 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken, normalizePayload, isTeacherPayload, isPairPayload, isLegacyStudentPayload } from '../utils/jwt';
 import type { JwtPayload, TeacherPayload, PairPayload } from '../utils/jwt';
+import prisma from '../utils/prisma';
+
+// ─── Activity tracking (lastSeenAt) ────────────────────────────────
+// Throttled to once per actor per minute. The teacher ClassMonitor reads
+// `Pair.lastSeenAt` / `User.lastSeenAt` to render the Active/Recent/Idle/
+// Offline indicator and to survive backend restarts (the in-memory
+// `onlineStudents` socket Map gets wiped on every Railway redeploy).
+
+const ACTIVITY_THROTTLE_MS = 60_000;
+const lastSeenWritten = new Map<string, number>();
+
+function bumpLastSeen(actor: 'pair' | 'user', id: string): void {
+  if (!id) return;
+  const key = `${actor}:${id}`;
+  const now = Date.now();
+  const previous = lastSeenWritten.get(key);
+  if (previous && now - previous < ACTIVITY_THROTTLE_MS) return;
+  lastSeenWritten.set(key, now);
+  // Fire-and-forget: never block the request on this. If the row was
+  // deleted between the JWT being issued and now, the update no-ops.
+  const ts = new Date(now);
+  if (actor === 'pair') {
+    prisma.pair
+      .update({ where: { id }, data: { lastSeenAt: ts } })
+      .catch(() => { /* deleted/race — ignore */ });
+  } else {
+    prisma.user
+      .update({ where: { id }, data: { lastSeenAt: ts } })
+      .catch(() => { /* deleted/race — ignore */ });
+  }
+}
 
 declare global {
   namespace Express {
@@ -41,10 +72,12 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
     // Backward compat: populate req.user so existing route code doesn't break
     if (isTeacherPayload(payload)) {
       req.user = { ...payload, userId: payload.userId, role: 'teacher' };
+      bumpLastSeen('user', payload.userId);
     } else if (isPairPayload(payload)) {
       // For pair tokens, set userId to pairId so existing code that reads req.user!.userId
       // gets the pair identifier. role = 'student' for role checks.
       req.user = { ...payload, userId: payload.pairId, role: 'student' };
+      bumpLastSeen('pair', payload.pairId);
     }
 
     next();

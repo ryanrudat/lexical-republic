@@ -45,7 +45,6 @@ export default function WordMatch({ config, onComplete }: TaskProps) {
 
   // Teacher review trail (refs — read once at completion, don't drive re-renders).
   const lastWrongPickRef = useRef<Record<string, string>>({});
-  const autoResolvedRef = useRef<Set<string>>(new Set());
 
   const hasCompleted = useRef(false);
 
@@ -58,17 +57,19 @@ export default function WordMatch({ config, onComplete }: TaskProps) {
       usePearlStore.getState().triggerBark('success', pearlBark);
     }
     const answerLog: TaskAnswerLogEntry[] = pairs.map((pair, idx) => {
-      // Auto-resolved students never ended on the correct match; surface
-      // their last wrong pick so teachers see what they actually tried.
-      const autoResolved = autoResolvedRef.current.has(pair.word);
+      // For any non-first-try row (recovered OR auto-resolved), surface the
+      // student's last wrong pick as `chosen` so teachers see the actual
+      // confusion — not the canonical correct definition. First-try-correct
+      // rows show the canonical definition (which is also what they picked).
+      const wasCorrect = firstTryCorrect.has(pair.word);
       const lastWrong = lastWrongPickRef.current[pair.word];
-      const chosen = autoResolved && lastWrong ? lastWrong : pair.definition;
+      const chosen = !wasCorrect && lastWrong ? lastWrong : pair.definition;
       return {
         questionId: String(idx),
         prompt: `Match: ${pair.word}`,
         chosen,
         correct: pair.definition,
-        wasCorrect: firstTryCorrect.has(pair.word),
+        wasCorrect,
         attempts: (attemptCounts[pair.word] ?? 0) + 1,
       };
     });
@@ -124,7 +125,6 @@ export default function WordMatch({ config, onComplete }: TaskProps) {
         if (newCount >= maxAttempts) {
           // Max attempts reached — flash wrong, then auto-resolve with correct match
           if (lane === 1) addConcern(0.05);
-          autoResolvedRef.current.add(word);
           setWrongFlash(defWord);
           setSelectedWord(null);
           setTimeout(() => {
