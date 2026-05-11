@@ -224,7 +224,7 @@ When any writing task in the shift was off-topic, an amber/rose banner renders a
 Narrative-reactive cards layer on top:
 
 - **W3** Party Observation — quotes the student's own first principle from `priority_briefing` writing (`ShiftClosing.tsx:120-135`)
-- **W4** PEARL Observation — branches on the stored `w4_doc_review_frag3` narrative choice (`ShiftClosing.tsx:104-115`)
+- **W4** PEARL Observation — branches on the stored `w4_recruitment_vote` narrative choice (added 2026-05-11; superseded the retired `w4_doc_review_frag3` key when the W4 mid-task popup was removed in the Activity Reconciliation redesign). `ShiftClosing.tsx` consumer code needs update.
 - **All weeks** Citizen-4488 Case File — tones rose / amber / emerald against `concernScoreDelta` (`ShiftClosing.tsx:265-267, 370-398`)
 
 Reflection mirrors action — the dashboard teaches that every keystroke registered.
@@ -365,9 +365,10 @@ The student watches L2 production politicized — **declining error count is inc
 
 Student linguistic output drives world state. Three layers:
 
-- **C-layer (mid-task choice)** — `DocumentReview.tsx` `midTaskChoice` config (W4 fragment 3 reclassification: REMOVE compliant vs KEEP FLAGGED curious; `backend/src/data/week-configs/week4.ts:82-101`).
-- **B-layer (inter-task moment)** — `InterTaskMoment.tsx`. Non-skippable character beats between tasks (W4: Betty after `word_match`, Ivan after `cloze_fill`, ambient `DON'T FORGET` glitch).
-- **Shift-close echo** — W3 Party Observation quotes the student's own first rule verbatim; W4 PEARL Observation branches on the stored W4 narrative choice.
+- **C-layer (mid-task choice)** — `DocumentReview.tsx` `midTaskChoice` config. Infrastructure remains, no active uses as of 2026-05-11 (the prior W4 Fragment 3 reclassification popup was removed in the Activity Reconciliation redesign — replaced by a silent visual mutation of Observation E + later `[ ].edited` Drop Box for engagement capture).
+- **B-layer (inter-task moment)** — `InterTaskMoment.tsx`. Non-skippable character beats between tasks (W4: Betty after `word_match`, Ivan after `cloze_fill`/Cipher with terminal-flicker reframe, ambient `DON'T FORGET` glitch).
+- **Shift-close echo** — W3 Party Observation quotes the student's own first rule verbatim; W4 PEARL Observation reflects the day's reconciliation and the Citizen-9020 reassignment notice.
+- **End-of-shift recruitment vote (added W4 2026-05-11)** — `w4_recruitment_vote` NarrativeChoice modal ("Will you read what they have hidden?" → compliant/curious/guarded). Gates W5 content depth.
 
 Choices persist via the `NarrativeChoice` Prisma model and pay off at shift close. Every triadic choice includes one compliant option — agency without forced dissent (`Dplan/Character_Bible.md:81`).
 
@@ -426,6 +427,21 @@ Pedagogy is calibrated to L1 transfer.
 - **Sentence starters** in Lane 1 are always in PEARL or character voice — never English-teacher hints that crack immersion (`backend/src/data/week-configs/week4.ts:390-405`).
 - **Mandarin word bank** (`wordBankChinese: true`) is offered at Lane 1 only, not Lane 2/3, to avoid undermining target-language immersion for stronger learners.
 - **Cumulative review** in W6 must include one target word from each of W1/W2/W3 — Mandarin learners need explicit return cycles, not just additive presentation (`CLAUDE.md` Next Work, PR #11).
+
+### 8.1 Bilingual remediation study card (added 2026-05-08)
+
+Wrong answers in the Remediation Module trigger a 5-second study card that surfaces the correct form-meaning mapping with lane-aware density. Codifies the principles that informed the design:
+
+- **Krashen's affective-filter hypothesis.** Punishment, embarrassment, and forced failure raise the cognitive filter and *reduce* L2 uptake. A red ✗ + buzzer teaches the kid less than a calm "the correct answer is X — here's an example." Doctrine: **forced exposure not punishment**. The 5-second pause is a study moment, never a punitive lockout.
+- **Cummins on strategic L1.** The English-only classroom is a debunked myth for lower-proficiency learners. A Mandarin gloss flashed at the moment of confusion lowers cognitive load enough for the form-meaning link to actually form. The trick is *briefly*, *as a glue*, *not as a crutch*. Lane 1 surfaces L1 always; Lane 2 hides it behind a tap; Lane 3 doesn't show it by default.
+- **Nation & Schmitt on context exposure.** The biggest replicated finding in vocabulary acquisition: learners need a word in *context* to acquire it. Definition + example sentence + IPA creates deeper traces than any one of those alone. Lane 1 + Lane 2 see all four signals (English form, definition, Mandarin gloss, example sentence); Lane 3 sees three.
+- **Spaced retrieval, not massed practice.** The Remediation Module fits *into* the existing spaced-repetition rhythm (Compliance Check + Clarity Check + Harmony review). It's not a separate hammer; it's another exposure surface in the same loop.
+- **No force-pass loops.** Trapping an A2 student in "you can't escape until 3/3 correct" is a textbook affective-filter trigger. The system accepts variable performance; the score-based completion copy stays forced-happy regardless ("Verification recorded. We will continue to support your engagement."). Spaced repetition catches up.
+- **Worst case is studied harder.** The doctrine line carries the design: a grinder hits the wrong-answer pause three times and sees the correct definition three times. They got "punished" by being exposed to vocabulary. Net positive.
+
+### 8.2 Why MCQ alone isn't enough — and how the study card extends it
+
+MCQ tests recognition (pick the right answer from four), not recall (produce the word from meaning). Recognition is the shallowest measure of acquisition. The study card doesn't fix that — production tasks (cloze, sentence-write, speaking) do — but it deepens the encoding of every wrong attempt by adding form + L1 + context to the moment of error. Combined with the existing shift task variety (cloze, error correction, writing), the cumulative exposure across surfaces is what produces acquisition. The remediation moment is one input, not a complete loop.
 
 ---
 

@@ -95,6 +95,39 @@ Condensed route compresses Act II into a single week-11 beat per character. `get
 - **Condensed catch-up** (deferred): "I named her Tuesday." — after the day her owner disappeared.
 - PEARL notes escalate: observation → wellness check → Pattern-7 monitoring
 
+### The Unedited (Resistance) — canon-to-web translation (planning, 2026-05-07)
+
+**Canon source:** `~/Desktop/Dplan/docs/world-building.md:686-768` and `~/Desktop/Dplan/docs/characters.md:300-316`. Per `~/Desktop/Dplan/docs/narrative.md:56`, **Week 4 = first contact from The Unedited**.
+
+**Who they are:** Underground network refusing to be corrected. They preserve forbidden language, restore words, free thoughts. Cell-based ("pockets") — Archivists, Teachers, Couriers, Infiltrators (Ministry insiders), Speakers. Use real names (act of trust). Teach Black Words: mother, father, freedom, truth, name.
+
+**Named canon characters:**
+- **Ralphy Lange Longworth** — suspected leader, rumors only
+- **The Hostellers** — elder former Party official, fled to Outer Rim
+- **Frey** — active member, contact thread for side missions
+
+**Canon contact mechanisms (all analog):**
+1. Notes left in the Restroom (the only unmonitored space)
+2. Messages hidden in documents the player is supposed to correct
+3. A coworker who reveals themselves
+4. The Hidden Lexicon — forbidden dictionary, secret partition
+
+**Web-track translation (W4 first contact, redesigned 2026-05-11):** The Unedited's first contact is folded INTO Clip A as a hijack at 1:40 — frame freezes, silhouette appears, modulated voice delivers an imperative ("Citizen — locate the missing fragment. Examine the dates. Record what they removed. Ask why. — F"), then recovery returns to the desktop as if nothing happened. After login, a glitch effect materializes the `[ ].edited` hidden app on the desktop (greyed out, "didn't properly download"). Inside the app: Lexicon (5 Black Words: `truth, mother, freedom, father, name` with all-lanes Mandarin gloss) + Cipher cloze. Black Words ARE introduced at W4 — earlier "no Black Words in W4" decision reversed; the L1-bridged vocabulary stream starts here. Universal contact (every W4 student). Sign-off `— F` (Frey).
+
+**Canon grammar shift on contact:**
+
+| Party Grammar | Unedited Grammar |
+|---|---|
+| Passive voice preferred | Active voice — claim agency |
+| "We" over "I" | "I" — reclaim individuality |
+| No questions | Ask "why" — question everything |
+| Simple sentences | Complex thoughts — nuance matters |
+| Approved vocabulary only | Black Words — mother, father, freedom, truth, name |
+
+**Recruitment cracks (canon, `world-building.md:740-746`):** The Unedited look for citizens with "the itch" — someone reassigned the citizen can't stop thinking about, encountering a word/idea that doesn't fit, nameless unease they lack words for. (W4's Observation E reclassification — the guest entry by Citizen-9020 silently removed from Citizen-4488's daily record — sets this up: the student watches an erasure happen, then receives instruction to remember what was removed.)
+
+**Full design spec for W4 first contact:** `Dplan/Weeks_04_06_Shift_Plan.md` § Week 4 (Activity Reconciliation) + § Week 4 Clips § Clip A. Content + clips committed `77e5937` (2026-05-11). Frontend dependencies still pending: queue sidebar, Observation E mutation event, `[ ].edited` app shell (Lexicon + Cipher + Drop Box tabs with bracket motif), post-login glitch effect, end-of-shift recruitment NarrativeChoice modal, Canva production of the new Clip A and Clip B.
+
 ### World Bible (`harmonyWorldBible.ts`)
 - **8 Locations**: Sector 4 Community Center, Central Filing Hall, Wellness Pavilion, Cafeteria Block 7, Transit Hub Delta, Residential Towers 11-15, Recreation Yard 3, The Archive
 - **5 Regulations**: Regulation 14-C (vocabulary), Form 77-B (activity registration), Directive 2031.4 (schedule changes), Wellness Protocol 9 (check-ins), Harmony Conduct Code
@@ -133,14 +166,26 @@ Do not finalize story questions until episode scripts are approved. Keep each lo
 - **TOEIC alignment is the primary filter** for selecting `targetWords` each week — pick from TOEIC word lists first, then supplement with world-building vocabulary as needed for narrative
 - Script readability: clips use mostly known words; new words introduced in controlled repetition
 
-### Weeks 4-6 content status (planned, not yet built)
+### Weeks 4-6 content status
 Full shift plan with narrative, vocabulary, task sequences, Canva scripts, dictionary words, and Harmony censure items defined in `Dplan/Weeks_04_06_Shift_Plan.md`. Summary:
 
-- **Week 4: Evidence Board** — Sequencing words + simple past. Students build timelines from evidence fragments; one fragment gets reclassified mid-task. 10 TOEIC words (arrange, collect, examine, indicate, locate, organize, present, record, select, verify).
-- **Week 5: Wellness Check** — Must/should + emotion adjectives + because-clauses. Wellness Language Guidelines require approved emotional vocabulary; student self-assessment gets forwarded to supervisor. 10 TOEIC words (concern, effort, express, improve, observe, reduce, recommend, suggest, support, value).
-- **Week 6: Act I Clock-Out** — Mixed review of all W1-5 grammar. Full compliance audit, M.K. asks "What's the pattern?", Director-7 reviews, file flashes "RUN." Clearance elevated to Steward. 4 tasks (writing tasks merged per audit). 10 TOEIC words (achieve, adjust, conduct, establish, evaluate, perform, prepare, produce, summarize, transfer).
+- **Week 4: Activity Reconciliation** — **CONTENT REDESIGNED 2026-05-11** (commit `77e5937`, supersedes the prior "Evidence Board" framing). Sequencing words + simple past + passive past + 1 SVA error (L1 Mandarin target). Students compile Citizen-4488's Daily Activity Report from 5 surveillance observations; mid-Doc-Review, Observation E (guest entry: Citizen-9020) is reclassified RESTRICTED via a silent visual mutation (NO popup choice — replaces the prior `midTaskChoice`). 10 TOEIC words (arrange, collect, examine, indicate, locate, organize, present, record, select, verify). **Unedited first contact folded INTO Clip A as a hijack at 1:40** (silhouette + modulated voice + `— F` sign-off); old standalone Clip C deprecated. The `[ ].edited` hidden app appears on the desktop post-login via a glitch effect — carries Lexicon (5 Black Words: truth/mother/freedom/father/name with all-lanes Mandarin gloss) + Cipher cloze (replaces the old Timeline Report cloze) + post-Shift-Report Drop Box. End-of-shift recruitment NarrativeChoice modal (`w4_recruitment_vote`) gates W5 depth. Inter-task B moments retained (Betty/Ivan/ambient glitch) with language updated to match. Frontend dependencies pending: queue sidebar, mutation event, `[ ].edited` app shell, glitch effect, Drop Box ping, recruitment modal, Canva clips.
+- **Week 5: Wellness Check** — Must/should + emotion adjectives + because-clauses. Wellness Language Guidelines require approved emotional vocabulary; student self-assessment gets forwarded to supervisor. 10 TOEIC words (concern, effort, express, improve, observe, reduce, recommend, suggest, support, value). **Planned with W4 carry-over hooks** (Betty/Ivan tones, Citizen-4488 post variants, Harmony Wellness Division tone all condition on stored W4 NarrativeChoice values).
+- **Week 6: Act I Clock-Out** — Mixed review of all W1-5 grammar. Full compliance audit, M.K. asks "What's the pattern?", Director-7 reviews, file flashes "RUN." Clearance elevated to Steward. 5 tasks per pedagogy audit (W6 re-split 4→5 to reduce Lane 1 cognitive load). 10 TOEIC words (achieve, adjust, conduct, establish, evaluate, perform, prepare, produce, summarize, transfer).
 
-Citizen-4488 arc across W4-6: self-censorship deepens from constructing compliant narratives (W4) through forced positive framing (W5) to active awareness of self-censorship (W6).
+Citizen-4488 arc across W4-6: self-censorship deepens from constructing compliant narratives (W4 — grammar nearly error-free) through forced positive framing (W5) to active awareness of self-censorship (W6).
+
+### Narrative-Reactive Interaction Layers (2026-04-21)
+From W4 onward, narrative lives in **non-skippable interaction points** inside the terminal flow, not just toasts and Harmony posts. Two layer types:
+
+- **B (inter-task moments)**: full-surface non-skippable card between tasks. NPC sends a message, student picks a reply (each uses current-week grammar target). Stored as `NarrativeChoice` for future branching.
+- **C (mid-task choices)**: interrupts a task mid-flow. Historical example: W4 Fragment 3 reclassification (removed 2026-05-11; the W4 redesign replaced the popup choice with a silent visual mutation of Observation E — engagement now happens via the `[ ].edited` Drop Box and end-of-shift recruitment modal instead). C-layer remains available for future shifts.
+
+Every NPC reply set includes one compliant choice (Character Bible interaction rule 4). Choices flow into:
+- Same-shift payoff: shift-close PEARL Observation card branching on the stored choice value.
+- Cross-shift payoff (planned, W5+): Betty/Ivan tone variants, Citizen-4488 post variants, Harmony content tone — all conditioned on stored W4 choices.
+
+Full architecture in `docs/architecture.md` § Narrative-Reactive UI Layer.
 
 ### Pedagogical audit notes (2026-04-08)
 - All 60 TOEIC target words (W1-6) verified against TOEIC 600/3000 word lists — all confirmed
@@ -155,7 +200,8 @@ Citizen-4488 arc across W4-6: self-censorship deepens from constructing complian
 ### Current content reality check
 - Much weekly narrative content is still seeded placeholder copy from `backend/prisma/seed.ts`
 - Week 1-3 authored lesson packages are in script-first classroom format
-- Weeks 4-6 fully planned but not yet built as WeekConfig files
+- Week 4 WeekConfig shipped 2026-04-21; content redesigned 2026-05-11 (`77e5937`) — frame swapped from "Evidence Board" to "Activity Reconciliation," Unedited contact folded into Clip A, `[ ].edited` hidden app introduced. W4 Harmony static content + W4 dictionary seed entries still deferred. Frontend components for the new design (queue sidebar, mutation event, `[ ].edited` app) not yet built.
+- Weeks 5-6 fully planned but not yet built as WeekConfig files
 - Treat seed content as temporary scaffolding, not final script
 
 ## 50-Minute Hybrid Class Structure (planned)

@@ -77,16 +77,16 @@ Non-skippable interaction points inside the terminal flow — distinct from toas
   - **`ambient`**: glitch text + `durationMs` timer → Continue button after timer. No choice, just atmosphere.
 - Config: `interTaskMoments?: Record<taskId, InterTaskMomentConfig>` on WeekConfig. Keyed by task ID the moment fires AFTER.
 - Wiring: `ShiftQueue.tsx` cascade after task completes = dismissal video → vocab interstitial → inter-task moment → next task.
-- **W4 content** (3 moments):
-  - Betty after `word_match_w4` (3 replies — "trust the system" / "what if gaps were intentional?" / "focus on what is assigned")
-  - Ivan after `cloze_fill_w4` (3 replies — "Archive tests everyone" / "maybe passage is evidence" / "get back to work")
+- **W4 content** (3 moments, language updated 2026-05-11):
+  - Betty after `word_match_w4` (3 replies — "trust the system" / "what if gaps were intentional?" / "focus on what is assigned") — references updated to "observations" instead of "fragments"
+  - Ivan after `cloze_fill_w4` (3 replies — "just a glitch" / "I saw something" / "haven't noticed anything") — reframed: Ivan senses the terminal flicker but doesn't see the hidden `[ ].edited` app; doesn't reference the old cloze passage anymore
   - Ambient `DON'T FORGET` glitch after `vocab_clearance` (2500ms timer)
 
 ### Mid-Task Choices (C-layer)
 - Embedded in `DocumentReview.tsx`. When a completed doc has `midTaskChoice`, the component intercepts the normal stamp→advance flow, shows an overlay instead, POSTs the choice on selection, then advances.
 - Config: `midTaskChoice?: MidTaskChoiceConfig` field on `DocumentConfig` (`{ id, title, message, options: [{text, value, responseText?}] }`).
-- UI: amber-accented "P.E.A.R.L. — Archive Control" card replaces doc view (non-skippable).
-- **W4 content**: Fragment 3 reclassification on `doc_fragments`. PEARL: *"Fragment 3 has been reclassified. Access level: RESTRICTED. Remove from your working timeline."* Options: REMOVE (compliant) or KEEP FLAGGED (curious). Either path, the fragment is gone from the official record — student's agency shapes their relationship to complicity, not the Party's action. Consequences: shift-close echo in PEARL Observation card + future W5 branching.
+- UI: amber-accented "P.E.A.R.L." card replaces doc view (non-skippable).
+- **W4 content**: REMOVED 2026-05-11. The previous Fragment 3 reclassification popup was deprecated in the W4 Activity Reconciliation redesign. The reclassification beat is now a silent visual mutation (Observation E greys out + RESTRICTED stamp animates over it, no popup choice). Student engagement happens later via the `[ ].edited` Drop Box + end-of-shift recruitment NarrativeChoice modal (`w4_recruitment_vote`). C-layer infrastructure remains available for future shifts; the `midTaskChoice` field on `DocumentConfig` is still in the schema, just no active uses.
 
 ### Design invariants (per `Dplan/Character_Bible.md`)
 - All reply option sets include one compliant choice.

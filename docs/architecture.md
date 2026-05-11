@@ -8,6 +8,9 @@
 - Socket.IO for real-time teacher dashboard (student activity tracking, briefing stage broadcasts) and student notifications (`harmony:new-content`). Student socket connects on login (App.tsx). Socket auth supports both cookie and `auth.token` Bearer fallback.
 - Socket reconnection: `connectSocket()` reuses stale sockets via `socket.connect()` instead of destroying and recreating them, preserving event listeners registered by App.tsx (session:clarity-message, session:task-command, etc.)
 - **Socket listener dedup + JWT expiry detection** (2026-04-17, PR #4): module-level `coreListenersAttached` flag prevents duplicate connect/disconnect/connect_error listeners on repeat `connectSocket()` calls. On visibility-triggered reconnect, a local JWT base64 decode (no crypto) checks `exp` — if expired, emits `window.dispatchEvent(new CustomEvent('auth:required'))` instead of hanging in "connecting" state.
+- **Per-class socket rooms** (2026-05-04, PR #36/#38): teachers join `class:${classId}` rooms (one per owned class) plus a personal `teacher:${teacherId}` room — the global `'teacher'` room is removed. All emit sites (route files + socketServer) use `io.to('class:' + classId).emit(...)`; classId resolves via `prisma.classEnrollment.findFirst({ OR: [{ pairId }, { userId }] })` for events in route files. In-memory `classPauseState` Map in `socketServer.ts` persists pause state across socket reconnects within a backend lifetime; replays `session:paused` to students on connect (fixes refresh/late-join bypass). Teacher socket commands (`skip-task`/`reset-task`/`reset-shift`/`send-to-task`) gated via `prisma.classEnrollment.findFirst` ownership check.
+- **Auth hardening** (2026-05-04, PR #34): `JWT_SECRET` is required at module load — `backend/src/utils/jwt.ts` throws if env var unset (fail-fast in prod). Student `/login` rate-limited via `express-rate-limit`: 10 attempts / 15 min keyed on IP+designation; teacher login skipped via `skip` predicate.
+- **MissionScore.details merge invariant**: every endpoint writing `details` to a shared MissionScore row (shifts.ts, submissions.ts, sessions.ts, teacher.ts skip-task + PATCH /scores) must read existing details first inside `prisma.$transaction` and merge via `mergeDetails()` helper. Direct `update: { details: X }` will clobber writingText/answerLog/pearlFeedback/etc. Helper currently duplicated across 4 files; flagged for shared-util refactor.
 - AI services (fail-open): OpenAI direct API (GPT-4.1-mini default) for grammar checking and PEARL contextual barks, Azure Whisper for transcription
 - Shared OpenAI client: `backend/src/utils/openai.ts` — lazy-init singleton, exports `getOpenAI()` and `OPENAI_MODEL`
 
@@ -29,7 +32,7 @@
 - Frontend data shim: `frontend/src/data/citizen4488Posts.ts` mirrors backend's 4488 feed posts for ShiftClosing's Case File card (avoids a backend round-trip on shift close).
 
 ## Data Model (Prisma)
-Primary models: `User`, `Arc`, `Week`, `Mission`, `MissionScore`, `Recording`, `HarmonyPost`, `HarmonyCensureResponse`, `PearlMessage`, `Class`, `ClassEnrollment`, `ClassWeekUnlock`, `Character`, `DialogueNode`, `PearlConversation`, `NarrativeChoice`, `TeacherConfig`, `DictionaryWord`, `WordFamily`, `WordStatusEvent`, `PairDictionaryProgress`, `Pair`, `SessionConfig`, `CharacterMessage`, `Citizen4488Interaction`, `ShiftResult`, `ComplianceCheckTemplate`, `ComplianceCheckResult`, `RemediationModuleResult`
+Primary models: `User`, `Arc`, `Week`, `Mission`, `MissionScore`, `Recording`, `HarmonyPost`, `HarmonyCensureResponse`, `PearlMessage`, `Class`, `ClassEnrollment`, `ClassWeekUnlock`, `Character`, `DialogueNode`, `PearlConversation`, `NarrativeChoice`, `TeacherConfig`, `DictionaryWord`, `WordFamily`, `WordStatusEvent`, `PairDictionaryProgress`, `Pair`, `SessionConfig`, `CharacterMessage`, `Citizen4488Interaction`, `ShiftResult`, `ComplianceCheckTemplate`, `ComplianceCheckResult`, `RemediationModuleResult`, `ClarityCheckResult` (added 2026-05-04 PR #37 — `@@unique([pairId, checkId])` for one-shot mastery delta guard, mirrors `ComplianceCheckResult` shape)
 
 Deprecated: `Vocabulary`, `StudentVocabulary`
 
@@ -172,7 +175,7 @@ Stores student decisions from B (inter-task moments) and C (mid-task choices) la
 - `POST /api/narrative-choices` — pair-authed. Body: `{ choiceKey, value, weekNumber?, context? }`. `weekNumber` merged into `context` JSON before persistence. Uses `Prisma.InputJsonValue` cast for JSON column.
 - `GET /api/narrative-choices?weekNumber=N` — pair-authed. Returns this pair's choices, optionally filtered to a specific week (filter applied in-memory on `context.weekNumber`).
 - **Conventions:**
-  - `choiceKey` pattern: `w{N}_{character}_aftertask{N}` for B moments (e.g. `w4_betty_aftertask1`), `w{N}_doc_review_*` for C mid-task doc choices (e.g. `w4_doc_review_frag3`). Stable across releases for cross-week queries.
+  - `choiceKey` pattern: `w{N}_{character}_aftertask{N}` for B moments (e.g. `w4_betty_aftertask1`), `w{N}_doc_review_*` for C mid-task doc choices (the old `w4_doc_review_frag3` key is RETIRED as of 2026-05-11 — W4 redesign removed the popup choice), `w{N}_drop_box_first_submission` for `[ ].edited` Drop Box submissions, `w{N}_recruitment_vote` for end-of-shift recruitment modal (compliant/curious/guarded; gates next-shift content depth). Stable across releases for cross-week queries.
   - `value` pattern: `compliant` | `curious` | `guarded` for triadic narrative choices. Used by consumer code (e.g. ShiftClosing PEARL echoes) to branch.
 
 ## Narrative-Reactive UI Layer (2026-04-21)
@@ -196,5 +199,5 @@ The W3 MVP and W4 rebuild added two non-skippable interaction layers inside the 
 - `frontend/src/components/shift-queue/ShiftClosing.tsx` fetches `fetchNarrativeChoices(weekNumber)` on mount.
 - Week-specific observation cards render before the ceremonial PEARL quote:
   - **W3** (MVP): quotes the student's first `priority_briefing` writing submission verbatim. Reads from `taskProgress[].details.writingSubmissions` — no backend dependency.
-  - **W4**: conditional on `w4_doc_review_frag3` value. Compliant → "exemplary timeline compliance." Curious → "we have amended your file." Read from fetched choices.
+  - **W4**: conditional on `w4_recruitment_vote` value (end-of-shift recruitment NarrativeChoice from the `[ ].edited` recruitment modal, added 2026-05-11). Compliant → confirmation that 4488's record has been filed. Curious / guarded → variant copy reflecting the student's engagement with the resistance. The prior `w4_doc_review_frag3` key is retired; consumer code (`ShiftClosing.tsx`) needs an update to read the new key.
 - Cards are mutually exclusive (different weekNumber gates). Pattern scales as new weeks ship.

@@ -4,6 +4,317 @@ Day-by-day work history. Moved here from `CLAUDE.md` on 2026-04-30 to keep the a
 
 ---
 
+## 2026-05-11 (W4 redesigned: Activity Reconciliation + Unedited contact folded into Clip A + `[ ].edited` hidden app)
+
+Long design session that rebuilt Shift 4 around two new commitments: (1) the shift's narrative center is **Citizen Activity Reconciliation** — students compile the official Daily Activity Report for Citizen-4488 from 5 surveillance observations, watch one observation get reclassified mid-shift, and choose how to engage with the resistance; (2) the Unedited's first contact happens INSIDE the briefing video (Clip A hijack at 1:40) and uploads a hidden **`[ ].edited`** app to the desktop. The 3-surface Unedited design from 2026-05-07 (in-doc anomaly overlay + Clip C micro-clip + PEARL "TERMINAL ANOMALY" modal) is now deprecated.
+
+### Shipped (commit `77e5937` on `docs/remediation-module`)
+
+**`Dplan/Weeks_04_06_Shift_Plan.md`** — Week 4 section fully rewritten:
+- Frame swap: "Evidence Board" → "Activity Reconciliation Office" (under Department of Clarity)
+- 5-activity sequence documented: Word Match → Reconciliation Desk (with mid-Doc-Review mutation event) → `[ ].edited` Cipher → Vocab Clearance → Shift Report + post-submit Drop Box + end-of-shift recruitment NarrativeChoice modal
+- **Queue sidebar** documented as a UI element across the shift: 4 cases visible on the right (`▶ Citizen-4488 · PRIORITY` + 3 dimmer background citizens: Citizen-6103, Citizen-1177, Citizen-7142). Reinforces drone identity; seeds future shifts.
+- **Clip A** replaced with new ~2:55-3:00 PEARL-narration-only briefing + queue panel + hijack at 1:40 (silhouette + modulated voice "Citizen — locate the missing fragment. Examine the dates. Record what they removed. Ask why." + `— F` sign-off) + recovery to standard "ACTIVITY READY"
+- **Clip B** replaced with ~1:25 closing dispatch — Daily Activity Report stamped RECORD ACCEPTED, queue completion ticks, REASSIGNMENT NOTICE for Citizen-9020 (transferred to Sector 12), SHIFT COMPLETE. PEARL-only narration.
+- **Clip C** marked DEPRECATED — content folded into Clip A
+- Old "Unedited First Contact" planning section condensed to a brief redirect note
+
+**`backend/src/data/week-configs/week4.ts`** — content rewritten (schema unchanged, all 5 activities still grade-able):
+- Doc Review Doc A → "DAILY OBSERVATION SET — CITIZEN-4488" with 5 observations (Sector 4 entrance · 07:23 / Filing Desk 14 · 08:15 / Common Mess · 12:00 / Records Wing · 14:30 / Block 7 Residential · 17:30 with guest entry logged: Citizen-9020) + 5 new comprehension questions
+- **`midTaskChoice` popup REMOVED** — Observation E reclassification is now a silent visual mutation (greying + RESTRICTED stamp) handled by the frontend. No popup choice. Engagement happens later via the `[ ].edited` Drop Box + end-of-shift recruitment modal.
+- Doc B → "DAILY ADJUSTMENT NOTICE — CITIZEN-4488 RECORD" with 6 errors referencing 4488 + the reclassification (4 past-tense + 1 sequencing-word-form + 1 passive-past "was reclassify" → "was reclassified" + 1 SVA "The Archive select" → "selects")
+- `cloze_fill_w4` content replaced with `[ ].edited` Cipher message (5 blanks introducing 5 Black Words: truth/mother/freedom/father/name; passage: *"Citizen — they `[reclassify]` what they fear. They `[ask]` you to `[record]` only what they choose. But the visitor had a `[name]`. The visitor had a `[mother]`."*) — task id preserved to avoid breaking `interTaskMoments` key references
+- Vocab Clearance: 2 context items + 1 toeic_p5 rewritten to reference 4488 + missing observation (stale "Fragment 3" references removed)
+- Character messages + inter-task moments: language updates to remove "fragment"/"Fragment 3" references; Ivan after document_review now references "Observation E reclassification"; Ivan after Cipher now senses the terminal flicker without naming the hidden app
+- Narrative hook + shift closing → "Records Reconciled" / Citizen-9020 reassignment notice
+- Verified: `npm run build` passes (tsc clean, 34/34 vitest tests passing)
+
+### Doctrine added (saved to memory + locked decisions)
+
+- **PEARL narration only in Clip A briefings** — no Betty/Ivan/M.K. voiceover. Maximizes contrast for the Unedited hijack moment. `feedback_briefing_video_narration_only.md`
+- **In-world bureaucratic locations, not American-school** — Sector/Block/Filing Desk/Common Mess. Avoid cafeteria/library/classroom. Citizens are workers, not students. `feedback_inworld_locations_not_american_school.md`
+- **9-shift condensed route is canonical** — `[1, 2, 3, 4, 5, 6, 11, 14, 18]`. The existing `condensedRoute` value in `narrative-routes.ts` is `[1, 2, 3, 5, 6, 11, 14, 16, 18]` (skips W4) — stale, contradicts W4 being a pivotal beat; needs updating in a follow-up.
+- **Bracket motif `[ ]`** — anything redacted inside `[ ].edited` renders as `[ ]`. The app's own name visualizes this: `[ ].edited` reads as the Party-redacted form of `[un].edited`.
+
+### Pending frontend work (out of scope this batch)
+
+- Queue sidebar panel UI (right column, 4 cases, 4488 priority + 3 background)
+- Observation card mutation event handler (greying + RESTRICTED stamp on Obs E)
+- `[ ].edited` desktop app — tile state machine (greyed/broken-pixel on appearance, persistent thereafter), Lexicon tab (5 Black Word entries with modulated-voice audio + all-lanes Mandarin gloss), Cipher tab (renders `cloze_fill_w4` content with bracket motif `[ ]` blanks instead of underscores), Drop Box tab
+- Post-login glitch effect that materializes the `[ ].edited` app
+- Post-Shift-Report Drop Box ping
+- End-of-shift recruitment NarrativeChoice modal (key `w4_recruitment_vote`: compliant/curious/guarded; gates W5 depth)
+- Canva production of new Clip A and new Clip B
+
+### Process / docs follow-up
+
+- 8 file edits across shift plan + week4.ts in a single commit; Clip A and Clip B rewritten in the same pass
+- Doc updates in this session: `CLAUDE.md` (added 4 locked decisions + redesign note in Next Work), `docs/world-and-story.md` (W4 narrative entry + canon translation + recruitment cracks rewritten), this changelog entry
+- Memory saved: `feedback_briefing_video_narration_only.md`, `feedback_inworld_locations_not_american_school.md`
+
+---
+
+## 2026-05-08 (ClassMonitor: task-aware flag thresholds + writing word-count visibility + activity legend + idle window 10 min)
+
+Two-part session triggered by user observation that the teacher dashboard was firing red "stuck" alerts on every Writing task (Aaron 2m/3 attempts, Iris 5m/4 attempts) — both students drafting normally — and separately, that the colored activity dot next to student names had become opaque ("I don't remember what these mean"). Both fixed in the same uncommitted edit batch on `docs/remediation-module` after merging master in.
+
+### Shipped (uncommitted on `docs/remediation-module`; pending teacher review before commit)
+
+**Task-aware getFlag in `ClassMonitor.tsx`**
+- Old single-pair thresholds (5min warn / 8min alert + 1 fail warn / 2 fail alert) replaced with `DEFAULT_THRESHOLDS` and `WRITING_THRESHOLDS` selected via `thresholdsFor(taskKind)`.
+- **DEFAULT** (quiz / cloze / match): warn at 7m / alert at 12m, warn at 2 attempts / alert at 4. Globally relaxed.
+- **WRITING**: warn at 10m / alert at 18m, warn at 3 attempts / alert at 5. Each "attempt" is a draft re-evaluation, not a struggle signal — students legitimately use 2–3 of their 3 evaluation attempts before passing.
+- **"fails" → "attempts" in card text** with neutral slate color (was red); tooltip distinguishes Writing (draft revisions) vs other (submission attempts).
+
+**`progressLabel` + `taskKind` on `StudentStatus`**
+- New optional fields on `StudentStatus` (`backend/src/socketServer.ts`) and `OnlineStudent` (`frontend/src/stores/teacherStore.ts`).
+- `taskKind` drives task-aware threshold selection; `progressLabel` renders as a sub-line under the task label (e.g. "Writing: 47 words").
+- Cleared on taskId change in the existing `student:task-update` handler so labels don't bleed across tasks.
+
+**New `student:task-progress` socket event (backend `socketServer.ts`)**
+- Partial-update event that does NOT mutate `taskId`/`taskLabel` and does NOT reset `taskStartedAt`. Used by sub-component progress emits (currently only `WritingEvaluator`).
+- Updates only the fields explicitly set on the payload (`taskKind`, `progressLabel`, `failCount`). Lets composite-task children push progress without overriding the parent's label.
+
+**`WritingEvaluator.tsx` emits writing progress + failure attempts**
+- New debounced `useEffect` on `text` change (800ms): emits `student:task-progress` with `taskKind: 'writing'` + `progressLabel: \`Writing: N words\``. `lastSentLabelRef` dedup prevents redundant emits.
+- Unmount cleanup emits `{ taskKind: null, progressLabel: null }` so the teacher card clears when student leaves the writing card.
+- Failed-submission emit migrated from `student:task-update` to `student:task-progress`. Fixes prior bug: WritingEvaluator was sending `taskId: missionId ?? 'writing'` which differed from the parent's taskId (e.g. `priority_briefing` in W3), tripping the `if (existing.taskId !== data.taskId)` reset path on first failure → reset `taskStartedAt` and overwrote the parent label. Now elapsed time correctly reflects total time on the composite task; parent label preserved.
+
+**Activity legend pill in `ClassMonitor.tsx`**
+- New always-visible legend row above the student grid, mirrors the struggle-flag summary pattern (white bg, slate border, 4 dots inline). Renders whenever `students.length > 0`.
+- Each dot has a tooltip: emerald=Active (in app now), sky=Recent (<5 min), amber=Idle (5–10 min), slate=Offline (gone).
+- Triggered by user feedback: "I don't remember what these mean."
+
+**Idle window 30 min → 10 min**
+- `IDLE_WINDOW_MS` shrunk in `ClassMonitor.tsx` from 30min to 10min. Past 10 min the dot goes slate (Offline).
+- Rationale: classroom-realistic. A student who hasn't pinged in 10 min has left. 30 min was generous for a 50-minute class period.
+
+### Process / git
+- Session opened on `docs/remediation-module` which was 5 commits behind `master` (the deployed branch). The activity-indicator code (commit `0af94bd`) lived only on master — first round of changes layered on top of an older `ClassMonitor.tsx`.
+- After user noticed the activity-indicator code missing, stashed WIP, `git merge master --no-edit` (clean), `git stash pop` (clean). All four files (ClassMonitor, WritingEvaluator, socketServer, teacherStore) carry both batches of changes correctly.
+- Frontend + backend builds green; nothing committed yet pending user review.
+
+### Builds
+- Frontend `npm run build`: 542KB main bundle, 2.71s.
+- Backend `npm run build`: 34/34 vitest pass + tsc clean.
+
+---
+
+## 2026-05-08 (Teacher Shifts: current-shift highlight fix + Compliance Checks folded into Storyboard)
+
+Short session triggered by the user noticing the ClassMonitor "Move all to Shift N" highlight didn't follow the class to Shift 3 after a `Move Class to Shift` action — and separately, that the standalone Compliance Checks editor was hard to read because slot order didn't visually correspond to where checks fired. Both diagnosed, both fixed in a single commit cherry-picked to master.
+
+### Shipped (1 commit cherry-picked to master via worktree)
+
+**`1408f5b Teacher Shifts: fix current-shift highlight + fold Compliance Checks into storyboard`** (master)
+
+- **`/api/teacher/students` ShiftResults filter**: the include `shiftResults: { select: { weekNumber: true } }` had no `where`, so `Move-to-Shift` markers (`completedAt: null`) were being added to `completedWeeks` alongside real completions. Inflated `weeksCompleted` by 1 whenever a marker existed, off-by-one'ing the ClassMonitor "current shift" highlight on the Move-all-to-Shift selector. Fix: add `where: { completedAt: { not: null } }` to the include. Side benefit: per-student "X/18 shifts" badge becomes accurate for moved students.
+- **Compliance Check label semantics**: `placement: 'after_task'` with `afterTaskId: X` fires AFTER task X completes (`ShiftQueue.tsx:320` triggers via `handleComplete` → `fetchComplianceCheckFor('after_task', completedTaskId)`). But the slot list / editor labeled rows `Before {task}` — backwards. Renamed every after_task label to `After {task}` everywhere (`ComplianceCheckEditor.tsx:30` + slot rendering). Teacher who configured "Before Priority Briefing" was actually configuring "fires after Priority Briefing completes" — visible mismatch resolved.
+- **Compliance Checks moved into Shift Storyboard**: standalone `Compliance Checks` section in `ShiftsTab.tsx:158-186` removed entirely. Slots now render as inline cyan dotted-line markers in `ShiftStoryboard`, alongside the existing amber gate markers, at:
+  - Above the first card: `P.E.A.R.L. Before shift starts + Add check`
+  - After each task card: `P.E.A.R.L. After {Task} + Add check` (or, if configured, `· Vocab Check · Nw · NQ`)
+  - Below the last card: `P.E.A.R.L. At shift end`
+  - Click any marker → opens the same `ComplianceCheckEditor` modal (2-step wizard, unchanged).
+- **New component**: `frontend/src/components/teacher/compliance-check/ComplianceCheckMarker.tsx` — stateless inline chip mirroring the GateMarker pattern (cyan dotted vs amber dashed).
+- **Deleted**: `frontend/src/components/teacher/compliance-check/ComplianceCheckSlotList.tsx` — no consumers after the storyboard integration.
+- **`StoryboardStep.taskId` field added** (backend `teacher.ts:1362` + frontend type `api/teacher.ts:636`): backend storyboard step previously exposed only `missionType` (e.g. `word_match`), not the WeekConfig task `id` (e.g. `word_match_w3`). Compliance Check `afterTaskId` references the task `id`, so the markers couldn't match templates without it. Now exposed alongside `missionType`.
+
+### Diagnosed but not fixed
+- **Pre-existing `completedWeeks` dedup smell** in `/students` (lines 107–117): the ShiftResult loop adds `String(weekNumber)` while the `clock_out`/`shift_report` fallback adds `weekId` (cuid). They don't dedupe against each other. Probably never bites for new pairs (canonical path is ShiftResult only) but flagged for future cleanup.
+
+### Process / git
+- Two commits originally landed on `docs/remediation-module` (`b6ea93d` + earlier `35b4526` doc commit), but Railway deploys from master and master had diverged 21 commits ahead via the audit batch (PRs #28-#41) + W4 WeekConfig + stale-bundle defense + activity indicator. A naïve fast-forward push would have force-deleted those 21 commits.
+- Recovery: cherry-picked `b6ea93d` onto master inside a temporary `git worktree add` (so the user's uncommitted working-tree changes on `docs/remediation-module` stayed untouched). Auto-merge succeeded on `teacher.ts` + `api/teacher.ts`. Built clean in the worktree, pushed master as `1408f5b`, removed worktree.
+- **Lesson**: Always check `git log master..HEAD` AND `git log HEAD..master` before recommending a "fast-forward" push. If the second is non-empty, fast-forward is impossible and you have to choose between cherry-pick / merge / branch reconfig.
+
+---
+
+## 2026-05-07 / 08 (Stale-bundle defense + teacher activity indicator + remediation pedagogy)
+
+Long iterative session triggered by the user observing two students on Shift 3 seeing different Priority Sort UIs (old typing input vs new cinematic cascade). Diagnosis: stale browser bundles, not code divergence. Fix shipped as a layered system; while in there, also closed several smaller answer-log display bugs and built the bilingual lane-aware remediation study card.
+
+### Shipped (8 commits direct-to-master + 3 PRs)
+
+**PR #39 `fix(harmony): track real arrival time for NEW badge`** (merged)
+- New `HarmonyPost.ingestedAt DateTime @default(now())` column. `staggeredCreatedAt()` deliberately backdates `createdAt` 10 min – 5.5 h for narrative texture; that broke `/has-new` and per-post `isNew` badges (compared backdated time to `lastHarmonyVisit`, false-negatived when student visited Harmony recently before new content arrived).
+- Migration backfills existing rows from `createdAt` so old posts don't all flash NEW.
+- Includes start-script change `npx prisma migrate deploy && node dist/index.js` so future migrations auto-apply on Railway boot.
+
+**PR #40 `feat(teacher): show shift progress on initial load + remediation questions in Gradebook`** (merged)
+- ClassMonitor was lazy-loading shift progress per click; now `GET /api/teacher/students` parallel-fetches via new `buildShiftStatusForPair()` helper and returns `currentShiftProgress` for every pair. Click-to-refresh path preserved.
+- Gradebook → Remediation Events table rows now expandable. New `RemediationQuestionsPanel` shows each word, the correct definition, the three distractors, and a per-word ✓/✗ from stored results. `ComplianceQuestion` payload extended with `phonetic`, `translationZhTw`, `exampleSentence` (additive — Compliance Check inherits but doesn't render yet).
+- Removed a duplicate `RemediationEvent` interface in `frontend/src/api/teacher.ts` that TypeScript declaration-merging was masking.
+
+**PR #41 `fix(word-match): show student's actual wrong pick on non-first-try`** (merged)
+- WordMatch answer log was showing canonical correct definition in `chosen` whenever a student got an item wrong then recovered (only auto-resolved rows surfaced the wrong pick). Same bug in VocabClearance and ClozeFill — fixed in a follow-up commit `5b73c11` direct to master.
+- For any non-first-try row, `chosen` now shows the student's actual first wrong pick. First-try-correct rows unchanged.
+
+**`8372507 feat(remediation): TOEIC-only word gate + lane-aware bilingual study card`** (direct to master)
+- `pickRemediationWords` now intersects candidates with `getComplianceWordsByWeek()` for shifts ≤ current. Same gate Compliance Check uses; story / world-building / future-shift words excluded.
+- After a wrong answer in the remediation modal, a study card renders below the options:
+  - Lane 1 (Guided): word + IPA + correct definition + Mandarin + example sentence
+  - Lane 2 (Standard): same as Lane 1 but Mandarin tap-to-reveal
+  - Lane 3 (Independent): word + IPA + correct definition only
+  - Continue button disabled for 5 seconds with countdown ("Next (5)" → "Next (4)" → …)
+- Dev-only `RemediationDevTrigger` floating button gated by `import.meta.env.DEV` so the user can preview without grinding concern score.
+
+**`684476f fix(deploy): cache headers stop students from running stale JS bundles`** (Layer 1)
+- `frontend/public/serve.json` (copied to `dist/serve.json` at build time) sets `Cache-Control: no-cache, no-store, must-revalidate` on `index.html` + `version.json`; long-immutable cache on hashed `assets/**`; 1-day on images/audio/video.
+
+**`3c390ac feat(deploy): build-version polling + update banner so stale tabs self-detect`** (Layer 2)
+- Vite injects `__BUILD_ID__` (git short SHA, fallback timestamp) into the bundle and writes `dist/version.json` via a custom plugin.
+- `useUpdateChecker` polls `/version.json` every 5 min and on tab focus. On mismatch, `useUpdateStore.updateAvailable = true`.
+- `UpdateBanner` (sky accent, top of screen) renders "A new version is available — Reload" with manual button. Skipped in dev (`__BUILD_ID__ === 'dev'`).
+
+**`0af94bd feat(teacher-dashboard): persistent activity indicator (Active/Recent/Idle/Offline)`** (direct to master)
+- `Pair.lastSeenAt` and `User.lastSeenAt` columns. `authenticate` middleware updates the actor's `lastSeenAt` on every authenticated request, throttled to once per 60s per actor via in-memory Map. Fire-and-forget.
+- `ClassMonitor` derives 4-state ActivityState from `online + lastSeenAt + now`:
+  - Active (currently socket-connected) → emerald
+  - Recent (lastSeenAt < 5 min) → sky
+  - Idle (lastSeenAt < 30 min) → amber
+  - Offline (older or never) → slate
+- Survives Railway redeploys (the in-memory `onlineStudents` Map gets wiped on every restart; this is DB-backed).
+
+### Diagnoses (no code changes)
+
+- **W4 problem.** `backend/prisma/seed.ts:884` is hardcoded `weeks 1-3` for `createQueueWeekMissions`. W4 has a WeekConfig (`week4.ts`, committed `d784aa4`) but the production DB has only legacy 7-step `Mission` rows for W4 from `createDefaultWeekMissions`. When students promote to W4, `weekConfig?.shiftType === 'queue'` triggers ShiftQueue mount, but new task types have no matching `Mission` rows — scoring writes break. Not blocking yet (all classes on W3); needs Layer 6 (auto-data-migration on backend boot) before any class advances.
+- **Priority Sort "two paths" was browser cache, not a code fork.** Read-only audit (Explore agent + manual verification) confirmed: only one `PrioritySort.tsx` exists, single `SortStage` state machine (`'training' | 'cascade' | 'verifying' | 'verified'`), no legacy renderer, no feature flags, no random branches. Verdict: two students with same lane and same up-to-date bundle cannot see different versions of any W3 task at the code level.
+- **Confirmed `socketServer.ts` per-class scoping IS on master** (PRs #36/#38). Earlier read of `docs/remediation-module` branch was misleading because that branch is behind master. Teachers join `class:${classId}` rooms; emits go to those rooms; the global `'teacher'` room was removed.
+
+### Doctrine ratified
+
+- **Forced exposure, not punishment** (Krashen affective filter, Cummins on strategic L1, Nation/Schmitt on context exposure). Bilingual study card replaces a punitive "WRONG" beat with a 5-second study moment showing form + meaning + L1 gloss + example. Doctrine: "the worst case is a student accidentally studied harder."
+- **No force-pass loops** for ESL learners. Trapping an A2 student in "you can't escape until 3/3 correct" is a textbook affective-filter trigger. The system accepts variable performance; spaced repetition catches up.
+
+### What's NOT done (deferred)
+
+- **Layer 6 (auto-data-migrations).** Pattern: small startup hook like `migrateHarmonyAuthorLabels` that detects WeekConfig vs Mission row drift and reconciles. Highest-value for the W4 problem before any class advances. Not built today.
+- **Layer 3 (richer banner UX — wait until end-of-task before nagging).** Current banner is dismissible; no auto-reload. Sufficient for now.
+- **Force-reload-all teacher button.** Designed but not built — chicken-and-egg problem (the listener has to be in the bundle students are running). Recommended workaround for current stuck students: teacher rotates `JWT_SECRET` on Railway → all students get logged out → fresh login picks up new bundle.
+
+### Critical files (today)
+
+- `backend/prisma/schema.prisma` + 2 new migrations (`20260507051505_add_harmonypost_ingested_at`, `20260508020000_add_last_seen_at`)
+- `backend/package.json` — start script runs `prisma migrate deploy` first
+- `backend/src/middleware/auth.ts` — activity tracker + 60s throttle
+- `backend/src/routes/harmony.ts` — `ingestedAt` queries
+- `backend/src/routes/teacher.ts` — `buildShiftStatusForPair` helper, `/students` returns `currentShiftProgress` + `lastSeenAt`, `/remediation-events` returns questions+results JSON
+- `backend/src/routes/remediation.ts` — TOEIC gate via `getComplianceWordsByWeek()`
+- `backend/src/utils/complianceDistractors.ts` — `ComplianceQuestion` carries phonetic/translationZhTw/exampleSentence
+- `frontend/public/serve.json` — Cache-Control rules
+- `frontend/vite.config.ts` — `__BUILD_ID__` define + version.json plugin
+- `frontend/src/build-id.d.ts`, `frontend/src/stores/updateStore.ts`, `frontend/src/hooks/useUpdateChecker.ts`, `frontend/src/components/system/UpdateBanner.tsx` — version polling + banner
+- `frontend/src/components/dev/RemediationDevTrigger.tsx` — DEV-only preview button
+- `frontend/src/components/remediation/RemediationModule.tsx` — lane-aware StudyCard + 5s countdown
+- `frontend/src/components/teacher/Gradebook.tsx` — `RemediationQuestionsPanel` expandable rows
+- `frontend/src/components/teacher/ClassMonitor.tsx` — 4-state ActivityState + relative-time labels
+- `frontend/src/components/shift-queue/tasks/{WordMatch,VocabClearance,ClozeFill}.tsx` — answer-log shows actual wrong pick
+- `frontend/src/api/teacher.ts` — `RemediationEvent` extended; duplicate declaration removed
+- `frontend/src/types/shifts.ts` — `StudentSummary` extended with `lastSeenAt` and `currentShiftProgress`
+
+---
+
+## 2026-05-07 (W4 Unedited First Contact — design + Clip C script, no code)
+
+Planning-only session with the user. Decided how W4 introduces "The Unedited" — the canon resistance per `~/Desktop/Dplan/docs/narrative.md:56` ("Week 4: First contact from The Unedited"). Full design spec + Clip C 0:35 script committed to `Dplan/Weeks_04_06_Shift_Plan.md` § Week 4 § Unedited First Contact, plus a new "Unedited (Resistance) — canon-to-web translation" subsection in `docs/world-and-story.md`.
+
+User initially framed the contact as "the Unedited hack into their mainframe." Pushed back: canon is explicit that all Unedited contact mechanisms are **analog** (notes in restroom, hidden text in documents the player corrects, coworker reveals, Hidden Lexicon access). User accepted the canon-aligned redesign — translation uses canon mechanism #2 (hidden text in documents).
+
+### Decisions ratified
+
+- **Universal contact** — every W4 student is contacted. Curious-branch deepening reserved for W5+.
+- **Mechanism = three surfaces** firing within ~90s window between Task 2 (Document Review) and Task 3 (Cloze Fill):
+  1. In-document anomaly overlay inside Doc B (Filing Adjustment Notice) — phantom 7th line fades in for ~3s, not graded, outside the error-correction system
+  2. ~0:35 Unedited micro-clip (Clip C) — typewriter sequence on black, modulated voice, hard cuts from/to pOS desktop
+  3. PEARL "TERMINAL ANOMALY DETECTED" full-screen modal — 3-reply choice (compliant/curious/guarded) stored as `NarrativeChoice.choiceKey = "w4_unedited_first_contact"`
+- **Contact text:** `Citizen — locate Fragment 3. Examine the dates. Record what they removed. Ask why. — F`
+  - Recycles W4 target words: `locate`, `examine`, `record` (3 of 10) — pedagogical anchoring
+  - Imperative + past tense matches W4 grammar target (`past-simple-sequencing`)
+  - "Ask why" = canon Unedited grammar shift (questions are forbidden in Party speech, `world-building.md:756`)
+  - "They" = first non-Party pronoun for authority — students learn the unspoken referent IS the Party
+  - Sign-off `— F` = Frey (named canon Unedited member, `characters.md:313`). Single real letter mirrors-but-breaks the Party's 4-digit designation system.
+- **No Black Words in W4** — held for second contact (W5+) inside Wellness Self-Assessment doc
+- **0:35 runtime** — sweet spot between 0:25 (rushed) and 0:45 (loses classroom attention)
+- **Continuity anchors** — pOS desktop frame and chime carry over from W1-W3 (they bookend the rupture); typography/voice/grammar inside the intrusion break pOS rules; recovery chime returns half-step flat as subliminal anomaly cue before PEARL modal fires
+- **PEARL eye stays canon** — one "look-around" on recovery, never blinks (locked decision)
+
+### Open creative questions (waiting on user)
+
+1. Voice casting — TTS + post-processing (ElevenLabs + pitch shift + reverb) vs real voice
+2. Typewriter as forbidden equipment lore — diegetic Pre-Collapse artifact (drop "unauthorized typographic equipment" line in W5 PEARL response) vs purely aesthetic
+3. Briefing Clip A 4-frame cursor pre-flash — subtler intro vs preserving cold shock
+4. Citizen-4488 W4 post — clean victim narrative (current recommendation) vs single hint of awareness
+
+### Implementation pieces required (NOT built this session)
+
+1. New `DocumentConfig.anomaly?: { text, triggerAfterMs, durationMs, signature }` field on `backend/src/data/week-configs/types.ts`
+2. `UneditedClipPlayer` component reusing `MonitorPlayer` infrastructure; new `type: "clip"` variant on `InterTaskMomentConfig`
+3. `AnomalyAlertModal` component mirroring `ClarityCheckModal` shape with amber/static styling, writes `NarrativeChoice`
+4. WeekConfig wiring in `week4.ts` — anomaly on Doc B, replace `vocab_clearance`-slot ambient glitch with anomaly modal moment, add `clipBefore` for Clip C on inter-task slot after `document_review`
+5. Canva production — Clip C (~0:35)
+
+No backend changes (NarrativeChoice already exists; no new migrations).
+
+### Notes
+
+- W4 WeekConfig was already committed to master 2026-05-04 as `d784aa4`; the audit follow-up "commit week4.ts" is no longer pending.
+- macOS Finder duplicate `backend/src/data/week-configs/week4 2.ts` confirmed byte-identical to `week4.ts` — should be deleted (zero risk, cosmetic).
+- W4 Harmony static content (feed posts, bulletin, PEARL tip, notices, sector report, censure items) and W4 dictionary seeds remain deferred — same status as 2026-04-22 Implementation Status block.
+
+### Critical files (today)
+
+- `Dplan/Weeks_04_06_Shift_Plan.md` — added W4 Unedited First Contact design subsection + Clip C script entry in Canva Production Scripts
+- `docs/world-and-story.md` — added "The Unedited (Resistance) — canon-to-web translation" subsection; updated W4 status line in "Weeks 4-6 content status"
+- `CLAUDE.md` — Next Work bullet for the W4 Unedited First Contact planning
+- `memory/project_w4_unedited_contact_planning_2026_05_07.md` (NEW) + MEMORY.md index entry
+
+---
+
+## 2026-05-04 (Audit batch 1–14: 11 PRs across 14 critical/high security & data bugs)
+
+A 5-agent audit surfaced 27 bugs in security, data integrity, sockets, and frontend hygiene. Bugs 1–14 (critical + high tier) were batched into 11 file-disjoint PRs ran in parallel via background workers (each in its own git worktree), then merged sequentially. All PRs landed on `master` the same day; verified in a fresh `origin/master` worktree (backend `tsc` + 34/34 vitest, frontend build + 15/15 vitest).
+
+### Shipped (PR → audit bugs)
+
+- **#34 — `fix(auth): require JWT_SECRET + rate-limit student login (audit bugs #2, #3)`.** `backend/src/utils/jwt.ts` no longer falls back to `'dev-secret'` — throws at module load if env var unset (fail-fast in prod). `express-rate-limit` (NEW dep) added to `auth.ts` student `/login` route: 10 attempts / 15 min keyed on IP + designation (teacher path skipped via `skip` predicate). New `backend/.env.example`. **Manual follow-up landed:** `JWT_SECRET` rotated in Railway prod with fresh `openssl rand -hex 32` value.
+- **#35 — `fix(teacher): scope bulk delete + add ownership/admin gates + merge JSON details (audit bugs #1, #5p, #13)`.** `DELETE /api/teacher/students` (was deleting EVERY student in EVERY teacher's class) now scoped via `enrollments: { some: { class: { teacherId } } }`. Single-delete adds `teacherOwnsPair`. `PATCH /dictionary/:wordId` returns 403 (admin role pending — see `Dplan/Admin_God_Access_Plan.md`). Skip-task and `PATCH /scores/:scoreId` now wrap upserts in `prisma.$transaction` + `mergeDetails` to stop wiping student writingText/answerLog/pearlFeedback.
+- **#30 — `fix(messages): teacherOwnsPair check on direct + thread endpoints (audit bug #4)`.** `POST /direct`, `GET /direct/:pairId`, and `POST /:id/thread` (teacher branch) all gate on `teacherOwnsPair`. Stops cross-tenant DM/thread access between teachers.
+- **#31 — `fix(shifts): unlock check + JSON merge + concern delta clamp (audit bugs #5p, #9)`.** `POST /weeks/:weekId/missions/:missionId/score` verifies the pair's class has unlocked the week (presence in `ClassWeekUnlock` — model has no `unlocked` boolean). `POST /progress/:weekId/:stepId` reads existing details and merges via `mergeDetails`. `POST /concern` rejects non-finite delta and clamps to ±1.0 per request.
+- **#28 — `fix(sessions): mergeDetails on phase complete (audit bug #5p)`.** `POST /sessions/.../complete` upsert now read-modify-write through `prisma.$transaction`. `mergeDetails` helper copied from shifts.ts (matching duplicate-helper convention).
+- **#36 — `fix(socket): per-class rooms + pause replay + ownership on teacher commands (audit bugs #6, #7, #8)`.** Replaces global `'teacher'` socket room (cross-tenant leak) with `class:${classId}` rooms (one per teacher-owned class) plus personal `teacher:${teacherId}` room. New in-memory `classPauseState: Map<classId, ...>` persists pause state across reconnects within a backend lifetime. Student-connect handler replays `session:paused` if the class is paused — fixes the W3 writing-submit overlay bypass for refreshed/late-join students. `teacher:pause-all` / `teacher:resume-all` validate `classId` and ownership before broadcasting (no more accidental "pause every class in the app"). Per-student commands (`skip-task`/`reset-task`/`reset-shift`/`send-to-task`) gated via inline `prisma.classEnrollment.findFirst` ownership check.
+- **#38 — `fix(socket): convert remaining io.to('teacher') route emits to per-class (post Unit 6 follow-up)`.** Follow-up to #36 — without it, teacher real-time updates for student deletes/registrations/remediation events would silently break after #36 lands. Converted 9 emit sites in `auth.ts`, `messages.ts`, `remediation.ts` (3), `teacher.ts` (4) to `io.to('class:' + classId)`. `classId` resolved via `prisma.classEnrollment.findFirst({ OR: [{ pairId }, { userId }] })` (option chosen over exporting `onlineStudents` from socketServer to avoid #36 conflict + works for offline students).
+- **#32 — `fix(health): drop filesystem listing from /api/health (audit bug #10)`.** Public `/api/health` no longer returns `briefingFiles`, `__dirname`, or other path info. Returns `{ status, timestamp, uptime }` only. `/uploads` static mount stays public per CLAUDE.md gotcha (`<video>` tags can't send auth headers; UUID filenames are sufficiently unguessable).
+- **#37 — `fix(clarity-check): idempotent completion via ClarityCheckResult (audit bug #11)`.** New Prisma model `ClarityCheckResult { pairId, checkId, ... @@unique([pairId, checkId]) }` mirrors `ComplianceCheckResult`'s shape. `POST /clarity-check/complete` short-circuits with `{ alreadyCompleted: true }` when `existing.completedAt` is set. Stops infinite mastery-grinding via `+0.03/word` replay.
+- **#29 — `fix(useTeacherSocket): remove destructive disconnectSocket() in cleanup (audit bug #12)`.** `frontend/src/hooks/useTeacherSocket.ts:92` no longer calls the destructive `disconnectSocket()` which was wiping ALL App.tsx-level student listeners on every TeacherDashboard unmount. Per-handler `s.off(...)` was already correct; just stopped also calling the singleton-killer.
+- **#33 — `fix(compliance-check): atomic upsert on /pending (audit bug #14)`.** `GET /pending` race condition (two concurrent fetches → second 500's on unique constraint) replaced with single `prisma.complianceCheckResult.upsert({ update: {}, ... })`. Pre-existing `findUnique` short-circuit on `completedAt` retained to skip `buildComplianceQuestions(...)` when already done.
+
+### Also shipped (related)
+
+- **`d784aa4` — Add W4 WeekConfig committed.** `backend/src/data/week-configs/week4.ts` was untracked locally but referenced by `week-configs/index.ts`. Master couldn't build cleanly until committed; Railway deploys would have failed. Pushed directly to master after build verification (646 lines).
+
+### Remaining manual follow-ups
+
+- **Browser smoke test post-deploy** — login as two teachers in two browsers, verify pause-all locks students (and a refreshed student stays locked), verify dashboard does NOT show the other teacher's students.
+- **Pause persistence across backend restart** — `classPauseState` is in-memory; Railway redeploys lose it. If this becomes a real classroom problem, persist via `Class.pausedAt` + `Class.pauseMessage` columns + read on socket connect.
+- **Bugs 15–27 (medium severity)** — frontend setTimeouts not cleaned up in 6 task components, ComprehensionDoc/IntakeForm don't shuffle MCQ options, PEARL rate-limit increment timing, orphan ComplianceCheckResult rows on Class delete, brittle Pair cascade-delete pattern, etc. Saved for a follow-up `/batch`.
+
+### Critical files (today)
+
+- `backend/.env.example` (NEW), `backend/src/utils/jwt.ts`, `backend/src/routes/auth.ts`, `backend/package.json` (#34)
+- `backend/src/routes/teacher.ts` (#35)
+- `backend/src/routes/messages.ts` (#30)
+- `backend/src/routes/shifts.ts` (#31)
+- `backend/src/routes/sessions.ts` (#28)
+- `backend/src/socketServer.ts` (#36)
+- `backend/src/routes/auth.ts`, `messages.ts`, `remediation.ts`, `teacher.ts` (#38, narrow per-emit edits)
+- `backend/src/index.ts` (#32)
+- `backend/prisma/schema.prisma` + new migration `add_clarity_check_result`, `backend/src/routes/clarity-check.ts` (#37)
+- `frontend/src/hooks/useTeacherSocket.ts` (#29)
+- `backend/src/routes/compliance-check.ts` (#33)
+- `backend/src/data/week-configs/week4.ts` (NEW commit on master, d784aa4)
+
+---
+
 ## 2026-05-03 (Compliance Check hardening + teacher Shifts UX + diagnoses)
 
 Mixed batch — five shipped fixes around the Compliance Check editor and teacher Shifts tab, one Shift 3 narrative tweak, plus deep diagnoses for two systemic socket issues that are *not* yet fixed (waiting on user call).
