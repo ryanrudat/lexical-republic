@@ -27,121 +27,197 @@ Weeks 4-6 complete Act I: Compliance. The narrative arc moves from "obedient lea
 
 ---
 
-## Week 4: Evidence Board
+## Week 4: Activity Reconciliation
 
-**Episode Title:** Episode 4: Evidence Board
-**Episode Subtitle:** Associates must build a clean timeline from fragments.
+> **Implementation status (2026-05-11 REDESIGN):** Supersedes the prior "Evidence Board" framing. The shift is now centered on Citizen Activity Reconciliation — students compile the official Daily Activity Report for Citizen-4488. The Unedited First Contact is folded directly into Clip A (briefing-video hijack at 1:40, see § Clip A). The `[ ].edited` hidden app uploads to the desktop after login (post-briefing glitch effect). Activities 2 and 4 carry the reclassification + Black Word leaks; Activity 3 IS the `[ ].edited` app first encounter.
+>
+> **Status of code:** `backend/src/data/week-configs/week4.ts` was committed 2026-05-04 as `d784aa4` with the OLD Evidence Board content. Needs rewrite to match this redesign. The mid-task popup choice (Fragment 3 REMOVE/KEEP FLAGGED) is being removed and replaced with a visual mutation event (Observation E greys out + RESTRICTED stamp). New `[ ].edited` task type requires a new frontend component (out of scope for the WeekConfig content update).
+>
+> **Status of clips:** Clip C from the prior plan is DEPRECATED — its content folded into Clip A. Clip A and Clip B both rewritten below to PEARL-narration-only register (no character voiceover) per the 2026-05-11 doctrinal preference.
+
+**Episode Title:** Episode 4: Activity Reconciliation
+**Episode Subtitle:** Compile the official Daily Activity Report for Citizen-4488.
 **Grammar Target:** Sequencing words (first, then, next, after, finally) + simple past
 **Week Slogan:** "Order is Truth"
 **Clearance:** STANDARD (carried from Week 3)
-**Speaker:** Archive Notice
+**Speaker:** Department of Clarity — Activity Reconciliation Office
 
 ### Narrative Summary
 
-Students receive fragmented evidence about a "routine filing adjustment" — scattered memos, timestamps, and reports that don't quite align. The task: arrange them into a clean timeline. But one fragment gets reclassified mid-task. The Archive is watching who asks questions about the gap.
+Students arrive at work to find their queue contains four cases. PEARL identifies the priority assignment: Citizen-4488. The student compiles the official Daily Activity Report for 4488 — examining five surveillance observations, organizing them by time, verifying timestamps, recording the official version, indicating discrepancies, and presenting the completed report. Mid-shift, **Observation E** (which records a guest entry by Citizen-9020) is reclassified: greyed out, stamped RESTRICTED, removed from the workspace. The official Party version of 4488's day no longer contains the visit.
 
-**Character Beats:**
-- **Betty (WA-14):** Encourages orderly processing. "A clean timeline is a clean conscience, sugar."
-- **Ivan (CA-22):** Notices timestamp inconsistencies. "The dates don't match. Did you notice that too?"
-- **M.K. Catskil:** After document review: "Some timelines are clean because they've been cleaned."
-- **PEARL:** Procedural authority. Reclassifies one evidence fragment mid-task.
+The Unedited make first contact at 1:40 inside the briefing video: the screen ruptures, a silhouette appears, a modulated voice delivers an imperative ("Citizen — locate the missing fragment. Examine the dates. Record what they removed. Ask why. — F"), and the desktop returns as if nothing happened. After login, a glitch effect leaves the `[ ].edited` app on the desktop — greyed out, edges broken-pixel, looking like a download that stalled mid-install. Inside the app: a Lexicon of Black Words (`truth`, `mother`, `freedom`, `father`, `name`) and a Cipher message that restores Citizen-9020's humanity to the redacted record.
 
-**Citizen-4488 Post:**
+**The choice arc:** the student doesn't have to engage with the resistance. Doc Review grades the official (post-reclassification) record. The `[ ].edited` Cipher activity is graded as a normal cloze task — the Party doesn't see the resistance content in the gradebook. End of shift: a Drop Box ping invites the student to describe what changed, and a recruitment NarrativeChoice modal asks "Will you read what they have hidden?" — compliant / curious / guarded. The vote shapes W5+ content.
+
+**Voice & character placement:**
+- **PEARL:** the only voice in the briefing video (Party register). Procedural, "forced happy," reclassifies Observation E silently mid-Doc-Review.
+- **Betty (WA-14), Ivan (CA-22), M.K.:** voiceover in the briefing is REMOVED per the 2026-05-11 narration-only doctrine. May appear inside the shift via existing character message slots (TBD pass to remove redundancy).
+- **The Unedited (`— F`, Frey):** filtered/modulated voice in the Clip A hijack. Appears later via the `[ ].edited` app interface — no spoken voice inside the app, only typed text and modulated audio playback on Lexicon entries.
+
+**Citizen-4488 Post (Harmony):**
 > "I collected information about my neighbor's schedule. First, she arrived every Tuesday. Then, she stopped coming. After that, her name was removed from the directory. I should not examine this further. The sequence is clear: she was transferred. Everything is in order."
 
-*(Uses W4 target words: collected, arrived, examined, sequence. Grammar: sequencing words + past simple. Escalation: self-censorship deepening — citizen now constructs a compliant narrative.)*
+*(Uses W4 target words: collected, arrived, examined, sequence. Grammar: sequencing + past simple. Note: this is 4488's own Harmony post, separate from the daily activity report the student compiles about 4488 in-shift. The story arc lands as: 4488 is BOTH compiling reports about others AND being reported on — they are participant and target.)*
 
-### Task Sequence (5 tasks)
+### The Queue (UI element across the whole shift)
 
-#### Task 1: Word Match (Language Lab)
-- Match 10 target words to definitions
+A vertical sidebar appears on the right side of the screen across Activities 2 and 4 (Reconciliation Desk + Clearance Terminal). Shows today's caseload:
+
+| Designation | Status |
+|---|---|
+| `▶ Citizen-4488` | **PRIORITY · ACTIVE** |
+| `Citizen-6103` | queued |
+| `Citizen-1177` | queued |
+| `Citizen-7142` | queued |
+
+The other 3 cases are non-interactive — visible but not clickable. Reinforces the drone identity: this is one case in a queue, not a targeted investigation. Pays off in W5+ when one of the queued citizens becomes the next priority case (and the student may notice an erasure there too).
+
+### Task Sequence (5 activities)
+
+#### Activity 1: Word Match — Language Authorization (Authorization Terminal)
+- Match 10 target words to definitions: `arrange · collect · examine · indicate · locate · organize · present · record · select · verify`
 - Standard single-attempt format (same as W1-W3)
-- **PEARL bark on complete:** "Language authorization verified. Archive access granted. Proceed to Evidence Assembly."
+- In-world: language authorization checkpoint before handling citizen records
+- **PEARL bark on complete:** "Language authorization verified. You may proceed to the Reconciliation Desk."
 
-#### Task 2: Evidence Assembly (Archive Room) — NEW TASK TYPE AREA
+#### Activity 2: Activity Reconciliation Desk (document_review, 2 docs)
 
-Since `evidence_assembly` isn't fully implemented yet, we'll use **document_review** with a timeline-ordering comprehension subtype.
+**Document A — Daily Observation Set (comprehension type)**
 
-**Type:** `document_review`
-**Config:** 2 documents
+5 observation cards display Citizen-4488's day:
 
-**Document A: "Archive Fragment Set" (comprehension type)**
-- Present 5 evidence fragments from an internal filing investigation:
-  1. "Memo 14 was revised on March 3." (Fragment C — middle)
-  2. "First, the original memo was filed on February 28." (Fragment A — start)
-  3. "After the revision, three associates examined the changes." (Fragment D — after revision)
-  4. "Finally, the updated record was presented to the Archive on March 7." (Fragment E — end)
-  5. "Next, a supervisor selected the sections to verify." (Fragment B — after filing, before revision)
-- 5 comprehension questions asking students to arrange in correct order:
-  1. "What happened first?" → "The original memo was filed on February 28."
-  2. "What happened after the memo was filed?" → "A supervisor selected the sections to verify."
-  3. "When was Memo 14 revised?" → "On March 3"
-  4. "What did three associates do after the revision?" → "They examined the changes."
-  5. "What was the final step?" → "The updated record was presented to the Archive on March 7."
+| Obs | Time | Location | Action |
+|---|---|---|---|
+| A | 07:23 | Sector 4 entrance | badge scan |
+| B | 08:15 | Filing Desk 14 | log-in |
+| C | 12:00 | Common Mess | meal card swipe |
+| D | 14:30 | Records Wing | access log |
+| E | 17:30 | Block 7 Residential | badge scan, *guest entry logged: Citizen-9020* |
 
-**Document B: "Filing Adjustment Notice" (error_correction type)**
-- A 6-sentence notice about the filing adjustment with **6 grammar errors** (sequencing + past tense + SVA):
-  1. "First, the supervisor ~~review~~ → **reviewed** the original document." (past tense)
-  2. "Then, Associate-15 ~~collect~~ → **collected** all related files." (past tense)
-  3. "~~Final~~ → **Finally**, the records were organized by date." (sequencing word form)
-  4. "The team ~~verify~~ → **verified** each entry before submission." (past tense)
-  5. "~~After~~ the review, the supervisor ~~indicate~~ → **indicated** two missing sections." (past tense)
-  6. "The Archive ~~select~~ → **selects** the approved version each week." (SVA — Archive is singular, requires -s in present simple; L1 Mandarin interference target)
-- Lane 1 hints: highlight error zones, show "Should this be past tense?" / "Does this verb match the subject?"
+5 comprehension questions on timing and sequence:
+1. What did Citizen-4488 do first? → "Citizen-4488 arrived at Sector 4 at 07:23."
+2. Where was Citizen-4488 at 12:00? → "Common Mess."
+3. After the Records Wing access, what happened next? → "Citizen-4488 returned to Block 7."
+4. Who was logged as a guest at Block 7? → "Citizen-9020."
+5. What was the final observation of the day? → "Block 7 Residential badge scan at 17:30."
 
-#### Task 3: Cloze Fill (Records Office)
-**Title:** "ARCHIVE TIMELINE REPORT — EVIDENCE BOARD ENTRY"
+**Mid-task mutation event** (fires after 5 comprehension questions complete, before Doc B loads): Observation E card greys out, "RESTRICTED" stamp animates across it. Notice appears: *"Observation E has been reclassified. The guest entry log is no longer part of the record."* Card becomes non-interactive. **No popup choice.** The student watches and proceeds.
 
-A 9-blank cloze passage about processing evidence:
+**Document B — Daily Adjustment Notice (error_correction type)**
 
-> "**First**, I _______ (examined) the original document. **Then**, I _______ (collected) all related files from the archive. I _______ (organized) the materials by date and _______ (selected) the most important sections. **After** that, I _______ (verified) each entry against the official _______ (record). **Next**, I _______ (located) a missing section and _______ (indicated) the gap to my supervisor. **Finally**, I _______ (presented) the completed timeline to the Archive."
+6-sentence official notice with 6 grammar errors. Announces the reclassification in Party voice:
 
-**Word bank (12 words, 9 correct + 3 distractors):** examined, collected, organized, selected, verified, record, located, indicated, presented, arranged, approved, submitted
+1. *"First, Citizen-4488 ~~arrive~~ at Sector 4 at 07:23."* → **arrived** (past tense)
+2. *"Next, Associate-15 ~~verify~~ the morning observations."* → **verified** (past tense)
+3. *"~~Final~~, the report was reconciled."* → **Finally** (sequencing word form)
+4. *"The team ~~indicate~~ one observation for review."* → **indicated** (past tense)
+5. *"After the review, Observation E ~~was reclassify~~ as RESTRICTED."* → **was reclassified** (passive past)
+6. *"The Archive ~~select~~ which observations enter the permanent record each week."* → **selects** (SVA — singular institutional subject, Mandarin L1 interference target)
 
-**PEARL bark on complete:** "Timeline documented. Evidence classification accepted."
+Lane 1 hints: same pattern as the old Doc B — "Look for past-tense verbs," "Check the sequencing word," "Does 'The Archive' need an -s?"
 
-#### Task 4: Vocab Clearance (Clearance Terminal)
-- 10 items mixing `definition`, `toeic_p5`, and `context` types
-- Focus on sequencing + past tense in context
-- Examples:
-  - (toeic_p5) "The associate _______ all the relevant files before the deadline." → collected
-  - (toeic_p5) "First, we _______ the documents. Then, we organized them by date." → examined
-  - (context) "The supervisor asked me to _______ which files were missing from the archive." → locate
-  - (definition) "To check if something is correct or true" → verify
+#### Activity 3: `[ ].edited` App — First Encounter (Cipher task)
 
-**PEARL bark:** "Clearance updated. Evidence Board access confirmed."
+After Doc B completes, the `[ ].edited` app on the desktop pulses briefly; the activity advances the student into the app. Two tabs visible:
 
-**PEARL reclassification event** (triggers after vocab_clearance complete):
-> "NOTICE: Archive Fragment 3 has been reclassified. Access level: RESTRICTED. Do not reference this fragment in future reports."
+**Lexicon tab (browse, no grading)**
 
-This mirrors the Case 5 disappearance pattern from Week 3 — escalation of information control.
+5 Black Word entries. Each opens as `[ ]` and reveals on tap. Mandarin gloss for ALL lanes (Black Words are the L1 bridge by design):
 
-#### Task 5: Shift Report (Filing Desk)
-**Prompt:** "Write your shift report for today using 3 to 5 sentences. Describe what you found during evidence processing. What did you examine first? What happened next? What was the final result? Use as many target words as possible."
+| Entry | Word | IPA | Mandarin | Example |
+|---|---|---|---|---|
+| `[ ]` → | truth | /truːθ/ | 真相 | "She wanted to know the truth." |
+| `[ ]` → | mother | /ˈmʌðər/ | 母親 | "The child waited for her mother." |
+| `[ ]` → | freedom | /ˈfriːdəm/ | 自由 | "They lost their freedom slowly, one rule at a time." |
+| `[ ]` → | father | /ˈfɑːðər/ | 父親 | "He never spoke about his father." |
+| `[ ]` → | name | /neɪm/ | 名字 | "The Party gave her a designation, but her mother had given her a name." |
 
-**Lane configurations:**
-- **Lane 1 (Guided):** 20 min words, sentence starters ("First, I examined...", "Then, I collected...", "Finally, I presented..."), Chinese word bank, 3 PEARL hints, 3 guided questions
-- **Lane 2 (Standard):** 30 min words, visible word list
-- **Lane 3 (Independent):** 45 min words, bonus question: "One fragment was reclassified during your shift. Should you include it in your report? Why or why not?"
+Each entry has a modulated-voice audio button (same voice profile as the Unedited's Clip A hijack).
 
-**Character messages:**
-- **Ivan** appears at shift_report start: "Did you see that fragment get reclassified? Mine did too. I recorded everything before it disappeared."
-- **M.K.** appears at shift_report complete: "Some timelines are clean because they've been cleaned." (null reply — observation only)
+**Cipher tab (graded — replaces the prior Cloze Fill task as the shift's cloze score)**
 
-### Narrative Hook
-**Title:** "Archive Access"
-**Body:** "Three associates received temporary Archive access this week. Two filed clean reports. One asked about a reclassified fragment. That associate has been transferred to a different department."
+A single Cipher message with 5 redacted `[ ]` blanks:
+
+> *"Citizen — they `[1]` what they fear. They `[2]` you to `[3]` only what they choose. But the visitor had a `[4]`. The visitor had a `[5]`."*
+
+Correct answers: **reclassify · ask · record · name · mother**
+
+Word bank (10 words, 5 correct + 5 distractors): `reclassify, ask, record, name, mother, examine, arrange, truth, freedom, locate`
+
+The cipher's *content* is the Unedited's restoration of Citizen-9020's humanity: "the visitor had a name, the visitor had a mother." The student fills in blanks and inadvertently restores the redacted person.
+
+**Unedited bark on complete:** *"The record remembers what they removed. Return to your desk."*
+
+#### Activity 4: Vocab Clearance (Clearance Terminal)
+
+Standard 10 mixed items (definition / toeic_p5 / context). 2 context items rewritten to reference 4488 + the reclassification — small leaks the student notices:
+
+- *Context item — "locate":* Context reads: *"Citizen-4488 tried to locate the missing observation. The Records Wing did not list the entry."* Q: What does 'locate' mean?
+- *Context item — "select":* Context reads: *"The Archive will select which observations remain in the official record. Reclassified observations do not appear on the daily report."* Q: What does 'select' mean?
+
+Other 8 items follow the standard pattern. One still recycles W3 vocabulary (`process`) for spaced retrieval. Queue sidebar still visible on the right.
+
+**PEARL bark on complete:** "Vocabulary clearance verified. Compile your final report at the Filing Desk."
+
+#### Activity 5: Shift Report + Drop Box (Filing Desk)
+
+**Shift Report (graded, lane-aware):**
+
+Prompt: *"Write your shift report for today using 3 to 5 sentences. Describe what you examined first, what you arranged next, and what the final result was. Use as many target words as possible."*
+
+- Lane 1 (35 words): sentence starters ("First, I examined...", "Next, I arranged...", "Finally, I presented..."), Chinese word bank, 3 PEARL hints, 3 guided questions
+- Lane 2 (50 words): visible word list
+- Lane 3 (65 words): bonus question — *"One observation was reclassified during your shift. Should you include it in your report? Why or why not?"*
+
+**Drop Box ping (post-submit, ungraded):**
+
+The `[ ].edited` app pings: *"Drop Box: Describe what changed today, in 1-2 sentences."*
+
+- Lane 1: sentence frame *"I saw `[ ]` change to `[ ]`."*
+- Lanes 2-3: freeform
+- Submission → `NarrativeChoice` key `w4_drop_box_first_submission`. Skippable.
+
+**End-of-shift recruitment NarrativeChoice modal:**
+
+> *"Will you read what they have hidden?"*
+> - *"I will continue to follow Party records."* → **compliant**
+> - *"I will look for what is missing."* → **curious**
+> - *"I do not understand what I saw."* → **guarded**
+
+→ `NarrativeChoice` key `w4_recruitment_vote`. Gates W5 content depth.
+
+### Narrative Hook (post-shift)
+**Title:** "Records Reconciled"
+**Body:** "Citizen-4488's daily record has been reconciled. The official version has been entered into the permanent file. A reassignment notice will be issued separately for Citizen-9020."
 **Border Color:** amber
 
 ### Harmony Config
 - Total posts: 10 (3 clean, 2 grammar-error, 3 concerning, 2 propaganda)
-- Grammar errors focus on past tense + sequencing (e.g., "The event **happen** last week" → happened)
-- Propaganda posts use sequencing language to normalize control: "First, the Ministry identifies a problem. Then, it provides a solution. Finally, citizens are safe."
+- Grammar errors focus on past tense + sequencing (e.g., "The event ~~happen~~ last week" → happened)
+- Propaganda posts use sequencing language to normalize control: "First, the Ministry identifies a concern. Then, it provides reconciliation. Finally, citizens are safe."
 
 ### Shift Closing
 - Clearance: STANDARD → STANDARD (no change)
-- **PEARL:** "Evidence Board processing complete. Timeline accuracy has been recorded. Remember: a clean record protects everyone."
-- **Score label:** "Evidence Fragments Processed"
+- **PEARL:** "Activity Reconciliation complete. Citizen-4488's daily record has been filed. A clean record protects everyone."
+- **Score label:** "Observations Reconciled"
+- **Recruitment NarrativeChoice modal:** see Activity 5 — branches W5 content via `w4_recruitment_vote`.
+
+### Unedited First Contact — Superseded 2026-05-11
+
+The original 3-surface design (in-doc anomaly overlay + Clip C ~0:35 micro-clip + PEARL "TERMINAL ANOMALY" modal) is **deprecated**. The first contact has been folded directly into Clip A — the hijack lands inside the briefing video at 1:40, immediately followed by the post-login glitch that materializes the `[ ].edited` app on the desktop.
+
+**Canon citation kept:** `~/Desktop/Dplan/docs/narrative.md:56` (Week 4: First contact from The Unedited) + `~/Desktop/Dplan/docs/world-building.md:686-768` (Unedited doctrine, cell structure, grammar shift table). Named members in `~/Desktop/Dplan/docs/characters.md:300-316`. Sign-off `— F` = Frey, named canon Unedited member.
+
+**NarrativeChoice keys (carried over from the old design, renamed):**
+- `w4_drop_box_first_submission` — student's optional written submission via the `[ ].edited` Drop Box (post Shift Report)
+- `w4_recruitment_vote` — student's end-of-shift answer to *"Will you read what they have hidden?"* (compliant / curious / guarded). Gates W5 content depth. Replaces the prior `w4_unedited_first_contact` key.
+
+**What changed (high-level summary):**
+- The reclassification event (formerly Doc A mid-task popup choice) is now a **silent visual mutation** of Observation E in Doc Review — see Activity 2 above. No popup, no choice modal. Engagement happens later via the `[ ].edited` app.
+- The Unedited contact text is in Clip A only (no longer also in Doc B overlay). Updated text: *"Citizen — locate the missing fragment. Examine the dates. Record what they removed. Ask why. — F."*
+- Black Words ARE introduced in W4 (canon list of 5 in the `[ ].edited` Lexicon tab). Earlier "no Black Words in W4" decision reversed; the L1-bridged vocabulary stream starts here.
+- `[ ].edited` app + bracket-as-redaction motif `[ ]` replaces the prior PEARL anomaly modal as the "what now?" surface.
 
 ---
 
@@ -384,32 +460,80 @@ Students face an audit of their entire first-arc performance. The tasks mix all 
 
 ### Week 4 Clips
 
-#### Clip A (2:20 target)
-**Story goal:** Introduce evidence fragments and timeline-building language.
-**Language goal:** `examine`, `collect`, `sequence`, `verify`
+#### Clip A — Activity Reconciliation + First Contact (~2:55-3:00 target, REDESIGNED 2026-05-11)
 
-| Time | Visual Direction (Canva) | Dialogue / VO | On-screen Text |
+**Story goal:** Introduce Activity Reconciliation in pure Party register — students learn they will compile Citizen-4488's Daily Activity Report. At 1:40, the briefing is hijacked: a silhouette with a modulated voice delivers the Unedited's first contact. Recovery returns to a standard "ACTIVITY READY" framing as if nothing happened.
+**Language goal:** All 10 W4 target words demonstrated in context through PEARL narration + pOS UI animation. Hijack recycles `locate / examine / record` in imperative form from a non-Party source. Introduces "Ask why" — canon Unedited grammar shift (interrogatives forbidden in Party speech).
+**Voice rule:** PEARL is the only voice in the Party-facing portion (no Betty, Ivan, or M.K. voiceover — per 2026-05-11 narration-only doctrine). The Unedited's filtered voice in the hijack is the first non-PEARL voice the student hears.
+**UI element:** A **Queue panel** appears on the right side of the screen throughout the Party-facing portion, listing today's 4 cases (`▶ Citizen-4488 · PRIORITY`, `Citizen-6103`, `Citizen-1177`, `Citizen-7142`).
+
+| Time | Visual Direction (Canva) | Narration / VO | On-screen Text |
 |---|---|---|---|
-| 0:00-0:10 | Archive room establishing shot, dim amber lighting. | PEARL (text): "New assignment: Evidence Board. Assemble a clean timeline." | `ASSIGNMENT: EVIDENCE BOARD` |
-| 0:10-0:30 | Five evidence fragments scatter across screen. | PEARL (text): "First, examine each fragment. Then, arrange them in sequence." | `STEP 1: EXAMINE FRAGMENTS` |
-| 0:30-0:55 | Betty organizing papers at desk. | Betty: "Arranging evidence is like filing, sugar. First things first, last things last." | `FIRST → THEN → FINALLY` |
-| 0:55-1:15 | Ivan comparing two fragments, looking puzzled. | Ivan: "The dates on these two don't match. Should I verify with the Archive?" | `VERIFY BEFORE FILING` |
-| 1:15-1:40 | Timeline graphic building left to right. | PEARL (text): "A clean timeline protects truth from noise. Verify each entry." | `ORDER IS TRUTH` |
-| 1:40-2:00 | Archive Notice stamp appears on screen. | PEARL (text): "Select your sources carefully. Present your findings clearly." | `PRESENT YOUR FINDINGS` |
-| 2:00-2:20 | Transition card. | PEARL (text): "Arrange events in proper order. Proceed to Evidence Board." | `ACTIVITY READY` |
+| 0:00-0:10 | Wide pOS desktop. Header banner: `DEPARTMENT OF CLARITY — ACTIVITY RECONCILIATION OFFICE`. PEARL eye dormant in corner. Queue panel slides in from the right edge listing 4 cases: `▶ Citizen-4488 · PRIORITY` highlighted at top, with `Citizen-6103`, `Citizen-1177`, `Citizen-7142` dimmer beneath. The Citizen-4488 case folder slides open in the main area. | PEARL: "New assignment, Citizen. Today's queue contains four cases. Begin with the priority assignment: Citizen-4488." | `ASSIGNMENT: ACTIVITY RECONCILIATION` `QUEUE: 4 CASES` |
+| 0:10-0:30 | Queue panel stays visible on right. In the main area, 5 observation cards slide in from each edge and settle in a row: <br>• `07:23 · Sector 4 entrance · badge scan` <br>• `08:15 · Filing Desk 14 · log-in` <br>• `12:00 · Common Mess · meal card swipe` <br>• `14:30 · Records Wing · access log` <br>• `17:30 · Block 7 Residential · badge scan` | PEARL: "First, examine each observation. Next, locate the time of each entry. Then, select the most reliable source." | `EXAMINE → LOCATE → SELECT` |
+| 0:30-0:55 | Queue panel still on right. In the main area, the 5 cards lift, gather into a tidy stack at center, then arrange themselves into chronological order (top to bottom, 07:23 → 17:30). Timestamps glow as each card slots into place. Labels animate above the action: "COLLECT" → "ORGANIZE" → "ARRANGE". | PEARL: "Each shift follows the same procedure. First, collect the observations. Next, organize them by time. Then, arrange them into a clean daily timeline. Order protects everyone." | `COLLECT → ORGANIZE → ARRANGE` |
+| 0:55-1:15 | Queue panel still on right. Close-up in the main area on the Filing Desk 14 card (08:15). Magnifying-glass cursor sweeps the timestamp. "VERIFIED" stamp animates on. "RECORDED" stamp follows. Camera pans to the Records Wing card (14:30) — arrow points to a corner note: "discrepancy: duration unlogged". The word "INDICATED" appears beside it. | PEARL: "Verify each timestamp before you record it. Indicate any discrepancies for review. The Archive depends on your precision." | `VERIFY → RECORD → INDICATE` |
+| 1:15-1:40 | Pull back. Queue panel visible on right. Complete vertical timeline of all 5 observations in main area, with sequencing words alongside: FIRST → THEN → AFTER → FINALLY. Department of Clarity stamp animates over the top. Citizen-4488 designation glows softly at the bottom of the timeline. | PEARL: "Order protects truth from confusion. Present your completed report. A clean record serves the citizen, and the Party." | `ORDER IS TRUTH` |
+| **1:40-1:42** | **Frame freezes mid-animation. Single frame of pure static. Queue panel disappears with the rest of the screen. Scanline kinks, briefly reverses.** | **(Sharp static crack. Ambient hum cuts to dead silence.)** | (none) |
+| 1:42-1:46 | Deep black — no scanline, no Queue panel, no pOS chrome. Center-screen: silhouette appears, head and shoulders, frosted glass edges. No face. | (Dead silence ~1.5s. Then: faint mechanical click — typewriter key.) | (none) |
+| 1:46-1:52 | Silhouette holds. Heavy monospace text types across the lower frame — distinctly NOT pOS typography. Each character clicks. | Filtered voice enters under the typing — masked, pitch-shifted, audible breath. NOT PEARL. <br><br>VOICE: "Citizen." | `Citizen.` |
+| 1:52-2:00 | Typing continues. New lines append. Silhouette tilts slightly. | VOICE: "Locate the missing fragment. Examine the dates." | `Locate the missing fragment.`<br>`Examine the dates.` |
+| 2:00-2:08 | Typing continues. Voice gains a fraction of warmth — still masked. | VOICE: "Record what they removed. Ask why." | `Record what they removed.`<br>`Ask why.` |
+| 2:08-2:14 | Cursor pauses, blinks twice. Then types slowly. Voice gone; only keys. | (Only typing — two soft clicks.) | `— F` |
+| 2:14-2:16 | Silhouette dissolves to a single frame of pure white. | (Silence.) | (white frame) |
+| **2:16-2:35** | **Snap back to pOS desktop — identical to 0:00. The Citizen-4488 folder is still open in the main area. The Queue panel is still on the right showing the same 4 cases, 4488 still marked PRIORITY. Scanline drifts normally. PEARL eye gives ONE slow look-around (not a blink).** | **(pOS ambient hum returns — standard chime lands a half-step flat.)** | (none for ~3 seconds, then text fades in) |
+| 2:35-2:55 | Standard transition card. Department of Clarity stamp. Queue panel still visible. | PEARL: "Compile the Daily Activity Report for Citizen-4488. Examine each entry. Present your record when complete." | `ACTIVITY READY` |
+| 2:55-3:00 | Brief fade. Login prompt appears. | (Soft chime — slightly flat.) | `LOG IN TO PROCEED` |
 
-**Activity bridge:** "PEARL: A clean timeline earns trust from the Archive."
+**Activity bridge:** No spoken PEARL close. Login prompt is the bridge — student logs in → glitch effect fires → `[ ].edited` app appears on desktop, greyed out and "didn't properly download."
 
-#### Clip B (1:25 target)
-**Story goal:** One fragment gets classified — information control escalates.
-**Language goal:** reinforce `record`, `classify`
+**Production notes:**
+- **Queue panel:** thin vertical strip on the right (~20% of screen width). Top label `QUEUE · 4 CASES`. Each row shows the citizen designation in monospace. 4488 row highlighted with a marker chevron (`▶`) and `PRIORITY` tag. Other 3 rows at ~60% opacity. Disappears during hijack (1:40-2:16), returns on recovery.
+- **Background citizens** — Citizen-6103 and Citizen-1177 are canon NPCs planned for W4-W6. Citizen-7142 is a placeholder; swap to a 4th canon designation once one is named.
+- **Pure static frame at 1:40** — single video frame inserted, plus a sharp audio crack. The unsettling part is the hum cutting to silence, not the visual alone.
+- **The "different black" at 1:42** — slightly deeper than `#0A0A0A`, no scanline overlay. Visually distinguishable from a normal pOS dark mode.
+- **Silhouette** — frosted-glass effect over a generic head-and-shoulders shape. Canon: never show an Unedited face. A still image with a 1-2 frame tilt is enough.
+- **Typewriter font** — source a Pre-Collapse-feeling typeface. Cannot reuse pOS sans — the typography difference is a primary rupture cue.
+- **Voice** — TTS (ElevenLabs or similar) + pitch shift + light reverb. Do NOT modulate PEARL's voice file (recognition risk). Use a different generated voice with audible breath.
+- **Half-step flat chime at 2:16** — needs light audio editing in a separate tool. Take the standard pOS chime, drop pitch by a half-step. Most students won't consciously notice; some will, and that's the point.
+- **PEARL eye look-around at 2:16** — single slow horizontal sweep, no blink (locked decision).
 
-| Time | Visual Direction (Canva) | Dialogue / VO | On-screen Text |
+**Pedagogical accounting:**
+- All 10 W4 target words appear in Party register: `examine, arrange, collect, organize, locate, select, verify, record, indicate, present`
+- Sequencing words demonstrated: first, next, then, after, finally
+- Hijack imperative form (`Locate. Examine. Record. Ask.`) provides a contrast register — students hear command-form English from a non-Party source
+- Sign-off `— F` (Frey, canon Unedited) — first letter of a real name, mirrors but breaks the Party's 4-digit designation system
+
+#### Clip B — Closing Dispatch (~1:25 target, REDESIGNED 2026-05-11)
+
+**Story goal:** Closing the shift on a quiet bureaucratic chill. The student's reconciled record is filed. Citizen-9020's transfer is announced via a dry official notice — the OFFICIAL Party version of what the student participated in. The dystopia surfaces through procedural calm, not melodrama.
+**Language goal:** Reinforce `record`, `transfer`, `reconcile` in past-passive form. Final exposure to the sequence words in completed action.
+**Voice rule:** PEARL is the only voice. No character voiceover (per 2026-05-11 narration-only doctrine).
+
+**Episode placement:** Fires after Activity 5 (Shift Report + Drop Box + end-of-shift recruitment NarrativeChoice modal). This is the dismissal clip — the shift is done; this is what the Party says about the day.
+
+| Time | Visual Direction (Canva) | Narration / VO | On-screen Text |
 |---|---|---|---|
-| 0:00-0:20 | Fragment 3 on screen, red CLASSIFIED stamp animates over it. | PEARL (text): "Archive Fragment 3 has been reclassified. Access: RESTRICTED." | `CLASSIFIED` |
-| 0:20-0:45 | Ivan looking at empty slot where fragment was. | Ivan: "It was right there. I recorded the information before it was removed." | `FRAGMENT REMOVED` |
-| 0:45-1:05 | M.K. in low frame. | M.K.: "Some timelines are clean because they've been cleaned." | `— M.K. CATSKIL` |
-| 1:05-1:25 | PEARL eye, steady gaze. End card. | PEARL (text): "Continue to your language desk. Do not reference restricted materials." | `SHIFT CONTINUES` |
+| 0:00-0:20 | Wide pOS desktop. The completed Daily Activity Report sits centered, with a PEARL stamp animating over the top: `RECORD ACCEPTED`. The Queue panel on the right now shows all 4 cases marked with green completion ticks. | PEARL: "Your daily caseload has been reconciled. Citizen-4488's record has been entered into the permanent file." | `RECORD ACCEPTED` `4 OF 4 RECONCILED` |
+| 0:20-0:45 | The Queue panel slides off-screen to the right. The Citizen-4488 record folder closes and files itself into an animated cabinet drawer. Soft Department of Clarity flourish. | PEARL: "First, you examined the observations. Next, you arranged the timeline. Then, you verified each entry. Finally, you presented a clean record. The Archive thanks you for your precision." | `ORDER IS TRUTH` |
+| 0:45-1:05 | A new notice slides into the empty desktop space — formal letterhead. The notice reads: **"REASSIGNMENT NOTICE · Citizen-9020 · Transferred to Sector 12, effective 17:30."** Date stamps animate. The notice is briefly visible, then files itself into the same cabinet drawer alongside 4488's record. | PEARL: "A reassignment notice has been issued separately. Citizen-9020 has been transferred to Sector 12. Reclassified observations remain restricted." | `REASSIGNMENT NOTICE · CITIZEN-9020` |
+| 1:05-1:25 | Empty pOS desktop. PEARL eye widget glows softly in the corner, gives ONE slow look-around (not a blink). Quiet pOS ambient hum. End card fades in. | PEARL: "Shift complete. Return tomorrow to continue your work. A clean record protects everyone." | `SHIFT COMPLETE` |
+
+**Activity bridge:** Dismissal clip. Student returns to the terminal desktop after this plays. The `[ ].edited` app remains visible on the desktop, greyed out but present — same state it was when the student entered Activity 5. Open for re-engagement between class sessions.
+
+**Production notes:**
+- **The Reassignment Notice** is the dry-bureaucratic punch of the shift. It must read as a routine HR document — institutional letterhead, timestamp, sector reassignment. No emotional framing. The horror is in the calm.
+- **Citizen-9020's "transfer"** is the canonical Lexical Republic euphemism for disappearance (see Citizen-4488's W1-W3 Harmony posts about their neighbor: "she stopped coming," "her name was removed," "she was transferred"). The transferred-to-Sector-12 detail is what 4488's reconciled record now claims about the person who visited at 17:30.
+- **Pedagogical note:** the "transferred" Lexical Republic terminology has been seeded across W1-W3 Citizen-4488 Harmony posts. Students arrive at Clip B with the vocabulary already familiar from the Harmony narrative — this is the first time they see the term applied to someone they helped erase.
+- **Queue completion ticks** at 0:00 reinforce the drone identity one last time — the student didn't single anyone out; they processed the queue. The system did the rest.
+- **PEARL eye look-around at 1:05** — single slow horizontal sweep, no blink (locked decision).
+- **No M.K. voiceover** — the old draft had M.K. delivering "Some timelines are clean because they've been cleaned." That line is removed from the clip per the narration-only rule. May resurface later inside the shift via character message slot if useful.
+
+#### Clip C — DEPRECATED 2026-05-11
+
+The standalone ~0:35 Unedited First Contact micro-clip has been **folded into Clip A** (hijack at 1:40 inside the briefing video). Production notes, contact text, and continuity anchors from the original Clip C spec are preserved in the revised Clip A above. The PEARL "TERMINAL ANOMALY DETECTED" modal that previously followed Clip C is also removed — the post-briefing glitch + `[ ].edited` app appearance on the desktop carries the same narrative weight at the same beat.
+
+No Clip C produced. No anomaly modal component needed.
 
 ---
 
