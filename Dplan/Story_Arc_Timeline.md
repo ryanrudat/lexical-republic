@@ -26,7 +26,7 @@ No free-roam sequence in class delivery.
 | 1 | Party onboarding broadcast introduces William and PEARL authority. | Assignment confirmation; first subtle unease line. | Sterile, cheerful institutional welcome. |
 | 2 | Conflicting memo appears ("14" vs "14-R"). | Official reframe: revision is "normal." | Slight tension under warm language. |
 | 3 | Queue pressure rises; speed rhetoric intensifies. | Choice pressure beat: speed vs accuracy. | Busy operational floor mood. |
-| 4 | Evidence fragments introduced as timeline puzzle. | One viewed fragment becomes classified. | Archive tone: procedural but suspicious. |
+| 4 | Citizen-4488 Daily Activity Report introduced; Unedited first contact hijacks the briefing at 1:40 (silhouette + modulated voice). | Closing dispatch: 4488's record filed + Citizen-9020 reassignment notice. | Activity Reconciliation Office: procedural surveillance suddenly disrupted by hidden app upload. |
 | 5 | Wellness framing language appears as "care." | Student response flagged for review. | Friendly surveillance tone deepens. |
 | 6 | Audit sequence of Act I closes; first arc synthesis. | File flashes warning signal. | End-of-act pressure spike. |
 | 7 | Hidden lexicon words enter official channels. | Secret note hidden in corrected text. | Beginning of covert resistance signals. |
