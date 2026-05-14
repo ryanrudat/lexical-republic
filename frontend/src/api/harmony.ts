@@ -11,11 +11,21 @@ export interface BulletinQuestion {
   question: string;
   options: string[];
   correctIndex: number;
+  /** Traditional Chinese gloss of the question stem (Lane 1 visible, Lane 2 tap-to-reveal). */
+  translationZhTw?: string;
 }
 
 export interface BulletinResponseResult {
   isCorrect: boolean;
   correctIndex: number;
+}
+
+/** Lane-aware study aid attached to a censure response. Optional — not every word resolves. */
+export interface CensureStudyCard {
+  word: string;
+  phonetic: string | null;
+  translationZhTw: string | null;
+  exampleSentence: string | null;
 }
 
 export interface HarmonyPost {
@@ -85,6 +95,7 @@ export interface CensureResponseResult {
   isCorrect: boolean;
   correction: string | null;
   explanation: string | null;
+  studyCard?: CensureStudyCard | null;
 }
 
 export async function fetchHarmonyPosts(): Promise<HarmonyFeedResponse> {
@@ -164,6 +175,9 @@ export interface ArchiveWord {
   word: string;
   definition: string;
   exampleSentence: string;
+  /** Traditional Chinese meaning (Lane 1 always shown, Lane 2 tap-to-reveal, Lane 3 hidden). */
+  translationZhTw: string | null;
+  phonetic: string | null;
   mastery: number;
   encounters: number;
 }

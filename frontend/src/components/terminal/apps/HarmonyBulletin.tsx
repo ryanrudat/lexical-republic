@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import type { HarmonyPost, BulletinQuestion } from '../../../api/harmony';
 import { useHarmonyStore } from '../../../stores/harmonyStore';
+import { useStudentStore } from '../../../stores/studentStore';
 
 /** Fisher-Yates shuffle with index mapping for answer validation. */
 function shuffleWithMapping(arr: string[]): { shuffled: string[]; mapping: number[] } {
@@ -106,9 +107,11 @@ function BulletinMCQ({
   answered: boolean | undefined;
   onRespond: (postId: string, qi: number, si: number) => Promise<any>;
 }) {
+  const lane = useStudentStore((s) => s.user?.lane ?? 2);
   const [selected, setSelected] = useState<number | null>(null);
   const [result, setResult] = useState<{ isCorrect: boolean; correctIndex: number } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showMandarin, setShowMandarin] = useState(false);
 
   const shuffleRef = useRef<{ shuffled: string[]; mapping: number[] }>(
     shuffleWithMapping(question.options),
@@ -133,7 +136,29 @@ function BulletinMCQ({
         ? isCorrect ? 'border-green-300 bg-green-50/50' : 'border-rose-300 bg-rose-50/50'
         : 'border-sky-200 bg-white'
     }`}>
-      <p className="text-[11px] font-medium text-[#2C3340] mb-2">{question.question}</p>
+      <p className="text-[11px] font-medium text-[#2C3340] mb-1">{question.question}</p>
+      {/* Lane-aware Mandarin gloss of the question stem.
+          Lane 1 always visible (Cummins L1 scaffolding for low-ability A2 readers).
+          Lane 2 tap-to-reveal so Standard students attempt English first.
+          Lane 3 hidden — Independent path. */}
+      {question.translationZhTw && lane === 1 && (
+        <p className="text-[10px] text-sky-700/80 mb-2 leading-snug">{question.translationZhTw}</p>
+      )}
+      {question.translationZhTw && lane === 2 && (
+        <div className="mb-2">
+          {showMandarin ? (
+            <p className="text-[10px] text-sky-700/80 leading-snug">{question.translationZhTw}</p>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowMandarin(true)}
+              className="text-[9px] text-sky-700/70 underline hover:text-sky-800 tracking-wider"
+            >
+              Show 中文
+            </button>
+          )}
+        </div>
+      )}
       <div className="grid grid-cols-1 gap-1.5">
         {shuffled.map((opt, di) => {
           const originalIdx = mapping[di];

@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useHarmonyStore } from '../../../stores/harmonyStore';
-import type { HarmonyPost, CensureItem } from '../../../api/harmony';
+import { useStudentStore } from '../../../stores/studentStore';
+import type { HarmonyPost, CensureItem, CensureResponseResult } from '../../../api/harmony';
 import HarmonyBulletin from './HarmonyBulletin';
 import HarmonyPearlTip from './HarmonyPearlTip';
 import HarmonyNoticeCard from './HarmonyNoticeCard';
@@ -572,10 +573,12 @@ function CensureContentHighlight({
 
 function CensureCard({ item }: { item: CensureItem }) {
   const { respondToCensure } = useHarmonyStore();
+  const lane = useStudentStore((s) => s.user?.lane ?? 2);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
-  const [result, setResult] = useState<{ isCorrect: boolean; correction: string | null; explanation: string | null } | null>(null);
+  const [result, setResult] = useState<CensureResponseResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
+  const [showMandarin, setShowMandarin] = useState(false);
 
   const data = item.censureData;
 
@@ -762,6 +765,58 @@ function CensureCard({ item }: { item: CensureItem }) {
             <p className="text-[11px] text-[#4B5563]">
               {result?.explanation || data.explanation}
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Lane-aware bilingual study card — Lane 1 always shows Mandarin,
+          Lane 2 tap-to-reveal, Lane 3 English-only. Mirrors RemediationModule
+          so Censure Queue meets the same A2-B1 doctrine. */}
+      {result?.studyCard && (
+        <div className="px-4 pb-3">
+          <div className="rounded-lg border border-sky-200 bg-sky-50/40 px-3 py-2.5 space-y-2">
+            <div className="flex items-baseline gap-2">
+              <span className="text-[13px] font-semibold text-[#2C3340] font-ibm-mono">
+                {result.studyCard.word}
+              </span>
+              {result.studyCard.phonetic && (
+                <span className="text-[10px] text-sky-700 font-ibm-mono">
+                  /{result.studyCard.phonetic}/
+                </span>
+              )}
+            </div>
+            {result.studyCard.translationZhTw && lane === 1 && (
+              <div>
+                <p className="text-[9px] font-ibm-mono text-sky-700 tracking-wider uppercase mb-0.5">中文</p>
+                <p className="text-[12px] text-[#2C3340]">{result.studyCard.translationZhTw}</p>
+              </div>
+            )}
+            {result.studyCard.translationZhTw && lane === 2 && (
+              <div>
+                {showMandarin ? (
+                  <>
+                    <p className="text-[9px] font-ibm-mono text-sky-700 tracking-wider uppercase mb-0.5">中文</p>
+                    <p className="text-[12px] text-[#2C3340]">{result.studyCard.translationZhTw}</p>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowMandarin(true)}
+                    className="text-[10px] text-sky-700 underline hover:text-sky-800"
+                  >
+                    Show 中文
+                  </button>
+                )}
+              </div>
+            )}
+            {result.studyCard.exampleSentence && lane !== 3 && (
+              <div>
+                <p className="text-[9px] font-ibm-mono text-sky-700 tracking-wider uppercase mb-0.5">Example</p>
+                <p className="text-[11px] text-[#4B5563] italic leading-snug">
+                  {result.studyCard.exampleSentence}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1381,8 +1436,67 @@ function SectorTab({
 
 /* ─── Archives Tab ─────────────────────────────────────────────── */
 
+/** Per-word card with lane-aware Mandarin gloss. Extracted so each word
+ *  can own its own tap-to-reveal state (Lane 2) without parent bookkeeping. */
+function ArchiveWordEntry({
+  word,
+  lane,
+}: {
+  word: import('../../../api/harmony').ArchiveWord;
+  lane: number;
+}) {
+  const [showMandarin, setShowMandarin] = useState(false);
+  return (
+    <div className="flex items-center gap-3 px-3 py-2 bg-white/60 rounded-lg border border-[#E8E4DC]/50">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-baseline gap-2">
+          <span className="text-[12px] font-semibold text-[#2C3340]">{word.word}</span>
+          {word.phonetic && lane !== 3 && (
+            <span className="text-[9px] text-sky-700 font-ibm-mono">/{word.phonetic}/</span>
+          )}
+        </div>
+        <p className="text-[10px] text-[#4B5563] leading-snug mt-0.5">{word.definition}</p>
+        {word.translationZhTw && lane === 1 && (
+          <p className="text-[10px] text-sky-700/80 leading-snug mt-0.5">{word.translationZhTw}</p>
+        )}
+        {word.translationZhTw && lane === 2 && (
+          showMandarin ? (
+            <p className="text-[10px] text-sky-700/80 leading-snug mt-0.5">{word.translationZhTw}</p>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowMandarin(true)}
+              className="text-[9px] text-sky-700/70 underline hover:text-sky-800 mt-0.5"
+            >
+              Show 中文
+            </button>
+          )
+        )}
+        {word.exampleSentence && (
+          <p className="text-[9px] text-[#8B8578] italic mt-0.5">"{word.exampleSentence}"</p>
+        )}
+      </div>
+      {/* Mastery bar */}
+      <div className="w-16 shrink-0">
+        <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all ${
+              word.mastery >= 0.8 ? 'bg-emerald-500' : word.mastery >= 0.4 ? 'bg-amber-500' : 'bg-rose-400'
+            }`}
+            style={{ width: `${Math.round(word.mastery * 100)}%` }}
+          />
+        </div>
+        <p className="text-[8px] text-[#9CA3AF] text-right mt-0.5">
+          {Math.round(word.mastery * 100)}%
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function ArchivesTab() {
   const { archives, archivesLoading, loadArchives } = useHarmonyStore();
+  const lane = useStudentStore((s) => s.user?.lane ?? 2);
   const [expandedWeek, setExpandedWeek] = useState<number | null>(null);
   const [activeSection, setActiveSection] = useState<'vocabulary' | 'timeline' | 'bulletins'>('vocabulary');
 
@@ -1464,29 +1578,7 @@ function ArchivesTab() {
               {expandedWeek === week.weekNumber && (
                 <div className="mt-1 space-y-1 pl-2">
                   {week.words.map(w => (
-                    <div key={w.word} className="flex items-center gap-3 px-3 py-2 bg-white/60 rounded-lg border border-[#E8E4DC]/50">
-                      <div className="flex-1 min-w-0">
-                        <span className="text-[12px] font-semibold text-[#2C3340]">{w.word}</span>
-                        <p className="text-[10px] text-[#4B5563] leading-snug mt-0.5">{w.definition}</p>
-                        {w.exampleSentence && (
-                          <p className="text-[9px] text-[#8B8578] italic mt-0.5">"{w.exampleSentence}"</p>
-                        )}
-                      </div>
-                      {/* Mastery bar */}
-                      <div className="w-16 shrink-0">
-                        <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all ${
-                              w.mastery >= 0.8 ? 'bg-emerald-500' : w.mastery >= 0.4 ? 'bg-amber-500' : 'bg-rose-400'
-                            }`}
-                            style={{ width: `${Math.round(w.mastery * 100)}%` }}
-                          />
-                        </div>
-                        <p className="text-[8px] text-[#9CA3AF] text-right mt-0.5">
-                          {Math.round(w.mastery * 100)}%
-                        </p>
-                      </div>
-                    </div>
+                    <ArchiveWordEntry key={w.word} word={w} lane={lane} />
                   ))}
                 </div>
               )}

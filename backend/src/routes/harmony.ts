@@ -7,7 +7,41 @@ import { ensureHarmonyPostsExist } from '../utils/harmonyGenerator';
 import { generateNpcReplies } from '../utils/harmonyReplies';
 import { moderatePost } from '../utils/harmonyModeration';
 import { getRouteWeeks } from '../data/narrative-routes';
+import { STATIC_BULLETINS } from '../data/harmonyBulletins';
 import { io } from '../socketServer';
+
+/** refNumber → list of per-question Mandarin translations from current STATIC_BULLETINS.
+ *  Built once at module load. Used to backfill translationZhTw on bulletin posts whose
+ *  bulletinData JSON predates the Mandarin field — without this, existing DB rows would
+ *  never show Mandarin until reseeded. New DB rows already carry the field; this is
+ *  forward-compatible (in-DB value wins). */
+const STATIC_TRANSLATION_BY_REF: Map<string, Array<string | undefined>> = (() => {
+  const map = new Map<string, Array<string | undefined>>();
+  for (const weekBulletins of Object.values(STATIC_BULLETINS)) {
+    for (const b of weekBulletins) {
+      map.set(b.refNumber, b.questions.map((q) => q.translationZhTw));
+    }
+  }
+  return map;
+})();
+
+function enrichBulletinData(bulletinData: unknown): unknown {
+  if (!bulletinData || typeof bulletinData !== 'object') return bulletinData;
+  const data = bulletinData as { refNumber?: string; questions?: unknown[] };
+  if (!data.refNumber || !Array.isArray(data.questions)) return bulletinData;
+  const translations = STATIC_TRANSLATION_BY_REF.get(data.refNumber);
+  if (!translations) return bulletinData;
+  return {
+    ...data,
+    questions: data.questions.map((q, i) => {
+      if (!q || typeof q !== 'object') return q;
+      const question = q as { translationZhTw?: string };
+      if (question.translationZhTw) return q; // DB value wins
+      const t = translations[i];
+      return t ? { ...question, translationZhTw: t } : q;
+    }),
+  };
+}
 
 const router = Router();
 
@@ -251,7 +285,7 @@ router.get('/archives', async (req, res) => {
       const dictWords = await prisma.dictionaryWord.findMany({
         where: { weekIntroduced: { in: completedWeeks } },
         orderBy: [{ weekIntroduced: 'asc' }, { word: 'asc' }],
-        select: { id: true, word: true, definition: true, exampleSentence: true, weekIntroduced: true },
+        select: { id: true, word: true, definition: true, exampleSentence: true, weekIntroduced: true, translationZhTw: true, phonetic: true },
       });
 
       const progressRecords = await prisma.pairDictionaryProgress.findMany({
@@ -270,6 +304,8 @@ router.get('/archives', async (req, res) => {
               word: d.word,
               definition: d.definition,
               exampleSentence: d.exampleSentence,
+              translationZhTw: d.translationZhTw ?? null,
+              phonetic: d.phonetic ?? null,
               mastery: prog?.mastery ?? 0,
               encounters: prog?.encounters ?? 0,
             };
@@ -332,7 +368,7 @@ router.get('/archives', async (req, res) => {
         content: b.content,
         authorLabel: b.authorLabel ?? 'Ministry of Clarity',
         createdAt: b.createdAt.toISOString(),
-        bulletinData: b.bulletinData,
+        bulletinData: enrichBulletinData(b.bulletinData),
       }));
     }
 
@@ -467,7 +503,7 @@ router.get('/posts', async (req, res) => {
         isOwn: viewer.pairId ? post.pairId === viewer.pairId : post.userId === viewer.userId,
         weekNumber: post.weekNumber,
         postType: post.postType,
-        bulletinData: post.bulletinData ?? null,
+        bulletinData: enrichBulletinData(post.bulletinData) ?? null,
         isNew: lastVisit ? post.ingestedAt > lastVisit : false,
       })),
       ...reviewContext,
@@ -596,6 +632,35 @@ router.get('/censure-queue', async (req, res) => {
   }
 });
 
+/**
+ * Look up a DictionaryWord for the lane-aware study card on censure responses.
+ * Tries the word as-is, then strips common inflections (-s, -ed, -ing) so
+ * "arrives" and "described" still resolve to "arrive" / "describe".
+ */
+async function lookupStudyWord(raw: string) {
+  const w = raw.trim().toLowerCase();
+  if (!w) return null;
+  const candidates = [w];
+  if (w.endsWith('ies') && w.length > 4) candidates.push(w.slice(0, -3) + 'y');
+  if (w.endsWith('ing') && w.length > 5) {
+    candidates.push(w.slice(0, -3));        // running → runn (won't match) — kept anyway
+    candidates.push(w.slice(0, -3) + 'e');  // arriving → arrive
+  }
+  if (w.endsWith('ed') && w.length > 4) {
+    candidates.push(w.slice(0, -1));        // described → describe
+    candidates.push(w.slice(0, -2));        // arrived → arrive (also covers walked → walk)
+  }
+  if (w.endsWith('s') && w.length > 3) candidates.push(w.slice(0, -1));
+  for (const c of candidates) {
+    const found = await prisma.dictionaryWord.findFirst({
+      where: { word: c },
+      select: { word: true, phonetic: true, translationZhTw: true, exampleSentence: true },
+    });
+    if (found) return found;
+  }
+  return null;
+}
+
 // POST /api/harmony/censure-queue/:id/respond — submit censure review response
 router.post('/censure-queue/:id/respond', async (req, res) => {
   try {
@@ -661,11 +726,42 @@ router.post('/censure-queue/:id/respond', async (req, res) => {
       }
     }
 
+    // Lane-aware study card lookup. For vocab items the misused word IS the teaching
+    // target (student needs to learn what it actually means). For grammar/replace,
+    // the answer they should have picked is the target — fall back to errorWord.
+    // Wrapped in try/catch so a transient DB hiccup never 500s a successful submission;
+    // worst case the student just doesn't see the bilingual study card.
+    let studyCard: {
+      word: string;
+      phonetic: string | null;
+      translationZhTw: string | null;
+      exampleSentence: string | null;
+    } | null = null;
+    try {
+      const lookupKey = post.postType === 'censure_vocab'
+        ? (censureData?.errorWord as string | undefined)
+        : ((censureData?.correction as string | undefined) || (censureData?.errorWord as string | undefined));
+      if (lookupKey) {
+        const dict = await lookupStudyWord(lookupKey);
+        if (dict) {
+          studyCard = {
+            word: dict.word,
+            phonetic: dict.phonetic ?? null,
+            translationZhTw: dict.translationZhTw ?? null,
+            exampleSentence: dict.exampleSentence ?? null,
+          };
+        }
+      }
+    } catch (lookupErr) {
+      console.warn('Study card lookup failed (continuing with null):', lookupErr);
+    }
+
     res.json({
       id: response.id,
       isCorrect,
       correction: censureData?.correction ?? null,
       explanation: censureData?.explanation ?? null,
+      studyCard,
     });
   } catch (err) {
     console.error('Censure response error:', err);

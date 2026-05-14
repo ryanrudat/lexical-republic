@@ -8,6 +8,8 @@ export interface BulletinQuestion {
   question: string;
   options: string[];
   correctIndex: number;
+  /** Traditional Chinese gloss of the question stem for Lane 1/Lane 2 students. */
+  translationZhTw?: string;
 }
 
 export interface StaticBulletin {
@@ -32,6 +34,7 @@ export const STATIC_BULLETINS: Record<number, StaticBulletin[]> = {
       questions: [
         {
           question: 'What must new associates do by 09:00?',
+          translationZhTw: '新員工必須在 09:00 前做什麼？',
           options: [
             'Submit their intake form',
             'Confirm their assignment',
@@ -42,6 +45,7 @@ export const STATIC_BULLETINS: Record<number, StaticBulletin[]> = {
         },
         {
           question: 'Where should associates check their queue number?',
+          translationZhTw: '員工應該在哪裡查看他們的隊伍編號？',
           options: [
             'On the supervisor\'s desk',
             'In the cafeteria',
@@ -62,6 +66,7 @@ export const STATIC_BULLETINS: Record<number, StaticBulletin[]> = {
       questions: [
         {
           question: 'What does Regulation 14-C require?',
+          translationZhTw: '第 14-C 條規定要求什麼？',
           options: [
             'Citizens must arrive by 08:00',
             'Approved vocabulary in public spaces',
@@ -72,6 +77,7 @@ export const STATIC_BULLETINS: Record<number, StaticBulletin[]> = {
         },
         {
           question: 'What should citizens do with unapproved language?',
+          translationZhTw: '公民應該如何處理未經批准的語言？',
           options: [
             'Ignore it',
             'Use it only at home',
@@ -96,6 +102,7 @@ export const STATIC_BULLETINS: Record<number, StaticBulletin[]> = {
       questions: [
         {
           question: 'What happened to Tuesday sessions?',
+          translationZhTw: '週二的活動發生了什麼事？',
           options: [
             'They were moved to Wednesday',
             'They were removed',
@@ -106,6 +113,7 @@ export const STATIC_BULLETINS: Record<number, StaticBulletin[]> = {
         },
         {
           question: 'What should citizens who noticed the change do?',
+          translationZhTw: '注意到變化的公民應該怎麼做？',
           options: [
             'Request additional information',
             'Compare the old and new schedules',
@@ -116,6 +124,7 @@ export const STATIC_BULLETINS: Record<number, StaticBulletin[]> = {
         },
         {
           question: 'Which directive authorized the schedule change?',
+          translationZhTw: '哪一項指令授權了時程表的變更？',
           options: [
             'Regulation 14-C',
             'Form 77-B',
@@ -140,6 +149,7 @@ export const STATIC_BULLETINS: Record<number, StaticBulletin[]> = {
       questions: [
         {
           question: 'What should associates do with forwarded cases?',
+          translationZhTw: '員工應如何處理已轉交的案件？',
           options: [
             'Review them carefully',
             'Delay processing until confirmed',
@@ -150,6 +160,7 @@ export const STATIC_BULLETINS: Record<number, StaticBulletin[]> = {
         },
         {
           question: 'What should you do if you cannot identify a document\'s classification?',
+          translationZhTw: '如果你無法辨識文件的分類，你應該怎麼做？',
           options: [
             'Forward it to Wellness Division',
             'Respond to the original sender',

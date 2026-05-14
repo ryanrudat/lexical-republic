@@ -4,6 +4,7 @@ import type {
   HarmonyReply,
   CensureItem,
   BulletinResponseResult,
+  CensureResponseResult,
   ArchivesResponse,
 } from '../api/harmony';
 import {
@@ -87,7 +88,7 @@ interface HarmonyState {
   submitReply: (content: string) => Promise<void>;
   deletePost: (postId: string) => Promise<void>;
   censurePost: (postId: string, action: 'approve' | 'correct' | 'flag', weekNumber: number) => Promise<void>;
-  respondToCensure: (postId: string, action: string, selectedIndex: number) => Promise<{ isCorrect: boolean; correction: string | null; explanation: string | null } | null>;
+  respondToCensure: (postId: string, action: string, selectedIndex: number) => Promise<CensureResponseResult | null>;
   respondToBulletin: (postId: string, questionIndex: number, selectedIndex: number) => Promise<BulletinResponseResult | null>;
   trackCitizen4488Action: (postId: string, action: string) => void;
 }
