@@ -67,7 +67,12 @@ export interface CensureItem {
   id: string;
   designation: string;
   content: string;
-  postType: 'censure_grammar' | 'censure_vocab' | 'censure_replace';
+  postType:
+    | 'censure_grammar'
+    | 'censure_vocab'
+    | 'censure_replace'
+    | 'censure_redact'
+    | 'censure_triage';
   weekNumber: number | null;
   censureData: {
     errorType: string;
@@ -77,6 +82,10 @@ export interface CensureItem {
     options: string[];
     correctIndex: number;
     blankWord?: string;
+    /** Redact items: the word the censor should have used instead. */
+    approvedWord?: string;
+    /** Redact/triage items: in-world regulation cited. */
+    regulation?: string;
   } | null;
   reviewed: boolean;
   wasCorrect: boolean | null;
@@ -112,10 +121,13 @@ export async function submitCensureResponse(
   postId: string,
   action: string,
   selectedIndex: number,
+  /** For censure_redact only: the word the student tapped in the post text. */
+  selectedWord?: string,
 ): Promise<CensureResponseResult> {
   const { data } = await client.post(`/harmony/censure-queue/${postId}/respond`, {
     action,
     selectedIndex,
+    selectedWord,
   });
   return data;
 }

@@ -88,7 +88,7 @@ interface HarmonyState {
   submitReply: (content: string) => Promise<void>;
   deletePost: (postId: string) => Promise<void>;
   censurePost: (postId: string, action: 'approve' | 'correct' | 'flag', weekNumber: number) => Promise<void>;
-  respondToCensure: (postId: string, action: string, selectedIndex: number) => Promise<CensureResponseResult | null>;
+  respondToCensure: (postId: string, action: string, selectedIndex: number, selectedWord?: string) => Promise<CensureResponseResult | null>;
   respondToBulletin: (postId: string, questionIndex: number, selectedIndex: number) => Promise<BulletinResponseResult | null>;
   trackCitizen4488Action: (postId: string, action: string) => void;
 }
@@ -270,9 +270,9 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
     }
   },
 
-  respondToCensure: async (postId, action, selectedIndex) => {
+  respondToCensure: async (postId, action, selectedIndex, selectedWord) => {
     try {
-      const result = await submitCensureResponse(postId, action, selectedIndex);
+      const result = await submitCensureResponse(postId, action, selectedIndex, selectedWord);
       // Update local state
       const { censureItems, censureStats, recentCensureResults } = get();
       const updatedResults = [...recentCensureResults, result.isCorrect].slice(-10);

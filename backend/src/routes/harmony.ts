@@ -48,7 +48,13 @@ const router = Router();
 /** Post types that appear in the feed tab (not the censure queue). */
 const FEED_POST_TYPES = ['feed', 'bulletin', 'pearl_tip', 'community_notice', 'sector_report'];
 /** Post types that appear in the censure review queue. */
-const CENSURE_POST_TYPES = ['censure_grammar', 'censure_vocab', 'censure_replace'];
+const CENSURE_POST_TYPES = [
+  'censure_grammar',
+  'censure_vocab',
+  'censure_replace',
+  'censure_redact',   // tap-the-unapproved-word inside the post
+  'censure_triage',   // sort into Approve / Forward to Wellness / Flag bins
+];
 
 type HarmonyViewerContext = {
   pairId: string | null;
@@ -671,7 +677,7 @@ router.post('/censure-queue/:id/respond', async (req, res) => {
     }
 
     const postId = req.params.id as string;
-    const { action, selectedIndex } = req.body;
+    const { action, selectedIndex, selectedWord } = req.body;
 
     const post = await prisma.harmonyPost.findUnique({
       where: { id: postId },
@@ -682,10 +688,20 @@ router.post('/censure-queue/:id/respond', async (req, res) => {
       return;
     }
 
-    // Determine correctness
+    // Determine correctness. censure_redact uses word match (student taps the
+    // unapproved word inside the post text); everything else uses index match.
     const censureData = post.censureData as Record<string, unknown> | null;
-    const correctIndex = censureData?.correctIndex as number | undefined;
-    const isCorrect = correctIndex !== undefined && selectedIndex === correctIndex;
+    let isCorrect = false;
+    if (post.postType === 'censure_redact') {
+      const errorWord = (censureData?.errorWord as string | undefined)?.trim().toLowerCase() ?? '';
+      const picked = typeof selectedWord === 'string'
+        ? selectedWord.trim().replace(/[^a-zA-Z]/g, '').toLowerCase()
+        : '';
+      isCorrect = errorWord.length > 0 && picked === errorWord;
+    } else {
+      const correctIndex = censureData?.correctIndex as number | undefined;
+      isCorrect = correctIndex !== undefined && correctIndex >= 0 && selectedIndex === correctIndex;
+    }
 
     // Refresh createdAt on re-answer so the spaced-repetition clock restarts.
     // createdAt doubles as "last answered at" for the review-candidate filter.
@@ -738,9 +754,23 @@ router.post('/censure-queue/:id/respond', async (req, res) => {
       exampleSentence: string | null;
     } | null = null;
     try {
-      const lookupKey = post.postType === 'censure_vocab'
-        ? (censureData?.errorWord as string | undefined)
-        : ((censureData?.correction as string | undefined) || (censureData?.errorWord as string | undefined));
+      // Per-type lookup target:
+      //   vocab  → errorWord (student needs the misused word's real meaning)
+      //   redact → approvedWord (teach the word they SHOULD have approved)
+      //   triage → null (decision-based; no single vocab teaching target)
+      //   grammar/replace → correction, fall back to errorWord
+      let lookupKey: string | undefined;
+      if (post.postType === 'censure_triage') {
+        lookupKey = undefined;
+      } else if (post.postType === 'censure_redact') {
+        lookupKey = (censureData?.approvedWord as string | undefined)
+          || (censureData?.correction as string | undefined);
+      } else if (post.postType === 'censure_vocab') {
+        lookupKey = (censureData?.errorWord as string | undefined);
+      } else {
+        lookupKey = (censureData?.correction as string | undefined)
+          || (censureData?.errorWord as string | undefined);
+      }
       if (lookupKey) {
         const dict = await lookupStudyWord(lookupKey);
         if (dict) {

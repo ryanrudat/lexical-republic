@@ -569,12 +569,74 @@ function CensureContentHighlight({
   );
 }
 
+/* ─── Tappable Words (Redact-a-Word) ───────────────────────────── */
+
+/** Renders the post content as a sequence of tappable word tokens.
+ *  Used by censure_redact items where the student taps the unapproved
+ *  word inside the sentence instead of choosing from MCQ options. */
+function TappableWords({
+  content,
+  selectedWord,
+  onSelect,
+  isReviewed,
+  errorWord,
+  wasCorrect,
+}: {
+  content: string;
+  selectedWord: string | null;
+  onSelect: (word: string) => void;
+  isReviewed: boolean;
+  errorWord: string;
+  wasCorrect: boolean | null;
+}) {
+  // Split on whitespace, keeping the whitespace tokens as separate parts
+  // so we can render them between word buttons without losing spacing.
+  const tokens = content.split(/(\s+)/);
+  const errorLower = errorWord.trim().toLowerCase();
+  const selectedClean = (selectedWord ?? '').trim().replace(/[^a-zA-Z]/g, '').toLowerCase();
+  return (
+    <p className="text-[13px] text-[#4B5563] leading-relaxed">
+      {tokens.map((tok, i) => {
+        const cleaned = tok.replace(/[^a-zA-Z]/g, '').toLowerCase();
+        // Whitespace / punctuation-only — render as plain text.
+        if (!cleaned) return <span key={i}>{tok}</span>;
+        const isThisError = cleaned === errorLower;
+        const isThisSelected = cleaned === selectedClean;
+        let cls = 'px-0.5 rounded transition-colors';
+        if (isReviewed) {
+          if (isThisError) {
+            // The correct answer — always shown green after review.
+            cls += ' bg-emerald-100 text-emerald-800 border-b-2 border-emerald-500 font-medium';
+          } else if (isThisSelected && !wasCorrect) {
+            // Their wrong pick — red strike.
+            cls += ' bg-rose-100 text-rose-800 line-through';
+          }
+        } else if (isThisSelected) {
+          cls += ' bg-sky-100 text-sky-800 ring-2 ring-sky-300 font-medium';
+        } else {
+          cls += ' cursor-pointer hover:bg-amber-50 active:bg-amber-100';
+        }
+        return (
+          <span
+            key={i}
+            className={cls}
+            onClick={() => !isReviewed && onSelect(tok)}
+          >
+            {tok}
+          </span>
+        );
+      })}
+    </p>
+  );
+}
+
 /* ─── Censure Queue Item ────────────────────────────────────────── */
 
 function CensureCard({ item }: { item: CensureItem }) {
   const { respondToCensure } = useHarmonyStore();
   const lane = useStudentStore((s) => s.user?.lane ?? 2);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [result, setResult] = useState<CensureResponseResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
@@ -582,13 +644,16 @@ function CensureCard({ item }: { item: CensureItem }) {
 
   const data = item.censureData;
 
-  // Shuffle options once per item (Fisher-Yates), stored in ref for stability
+  // Shuffle options once per item (Fisher-Yates), stored in ref for stability.
+  // Skipped for censure_triage — bins are taught in fixed order (Approve / Wellness / Flag).
   const shuffleRef = useRef<{ options: string[]; mapping: number[] } | null>(null);
   if (!shuffleRef.current && data) {
     const indices = data.options.map((_, i) => i);
-    for (let i = indices.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [indices[i], indices[j]] = [indices[j], indices[i]];
+    if (item.postType !== 'censure_triage') {
+      for (let i = indices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [indices[i], indices[j]] = [indices[j], indices[i]];
+      }
     }
     shuffleRef.current = {
       options: indices.map(i => data.options[i]),
@@ -604,15 +669,29 @@ function CensureCard({ item }: { item: CensureItem }) {
   const typeLabel =
     item.postType === 'censure_grammar' ? 'GRAMMAR CHECK'
     : item.postType === 'censure_vocab' ? 'VOCABULARY CHECK'
+    : item.postType === 'censure_redact' ? 'WORD REDACTION'
+    : item.postType === 'censure_triage' ? 'QUEUE TRIAGE'
     : 'WORD REPLACEMENT';
 
   const typeColor =
     item.postType === 'censure_grammar' ? 'text-rose-700 border-rose-700/20 bg-rose-100/[0.06]'
     : item.postType === 'censure_vocab' ? 'text-sky-700 border-sky-300/20 bg-sky-600/[0.08]'
+    : item.postType === 'censure_redact' ? 'text-rose-700 border-rose-700/20 bg-rose-100/[0.06]'
+    : item.postType === 'censure_triage' ? 'text-emerald-700 border-emerald-300/20 bg-emerald-100/[0.06]'
     : 'text-amber-600 border-amber-300/20 bg-amber-100/[0.06]';
 
   const handleSubmit = async () => {
-    if (selectedIdx === null || submitting) return;
+    if (submitting) return;
+    // Redact uses word-match instead of index-match.
+    if (item.postType === 'censure_redact') {
+      if (!selectedWord) return;
+      setSubmitting(true);
+      const res = await respondToCensure(item.id, 'answer', -1, selectedWord);
+      if (res) { setResult(res); setShowOverlay(true); }
+      setSubmitting(false);
+      return;
+    }
+    if (selectedIdx === null) return;
     setSubmitting(true);
     // Map shuffled display index back to original index for backend validation
     const originalIdx = indexMapping[selectedIdx];
@@ -658,7 +737,8 @@ function CensureCard({ item }: { item: CensureItem }) {
         )}
       </div>
 
-      {/* Post content — highlight the error word */}
+      {/* Post content — redact uses tappable words (selector lives inside the
+          post body); other types use the highlight-the-error renderer. */}
       <div className="px-4 py-3">
         <div className="flex items-center gap-2 mb-1.5">
           <div className="w-6 h-6 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center">
@@ -668,11 +748,22 @@ function CensureCard({ item }: { item: CensureItem }) {
           </div>
           <span className="text-[12px] text-[#4B5563]">{item.designation}</span>
         </div>
-        <CensureContentHighlight
-          content={item.content}
-          errorWord={data.errorWord || data.blankWord || ''}
-          postType={item.postType}
-        />
+        {item.postType === 'censure_redact' ? (
+          <TappableWords
+            content={item.content}
+            selectedWord={selectedWord}
+            onSelect={setSelectedWord}
+            isReviewed={isReviewed}
+            errorWord={data.errorWord ?? ''}
+            wasCorrect={result?.isCorrect ?? item.wasCorrect ?? null}
+          />
+        ) : (
+          <CensureContentHighlight
+            content={item.content}
+            errorWord={data.errorWord || data.blankWord || ''}
+            postType={item.postType}
+          />
+        )}
       </div>
 
       {/* Question / options */}
@@ -687,66 +778,137 @@ function CensureCard({ item }: { item: CensureItem }) {
           {item.postType === 'censure_replace' && (
             <>Replace "<span className="text-amber-600 font-medium normal-case">{data.blankWord || '...'}</span>" with the correct word:</>
           )}
+          {item.postType === 'censure_redact' && (
+            <>
+              Tap the unapproved word in the post above.
+              {data.regulation && (
+                <span className="normal-case text-[#9CA3AF]"> ({data.regulation})</span>
+              )}
+            </>
+          )}
+          {item.postType === 'censure_triage' && (
+            <>Sort this submission to the correct queue:</>
+          )}
         </p>
-        <div className="grid grid-cols-2 gap-1.5">
-          {shuffledOptions.map((opt, displayIdx) => {
-            const originalIdx = indexMapping[displayIdx];
-            const isCorrectOption = originalIdx === data.correctIndex;
-            const isSelected = selectedIdx === displayIdx;
 
-            // After review: show correct/incorrect markings
-            if (isReviewed) {
-              const wasRight = result?.isCorrect || item.wasCorrect;
-              let optionStyle: string;
-              if (isCorrectOption) {
-                optionStyle = 'border-green-500/40 bg-green-500/10 text-green-400';
-              } else if (isSelected && !wasRight) {
-                optionStyle = 'border-rose-700/40 bg-rose-700/10 text-rose-700';
-              } else {
-                optionStyle = 'border-[#E8E4DC] bg-gray-50 text-[#9CA3AF]';
+        {/* Selector — redact has none (selection happens inside the post body),
+            triage is a vertical bin picker, others are 2-column MCQ. */}
+        {item.postType === 'censure_redact' ? null : item.postType === 'censure_triage' ? (
+          <div className="grid grid-cols-1 gap-1.5">
+            {shuffledOptions.map((opt, displayIdx) => {
+              const originalIdx = indexMapping[displayIdx];
+              const isCorrectOption = originalIdx === data.correctIndex;
+              const isSelected = selectedIdx === displayIdx;
+
+              if (isReviewed) {
+                const wasRight = result?.isCorrect || item.wasCorrect;
+                let optionStyle: string;
+                if (isCorrectOption) {
+                  optionStyle = 'border-green-500/40 bg-green-500/10 text-green-700';
+                } else if (isSelected && !wasRight) {
+                  optionStyle = 'border-rose-700/40 bg-rose-700/10 text-rose-700';
+                } else {
+                  optionStyle = 'border-[#E8E4DC] bg-gray-50 text-[#9CA3AF]';
+                }
+                return (
+                  <div
+                    key={displayIdx}
+                    className={`text-left px-3 py-2.5 rounded-lg text-[12px] font-medium border ${optionStyle} flex items-center gap-1.5`}
+                  >
+                    {isCorrectOption && (
+                      <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                      </svg>
+                    )}
+                    {isSelected && !wasRight && !isCorrectOption && (
+                      <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                      </svg>
+                    )}
+                    {opt}
+                  </div>
+                );
               }
-              return (
-                <div
-                  key={displayIdx}
-                  className={`text-left px-3 py-2 rounded-lg text-[12px] border ${optionStyle} flex items-center gap-1.5`}
-                >
-                  {isCorrectOption && (
-                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                    </svg>
-                  )}
-                  {isSelected && !wasRight && !isCorrectOption && (
-                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                    </svg>
-                  )}
-                  {opt}
-                </div>
-              );
-            }
 
-            // Before review: interactive buttons
-            return (
-              <button
-                key={displayIdx}
-                onClick={() => setSelectedIdx(displayIdx)}
-                className={`text-left px-3 py-2 rounded-lg text-[12px] border transition-all active:scale-[0.98] ${
-                  isSelected
-                    ? 'border-sky-300/40 bg-sky-600/10 text-sky-700'
-                    : 'border-[#E8E4DC] bg-white text-[#4B5563] hover:border-[#D4CFC6]'
-                }`}
-              >
-                {opt}
-              </button>
-            );
-          })}
-        </div>
+              return (
+                <button
+                  key={displayIdx}
+                  onClick={() => setSelectedIdx(displayIdx)}
+                  className={`text-left px-3 py-2.5 rounded-lg text-[12px] font-medium border transition-all active:scale-[0.98] ${
+                    isSelected
+                      ? 'border-emerald-300/60 bg-emerald-50 text-emerald-800'
+                      : 'border-[#E8E4DC] bg-white text-[#4B5563] hover:border-emerald-300/40 hover:bg-emerald-50/30'
+                  }`}
+                >
+                  {opt}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-1.5">
+            {shuffledOptions.map((opt, displayIdx) => {
+              const originalIdx = indexMapping[displayIdx];
+              const isCorrectOption = originalIdx === data.correctIndex;
+              const isSelected = selectedIdx === displayIdx;
+
+              // After review: show correct/incorrect markings
+              if (isReviewed) {
+                const wasRight = result?.isCorrect || item.wasCorrect;
+                let optionStyle: string;
+                if (isCorrectOption) {
+                  optionStyle = 'border-green-500/40 bg-green-500/10 text-green-400';
+                } else if (isSelected && !wasRight) {
+                  optionStyle = 'border-rose-700/40 bg-rose-700/10 text-rose-700';
+                } else {
+                  optionStyle = 'border-[#E8E4DC] bg-gray-50 text-[#9CA3AF]';
+                }
+                return (
+                  <div
+                    key={displayIdx}
+                    className={`text-left px-3 py-2 rounded-lg text-[12px] border ${optionStyle} flex items-center gap-1.5`}
+                  >
+                    {isCorrectOption && (
+                      <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                      </svg>
+                    )}
+                    {isSelected && !wasRight && !isCorrectOption && (
+                      <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                      </svg>
+                    )}
+                    {opt}
+                  </div>
+                );
+              }
+
+              // Before review: interactive buttons
+              return (
+                <button
+                  key={displayIdx}
+                  onClick={() => setSelectedIdx(displayIdx)}
+                  className={`text-left px-3 py-2 rounded-lg text-[12px] border transition-all active:scale-[0.98] ${
+                    isSelected
+                      ? 'border-sky-300/40 bg-sky-600/10 text-sky-700'
+                      : 'border-[#E8E4DC] bg-white text-[#4B5563] hover:border-[#D4CFC6]'
+                  }`}
+                >
+                  {opt}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Submit button — only before review */}
         {!isReviewed && (
           <button
             onClick={handleSubmit}
-            disabled={selectedIdx === null || submitting}
+            disabled={
+              (item.postType === 'censure_redact' ? !selectedWord : selectedIdx === null)
+              || submitting
+            }
             className="w-full mt-1 py-2 rounded-lg text-[11px] font-medium tracking-wider bg-sky-600/10 text-sky-700 border border-sky-300/20 hover:bg-sky-600/20 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
           >
             {submitting ? 'CHECKING...' : 'SUBMIT REVIEW'}

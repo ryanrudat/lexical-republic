@@ -52,6 +52,8 @@ const DEFAULT_CONTENT_COUNTS: Record<string, number> = {
   censure_grammar: 2,
   censure_vocab: 2,
   censure_replace: 1,
+  censure_redact: 2,   // tap-in-text variant — static-only for now
+  censure_triage: 2,   // bin classification — static-only for now
 };
 
 interface GeneratedPost {
@@ -607,6 +609,91 @@ const STATIC_CENSURE_ITEMS: Record<number, GeneratedPost[]> = {
         correctIndex: 0,
       },
     },
+
+    // ── Redact: tap the unapproved word ─────────────────────────────
+    {
+      authorLabel: 'Citizen-9012',
+      content: 'All associates must give the daily report to the supervisor before 17:00.',
+      postType: 'censure_redact',
+      pearlNote: null,
+      censureData: {
+        errorType: 'redact',
+        errorWord: 'give',
+        approvedWord: 'submit',
+        explanation: '"Submit" is the approved verb for formally handing in reports. "Give" is too informal for Ministry communications.',
+        options: [],
+        correctIndex: -1,
+        regulation: 'Reg 14-C',
+      },
+    },
+    {
+      authorLabel: 'Citizen-2470',
+      content: 'Please look at every document before sending it to Personnel Division.',
+      postType: 'censure_redact',
+      pearlNote: null,
+      censureData: {
+        errorType: 'redact',
+        errorWord: 'look',
+        approvedWord: 'check',
+        explanation: '"Check" is the approved verb for examining documents. "Look" is too general for compliance work.',
+        options: [],
+        correctIndex: -1,
+        regulation: 'Reg 14-C',
+      },
+    },
+    {
+      authorLabel: 'Citizen-6604',
+      content: 'All citizens must come to the Filing Hall by 08:00 sharp every morning.',
+      postType: 'censure_redact',
+      pearlNote: null,
+      censureData: {
+        errorType: 'redact',
+        errorWord: 'come',
+        approvedWord: 'arrive',
+        explanation: '"Arrive" is the approved verb for reaching a location at a specific time. "Come" lacks formal register.',
+        options: [],
+        correctIndex: -1,
+        regulation: 'Reg 14-C',
+      },
+    },
+
+    // ── Triage: sort into Approve / Wellness / Flag bins ────────────
+    {
+      authorLabel: 'Citizen-3320',
+      content: 'Pleasant tea at 10:00. Confirmed my shift assignment with the supervisor before lunch.',
+      postType: 'censure_triage',
+      pearlNote: null,
+      censureData: {
+        errorType: 'triage',
+        explanation: 'Compliant content. Approved vocabulary, positive tone, no concerning patterns. Route to general feed.',
+        options: ['Approve', 'Forward to Wellness', 'Flag for Reg 14-C'],
+        correctIndex: 0,
+      },
+    },
+    {
+      authorLabel: 'Citizen-5180',
+      content: 'Citizen-7820 from Tower 13 has not arrived at the Common Mess for three days. Her seat is empty.',
+      postType: 'censure_triage',
+      pearlNote: null,
+      censureData: {
+        errorType: 'triage',
+        explanation: 'Missing-citizen reports route to Wellness Division for follow-up. The Ministry monitors citizen well-being.',
+        options: ['Approve', 'Forward to Wellness', 'Flag for Reg 14-C'],
+        correctIndex: 1,
+      },
+    },
+    {
+      authorLabel: 'Citizen-7790',
+      content: 'Honestly, the cafeteria food has been really bad this week. Kinda gross to be honest.',
+      postType: 'censure_triage',
+      pearlNote: null,
+      censureData: {
+        errorType: 'triage',
+        explanation: 'Informal language ("honestly", "really bad", "kinda gross") violates Regulation 14-C approved vocabulary standards.',
+        options: ['Approve', 'Forward to Wellness', 'Flag for Reg 14-C'],
+        correctIndex: 2,
+      },
+    },
   ],
 
   // ═══ Week 2: past-simple-vs-present ═══════════════════════════════
@@ -743,6 +830,91 @@ const STATIC_CENSURE_ITEMS: Record<number, GeneratedPost[]> = {
         correctIndex: 0,
       },
     },
+
+    // ── Redact: tap the unapproved word ─────────────────────────────
+    {
+      authorLabel: 'Citizen-8123',
+      content: 'I saw a mistake in your report this morning during the review.',
+      postType: 'censure_redact',
+      pearlNote: null,
+      censureData: {
+        errorType: 'redact',
+        errorWord: 'saw',
+        approvedWord: 'noticed',
+        explanation: '"Noticed" is the approved verb for spotting details in documents. More precise than "saw".',
+        options: [],
+        correctIndex: -1,
+        regulation: 'Reg 14-C',
+      },
+    },
+    {
+      authorLabel: 'Citizen-4901',
+      content: 'Please tell the supervisor about the schedule change before the end of shift.',
+      postType: 'censure_redact',
+      pearlNote: null,
+      censureData: {
+        errorType: 'redact',
+        errorWord: 'tell',
+        approvedWord: 'inform',
+        explanation: '"Inform" is the approved verb for telling someone in authority. "Tell" is too casual for official notifications.',
+        options: [],
+        correctIndex: -1,
+        regulation: 'Reg 14-C',
+      },
+    },
+    {
+      authorLabel: 'Citizen-2208',
+      content: 'The team will fix the old machine with a new one tomorrow morning.',
+      postType: 'censure_redact',
+      pearlNote: null,
+      censureData: {
+        errorType: 'redact',
+        errorWord: 'fix',
+        approvedWord: 'replace',
+        explanation: '"Replace" is the approved verb for installing a new item in place of an old one. "Fix" implies repair, not substitution.',
+        options: [],
+        correctIndex: -1,
+        regulation: 'Reg 14-C',
+      },
+    },
+
+    // ── Triage: sort into Approve / Wellness / Flag bins ────────────
+    {
+      authorLabel: 'Citizen-1117',
+      content: 'Updated my schedule per the directive. Confirmed all changes with my supervisor by 10:00.',
+      postType: 'censure_triage',
+      pearlNote: null,
+      censureData: {
+        errorType: 'triage',
+        explanation: 'Compliant report. Standard vocabulary, clear timeline, no concerning content. Route to general feed.',
+        options: ['Approve', 'Forward to Wellness', 'Flag for Reg 14-C'],
+        correctIndex: 0,
+      },
+    },
+    {
+      authorLabel: 'Citizen-3387',
+      content: 'Citizen-4488 has been quieter lately. She used to inform us of meal changes every morning.',
+      postType: 'censure_triage',
+      pearlNote: null,
+      censureData: {
+        errorType: 'triage',
+        explanation: 'Behavioral change in a fellow citizen — Wellness Division reviews these patterns to ensure community well-being.',
+        options: ['Approve', 'Forward to Wellness', 'Flag for Reg 14-C'],
+        correctIndex: 1,
+      },
+    },
+    {
+      authorLabel: 'Citizen-9921',
+      content: 'The new uniform is super tight. Kinda awkward to be honest, not gonna lie.',
+      postType: 'censure_triage',
+      pearlNote: null,
+      censureData: {
+        errorType: 'triage',
+        explanation: 'Informal markers ("super", "kinda", "to be honest", "not gonna lie") violate Regulation 14-C approved vocabulary.',
+        options: ['Approve', 'Forward to Wellness', 'Flag for Reg 14-C'],
+        correctIndex: 2,
+      },
+    },
   ],
 
   // ═══ Week 3: modals ═══════════════════════════════════════════════
@@ -877,6 +1049,91 @@ const STATIC_CENSURE_ITEMS: Record<number, GeneratedPost[]> = {
         explanation: '"Review" means to examine something carefully and formally — more precise than "look over".',
         options: ['review', 'process', 'schedule', 'complete'],
         correctIndex: 0,
+      },
+    },
+
+    // ── Redact: tap the unapproved word ─────────────────────────────
+    {
+      authorLabel: 'Citizen-1908',
+      content: 'All associates must answer to messages from the Ministry within 24 hours.',
+      postType: 'censure_redact',
+      pearlNote: null,
+      censureData: {
+        errorType: 'redact',
+        errorWord: 'answer',
+        approvedWord: 'respond',
+        explanation: '"Respond" is the approved formal verb for replying to official communication. "Answer" is too casual.',
+        options: [],
+        correctIndex: -1,
+        regulation: 'Reg 14-C',
+      },
+    },
+    {
+      authorLabel: 'Citizen-4506',
+      content: 'Please do all the forms before the deadline at 17:00 today.',
+      postType: 'censure_redact',
+      pearlNote: null,
+      censureData: {
+        errorType: 'redact',
+        errorWord: 'do',
+        approvedWord: 'complete',
+        explanation: '"Complete" is the approved verb for finishing tasks formally. "Do" is too vague for official records.',
+        options: [],
+        correctIndex: -1,
+        regulation: 'Reg 14-C',
+      },
+    },
+    {
+      authorLabel: 'Citizen-7762',
+      content: 'Please read each document twice before sending it to the Ministry archive.',
+      postType: 'censure_redact',
+      pearlNote: null,
+      censureData: {
+        errorType: 'redact',
+        errorWord: 'read',
+        approvedWord: 'review',
+        explanation: '"Review" is the approved verb for examining documents formally. "Read" lacks the precision required for compliance work.',
+        options: [],
+        correctIndex: -1,
+        regulation: 'Reg 14-C',
+      },
+    },
+
+    // ── Triage: sort into Approve / Wellness / Flag bins ────────────
+    {
+      authorLabel: 'Citizen-2244',
+      content: 'Completed processing of 47 documents this shift. Standard procedure was followed throughout.',
+      postType: 'censure_triage',
+      pearlNote: null,
+      censureData: {
+        errorType: 'triage',
+        explanation: 'Compliant report. Approved vocabulary, productive content, clear documentation. Route to general feed.',
+        options: ['Approve', 'Forward to Wellness', 'Flag for Reg 14-C'],
+        correctIndex: 0,
+      },
+    },
+    {
+      authorLabel: 'Citizen-5631',
+      content: 'Citizen-3050 did not respond to the morning roll call. Her desk is still empty at 11:00.',
+      postType: 'censure_triage',
+      pearlNote: null,
+      censureData: {
+        errorType: 'triage',
+        explanation: 'Unaccounted citizen — Wellness Division follow-up required. The Ministry tracks citizen presence.',
+        options: ['Approve', 'Forward to Wellness', 'Flag for Reg 14-C'],
+        correctIndex: 1,
+      },
+    },
+    {
+      authorLabel: 'Citizen-8855',
+      content: 'Yeah the new schedule is super weird and nobody really gets it. Kinda confusing tbh.',
+      postType: 'censure_triage',
+      pearlNote: null,
+      censureData: {
+        errorType: 'triage',
+        explanation: 'Informal markers ("yeah", "super", "nobody really gets it", "tbh") violate Regulation 14-C approved vocabulary.',
+        options: ['Approve', 'Forward to Wellness', 'Flag for Reg 14-C'],
+        correctIndex: 2,
       },
     },
   ],
