@@ -1,6 +1,6 @@
 # Shift Plan: Weeks 04-06 (Act I Conclusion)
 
-Last updated: 2026-03-23
+Last updated: 2026-04-17
 
 ## Overview
 
@@ -58,26 +58,29 @@ Students receive fragmented evidence about a "routine filing adjustment" — sca
 - Standard single-attempt format (same as W1-W3)
 - **PEARL bark on complete:** "Language authorization verified. Archive access granted. Proceed to Evidence Assembly."
 
-#### Task 2: Evidence Assembly (Archive Room) — NEW TASK TYPE AREA
+#### Task 2: Evidence Assembly via Document Review (Archive Room)
 
-Since `evidence_assembly` isn't fully implemented yet, we'll use **document_review** with a timeline-ordering comprehension subtype.
+> **Implementation note:** Evidence Assembly as a distinct drag-to-order task type is deferred to Act II (W7+). For W4, this task is implemented as document_review with multi-paragraph evidence fragments + comprehension MCQs. Pedagogical intent preserved; interaction simplified. No new component is needed — uses the existing `document_review` task type with `comprehension` and `error_correction` document subtypes.
 
 **Type:** `document_review`
 **Config:** 2 documents
 
 **Document A: "Archive Fragment Set" (comprehension type)**
-- Present 5 evidence fragments from an internal filing investigation:
+- Present 6 evidence fragments from an internal filing investigation:
   1. "Memo 14 was revised on March 3." (Fragment C — middle)
   2. "First, the original memo was filed on February 28." (Fragment A — start)
   3. "After the revision, three associates examined the changes." (Fragment D — after revision)
   4. "Finally, the updated record was presented to the Archive on March 7." (Fragment E — end)
   5. "Next, a supervisor selected the sections to verify." (Fragment B — after filing, before revision)
+  6. "Per Directive 14-W, Associate-19 was transferred to Wellness Division for additional support on March 12." (Fragment F — post-filing personnel note)
 - 5 comprehension questions asking students to arrange in correct order:
   1. "What happened first?" → "The original memo was filed on February 28."
   2. "What happened after the memo was filed?" → "A supervisor selected the sections to verify."
   3. "When was Memo 14 revised?" → "On March 3"
   4. "What did three associates do after the revision?" → "They examined the changes."
   5. "What was the final step?" → "The updated record was presented to the Archive on March 7."
+
+*(Fragment F is a narrative seed — links to Week 5's Wellness Language Guidelines. The Wellness Division was first named in Week 3, Case 5. Students who notice the same institution reappearing across shifts earn implicit narrative reward in Act II.)*
 
 **Document B: "Filing Adjustment Notice" (error_correction type)**
 - A 6-sentence notice about the filing adjustment with **6 grammar errors** (sequencing + past tense + SVA):
@@ -164,6 +167,11 @@ The Department introduces "Wellness Language Guidelines" — a new directive req
 - **M.K. Catskil:** Cryptic warning. "When they ask how you feel, they're not asking for YOU."
 - **PEARL:** Surveillance as care. "Your emotional clarity is being assessed. Healthy language creates healthy minds."
 
+**PEARL Grammar Tip (Harmony — because-clauses):**
+> "Clarity writing joins cause and effect with 'because.' The team works carefully because accuracy protects everyone. Citizens follow schedules because routine protects productivity. Note: do not write 'because so' — 'because' alone joins the cause to the effect."
+
+*(Published as a `pearl_tip` in Harmony at W5 unlock. Mandarin speakers use 因為...所以... or omit connectors, so explicit modeling is required before the W5 cloze + error-correction tasks assume the structure.)*
+
 **Citizen-4488 Post:**
 > "I must express that I feel safe because the Ministry supports all citizens. I should not feel concerned about changes because change improves our community. I observe that my neighbor's apartment is still empty. I value the Ministry's efforts to reduce confusion. I must report that everything is fine."
 
@@ -178,6 +186,11 @@ The Department introduces "Wellness Language Guidelines" — a new directive req
 #### Task 2: Cloze Fill (Wellness Office)
 **Title:** "WELLNESS LANGUAGE GUIDELINES — DEPARTMENT DIRECTIVE 22"
 
+**Pre-task Ivan message (shown on task start):**
+> Ivan: "Wait — Wellness Language? Like the Wellness Division? Do we have to give them... our feelings too?"
+
+*(One or two lines max. Keeps Ivan anxious-but-compliant. Explicitly connects the Wellness Language Guidelines directive to the Wellness Division first named in Week 3, Case 5.)*
+
 A directive memo about approved emotional expression with 10 blanks:
 
 > "All associates **must** _______ (express) their feelings using approved vocabulary. You **should** _______ (observe) your emotional state each morning. If you feel _______ (concerned), the Ministry _______ (recommends) filing a Wellness Report. The Ministry _______ (values) emotional clarity because clear language _______ (reduces) confusion. Associates **should** _______ (suggest) wellness activities to colleagues who seem tired. Your _______ (effort) to _______ (improve) emotional communication _______ (supports) the entire department."
@@ -189,6 +202,11 @@ A directive memo about approved emotional expression with 10 blanks:
 #### Task 3: Document Review (Review Station)
 **Type:** `document_review`
 **Config:** 2 documents
+
+**Pre-task Ivan message (shown on task start, models because-clause structure):**
+> Ivan: "I feel satisfied because my tasks are manageable."
+
+*(One line, in-character. Gives students a correct because-clause before they're asked to correct errors in one. Pair with the PEARL Grammar Tip above.)*
 
 **Document A: "Wellness Self-Assessment" (comprehension type)**
 - A mock self-assessment form with 4 pre-filled responses from "Associate-19":
@@ -286,9 +304,9 @@ Students face an audit of their entire first-arc performance. The tasks mix all 
 
 *(Uses W6 target words: achieved, summarize, adjusted, conducted, evaluated, prepared, produced, classification, transfer. Grammar: mixed — present simple, past simple, modals. Escalation: most self-aware post yet — citizen knows they're self-censoring, actively chooses compliance, but the cracks are showing.)*
 
-### Task Sequence (4 tasks)
+### Task Sequence (5 tasks)
 
-*Reduced from 5 to 4 tasks — original Tasks 4+5 (two consecutive writing tasks) merged into a single integrated writing task per pedagogical audit. See Task 4 notes.*
+*Re-split from 4 back to 5 tasks (2026-04-17 pre-build review). The merged "Part 1 + Part 2 + sequencing + because-clause + metacognitive reflection" single writing task was cognitively overloaded for Lane 1 (~15 min digital window after a 3-document review). The re-split inserts a low-load **Audit Review** reflection (Task 4) before the production-heavy **Act I Compliance Report** (Task 5), so students receive PEARL feedback on the small reflection before attempting the long metacognitive write. Sequencing-word drill and because-clause scaffolding are moved earlier — sequencing is reinforced in the Task 3 error-correction document (already present) and Task 4 reflection starters; because-clause teaching is anchored in Task 3 (grammar document) rather than stacked on Task 5.*
 
 #### Task 1: Word Match (Language Lab)
 - Match 10 target words to definitions
@@ -341,20 +359,49 @@ Students face an audit of their entire first-arc performance. The tasks mix all 
   2. "What was flagged?" → "A reclassified fragment in Week 4 notes."
   3. "What will happen next?" → "It will be addressed in the next review period."
 
-#### Task 4: Act I Compliance Report (Filing Desk)
-**Type:** `shift_report` (reusing the writing evaluation system)
+*Note: Document A error #6 already contains a because-clause correction ("feels satisfyingly → satisfied because the audit produce → produced"). Lane 1 hint text for that error should explicitly reference the W5 because-clause PEARL tip so students see the structure named — not just corrected.*
 
-*Merged from original Tasks 4+5 — audit found two consecutive writing tasks overloaded the ~15 min digital window, especially for Lane 1 students after a 3-document review.*
+#### Task 4: Audit Review — Shift Reflection (Evaluation Desk)
+**Type:** `shift_report` (writing evaluation system, short-form)
 
-**Prompt:** "Write your Act I Compliance Report using 5 to 8 sentences. Part 1: What have you learned during Shifts 1-5? What did you achieve? What should you improve? Part 2: What have you produced? What do you value about your work? Use vocabulary from at least 3 different weeks. Include at least one sequencing word (first, then, finally) and one sentence with 'because.'"
+*New for re-split. Low-load reflection. Narrow scope: today's shift only, 2-3 sentences, PEARL gives quick feedback before Task 5. Delivers the metacognitive scaffolding + sequencing-word practice without stacking it on the bigger compliance report.*
+
+**Prompt:** "Before your Compliance Report, summarize TODAY'S shift in 2 to 3 sentences. What did you learn about processing cases this shift? Use at least one sequencing word (first, then, finally) to show the order of your work."
 
 **Lane configurations:**
-- **Lane 1 (Guided):** 35 min words, sentence starters ("First, I learned to...", "I achieved... because...", "I should improve... because...", "I value... because...", "Finally, I..."), Chinese word bank, 4 PEARL hints, 4 guided questions (W1: report/submit, W2: notice/compare, W3: process/review, W4-5: examine/observe)
-- **Lane 2 (Standard):** 50 min words, visible word list (all 60 words from W1-W6)
-- **Lane 3 (Independent):** 70 min words, bonus question A: "M.K. asked you: 'What's the pattern?' In 2-3 additional sentences, describe any pattern you've noticed across your first five shifts." Bonus question B: "A file in your queue just flashed one word: RUN. Write one sentence about what you think it means."
+- **Lane 1 (Guided):** 15 min words, sentence starters ("First, I...", "Then, I...", "Finally, I..."), Chinese word bank for W6 target words, 2 PEARL hints, 2 guided questions ("What did you do first today? What did you finish with?")
+- **Lane 2 (Standard):** 25 min words, visible word list (W6 target words)
+- **Lane 3 (Independent):** 35 min words, no starters
+
+**PEARL bark on complete:** "Reflection recorded. Proceed to your Compliance Report."
 
 **Character messages:**
-- **M.K.** appears at task start: "Six shifts. Six weeks of processing, correcting, filing. Tell me — what's the pattern?"
+- **M.K.** appears at task start: "Six shifts. Six weeks of processing, correcting, filing. Tell me — what's the pattern?" *(Pattern question planted here, resolved in Task 5.)*
+- **Betty** appears at task complete: "Lovely work, sugar. Quick reflection — now let's put together your full packet."
+
+#### Task 5: Act I Compliance Report (Filing Desk)
+**Type:** `shift_report` (writing evaluation system, long-form metacognitive)
+
+*Task 5 receives PEARL feedback from the Task 4 reflection before students attempt the long metacognitive write. This matches the audit finding that Lane 1 students need PEARL "correctness signal" before committing to a multi-part production task.*
+
+**Prompt:** "Write your Act I Compliance Report using 5 to 8 sentences. Part 1: What have you learned during Shifts 1-5? What did you achieve? What should you improve? Part 2: What have you produced? What do you value about your work? Your report MUST include at least one target word from EACH of the first three shifts — Week 1 (e.g., arrive, check, follow, submit), Week 2 (e.g., notice, compare, update, inform), Week 3 (e.g., process, complete, maintain, review) — and SHOULD include target words from Weeks 4, 5, and 6 as well. Include at least one sentence using 'because' to connect a cause and effect."
+
+*Vocabulary requirement rationale: "Vocabulary from at least 3 different weeks" would let a student pass using only W4/W5/W6 words, losing W1-W3 retention. Requiring one target word from each of W1, W2, W3 specifically protects spaced-repetition of the earliest taught vocabulary at the Act I checkpoint.*
+
+**Lane configurations:**
+- **Lane 1 (Guided):** 35 min words, sentence starters ("I learned to [W1 word]...", "I noticed [W2 word]...", "I processed [W3 word]...", "I achieved... because...", "I value... because..."), Chinese word bank grouped by week (W1, W2, W3 lists shown first), 4 PEARL hints, 4 guided questions mapping each required week to a prompt (W1: report/submit, W2: notice/compare, W3: process/review, W4-W6: optional encouraged)
+- **Lane 2 (Standard):** 50 min words, visible word list split into "REQUIRED (W1-W3)" and "ENCOURAGED (W4-W6)" sections
+- **Lane 3 (Independent):** 70 min words. Bonus question A: "M.K. asked you: 'What's the pattern?' In 2-3 additional sentences, describe any pattern you've noticed across your first five shifts." Bonus question B: "A file in your queue just flashed one word: RUN. Write one sentence about what you think it means."
+
+**Evaluation rubric (WritingEvaluator input):**
+- Target vocabulary usage — **minimum 1 target word from W1 + 1 from W2 + 1 from W3 required**; W4/W5/W6 encouraged (scored but not required)
+- Grammar targets: present simple (W1), past simple (W2/W4), modals (W3/W5), sequencing words (W4), because-clauses (W5) — integrated usage scored
+- At least one 'because' clause required
+- Sentence count: 5-8 sentences
+- Do not penalize article (a/the) errors — not taught until Act II (per Pedagogical Notes)
+
+**Character messages:**
+- **Ivan** appears mid-task: "I used a word from Week 1. Does that count? I want to make sure every shift is in my report."
 - **Betty** appears mid-task: "You've done such good work, sugar. The Party is proud of associates who achieve high marks."
 - **Ivan** appears at task complete: "I passed. Did you pass? I think I passed. But they didn't say 'good.' They said 'adequate.' Is adequate enough?"
 - **Director-7** appears at task complete (after Ivan): "Adequate. The Party notes your progress. Your classification has been updated. Report for your next shift when directed."
@@ -375,6 +422,10 @@ Students face an audit of their entire first-arc performance. The tasks mix all 
 - Clearance: STANDARD → ELEVATED
 - **PEARL:** "Act I processing complete. Your compliance record has been filed and sealed. Clearance level elevated to ELEVATED. Report for Act II when directed. The Party thanks you for your service."
 - **Post-PEARL event:** Screen flickers. One frame shows: "RUN." Then normal operation resumes.
+- **PEARL bark after RUN flash (institutional framing — MANDATORY):**
+  > "P.E.A.R.L. SYSTEM NOTICE: Instability detected in archival file 000X. The file has been quarantined. Citizens should continue to their assigned duties. The Ministry will resolve this matter."
+
+  *Framing rationale: The RUN flash is narratively powerful but pedagogically orphans the student if the shift ends on silence. The bark keeps the ambiguity of what RUN meant (no explanation) while providing institutional framing — RUN is classified as dangerous/quarantined, setting up Act II suspicion without confusing students. Delivered as a standard PEARL notice after the flash, before returning to the shift-complete card.*
 - **Score label:** "Compliance Audit Score"
 - **Rank title update:** Clarity Associate → Clarity Steward (pending)
 
@@ -462,9 +513,9 @@ Students face an audit of their entire first-arc performance. The tasks mix all 
 
 **Activity bridge:** "PEARL: Demonstrate everything you have learned."
 
-#### Clip B (1:25 target)
-**Story goal:** RUN. The first crack in the system becomes undeniable.
-**Language goal:** closing impact — minimal new language
+#### Clip B (1:35 target)
+**Story goal:** RUN. The first crack in the system becomes undeniable — then institutional framing quarantines the moment.
+**Language goal:** closing impact — minimal new language (institutional framing vocabulary: quarantine, instability, resolve)
 
 | Time | Visual Direction (Canva) | Dialogue / VO | On-screen Text |
 |---|---|---|---|
@@ -472,7 +523,8 @@ Students face an audit of their entire first-arc performance. The tasks mix all 
 | 0:15-0:35 | Badge animation: GREEN → AMBER flash → settle on elevated badge. | PEARL (text): "Clearance elevated. Report for Act II when directed." | `CLEARANCE: ELEVATED` |
 | 0:35-0:55 | M.K. final appearance. | M.K.: "You answered my question. Now answer this one for yourself: who benefits?" | `— M.K. CATSKIL` |
 | 0:55-1:10 | Screen glitch. Filing queue. One file pulses. | No spoken line. | `R U N` (1.5 seconds, red text, then gone) |
-| 1:10-1:25 | Recovery. PEARL eye. Clean end card. | PEARL (text): "System stable. Act I complete." | `ACT I COMPLETE` |
+| 1:10-1:25 | Recovery. PEARL eye. Notice card overlay. | PEARL (text): "P.E.A.R.L. SYSTEM NOTICE: Instability detected in archival file 000X. The file has been quarantined. Citizens should continue to their assigned duties. The Ministry will resolve this matter." | `FILE 000X: QUARANTINED` |
+| 1:25-1:35 | Clean end card. | PEARL (text): "System stable. Act I complete." | `ACT I COMPLETE` |
 
 ---
 
@@ -583,7 +635,7 @@ Students face an audit of their entire first-arc performance. The tasks mix all 
 - [ ] Character voices match Script_Writing_Style_Guide.md
 - [ ] Citizen-4488 posts use that week's target vocabulary
 - [ ] Difficulty tiers follow Lane 1/2/3 pattern from weeks 1-3
-- [x] Task count: W4=5, W5=5, W6=4 (two writing tasks merged per audit)
+- [x] Task count: W4=5, W5=5, W6=5 (re-split per 2026-04-17 pre-build review — Audit Review reflection (Task 4) + Compliance Report (Task 5))
 - [ ] previousWords accumulates correctly
 
 ---
@@ -629,3 +681,33 @@ During WritingEvaluator scoring and error correction task design, expect and des
 5. **Article errors**: "I went to *Ø* office" (NOT targeted in W1-6 — tolerate, don't penalize)
 6. **Plural omission**: "Three *document* were filed" (not targeted — tolerate in W1-6)
 7. **Preposition confusion**: "arrived *in* the office" (not targeted — tolerate in W1-6)
+
+---
+
+## Pedagogical Notes (from 2026-04-17 Pre-Build Review)
+
+Six gaps were identified in the W4-6 plan before WeekConfig TypeScript implementation. All fixes applied to this document; no code changes.
+
+### 1. Evidence Assembly deferred to Act II
+W4 Task 2 originally called for an `evidence_assembly` task type that doesn't exist in the codebase. Building a new drag-to-order component for a single W4 use-case is not justified at this stage. Decision: implement Task 2 using the existing `document_review` + `comprehension` + `error_correction` subtypes. Pedagogical intent (build a timeline from fragments + correct grammar in a related notice) preserved; interaction simplified. A dedicated drag-to-order task type may be revisited in Act II (W7+) when sequencing is a core grammar target over multiple shifts.
+
+### 2. W6 re-split to 5 tasks (Audit Review + Compliance Report)
+W6 was merged from 5 → 4 tasks in the 2026-04-08 audit. The 2026-04-17 review found the single merged task stacked "Part 1 + Part 2 + sequencing word + because-clause + metacognitive reflection" — cognitively overloaded for Lane 1 after a 3-document review. Re-split to 5 tasks: Task 4 is a short **Audit Review** (2-3 sentences, sequencing words only, PEARL feedback delivered before Task 5); Task 5 is the full **Act I Compliance Report** with the cumulative vocabulary requirement. Sequencing is reinforced in Task 3's error-correction document and in Task 4's sentence starters; because-clause teaching is anchored in Task 3 rather than stacked on Task 5. Rationale: Lane 1 students need a PEARL correctness signal from a small win before committing to the long metacognitive write.
+
+### 3. W5 because-clause explicit teaching
+W5 uses because-clauses in the cloze and error-correction tasks but — prior to this review — contained no explicit teaching beat. Mandarin speakers use 因為...所以... or omit the connector entirely and will not intuit the English structure. Added:
+- A PEARL Grammar Tip in the W5 Harmony pearl_tip feed with 2-3 modeled examples + the "do not write 'because so'" warning
+- An Ivan modeling line before Task 3 ("I feel satisfied because my tasks are manageable.") so students see a correct example before the error-correction task
+- Paired with the existing SVA error #3 in Document B (reduce → reduces within a because-clause)
+
+### 4. W6 Compliance Report requires W1, W2, W3 target words specifically
+Original W6 prompt said "vocabulary from at least 3 different weeks." A student could pass using only W4/W5/W6 words, losing W1-W3 retention at the Act I checkpoint — exactly the spaced-repetition failure mode Phase B+ set out to prevent. Rewrite requires **one target word from each of W1, W2, W3** (with suggested words listed in the prompt + guided questions), and makes W4/W5/W6 encouraged-but-not-required. Evaluation rubric updated accordingly. The change also forces Lane 1's Chinese word bank to lead with W1-W3 lists.
+
+### 5. PEARL bark after W6 RUN flash — institutional framing
+The end-of-W6 RUN flash is narratively the strongest moment in Act I but — without framing — leaves students confused and the shift ends on silence. Added a mandatory PEARL bark immediately after the flash: "P.E.A.R.L. SYSTEM NOTICE: Instability detected in archival file 000X. The file has been quarantined. Citizens should continue to their assigned duties. The Ministry will resolve this matter." This keeps ambiguity about WHAT RUN meant (no explanation of content) while providing institutional framing — RUN is classified as dangerous/quarantined, setting up Act II suspicion. The bark is added both to the shift-closing sequence (student-facing) and to Week 6 Clip B's Canva storyboard (video version).
+
+### 6. Wellness Division thread — narrative glue W3 → W4 → W5
+Wellness Division was first named ominously in Week 3 Case 5 (Ivan's revealed colleague). W5 then introduces "Wellness Language Guidelines" as if it were a disconnected new directive. Added connective tissue:
+- **W4 Evidence Assembly (Task 2, Document A):** Added Fragment F — "Per Directive 14-W, Associate-19 was transferred to Wellness Division for additional support on March 12." This puts Wellness Division on the page during W4 evidence work, with the same associate (Associate-19) who reappears in W5's Wellness Self-Assessment.
+- **W5 Task 2 (Cloze Fill briefing):** Added an Ivan line — "Wait — Wellness Language? Like the Wellness Division? Do we have to give them... our feelings too?" — so the narrative link is explicit before students process the directive memo.
+Students who connect the two institutions earn implicit narrative reward in Act II (the Wellness Division disappearance arc deepens the pattern M.K. asks about in W6).
