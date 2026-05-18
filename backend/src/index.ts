@@ -19,6 +19,7 @@ import aiRoutes from './routes/ai';
 import classRoutes from './routes/classes';
 import dictionaryRoutes from './routes/dictionary';
 import { migrateHarmonyAuthorLabels } from './utils/harmonyMigrations';
+import { ensureQueueMissionsForAllWeeks } from './utils/weekConfigMigrations';
 import sessionRoutes from './routes/sessions';
 import submissionRoutes from './routes/submissions';
 import messageRoutes from './routes/messages';
@@ -115,6 +116,9 @@ httpServer.listen(PORT, async () => {
   // Run data migrations (idempotent — safe on every boot)
   migrateHarmonyAuthorLabels().catch(err =>
     console.error('[Lexical Republic] Harmony label migration failed:', err),
+  );
+  ensureQueueMissionsForAllWeeks().catch(err =>
+    console.error('[Lexical Republic] Queue mission migration failed:', err),
   );
   console.log(`[Lexical Republic] Upload dir: ${uploadPath} (UPLOAD_DIR=${UPLOAD_DIR})`);
   console.log(`[Lexical Republic] Upload dir exists: ${require('fs').existsSync(uploadPath)}`);

@@ -37,18 +37,8 @@ export const NARRATIVE_ROUTES: Record<NarrativeRouteId, NarrativeRoute> = {
     id: 'condensed',
     label: 'Condensed Narrative',
     description: '9 shifts — core story beats, streamlined for shorter terms',
-    weeks: [1, 2, 3, 5, 6, 11, 14, 16, 18],
+    weeks: [1, 2, 3, 4, 5, 6, 11, 14, 18],
     bridgingBriefings: {
-      // Week 5: student skipped week 4 (Evidence Board)
-      5: {
-        title: 'Inter-Shift Processing Summary',
-        from: 'Department of Clarity — Records Division',
-        paragraphs: [
-          'While you were off-shift, Associate, a series of evidence fragments were processed through your queue. Fragment 3 was reclassified mid-processing — access status changed to RESTRICTED before review could be completed.',
-          'Your colleague CA-22 reports recording the fragment information before it was removed. Senior Associate M.K. Catskil noted: "Some timelines are clean because they have been cleaned."',
-          'All remaining fragments have been filed. Proceed to your current assignment.',
-        ],
-      },
       // Week 11: student skipped weeks 7-10 (escalation arc)
       11: {
         title: 'Extended Leave Processing Report',

@@ -870,24 +870,24 @@ async function main() {
   }
   console.log(`  Weeks: ${weekData.length} shifts seeded`);
 
-  // ─── Unlock Weeks 1-3 for default class ───
-  for (const wkId of ['week-1', 'week-2', 'week-3']) {
+  // ─── Unlock Weeks 1-4 for default class ───
+  for (const wkId of ['week-1', 'week-2', 'week-3', 'week-4']) {
     await prisma.classWeekUnlock.upsert({
       where: { classId_weekId: { classId: defaultClass.id, weekId: wkId } },
       update: {},
       create: { classId: defaultClass.id, weekId: wkId },
     });
   }
-  console.log(`  Weeks 1-3 unlocked for class ${defaultClass.name}`);
+  console.log(`  Weeks 1-4 unlocked for class ${defaultClass.name}`);
 
-  // ─── Weeks 1-3 Queue Missions (from WeekConfig) ───
-  for (const wk of weekData.filter((w) => w.weekNumber >= 1 && w.weekNumber <= 3)) {
+  // ─── Weeks 1-4 Queue Missions (from WeekConfig) ───
+  for (const wk of weekData.filter((w) => w.weekNumber >= 1 && w.weekNumber <= 4)) {
     await createQueueWeekMissions(wk.id, wk.weekNumber);
   }
 
-  // ─── Weeks 4-18 Default Missions (7-step legacy runner) ───
+  // ─── Weeks 5-18 Default Missions (7-step legacy runner) ───
   const remainingWeekMissions = weekData
-    .filter((week) => week.weekNumber >= 4)
+    .filter((week) => week.weekNumber >= 5)
     .flatMap((week) => createDefaultWeekMissions(week));
 
   for (const mission of remainingWeekMissions) {

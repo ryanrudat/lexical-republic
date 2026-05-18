@@ -6,7 +6,7 @@
 
 export const ROUTE_WEEKS: Record<string, number[]> = {
   full: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18],
-  condensed: [1, 2, 3, 5, 6, 11, 14, 16, 18],
+  condensed: [1, 2, 3, 4, 5, 6, 11, 14, 18],
 };
 
 /** Get the week numbers for a route. Falls back to full. */
@@ -18,7 +18,7 @@ export function getRouteWeeks(routeId: string | null | undefined): number[] {
  * The highest week number that currently has built WeekConfig content.
  * Update this as new weeks are added to the backend.
  */
-export const MAX_BUILT_WEEK = 3;
+export const MAX_BUILT_WEEK = 4;
 
 /**
  * Get available shifts for a route, filtered to only weeks with content.
