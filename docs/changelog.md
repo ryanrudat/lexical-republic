@@ -4,6 +4,94 @@ Day-by-day work history. Moved here from `CLAUDE.md` on 2026-04-30 to keep the a
 
 ---
 
+## 2026-05-18 (Harmony censor role expanded: Redact-a-Word + Triage to Bin)
+
+Two new censor activity types added to the Harmony Review tab, turning the queue from "MCQ × 3 variations" into a real day-of-work simulation with three distinct cognitive verbs: **spot it** (Redact), **sort it** (Triage), **fix it** (existing grammar/vocab/replace).
+
+### Shipped (commit `1af1014` on `docs/remediation-module`)
+
+**`censure_redact` — tap-in-text recognition**
+- Post text rendered as tappable word tokens via new `TappableWords` React component. Student taps the unapproved word directly inside the sentence; selected word ringed in sky.
+- Backend response endpoint (`POST /api/harmony/censure-queue/:id/respond`) accepts new optional `selectedWord` body field. For `censure_redact` items, isCorrect uses word-match (case-insensitive, punctuation-stripped) against `censureData.errorWord` instead of `selectedIndex === correctIndex`.
+- After review: correct word green-underlines in the post; wrong pick strikes through red.
+- StudyCard lookup branches: redact prefers `approvedWord` (the TOEIC word they should have demanded) so the lane-aware Mandarin card always teaches a TOEIC word.
+
+**`censure_triage` — 3-bin classification**
+- Full-width vertical bin picker below the post: **Approve** / **Forward to Wellness** / **Flag for Reg 14-C**.
+- Bins render in FIXED pedagogical order — the Fisher-Yates shuffle is skipped when `item.postType === 'censure_triage'` so students learn the taught layout.
+- Reuses existing `selectedIndex` flow; backend treats it as a standard index match.
+- Triage skips studyCard lookup (decision-based; no single vocab teaching target).
+
+**Content authored (18 hand-written static items, W1-W3)**
+- 3 redact + 3 triage per shift, appended to `STATIC_CENSURE_ITEMS` in `harmonyGenerator.ts`.
+- All redact pairs are TOEIC-anchored on the correct side: every approved word is in the shift's `WeekConfig.targetWords` (W1: `submit`/`check`/`arrive`; W2: `notice`/`inform`/`replace`; W3: `respond`/`complete`/`review`). Wrong words (`give`/`look`/`come`/`saw`/`tell`/`fix`/`answer`/`do`/`read`) are everyday A2 English foils — NOT in `DictionaryWord` and never become teaching targets. Same doctrine as `censure_replace`.
+- Triage items split across the three bin categories: compliant posts → Approve; missing-citizen / behavioral-change posts → Forward to Wellness; informal-register posts (super/kinda/honestly/tbh) → Flag for Reg 14-C.
+
+**Plumbing**
+- `CENSURE_POST_TYPES` in `routes/harmony.ts` expanded to `['censure_grammar', 'censure_vocab', 'censure_replace', 'censure_redact', 'censure_triage']`.
+- `DEFAULT_CONTENT_COUNTS` in `harmonyGenerator.ts` adds `censure_redact: 2, censure_triage: 2`. AI generator does NOT produce these types yet (prompt unchanged); they rely on static content. W4+ won't have redact/triage items until static content is authored or the AI prompt is extended.
+- Frontend `CensureItem.postType` union extended; `censureData` shape gains optional `approvedWord` and `regulation` fields. `submitCensureResponse()` accepts optional `selectedWord` arg threaded through `harmonyStore.respondToCensure`.
+
+### Per-shift queue now ~13 items (was ~7)
+
+| Type | Items per shift | Cognitive verb |
+|---|---|---|
+| Word Redaction | 3 | Spot it |
+| Queue Triage | 3 | Sort it |
+| Grammar Check | 3 | Fix it |
+| Vocabulary Check | 3 | Fix it |
+| Word Replacement | 1 | Fix it |
+
+### Doctrine added (locked in CLAUDE.md)
+
+- **Censor role has 5 activity types** with distinct cognitive verbs.
+- **Triage bins render in fixed order** — never shuffled.
+- **Word Redaction is TOEIC-anchored on the approved side only** — wrong words are everyday foils, never teaching targets.
+
+### Verified
+
+- Backend tsc + 34 vitest tests pass.
+- Frontend tsc -b strict + Vite build pass.
+- No new lint errors in changed files (verified by stash-and-diff).
+- Commit `1af1014` pushed to `origin/docs/remediation-module` (5 files, 531 insertions, 70 deletions).
+
+---
+
+## 2026-05-14 (Harmony bilingual fix: Censure Queue + Bulletin MCQ + Archives Vocabulary now lane-aware)
+
+Audit of Harmony's interactive activities found that only the [[RemediationModule]] honored the Cummins/Krashen lane-aware L1 scaffolding doctrine. The three other interactive activities — Censure Queue, Bulletin Comprehension MCQ, and Archives Vocabulary — rendered English-only despite the backend already carrying `DictionaryWord.translationZhTw` in seed data. Real pedagogical defect for Lane 1 (Guided) students.
+
+### Shipped (commit `98cb2df` on `docs/remediation-module`)
+
+**Lane-aware Mandarin study card on Censure responses**
+- `POST /api/harmony/censure-queue/:id/respond` now returns optional `studyCard: { word, phonetic, translationZhTw, exampleSentence }`.
+- New helper `lookupStudyWord(raw)` in `routes/harmony.ts` resolves a word against `DictionaryWord` with inflection fallback (`-s` / `-ed` / `-ing` / `-ies` → `arrives → arrive`, `described → describe`).
+- Per-type lookup key: vocab → `errorWord` (the misused word's true meaning); grammar/replace → `correction` then `errorWord`.
+- Lookup wrapped in try/catch so a transient DB issue NEVER 500s an otherwise-successful submission.
+- Frontend `CensureCard` renders a sky-blue panel below the explanation: Lane 1 shows Mandarin inline, Lane 2 has a "Show 中文" toggle, Lane 3 English-only. Mirrors `RemediationModule.tsx`.
+
+**Bulletin Comprehension question stem now glossed**
+- `BulletinQuestion` interface gains optional `translationZhTw?: string`. All 9 W1-W3 static questions authored with hand-written Traditional Chinese.
+- Frontend `BulletinMCQ` reads lane, renders Mandarin gloss inline (Lane 1) or behind a "Show 中文" toggle (Lane 2).
+- **Critical**: existing bulletin posts already in the DB were inserted before this field existed. Read-time enrichment via new `STATIC_TRANSLATION_BY_REF` map (built at module load in `routes/harmony.ts`) backfills the field on every `/posts` and `/archives` response. DB value wins on conflict for forward-compat. **No migration needed.**
+
+**Archives Vocabulary entries now bilingual**
+- `/archives` endpoint selects `translationZhTw` + `phonetic` from `DictionaryWord`.
+- New `ArchiveWordEntry` component owns per-word `showMandarin` state so Lane 2 tap-to-reveal works without parent bookkeeping. Lane 1 always-visible; Lane 3 hidden.
+
+### Doctrine added (locked in CLAUDE.md)
+
+- **Harmony interactive activities are lane-aware bilingual.** Same gold-standard pattern as RemediationModule: Lane 1 always Mandarin, Lane 2 tap-to-reveal, Lane 3 English-only. Future Harmony interactive activities must follow this pattern from day one.
+
+### Verified
+
+- Backend tsc + 34 vitest tests pass.
+- Frontend tsc -b strict + Vite build pass.
+- Commit `98cb2df` pushed to `origin/docs/remediation-module` (6 files, 269 insertions, 30 deletions).
+- W1-W3 seed spot-check: `arrive` (到達), `submit` (提交), `review` etc. — all TOEIC target words have full `translationZhTw` + `phonetic` + `exampleSentence` populated.
+
+---
+
 ## 2026-05-11 (W4 redesigned: Activity Reconciliation + Unedited contact folded into Clip A + `[ ].edited` hidden app)
 
 Long design session that rebuilt Shift 4 around two new commitments: (1) the shift's narrative center is **Citizen Activity Reconciliation** — students compile the official Daily Activity Report for Citizen-4488 from 5 surveillance observations, watch one observation get reclassified mid-shift, and choose how to engage with the resistance; (2) the Unedited's first contact happens INSIDE the briefing video (Clip A hijack at 1:40) and uploads a hidden **`[ ].edited`** app to the desktop. The 3-surface Unedited design from 2026-05-07 (in-doc anomaly overlay + Clip C micro-clip + PEARL "TERMINAL ANOMALY" modal) is now deprecated.

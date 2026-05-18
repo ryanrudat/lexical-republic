@@ -292,13 +292,27 @@ Step navigation gated by completion. All steps support optional video via `StepV
 - Notices render first, then reports with "Sector Performance Data" divider
 
 **Review Queue (language exercises):**
-- Three censure types: `censure_grammar` (verb form), `censure_vocab` (word meaning MCQ), `censure_replace` (fill-in-blank)
-- Error word highlighted in post text (pink pill for grammar, cyan for vocab, amber brackets for replace)
-- Options shuffled via Fisher-Yates with index mapping back to original for validation
-- Cumulative review: up to 3 items from older weeks selected by lowest mastery, tagged "REVIEW"
-- Differentiated mastery scoring: +0.05 for current-week items, +0.03 for review items
-- Neon stamp overlay (`ResultOverlay`): large check or X renders for 3.5 seconds after submission
-- Tab badge shows unreviewed item count (pink pill)
+- **Five censure types** as of 2026-05-18:
+  - `censure_grammar` (verb form MCQ) — pink pill
+  - `censure_vocab` (word meaning MCQ) — cyan pill
+  - `censure_replace` (fill-in-blank MCQ) — amber brackets
+  - `censure_redact` (tap-the-unapproved-word inside the post text) — rose pill, "WORD REDACTION"
+  - `censure_triage` (3-bin classification: Approve / Forward to Wellness / Flag for Reg 14-C) — emerald pill, "QUEUE TRIAGE"
+- **Three cognitive verbs**: *spot it* (redact), *sort it* (triage), *fix it* (grammar/vocab/replace).
+- **Per-shift queue**: ~13 items (3 redact + 3 triage + 3 grammar + 3 vocab + 1 replace per week W1-W3).
+- Error word highlighted in post text for grammar/vocab/replace; redact renders the post as tappable word spans (selected ringed in sky; after review the correct word green-underlines and a wrong pick strikes red); triage shows a full-width 3-bin picker below the post.
+- **Triage bins render in FIXED order** (Approve / Wellness / Flag) — the Fisher-Yates shuffle is skipped for triage so students learn the taught layout. Other censure types continue to shuffle.
+- **Redact uses word-match instead of index-match**: frontend sends `selectedWord` (string) alongside `selectedIndex: -1`; backend strips punctuation, lowercases, compares to `censureData.errorWord`.
+- Cumulative review: up to 3 items from older weeks selected by lowest mastery, tagged "REVIEW".
+- Differentiated mastery scoring: +0.05 for current-week items, +0.03 for review items.
+- Neon stamp overlay (`ResultOverlay`): large check or X renders for 3.5 seconds after submission.
+- Tab badge shows unreviewed item count (pink pill).
+
+**Lane-aware bilingual study card (added 2026-05-14):**
+- After any censure submission, the backend returns an optional `studyCard: { word, phonetic, translationZhTw, exampleSentence }` looked up from `DictionaryWord` via `lookupStudyWord()` with inflection fallback (`-s`/`-ed`/`-ing`/`-ies` so `describes` → `describe`, `arrived` → `arrive`).
+- Per-type lookup target: vocab → `errorWord` (student needs the misused word's real meaning); redact → `approvedWord` (the TOEIC word they should have demanded); grammar/replace → `correction` then `errorWord`; triage → null (decision-based, no single teaching target).
+- Frontend `CensureCard` renders a sky-blue card below the explanation: Lane 1 always shows Mandarin gloss, Lane 2 has a "Show 中文" toggle, Lane 3 English-only. Mirrors the [[RemediationModule]] pattern.
+- Word Redaction is TOEIC-anchored: every *correct* word is in the shift's WeekConfig `targetWords`; the *wrong* word is everyday A2 English used as an informal foil (`give`/`tell`/`answer` etc., NOT in `DictionaryWord` and never taught).
 
 **Content generation pipeline:**
 - `ensureHarmonyPostsExist()` called lazily when student opens Harmony
@@ -324,12 +338,15 @@ Step navigation gated by completion. All steps support optional video via `StepV
 - `POST /api/harmony/bulletins/:id/respond` — ephemeral answer check (no DB write)
 - Frontend tracks answers in session-only `bulletinAnswers` store state
 - "Test Understanding" expands inline MCQs with shuffled options and green/red feedback
+- **Lane-aware Mandarin question stem (added 2026-05-14)**: `BulletinQuestion.translationZhTw?` carries the Traditional Chinese gloss of each question. Lane 1 shows it inline below the English; Lane 2 has a "Show 中文" toggle; Lane 3 is hidden. All 9 W1-W3 static bulletin questions now have hand-written zh-TW.
+- **Live read-time enrichment**: bulletins inserted into the DB before the Mandarin field existed are backfilled at response time via `STATIC_TRANSLATION_BY_REF` (built once at module load from current `STATIC_BULLETINS`). In-DB value wins on conflict, so newly seeded posts carry the field directly and forward-compat is preserved.
 
 **Archives tab** (Phase C):
 - Three lazy-loaded sub-sections: Vocabulary by Week, Citizen-4488 Case File, Bulletin Archive
 - **Vocabulary by Week**: Expandable per-week sections showing each word with definition, example sentence, and mastery bar (color-coded: emerald ≥80%, amber ≥40%, rose <40%). Route-scoped — condensed students see only their 9 weeks.
 - **Citizen-4488 Case File**: Chronological timeline of all 4488 posts with student's approve/flag decision history. Timeline dots color-coded by action (rose=flagged, emerald=approved, amber=no action).
 - **Bulletin Archive**: Past Ministry Bulletins re-readable with comprehension MCQs re-attemptable via existing `HarmonyBulletin` component.
+- **Vocabulary entries are lane-aware bilingual** (added 2026-05-14): backend returns `translationZhTw` + `phonetic` on every archive word. Frontend `ArchiveWordEntry` component owns per-word `showMandarin` state so Lane 2 tap-to-reveal works without parent bookkeeping.
 - Backend: `GET /api/harmony/archives?section=vocabulary|timeline|bulletins` — supports section-level lazy loading.
 
 **NEW badges and notifications** (Phase C):

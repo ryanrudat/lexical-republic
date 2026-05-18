@@ -58,6 +58,21 @@ Frontend-specific gotchas and conventions. For project-wide rules, vision, and l
 - **PEARL annotations are session-only**: `recentCensureResults` + `citizen4488Actions` in harmonyStore. `computePearlAnnotations()` runs on every censure response or 4488 action.
 - **harmony:new-content socket event**: Emitted from `harmonyGenerator.ts` when posts are inserted. Listener in App.tsx sets `hasNewContent` in harmonyStore. Cleared when student opens Harmony.
 
+### Harmony Bilingual Activities (added 2026-05-14)
+- **Lane-aware Mandarin study card pattern**: Use `useStudentStore((s) => s.user?.lane ?? 2)` to read the student's lane. Lane 1 always-show, Lane 2 tap-to-reveal (own `useState<boolean>` per card), Lane 3 hide. Mirror the [[RemediationModule]] visual layout (`中文` mono label + Mandarin text). The default-2 fallback matches the Standard lane so an unknown lane never trapss a student in always-Mandarin or always-English mode.
+- **`CensureResponseResult.studyCard`**: optional payload returned by `POST /api/harmony/censure-queue/:id/respond`. May be null if the relevant word isn't in `DictionaryWord`. UI must gracefully render nothing in that case — never assume it exists.
+- **`BulletinQuestion.translationZhTw`**: optional field on each bulletin question. Render lane-aware below the question stem in `BulletinMCQ`. Same Lane 1/2/3 gate.
+- **`ArchiveWordEntry` extracted as its own component**: per-word `showMandarin` state lives in the entry, NOT in `ArchivesTab`. This avoids parent-managed `Set<word>` bookkeeping when Lane 2 students tap to reveal individual entries.
+
+### Harmony Censor Activity Types (added 2026-05-18)
+- **5 censure types** route through `CensureCard` via `postType` branching: `censure_grammar`, `censure_vocab`, `censure_replace`, `censure_redact`, `censure_triage`.
+- **`censure_redact` uses word-match**: tap a word inside the post text instead of picking from MCQ options. State: `const [selectedWord, setSelectedWord] = useState<string | null>(null)` alongside the existing `selectedIdx`. Submit sends `selectedIndex: -1, selectedWord: tappedWord`; backend ignores `selectedIndex` for redact and matches `selectedWord` (case-insensitive, punctuation stripped) against `censureData.errorWord`.
+- **`TappableWords` component** renders the post as tappable word tokens. Whitespace tokens stay plain `<span>` so spacing is preserved. After review: correct word shows green-underlined (`bg-emerald-100 text-emerald-800 border-b-2 border-emerald-500`); wrong pick strikes red (`bg-rose-100 text-rose-800 line-through`).
+- **Don't render `CensureContentHighlight` for redact items** — that helper highlights the error word with a colored pill, which would give away the redact answer. Branch on `item.postType === 'censure_redact'` and use `TappableWords` instead.
+- **Triage bins NEVER shuffle**: skip the Fisher-Yates block when `item.postType === 'censure_triage'`. Bins render in fixed pedagogical order (Approve / Forward to Wellness / Flag for Reg 14-C) so students learn the layout. The other censure types continue to shuffle.
+- **Triage uses single-column grid** (`grid-cols-1 gap-1.5`), not the 2-column MCQ grid, so bin labels can be longer without truncation.
+- **Submit button disabled logic branches**: `(item.postType === 'censure_redact' ? !selectedWord : selectedIdx === null) || submitting`.
+
 ## MonitorPlayer Gotchas
 - **Autoplay timeout fallback**: 4-second timer shows manual play button if video stalls. Catches: stalled loads, slow networks, silent autoplay rejection, suspended downloads.
 - **Muted autoplay fallback**: `tryPlay()` attempts unmuted first, falls back to `v.muted = true` + retry. Browsers always allow muted autoplay. Manual play button only if both fail.
@@ -75,6 +90,7 @@ Frontend-specific gotchas and conventions. For project-wide rules, vision, and l
 ## Teacher Shifts Tab Gotchas (added 2026-05-03)
 - **Split error state in `ShiftStoryboard.tsx`**: `loadError` (blanks the view, only set on initial fetch failure) vs `opError` (dismissible inline banner above the cards, set on per-step upload/embed/gate failures). Never use a single `error` state — a single failed upload would replace the entire storyboard render and the teacher loses every task card.
 - **`describeError(err, fallback)` helper** at top of `ShiftStoryboard.tsx` extracts axios `error.response.status` + JSON `error` field so teacher sees the actual cause (e.g. "413 File too large [LIMIT_FILE_SIZE]") instead of the generic fallback. Reuse this pattern for any teacher-facing operation that hits a server endpoint.
+- **Compliance Check slots render INLINE in the storyboard (added 2026-05-08)** — `ShiftStoryboard.tsx` fetches `listComplianceTemplates(classId, weekNumber)` and renders `<ComplianceCheckMarker>` at: (1) above the first card (`shift_start`), (2) after each card (`after_task` with `afterTaskId = step.taskId`), (3) below the last card (`shift_end`). Marker mirrors the GateMarker insertion-point pattern but cyan-dotted instead of amber-dashed. Click → opens the same `ComplianceCheckEditor` modal. **There is no longer a standalone Compliance Checks section in `ShiftsTab.tsx`** — `ComplianceCheckSlotList.tsx` was deleted. Storyboard is the single source of truth for placement visualization.
 
 ## Compliance Check Editor Gotchas (added 2026-05-03)
 - **2-step wizard, NOT a single form**: Step 1 = Configure (title + question count + prior-shift count). Step 2 = Words (WordPicker + live preview + Save). Save button is gated to Step 2; Step 1 only has "Next: Pick Words →". The teacher must consciously walk through both choices. Reverting to a single-form view re-introduces the "modal opens then jumps" complaint — past `useEffect` auto-seed flashed empty for ~100-300ms then filled itself, reading as an unwanted auto-advance.
@@ -85,15 +101,18 @@ Frontend-specific gotchas and conventions. For project-wide rules, vision, and l
   2. Backend `/teacher/dictionary-words/grouped?toeicOnly=true` and POST/PUT `/templates` filter against this set.
   3. Frontend `TARGET_WORDS_BY_WEEK` in `WordPicker.tsx` mirrors the backend list as defense-in-depth (covers Railway redeploy lag). **When adding a new shift, update both `week{N}.ts` AND the frontend list.**
 - **No "TOEIC only" toggle**: removed 2026-05-03. Hardcoded to TOEIC-only with a static pill. The toggle was misleading — Compliance Checks are TOEIC-only by doctrine.
+- **`after_task` slot label is `After {task}`, NOT `Before {task}` (added 2026-05-08)** — `placement: 'after_task'` with `afterTaskId: X` fires AFTER task X completes (`ShiftQueue.handleComplete`). The old `Before {task}` label was backwards. `placementLabel(slot)` in `ComplianceCheckEditor.tsx:30` and `slotLabel(slot)` in `ShiftStoryboard.tsx` both render `After {afterTaskLabel}`. `shift_start` stays "Before shift starts"; `shift_end` stays "At shift end".
+- **`ComplianceCheckMarker` is the inline storyboard chip (added 2026-05-08)** — stateless component in `compliance-check/ComplianceCheckMarker.tsx`. Props: `label`, `template: ComplianceCheckTemplate | null`, `onClick`. Cyan dotted lines either side of a centered button. When `template` is set, shows "· Vocab Check · Nw · NQ" in cyan; when null, shows "+ Add check" in slate-italic. Used inside `ShiftStoryboard.tsx` only — do NOT mount it inside the editor or anywhere it duplicates the storyboard placement.
 
-## ClassMonitor: current-shift highlight (added 2026-05-03)
+## ClassMonitor: current-shift highlight (added 2026-05-03; off-by-one fix 2026-05-08)
 - **Mode of `(weeksCompleted + 1)`** across enrolled students = the shift most of the class is on. Ties resolve to the lowest shift. The matching "Move all to Shift N" button renders emerald with a "• current" tag. Computed inside ClassMonitor render — no store action needed.
+- **`weeksCompleted` is computed server-side from `ShiftResults` filtered to `completedAt: not null`** (`backend/src/routes/teacher.ts:89`). Move-to-Shift markers (`completedAt: null`) are NOT counted as completions. Before this fix (2026-05-08) the marker inflated the count by 1 and the highlight skipped one shift ahead — a class moved to Shift 3 would render "Shift 4 • current" or no highlight at all. Always filter on `completedAt` when deriving "shifts completed" from `ShiftResult` rows.
 
-## Pause-All & Send-to-Task (KNOWN BUGS — diagnosed 2026-05-03, NOT YET FIXED)
-- **`sessionPauseStore` is in-memory only** — no localStorage, no DB. New connections (refresh, late join, reconnect after Wi-Fi blip) do NOT receive the pause state because Socket.IO doesn't replay missed events. Teacher pauses → some students get the overlay, some don't.
-- **`PauseOverlay.tsx:9`** uses `fixed inset-0 z-[100] pointer-events-auto` — covers Submit buttons. Students stuck under the overlay literally cannot click any task control. This is why a paused class can present as "writing submit failed" for the cohort still online from the pause click while late-joiners proceed normally.
-- **`session:task-command` is fire-and-forget** — same root cause. `useTeacherSocket` cleanup calls `disconnectSocket()` which uses `socket.removeAllListeners()` (destructive primitive); should switch to per-handler `s.off(...)` only and not call `disconnectSocket()` on unmount. Backend `onlineStudents` Map wipes on every restart (Railway redeploys churn this state) — needs server-side persistence + replay-on-connect for both pause and online-state.
-- **Proposed fix** (waiting on user call): in-memory `Map<classId, { paused, message, ts }>` in `socketServer.ts` + replay on student connection; OR `Class.pausedAt` + `Class.pauseMessage` Prisma columns; OR both.
+## Pause-All & Send-to-Task (audit batch 2026-05-04 — RESOLVED in PRs #29, #36, #38)
+- **Server-side `classPauseState` Map** (`backend/src/socketServer.ts`) now persists pause state across socket reconnects within a backend lifetime. Student-connect handler replays `session:paused` if the class is paused — fixes refresh / late-join / Wi-Fi reconnect bypass. Restart-survival is still in-memory only (Railway redeploys lose pause state); persist via `Class.pausedAt` + `Class.pauseMessage` Prisma columns when needed.
+- **`useTeacherSocket.ts:92` no longer calls `disconnectSocket()` in cleanup** (PR #29). Per-handler `s.off(...)` is preserved. The shared singleton + App.tsx-level student listeners survive TeacherDashboard remounts / route flips / React StrictMode dev double-invoke.
+- **All teacher emits now scope to `class:${classId}` rooms** instead of the (removed) global `'teacher'` room (PRs #36, #38). Teacher socket commands (`teacher:skip-task`/`reset-task`/`reset-shift`/`send-to-task`) gated by ownership before relay.
+- **`PauseOverlay.tsx:9` still uses `fixed inset-0 z-[100] pointer-events-auto`** — that part is intentional (the overlay must cover Submit buttons to enforce the pause). What changed: the overlay reliably ENGAGES for refreshed/late-join students now, so the bug shape is "paused as expected" not "selectively bypassed."
 
 ## CSS / Layout / Stacking Context
 - **`overflow-hidden` clips absolutely-positioned children** — if a parent card has `overflow-hidden` (e.g. for stamp watermarks), dropdowns inside child components will be clipped. Fix: wrap the overflow-needing element in its own container instead of applying overflow to the whole card.
@@ -141,6 +160,45 @@ Frontend-specific gotchas and conventions. For project-wide rules, vision, and l
 - **ClassMonitor cards always expandable** — no longer gated on `student.online`.
 - **Send-to-task uses 3-tier fallback** — `taskList` resolves: `student.online?.tasks` → `lastKnownStatus.tasks` → `shiftStatus?.tasks`. `lastKnownStatus` preserved on disconnect keeps buttons visible without manual card expand.
 - **AVAILABLE_SHIFTS constant** in ClassMonitor.tsx — currently `[1, 2, 3]`, update when new weeks are built.
+- **Shift progress on initial load (added 2026-05-08)** — `StudentSummary.currentShiftProgress` (server-provided in `GET /api/teacher/students`) seeds `offlineShift` whenever `offlineStatus` Map has no fresh-fetched entry. Click-to-refresh path still wins for post-task-command updates. No more "click each card to see what task they're on."
+- **4-state ActivityState (added 2026-05-08, idle window shrunk 2026-05-08 PM)** — `getActivityState(online, lastSeenAt, now)` in ClassMonitor returns `'active' | 'recent' | 'idle' | 'offline'`:
+  - `active` — currently socket-connected (emerald)
+  - `recent` — `lastSeenAt < 5 min` (sky) — was active just now, tab probably just sleeping
+  - `idle` — `lastSeenAt < 10 min` (amber) — **was 30 min; shortened to be classroom-realistic** (a kid who hasn't pinged in 10 min has left)
+  - `offline` — older or never (slate)
+  - Survives Railway redeploys because `lastSeenAt` is DB-backed (`Pair`/`User`).
+  - **Always-visible legend pill** above the student grid (white bg, slate border) so teachers don't have to remember the dot meanings. Same pattern as the struggle-flag summary.
+- **Task-aware ClassMonitor flag thresholds (added 2026-05-08 PM)** — `getFlag(taskStartedAt, failCount, taskKind, now)` selects from `DEFAULT_THRESHOLDS` (warn 7m / alert 12m, 2 / 4 attempts) or `WRITING_THRESHOLDS` (warn 10m / alert 18m, 3 / 5 attempts) via `thresholdsFor(taskKind)`. Writing tolerates more time + more attempts because each draft re-evaluation is iteration, not struggle. Old single-pair thresholds (5/8 + 1/2) tripped red on every routine drafting session.
+- **`failCount` rendered as "attempts" not "fails"** in card text — neutral slate, not red. Tooltip distinguishes writing (draft revisions) vs submission attempts. Prior framing read as accusatory.
+- **`progressLabel` sub-line under task label (added 2026-05-08 PM)** — second line below "Task: X" rendering the optional `student.online.progressLabel` (e.g. "Writing: 47 words"). Set via `student:task-progress` socket event from sub-components like `WritingEvaluator`. Cleared on taskId change.
+- **WritingEvaluator emits debounced `student:task-progress` (added 2026-05-08 PM)** — `useEffect` on `text` (800ms debounce, `lastSentLabelRef` dedup) sends `{ taskKind: 'writing', progressLabel: 'Writing: N words' }`. Unmount cleanup emits null so dashboard clears. Failed-submission emit migrated from `student:task-update` to `student:task-progress` to preserve parent task label + `taskStartedAt` (was previously resetting because `taskId: missionId ?? 'writing'` differed from the parent task's id like `priority_briefing`).
+- **Gradebook Remediation Events rows expandable (added 2026-05-08)** — when `e.questions?.length > 0`, click row to show `RemediationQuestionsPanel` with each word, correct definition (green dot), three distractors (gray dots), and per-word "✓ correct / ✗ incorrect / no response" badge.
+
+## Stale-Bundle Defense (added 2026-05-07/08)
+- **Layer 1 — `frontend/public/serve.json`**: copied to `dist/serve.json` at build time, read by `npx serve dist -s`. No-cache on `index.html` + `version.json`; long-immutable on `assets/**/*.{js,mjs,css,fonts}`; 1-day on images/audio/video.
+- **Layer 2 — version polling + UpdateBanner**:
+  - `vite.config.ts` writes `dist/version.json` via a custom plugin (`closeBundle`) and injects `__BUILD_ID__` (git short SHA / `RAILWAY_GIT_COMMIT_SHA` / timestamp).
+  - `src/hooks/useUpdateChecker.ts` polls `/version.json?t=${Date.now()}` every 5 min and on `visibilitychange`. Skips dev (`__BUILD_ID__ === 'dev'`).
+  - `src/stores/updateStore.ts` (Zustand) sets `updateAvailable=true` on mismatch.
+  - `src/components/system/UpdateBanner.tsx` — sky-accent fixed banner at top with Reload button. **Manual click only — never auto-reload** (student may be mid-task).
+  - Mounted in `App.tsx` outside the role guard.
+
+## Remediation Lane-Aware Study Card (added 2026-05-08)
+- **Trigger**: in `src/components/remediation/RemediationModule.tsx`, when `state.submitted && state.selectedIdx !== state.correctIdx`, the StudyCard renders below options with a 5-second countdown locking the Continue button.
+- **Lane-aware** (lane from `useStudentStore(s => s.user?.lane ?? 2)`):
+  - Lane 1 (Guided): word + IPA + correct definition + Mandarin (`question.translationZhTw`) + example sentence
+  - Lane 2 (Standard): same as Lane 1 but Mandarin behind tap-to-reveal toggle
+  - Lane 3 (Independent): word + IPA + correct definition only
+- **`STUDY_PAUSE_SECONDS = 5`** countdown via `studyTimerRef` interval. `goNext()` clears the timer + resets `showMandarin` so each new question starts clean.
+- **Doctrine**: forced exposure not punishment. Krashen affective filter + Cummins on strategic L1 + Nation/Schmitt on context exposure. NEVER trap A2-B1 students in a force-pass loop — that's a textbook affective-filter trigger for ESL learners.
+- **Correct answers skip the StudyCard** entirely; immediate Next.
+- **Dev-only preview**: `src/components/dev/RemediationDevTrigger.tsx` — `import.meta.env.DEV`-gated floating button. Calls `triggerRemediation` directly. Tree-shaken in production.
+
+## Task Answer Logs — actual wrong pick on non-first-try (added 2026-05-08)
+- **WordMatch / VocabClearance / ClozeFill** now write `lastWrongPickRef[item]` (or `firstWrongTextRef` for VocabClearance) into `chosen` whenever `wasCorrect` is false. First-try-correct rows still use the canonical correct text.
+- **Why**: Gradebook drill-down was rendering rows with identical `Chosen` and `Correct` columns but a red ✗, looking like a grading bug. Grade was correct (`wasCorrect = first-try`); display was inheriting canonical correct on recovery rows.
+- **Caveat**: only affects new submissions; existing rows keep the old display until the task is redone.
 
 ## TS / Vite
 - `import type` needed for type-only imports (Vite warnings).
+- **`__BUILD_ID__` global** declared in `src/build-id.d.ts`, defined in `vite.config.ts` via `JSON.stringify(BUILD_ID)`. Reads `'dev'` in `npm run dev`.
