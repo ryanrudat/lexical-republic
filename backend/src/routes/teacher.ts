@@ -187,7 +187,13 @@ router.get('/students', async (req: Request, res: Response) => {
         },
         missionScores: {
           include: {
-            mission: { select: { weekId: true, missionType: true } },
+            mission: {
+              select: {
+                weekId: true,
+                missionType: true,
+                week: { select: { weekNumber: true } },
+              },
+            },
           },
         },
         enrollments: {
@@ -216,17 +222,22 @@ router.get('/students', async (req: Request, res: Response) => {
 
     const pairResults = pairs.map((p) => {
       // ShiftResult is the canonical completion record; fall back to
-      // clock_out/shift_report MissionScore for legacy data
-      const completedWeeks = new Set<string>();
+      // clock_out/shift_report MissionScore for legacy data.
+      // Normalize both sources to numeric weekNumber so a week with BOTH
+      // records doesn't double-count — ShiftClosing writes both, so without
+      // normalization weeksCompleted ends up inflated by 1 per real completion
+      // and the ClassMonitor "Shift N • current" badge points one ahead.
+      const completedWeekNumbers = new Set<number>();
       for (const sr of p.shiftResults) {
-        completedWeeks.add(String(sr.weekNumber));
+        completedWeekNumbers.add(sr.weekNumber);
       }
       for (const ms of p.missionScores) {
         if (
           (ms.mission.missionType === 'clock_out' || ms.mission.missionType === 'shift_report') &&
           (ms.details as any)?.status === 'complete'
         ) {
-          completedWeeks.add(ms.mission.weekId);
+          const wn = ms.mission.week?.weekNumber;
+          if (typeof wn === 'number') completedWeekNumbers.add(wn);
         }
       }
       const enrollment = p.enrollments[0];
@@ -239,7 +250,7 @@ router.get('/students', async (req: Request, res: Response) => {
         lane: p.lane,
         xp: p.xp,
         concernScore: p.concernScore,
-        weeksCompleted: completedWeeks.size,
+        weeksCompleted: completedWeekNumbers.size,
         lastLoginAt: p.lastLoginAt,
         lastSeenAt: p.lastSeenAt,
         classId: enrollment?.class.id ?? null,
