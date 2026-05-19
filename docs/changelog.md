@@ -4,6 +4,64 @@ Day-by-day work history. Moved here from `CLAUDE.md` on 2026-04-30 to keep the a
 
 ---
 
+## 2026-05-19 (Shift 4 end-to-end hookup + teacher dashboard "current shift" fixes)
+
+Three commits to master in one session. W4 was committed as a WeekConfig (`d784aa4`) and content-redesigned (`77e5937`) earlier, but the wiring that lets teachers see it / students play it had several gaps. Plus a separate display bug surfaced that made the dashboard appear to auto-advance the class to Shift 4 when students were still on Shift 3.
+
+### Shipped (commits `6e2544b`, `912602c`, `9c76b92` on master)
+
+**1. W4 hooked up end-to-end (`6e2544b`)**
+
+- **Backend auto-migration on boot** — new `backend/src/utils/weekConfigMigrations.ts::ensureQueueMissionsForAllWeeks()` mirrors the harmony-label migration pattern. Scans every `Week` row, looks up its `WeekConfig` by `weekNumber`, and inserts only the missing queue `Mission` rows (idempotent, fire-and-forget with `.catch()`). Fixes the W4 problem diagnosed 2026-05-08: Railway prod runs `prisma migrate deploy` on every deploy but NOT `npm run seed`, so weeks added after the initial seed had no queue Mission rows and student scoring writes would have broken on first W4 entry. Wired into `src/index.ts` alongside `migrateHarmonyAuthorLabels()`.
+- **Seed extended** — `createQueueWeekMissions` loop in `backend/prisma/seed.ts:884` and default class unlock list both extended W1‑3 → W1‑4. Legacy 7-step seeding now starts at W5. Affects fresh seeds only; existing prod uses the auto-migration above.
+- **Condensed narrative route updated** — both `backend/src/data/narrative-routes.ts` and `frontend/src/data/narrative-routes.ts`: `[1,2,3,5,6,11,14,16,18] → [1,2,3,4,5,6,11,14,18]` per the 2026-05-11 locked canon. Stale Week 5 bridging entry deleted (it described the pre-redesign Evidence Board W4 and would now misfire on every condensed-route Week 5 entry).
+- **Frontend `MAX_BUILT_WEEK` bumped 3 → 4** so `ClassMonitor` "Move to Shift" / "Review which shift" / "Move Class to Shift" buttons surface Shift 4.
+
+**2. `weeksCompleted` double-count fix (`912602c`)**
+
+`GET /api/teacher/students` computed `weeksCompleted` as the size of a `Set<string>` that mixed two different key formats for the same week: `String(sr.weekNumber)` yields `"3"` while `ms.mission.weekId` yields `"week-3"`. `ShiftClosing` writes BOTH records on every shift completion (`postShiftResult` + `submitMissionScore({status:'complete'})` on `shift_report`), so every real completion contributed two distinct Set entries — except on partial-completion edge cases where only one of the two records existed, leaving most cards inflated by 1.
+
+**Symptom:** students currently working on Shift 3 with N/6 tasks done were rendered with `weeksCompleted=3`, which `ClassMonitor` maps to `currentClassShift = mode(weeksCompleted+1) = 4`, so the "Shift N • current" badge landed one shift ahead of reality. **The class was never being auto-advanced** — students were on Shift 3 the whole time (the per-student "Shift 3: 4/6 tasks done" line was correct); only the class-level badge was wrong.
+
+**Fix:** include `mission.week.weekNumber` in the include, normalize both sources to numeric `weekNumber` in a `Set<number>`. Same shift completion = same key = no double count. Legacy User branch (line 273-281) already uses a single-key Set (`weekId` only), so no change there.
+
+**3. ClassMonitor "On Shift N" pill + Review-Shift highlight (`9c76b92`)**
+
+Previously the "Shift N • current" badge only rendered inside the *Move Class to Shift* expanded row, so the teacher had to open that dropdown just to see where the class was. Two visibility fixes:
+
+- **Always-visible "On Shift {N}" emerald pill** in the action button row, alongside Pause All / Review Shift / Move Class to Shift. Same source-of-truth as before (mode of `weeksCompleted + 1`).
+- **Review Shift selector now highlights current** with the same emerald + ring + "• current" suffix that the Move Class to Shift selector already had.
+
+### W4 still pending (frontend work documented in CLAUDE.md, NOT introduced by this batch)
+
+The Shift will **play through** as a 5-task queue (Word Match → Document Review → Cloze Fill → Vocab Clearance → Shift Report) with character beats and inter-task moments wired, but the redesign-specific UX is still unbuilt:
+
+- `[ ].edited` desktop app shell (Lexicon tab with 5 Black Words + Cipher tab + Drop Box tab). Currently the cipher renders in the standard ClozeFill UI (`{0}..{4}` placeholders match the regex; passage parses; `title: "[ ].edited · CIPHER"` and `from: "— F"` config fields are unused).
+- Mid-`doc_observations` silent RESTRICTED mutation on Observation E.
+- Queue sidebar with 4 priority cases (4488 + 3 others).
+- End-of-shift `w4_recruitment_vote` NarrativeChoice modal. Without this, W5 carry-over hooks have no data.
+- Drop Box ping after Shift Report.
+- New Clip A (with Unedited hijack at 1:40) and Clip B videos.
+
+### Teacher must still unlock W4 per existing class
+
+The new seed unlock (W1-4) only applies to fresh seeds. Existing classes keep their current `ClassWeekUnlock` rows — teacher must toggle the `4` chip green in TeacherDashboard → Manage Classes → Weeks for each class once.
+
+### Verified
+
+- Backend `npm run build` + 34 vitest tests pass.
+- Frontend `npm run build` (tsc -b strict + Vite) passes.
+- Railway redeploy confirmed: `accurate-transformation-production.up.railway.app/version.json` reflects the latest build IDs.
+- Backend uptime reset on each push confirms the auto-migration ran.
+
+### Doctrine added (locked in CLAUDE.md)
+
+- **`weeksCompleted` must normalize ShiftResult.weekNumber and Mission.weekId to numeric `weekNumber`** — any new endpoint deriving "shifts completed" from BOTH sources must use a `Set<number>` and look up `mission.week.weekNumber` (NOT add `mission.weekId`).
+- **`MAX_BUILT_WEEK` is the frontend gate for shift visibility in `ClassMonitor`** — bump when a new week's WeekConfig ships AND backend auto-migration has had time to populate Mission rows.
+- **The W4 problem (2026-05-08 diagnosis) is RESOLVED** — `ensureQueueMissionsForAllWeeks()` runs on every backend boot, idempotent. Future weeks with `shiftType: 'queue'` pick up Mission rows automatically.
+
+---
+
 ## 2026-05-18 (Harmony censor role expanded: Redact-a-Word + Triage to Bin)
 
 Two new censor activity types added to the Harmony Review tab, turning the queue from "MCQ × 3 variations" into a real day-of-work simulation with three distinct cognitive verbs: **spot it** (Redact), **sort it** (Triage), **fix it** (existing grammar/vocab/replace).

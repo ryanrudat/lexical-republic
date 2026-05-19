@@ -180,7 +180,19 @@ Backend-specific gotchas and conventions. For project-wide rules, vision, and lo
 
 ## Deploy / Start Script (added 2026-05-07)
 - **`package.json` start**: `npx prisma migrate deploy && node dist/index.js`. Future migrations auto-apply on Railway boot. Idempotent — no-op when DB is in sync.
-- **W4 problem (KNOWN, NOT YET FIXED 2026-05-08)**: `backend/prisma/seed.ts:884` is hardcoded `weeks 1-3` for `createQueueWeekMissions`. W4 has a WeekConfig (`d784aa4`) but the production DB has only legacy 7-step `Mission` rows from `createDefaultWeekMissions`. Will break scoring when first student crosses into W4. Fix shape: a startup hook (mirrors `migrateHarmonyAuthorLabels`) that reconciles WeekConfig vs Mission rows for any week with a queue config.
+- **Seed (`prisma/seed.ts`) does NOT run on Railway deploys** — only `prisma migrate deploy` does. Anything that needs to reach prod via deploy (not a one-off seed run) belongs in a startup migration like `migrateHarmonyAuthorLabels` or `ensureQueueMissionsForAllWeeks`.
+
+## Startup Migration: Queue Missions for All Weeks (added 2026-05-19)
+- **`backend/src/utils/weekConfigMigrations.ts::ensureQueueMissionsForAllWeeks()`** scans every `Week` row, looks up its `WeekConfig` by `weekNumber`, and inserts only the missing queue `Mission` rows (one per task in `config.tasks`). Idempotent. Mirrors `migrateHarmonyAuthorLabels` pattern.
+- **Wired in `backend/src/index.ts`** alongside the harmony migration: fire-and-forget with `.catch()` so a transient failure can't block the server start.
+- **Resolves the "W4 problem" diagnosed 2026-05-08**: previously `seed.ts:884` hardcoded `weeks 1-3` for queue mission seeding, so any week added later (W4, eventual W5/6/...) had no matching `Mission` rows in prod and student scoring writes would have broken on first entry to that shift. Now every week with a WeekConfig gets covered on the next backend boot.
+- **Does NOT delete legacy 7-step Mission rows.** A W4 row in prod after migration has BOTH the 5 queue missions AND the 7 legacy missions (from older seed runs). They use different `missionType` values so they don't collide on lookup, but `week.missions.length` (e.g. season endpoint `totalSteps`) is inflated cosmetically. Functional flow is unaffected. Cleanup of legacy rows is deferred.
+
+## `weeksCompleted` Normalization (added 2026-05-19)
+- **In `GET /api/teacher/students`** the pair branch builds `weeksCompleted` from BOTH `ShiftResult` (canonical) and `MissionScore` on `clock_out`/`shift_report` with `status: 'complete'` (legacy fallback). These two sources have different identifiers for the same week — `ShiftResult.weekNumber` is an `Int` whereas `Mission.weekId` is a string FK like `"week-3"`.
+- **Use a `Set<number>` keyed on `weekNumber`** — include `mission: { select: { weekId: true, missionType: true, week: { select: { weekNumber: true } } } }` and add `ms.mission.week.weekNumber` (NOT `ms.mission.weekId`) to the same Set as `sr.weekNumber`. ANY new endpoint that derives "shifts completed" from BOTH sources must follow this pattern.
+- **Pre-fix symptom (committed 912602c):** every real shift completion contributed two distinct Set entries (`"3"` AND `"week-3"`), so `weeksCompleted` was inflated by 1 per completion. ClassMonitor's `currentClassShift = mode(weeksCompleted + 1)` then landed one shift ahead of reality and the "On Shift N" badge was wrong.
+- **Legacy User branch (line 273-281) was already correct** — only adds `weekId` strings, single key format, no normalization needed.
 
 ## Gradebook Remediation Events Payload (added 2026-05-08)
 - **`GET /api/teacher/remediation-events` now returns `questions` and `results` JSON** alongside the existing trigger/score fields. Data was already stored on `RemediationModuleResult`; the endpoint was stripping it. Powers the expandable "Remediation Events" rows in the Gradebook.
