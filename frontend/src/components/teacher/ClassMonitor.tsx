@@ -403,6 +403,14 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
             Paused for {formatElapsed(pauseElapsed)}
           </span>
         )}
+        {currentClassShift !== null && (
+          <span
+            className="px-3 py-1.5 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200"
+            title="Most students in this class are on this shift (mode of weeksCompleted + 1)"
+          >
+            On Shift {currentClassShift}
+          </span>
+        )}
         {students.length > 0 && (
           <button
             onClick={() => {
@@ -438,18 +446,27 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
       {showReviewShiftSelector && (
         <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-4 py-2">
           <span className="text-xs text-slate-500 mr-1">Review which shift:</span>
-          {AVAILABLE_SHIFTS.map((wn) => (
-            <button
-              key={wn}
-              className="px-3 py-1 text-xs rounded-md border bg-white text-slate-600 border-slate-200 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 transition-colors"
-              onClick={() => {
-                setReviewShiftNumber(wn);
-                setShowReviewShiftSelector(false);
-              }}
-            >
-              Shift {wn}
-            </button>
-          ))}
+          {AVAILABLE_SHIFTS.map((wn) => {
+            const isCurrent = wn === currentClassShift;
+            return (
+              <button
+                key={wn}
+                className={`px-3 py-1 text-xs rounded-md border transition-colors ${
+                  isCurrent
+                    ? 'bg-emerald-100 text-emerald-800 border-emerald-400 font-semibold ring-1 ring-emerald-300'
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300'
+                }`}
+                onClick={() => {
+                  setReviewShiftNumber(wn);
+                  setShowReviewShiftSelector(false);
+                }}
+                title={isCurrent ? 'Class is currently on this shift' : `Review Shift ${wn}`}
+              >
+                Shift {wn}
+                {isCurrent && <span className="ml-1.5 text-[10px] uppercase tracking-wider">• current</span>}
+              </button>
+            );
+          })}
         </div>
       )}
       {showClassShiftSelector && (
