@@ -42,72 +42,78 @@ enum WordStatus {
 // ─── Models ──────────────────────────────────────────────────────
 
 model User {
-  id            String    @id @default(uuid())
-  username      String?   @unique
-  designation   String?   @unique
-  pin           String?
-  passwordHash  String?
-  displayName   String
-  role          Role
-  lane          Int       @default(2)
-  xp            Int       @default(0)
-  streak        Int       @default(0)
-  lastLoginAt   DateTime?
-  lastSeenAt    DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id           String    @id @default(uuid())
+  username     String?   @unique
+  designation  String?   @unique
+  pin          String?
+  passwordHash String?
+  displayName  String
+  role         Role
+  lane         Int       @default(2)
+  xp           Int       @default(0)
+  streak       Int       @default(0)
+  lastLoginAt  DateTime?
+  lastSeenAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  studentVocab    StudentVocabulary[]
-  recordings      Recording[]
-  missionScores   MissionScore[]
-  pearlConversations PearlConversation[]
-  narrativeChoices   NarrativeChoice[]
-  teacherConfig      TeacherConfig?
-  harmonyPosts       HarmonyPost[]
-  enrollments        ClassEnrollment[]
-  teacherClasses     Class[]          @relation("TeacherClasses")
-  complianceCheckResults ComplianceCheckResult[] @relation("TeacherIssuedComplianceChecks")
+  studentVocab             StudentVocabulary[]
+  recordings               Recording[]
+  missionScores            MissionScore[]
+  pearlConversations       PearlConversation[]
+  narrativeChoices         NarrativeChoice[]
+  teacherConfig            TeacherConfig?
+  harmonyPosts             HarmonyPost[]
+  enrollments              ClassEnrollment[]
+  teacherClasses           Class[]                   @relation("TeacherClasses")
+  complianceCheckResults   ComplianceCheckResult[]   @relation("TeacherIssuedComplianceChecks")
   complianceCheckTemplates ComplianceCheckTemplate[] @relation("TeacherComplianceTemplates")
 
   @@map("users")
 }
 
 model Pair {
-  id            String    @id @default(uuid())
-  designation   String    @unique
-  pin           String
-  studentAName  String
-  studentBName  String    @default("")
-  lane          Int       @default(2)
-  xp            Int       @default(0)
-  concernScore  Float     @default(0)
-  hasWatchedWelcome Boolean @default(false)
-  lastLoginAt   DateTime?
-  lastSeenAt    DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                String    @id @default(uuid())
+  designation       String    @unique
+  pin               String
+  studentAName      String
+  studentBName      String    @default("")
+  lane              Int       @default(2)
+  xp                Int       @default(0)
+  concernScore      Float     @default(0)
+  hasWatchedWelcome Boolean   @default(false)
+  lastLoginAt       DateTime?
+  lastSeenAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  clearanceLevel               String   @default("PROBATIONARY")
-  suggestedLane                Int?
-  consecutiveQualifyingShifts  Int      @default(0)
-  laneLocked                   Boolean  @default(false)
-  harmonyUnlockedAt            DateTime?
-  lastHarmonyVisit             DateTime?
+  clearanceLevel              String    @default("PROBATIONARY")
+  suggestedLane               Int?
+  consecutiveQualifyingShifts Int       @default(0)
+  laneLocked                  Boolean   @default(false)
+  harmonyUnlockedAt           DateTime?
+  lastHarmonyVisit            DateTime?
 
-  missionScores          MissionScore[]
-  recordings             Recording[]
-  enrollments            ClassEnrollment[]
-  harmonyPosts           HarmonyPost[]
-  pearlConversations     PearlConversation[]
-  narrativeChoices       NarrativeChoice[]
-  dictionaryProgress     PairDictionaryProgress[]
-  characterMessages      CharacterMessage[]
+  citizenNumber                   String?
+  lastInscriptionDrillCompletedAt DateTime?
+  inscriptionSoloPiAwardsToday    Int       @default(0)
+  inscriptionSoloCounterDate      String?
+
+  missionScores           MissionScore[]
+  recordings              Recording[]
+  enrollments             ClassEnrollment[]
+  harmonyPosts            HarmonyPost[]
+  pearlConversations      PearlConversation[]
+  narrativeChoices        NarrativeChoice[]
+  dictionaryProgress      PairDictionaryProgress[]
+  characterMessages       CharacterMessage[]
   citizen4488Interactions Citizen4488Interaction[]
-  censureResponses       HarmonyCensureResponse[]
-  shiftResults           ShiftResult[]
-  complianceCheckResults ComplianceCheckResult[]
-  clarityCheckResults    ClarityCheckResult[]
-  remediationResults     RemediationModuleResult[]
+  censureResponses        HarmonyCensureResponse[]
+  shiftResults            ShiftResult[]
+  complianceCheckResults  ComplianceCheckResult[]
+  clarityCheckResults     ClarityCheckResult[]
+  remediationResults      RemediationModuleResult[]
+  inscriptionDrills       InscriptionDrill[]
 
   @@map("pairs")
 }
@@ -115,19 +121,19 @@ model Pair {
 // ─── Dictionary System ────────────────────────────────────────────
 
 model DictionaryWord {
-  id               String     @id @default(uuid())
-  word             String
-  partOfSpeech     String     @default("noun")
-  phonetic         String     @default("")
-  definition       String
-  exampleSentence  String     @default("")
-  translationZhTw  String?
-  toeicCategory    String     @default("")
-  wordFamilyGroup  String?
-  weekIntroduced   Int
-  initialStatus    WordStatus @default(approved)
-  isWorldBuilding  Boolean    @default(false)
-  createdAt        DateTime   @default(now())
+  id              String     @id @default(uuid())
+  word            String
+  partOfSpeech    String     @default("noun")
+  phonetic        String     @default("")
+  definition      String
+  exampleSentence String     @default("")
+  translationZhTw String?
+  toeicCategory   String     @default("")
+  wordFamilyGroup String?
+  weekIntroduced  Int
+  initialStatus   WordStatus @default(approved)
+  isWorldBuilding Boolean    @default(false)
+  createdAt       DateTime   @default(now())
 
   progress     PairDictionaryProgress[]
   statusEvents WordStatusEvent[]
@@ -137,43 +143,43 @@ model DictionaryWord {
 }
 
 model PairDictionaryProgress {
-  id           String     @id @default(uuid())
-  pairId       String
-  pair         Pair       @relation(fields: [pairId], references: [id])
-  wordId       String
-  word         DictionaryWord @relation(fields: [wordId], references: [id])
-  status       WordStatus @default(approved)
-  mastery      Float      @default(0)
-  encounters   Int        @default(0)
-  isRecovered  Boolean    @default(false)
-  starred      Boolean    @default(false)
-  chineseRevealed Boolean @default(false)
-  studentNotes String     @default("")
-  lastSeenAt   DateTime?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id              String         @id @default(uuid())
+  pairId          String
+  pair            Pair           @relation(fields: [pairId], references: [id])
+  wordId          String
+  word            DictionaryWord @relation(fields: [wordId], references: [id])
+  status          WordStatus     @default(approved)
+  mastery         Float          @default(0)
+  encounters      Int            @default(0)
+  isRecovered     Boolean        @default(false)
+  starred         Boolean        @default(false)
+  chineseRevealed Boolean        @default(false)
+  studentNotes    String         @default("")
+  lastSeenAt      DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   @@unique([pairId, wordId])
   @@map("pair_dictionary_progress")
 }
 
 model ComplianceCheckTemplate {
-  id                    String    @id @default(uuid())
+  id                    String   @id @default(uuid())
   classId               String
-  class                 Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
+  class                 Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
   weekNumber            Int
   placement             String
   afterTaskId           String?
   title                 String?
   words                 Json
-  questionCount         Int       @default(3)
-  cumulativeReviewCount Int       @default(2)
+  questionCount         Int      @default(3)
+  cumulativeReviewCount Int      @default(2)
   createdById           String
-  createdBy             User      @relation("TeacherComplianceTemplates", fields: [createdById], references: [id])
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  createdBy             User     @relation("TeacherComplianceTemplates", fields: [createdById], references: [id])
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
-  results               ComplianceCheckResult[]
+  results ComplianceCheckResult[]
 
   @@unique([classId, weekNumber, placement, afterTaskId])
   @@index([classId, weekNumber])
@@ -181,21 +187,21 @@ model ComplianceCheckTemplate {
 }
 
 model ComplianceCheckResult {
-  id            String    @id @default(uuid())
-  pairId        String
-  pair          Pair      @relation(fields: [pairId], references: [id], onDelete: Cascade)
-  teacherId     String?
-  teacher       User?     @relation("TeacherIssuedComplianceChecks", fields: [teacherId], references: [id])
-  classId       String?
-  templateId    String?
-  template      ComplianceCheckTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  weekIssued    Int
-  questions     Json
-  results       Json?
-  correctCount  Int?
-  totalCount    Int
-  issuedAt      DateTime  @default(now())
-  completedAt   DateTime?
+  id           String                   @id @default(uuid())
+  pairId       String
+  pair         Pair                     @relation(fields: [pairId], references: [id], onDelete: Cascade)
+  teacherId    String?
+  teacher      User?                    @relation("TeacherIssuedComplianceChecks", fields: [teacherId], references: [id])
+  classId      String?
+  templateId   String?
+  template     ComplianceCheckTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  weekIssued   Int
+  questions    Json
+  results      Json?
+  correctCount Int?
+  totalCount   Int
+  issuedAt     DateTime                 @default(now())
+  completedAt  DateTime?
 
   @@unique([pairId, templateId])
   @@index([pairId])
@@ -205,17 +211,17 @@ model ComplianceCheckResult {
 }
 
 model ClarityCheckResult {
-  id            String    @id @default(cuid())
-  pairId        String
-  pair          Pair      @relation(fields: [pairId], references: [id], onDelete: Cascade)
-  checkId       String
-  weekNumber    Int
-  totalCount    Int       @default(0)
-  correctCount  Int       @default(0)
-  startedAt     DateTime  @default(now())
-  completedAt   DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id           String    @id @default(cuid())
+  pairId       String
+  pair         Pair      @relation(fields: [pairId], references: [id], onDelete: Cascade)
+  checkId      String
+  weekNumber   Int
+  totalCount   Int       @default(0)
+  correctCount Int       @default(0)
+  startedAt    DateTime  @default(now())
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@unique([pairId, checkId])
   @@index([pairId])
@@ -227,7 +233,7 @@ model RemediationModuleResult {
   pairId               String
   pair                 Pair      @relation(fields: [pairId], references: [id], onDelete: Cascade)
   weekNumber           Int
-  triggerReason        String    // 'rate_warned' | 'rate_double' | 'absolute_3'
+  triggerReason        String // 'rate_warned' | 'rate_double' | 'absolute_3'
   concernAtTrigger     Float
   concernAfterCooldown Float?
   questions            Json
@@ -243,14 +249,14 @@ model RemediationModuleResult {
 }
 
 model WordStatusEvent {
-  id         String     @id @default(uuid())
+  id         String         @id @default(uuid())
   wordId     String
   word       DictionaryWord @relation(fields: [wordId], references: [id])
   fromStatus WordStatus
   toStatus   WordStatus
   weekNumber Int
-  reason     String     @default("")
-  createdAt  DateTime   @default(now())
+  reason     String         @default("")
+  createdAt  DateTime       @default(now())
 
   @@map("word_status_events")
 }
@@ -268,13 +274,13 @@ model WordFamily {
 // ─── Legacy Vocabulary (deprecated) ───────────────────────────────
 
 model Vocabulary {
-  id        String     @id @default(uuid())
+  id        String      @id @default(uuid())
   word      String
-  tier      VocabTier  @default(approved)
+  tier      VocabTier   @default(approved)
   source    VocabSource @default(curriculum)
   weekId    String?
-  week      Week?      @relation(fields: [weekId], references: [id])
-  createdAt DateTime   @default(now())
+  week      Week?       @relation(fields: [weekId], references: [id])
+  createdAt DateTime    @default(now())
 
   studentVocab StudentVocabulary[]
 
@@ -282,15 +288,15 @@ model Vocabulary {
 }
 
 model StudentVocabulary {
-  id           String     @id @default(uuid())
-  userId       String
-  vocabId      String
-  mastery      Float      @default(0)
-  encounters   Int        @default(0)
-  lastSeenAt   DateTime?
-  user         User       @relation(fields: [userId], references: [id])
-  vocabulary   Vocabulary @relation(fields: [vocabId], references: [id])
-  createdAt    DateTime   @default(now())
+  id         String     @id @default(uuid())
+  userId     String
+  vocabId    String
+  mastery    Float      @default(0)
+  encounters Int        @default(0)
+  lastSeenAt DateTime?
+  user       User       @relation(fields: [userId], references: [id])
+  vocabulary Vocabulary @relation(fields: [vocabId], references: [id])
+  createdAt  DateTime   @default(now())
 
   @@unique([userId, vocabId])
   @@map("student_vocabulary")
@@ -374,18 +380,18 @@ model Recording {
 }
 
 model MissionScore {
-  id              String   @id @default(uuid())
-  userId          String?
-  user            User?    @relation(fields: [userId], references: [id])
-  pairId          String?
-  pair            Pair?    @relation(fields: [pairId], references: [id])
-  missionId       String
-  mission         Mission  @relation(fields: [missionId], references: [id])
-  score           Float
-  details         Json?
-  teacherComment  String?
-  pearlFeedback   String?
-  createdAt       DateTime @default(now())
+  id             String   @id @default(uuid())
+  userId         String?
+  user           User?    @relation(fields: [userId], references: [id])
+  pairId         String?
+  pair           Pair?    @relation(fields: [pairId], references: [id])
+  missionId      String
+  mission        Mission  @relation(fields: [missionId], references: [id])
+  score          Float
+  details        Json?
+  teacherComment String?
+  pearlFeedback  String?
+  createdAt      DateTime @default(now())
 
   @@unique([userId, missionId])
   @@unique([pairId, missionId])
@@ -393,13 +399,13 @@ model MissionScore {
 }
 
 model Character {
-  id            String   @id @default(uuid())
-  name          String
-  title         String?
-  description   String?
-  portraitUrl   String?
-  expressions   Json     @default("{}")
-  createdAt     DateTime @default(now())
+  id          String   @id @default(uuid())
+  name        String
+  title       String?
+  description String?
+  portraitUrl String?
+  expressions Json     @default("{}")
+  createdAt   DateTime @default(now())
 
   dialogueNodes DialogueNode[]
 
@@ -457,38 +463,38 @@ model NarrativeChoice {
 }
 
 model TeacherConfig {
-  id            String   @id @default(uuid())
-  userId        String   @unique
-  user          User     @relation(fields: [userId], references: [id])
-  settings      Json     @default("{}")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("teacher_configs")
 }
 
 model HarmonyPost {
-  id          String        @id @default(uuid())
-  userId      String?
-  user        User?         @relation(fields: [userId], references: [id])
-  pairId      String?
-  pair        Pair?         @relation(fields: [pairId], references: [id])
-  authorLabel String?
-  content     String
-  status      HarmonyStatus @default(pending_review)
-  pearlNote   String?
-  weekNumber  Int?
-  parentId    String?
-  parent      HarmonyPost?  @relation("Replies", fields: [parentId], references: [id])
-  replies     HarmonyPost[] @relation("Replies")
-  classId     String?
-  class       Class?        @relation(fields: [classId], references: [id])
-  postType    String        @default("feed")
+  id           String        @id @default(uuid())
+  userId       String?
+  user         User?         @relation(fields: [userId], references: [id])
+  pairId       String?
+  pair         Pair?         @relation(fields: [pairId], references: [id])
+  authorLabel  String?
+  content      String
+  status       HarmonyStatus @default(pending_review)
+  pearlNote    String?
+  weekNumber   Int?
+  parentId     String?
+  parent       HarmonyPost?  @relation("Replies", fields: [parentId], references: [id])
+  replies      HarmonyPost[] @relation("Replies")
+  classId      String?
+  class        Class?        @relation(fields: [classId], references: [id])
+  postType     String        @default("feed")
   censureData  Json?
   bulletinData Json?
   isGenerated  Boolean       @default(false)
-  createdAt   DateTime      @default(now())
-  ingestedAt  DateTime      @default(now())
+  createdAt    DateTime      @default(now())
+  ingestedAt   DateTime      @default(now())
 
   censureResponses HarmonyCensureResponse[]
 
@@ -510,22 +516,25 @@ model HarmonyCensureResponse {
 }
 
 model Class {
-  id          String   @id @default(uuid())
-  name        String
-  joinCode    String   @unique
-  teacherId   String
-  teacher     User     @relation("TeacherClasses", fields: [teacherId], references: [id])
-  isActive    Boolean  @default(true)
-  harmonyOpen Boolean  @default(false)
+  id             String   @id @default(uuid())
+  name           String
+  joinCode       String   @unique
+  teacherId      String
+  teacher        User     @relation("TeacherClasses", fields: [teacherId], references: [id])
+  isActive       Boolean  @default(true)
+  harmonyOpen    Boolean  @default(false)
   defaultLane    Int      @default(2)
   narrativeRoute String   @default("full")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  enrollments  ClassEnrollment[]
-  weekUnlocks  ClassWeekUnlock[]
-  harmonyPosts HarmonyPost[]
+  enrollments              ClassEnrollment[]
+  weekUnlocks              ClassWeekUnlock[]
+  harmonyPosts             HarmonyPost[]
   complianceCheckTemplates ComplianceCheckTemplate[]
+  inscriptionDrills        InscriptionDrill[]
+  inscriptionLobbies       InscriptionLobby[]
+  sectorTrialTemplates     SectorTrialTemplate[]
 
   @@map("classes")
 }
@@ -546,13 +555,13 @@ model ClassEnrollment {
 }
 
 model ClassWeekUnlock {
-  id             String   @id @default(uuid())
-  classId        String
-  weekId         String
-  class          Class    @relation(fields: [classId], references: [id])
-  week           Week     @relation(fields: [weekId], references: [id])
-  unlockedAt     DateTime @default(now())
-  taskGates      Int[]    @default([])  // Empty = all unlocked; [1,3] = gated before tasks 1 and 3
+  id         String   @id @default(uuid())
+  classId    String
+  weekId     String
+  class      Class    @relation(fields: [classId], references: [id])
+  week       Week     @relation(fields: [weekId], references: [id])
+  unlockedAt DateTime @default(now())
+  taskGates  Int[]    @default([]) // Empty = all unlocked; [1,3] = gated before tasks 1 and 3
 
   @@unique([classId, weekId])
   @@map("class_week_unlocks")
@@ -581,7 +590,7 @@ model CharacterMessage {
   weekNumber    Int
   isRead        Boolean  @default(false)
   studentReply  String?
-  thread        Json?    // [{sender:'teacher'|'student', text:string, timestamp:string}]
+  thread        Json? // [{sender:'teacher'|'student', text:string, timestamp:string}]
   createdAt     DateTime @default(now())
 
   @@map("character_messages")
@@ -619,4 +628,93 @@ model ShiftResult {
 
   @@unique([pairId, weekNumber])
   @@map("shift_results")
+}
+
+// ─── Inscription Pool ─────────────────────────────────────────────
+
+model InscriptionDrill {
+  id               String    @id @default(cuid())
+  classId          String
+  class            Class     @relation(fields: [classId], references: [id])
+  pairId           String
+  pair             Pair      @relation(fields: [pairId], references: [id])
+  weekNumber       Int
+  lane             Int
+  mode             String
+  durationSec      Int
+  wordCount        Int
+  poolStrategy     String
+  wordQueue        Json
+  status           String    @default("active")
+  startedAt        DateTime  @default(now())
+  pausedAt         DateTime?
+  totalPausedMs    Int       @default(0)
+  completedAt      DateTime?
+  finalRank        Int?
+  piAwarded        Int       @default(0)
+  piCapped         Boolean   @default(false)
+  commendationTier String?
+  lobbyId          String?
+
+  recordings InscriptionRecording[]
+
+  @@index([classId, completedAt])
+  @@index([pairId, startedAt])
+  @@index([classId, weekNumber, lane])
+  @@map("inscription_drills")
+}
+
+model InscriptionRecording {
+  id            String           @id @default(cuid())
+  drillId       String
+  drill         InscriptionDrill @relation(fields: [drillId], references: [id], onDelete: Cascade)
+  isGhost       Boolean          @default(false)
+  sourceDrillId String?
+  citizenNumber String
+  desk          Int
+  wordTimings   Json
+  keystrokeLog  Json
+  wordsCorrect  Int              @default(0)
+  finalRank     Int?
+  finishedAt_ms Int?
+
+  @@index([drillId])
+  @@index([sourceDrillId])
+  @@map("inscription_recordings")
+}
+
+model InscriptionLobby {
+  id         String    @id @default(cuid())
+  classId    String
+  class      Class     @relation(fields: [classId], references: [id])
+  weekNumber Int
+  lane       Int
+  mode       String
+  status     String
+  drillId    String?
+  startedAt  DateTime?
+  pausedAt   DateTime?
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+
+  @@index([classId, status, lane])
+  @@map("inscription_lobbies")
+}
+
+model SectorTrialTemplate {
+  id               String    @id @default(cuid())
+  classId          String
+  class            Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
+  weekNumber       Int
+  durationSecLane2 Int       @default(90)
+  wordCount        Int       @default(15)
+  poolStrategy     String    @default("recent")
+  placement        String    @default("after_shift_report")
+  scheduledAt      DateTime?
+  createdById      String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([classId, weekNumber])
+  @@map("sector_trial_templates")
 }

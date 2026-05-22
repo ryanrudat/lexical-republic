@@ -45,8 +45,14 @@ const APPS: AppTile[] = [
     emoji: '',
     icon: '/images/my-file-icon.png',
   },
+  {
+    id: 'inscription-pool',
+    name: 'Inscription Pool',
+    description: 'Productivity demonstration',
+    emoji: '⌨',
+  },
 ];
-const GUIDED_STUDENT_APPS: TerminalApp[] = ['clarity-queue', 'harmony', 'my-file'];
+const GUIDED_STUDENT_APPS: TerminalApp[] = ['clarity-queue', 'harmony', 'my-file', 'inscription-pool'];
 
 function getHighestUnlockedWeek(weeks: Array<{ weekNumber: number; clockedOut: boolean }>): number {
   if (weeks.length === 0) return 1;

@@ -22,6 +22,8 @@ import RemediationOverlay from './components/remediation/RemediationOverlay';
 import RemediationDevTrigger from './components/dev/RemediationDevTrigger';
 import UpdateBanner from './components/system/UpdateBanner';
 import { useUpdateChecker } from './hooks/useUpdateChecker';
+import TrialDispatchModal from './components/terminal/apps/InscriptionPool/TrialDispatchModal';
+import { useInscriptionStore } from './stores/inscriptionStore';
 
 export default function App() {
   const { user, loading, refresh } = useStudentStore();
@@ -156,6 +158,43 @@ export default function App() {
         }
       };
 
+      // ── Inscription Pool socket listeners ──
+      const onInscriptionPaused = (data: { drillId: string; pausedAt_ms: number }) => {
+        useInscriptionStore.getState().applyServerPaused(data.drillId, data.pausedAt_ms);
+      };
+      const onInscriptionResumed = (data: { drillId: string; totalPausedMs: number }) => {
+        useInscriptionStore.getState().applyServerResumed(data.drillId, data.totalPausedMs);
+      };
+      const onInscriptionWordComplete = (data: {
+        pairId?: string;
+        desk?: number;
+        wordIdx: number;
+        finishedAt_ms: number;
+      }) => {
+        // Live peer word completion broadcast — useful in Phase 3 multi-citizen pools.
+        if (typeof data.desk === 'number') {
+          const drillId = useInscriptionStore.getState().drill?.drillId;
+          if (drillId) {
+            useInscriptionStore.getState().applyDeskWordComplete(drillId, data.desk, data.wordIdx, data.finishedAt_ms);
+          }
+        }
+      };
+      const onTrialScheduled = (data: {
+        classId: string;
+        trialId: string | null;
+        startsAt_ms: number;
+        durationSec: number;
+        wordCount: number;
+      }) => {
+        useInscriptionStore.getState().setPendingTrial(data);
+      };
+      const onForceAborted = (data: { drillId: string }) => {
+        const store = useInscriptionStore.getState();
+        if (store.drill?.drillId === data.drillId) {
+          void store.completeDrill({ abandoned: true });
+        }
+      };
+
       sock.on('connect_error', onError);
       sock.on('session:paused', onPaused);
       sock.on('session:resumed', onResumed);
@@ -165,6 +204,11 @@ export default function App() {
       sock.on('session:shift-changed', onShiftChanged);
       sock.on('session:clarity-message', onClarityMessage);
       sock.on('harmony:new-content', onHarmonyNewContent);
+      sock.on('inscription:paused', onInscriptionPaused);
+      sock.on('inscription:resumed', onInscriptionResumed);
+      sock.on('inscription:word-complete', onInscriptionWordComplete);
+      sock.on('inscription:trial-scheduled', onTrialScheduled);
+      sock.on('inscription:force-aborted', onForceAborted);
 
       return () => {
         sock.off('connect_error', onError);
@@ -176,6 +220,11 @@ export default function App() {
         sock.off('session:shift-changed', onShiftChanged);
         sock.off('session:clarity-message', onClarityMessage);
         sock.off('harmony:new-content', onHarmonyNewContent);
+        sock.off('inscription:paused', onInscriptionPaused);
+        sock.off('inscription:resumed', onInscriptionResumed);
+        sock.off('inscription:word-complete', onInscriptionWordComplete);
+        sock.off('inscription:trial-scheduled', onTrialScheduled);
+        sock.off('inscription:force-aborted', onForceAborted);
       };
     }
   }, [user?.id, user?.role, user?.designation, user?.displayName, navigate]);
@@ -269,6 +318,8 @@ export default function App() {
           mounting in teacher dashboard. */}
       {user.role === 'student' && <RemediationOverlay />}
       {user.role === 'student' && import.meta.env.DEV && <RemediationDevTrigger />}
+      {/* Sector Trial invite — class-wide modal pops when teacher schedules a Trial. */}
+      {user.role === 'student' && <TrialDispatchModal />}
       {/* New-version banner. Self-gates on `updateAvailable` from updateStore. */}
       <UpdateBanner />
     </>

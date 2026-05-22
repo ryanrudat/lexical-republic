@@ -80,6 +80,10 @@ interface SessionState {
   /** ID of the most recently completed remediation (for clawback target). */
   lastCompletedModuleId: string | null;
 
+  /** Concern shield: while an Inscription drill is active, defer Remediation triggers
+   *  and exclude inscription-source events from the rate buffer. */
+  inscriptionDrillActive: boolean;
+
   hydrateConcern: (score: number) => void;
   addConcern: (amount: number) => void;
   resetConcern: () => void;
@@ -87,6 +91,7 @@ interface SessionState {
   getAttemptCount: (missionId: string) => number;
   setLastGrammarError: (error: GrammarError | null) => void;
   setAuditActive: (active: boolean) => void;
+  setInscriptionDrillActive: (active: boolean) => void;
 
   /** Direct setters used by Unit 2 modal mount. State machine prefers `closeRemediation`. */
   setActiveRemediation: (active: ActiveRemediation | null) => void;
@@ -251,6 +256,7 @@ export const useSessionStore = create<SessionState>((set, get) => {
     warningIssuedAt: null,
     modalClosedAt: null,
     lastCompletedModuleId: null,
+    inscriptionDrillActive: false,
 
     hydrateConcern: (score) => set({ concernScore: score }),
 
@@ -299,11 +305,19 @@ export const useSessionStore = create<SessionState>((set, get) => {
 
     setAuditActive: (active) => set({ isAuditActive: active }),
 
+    setInscriptionDrillActive: (active) => set({ inscriptionDrillActive: active }),
+
     setActiveRemediation: (active) => set({ activeRemediation: active }),
     setRemediationStage: (stage) => set({ remediationStage: stage }),
 
     recordRateEvent: (delta) => {
       if (!Number.isFinite(delta) || delta <= 0) return;
+
+      // Concern shield: while an Inscription drill is active, the student is
+      // doing TOEIC retrieval practice — not grinding. Events DO add to score
+      // (via `addConcern`) but do NOT feed the rate-trigger state machine.
+      // Stage A / B / backstop modals stay deferred until the drill ends.
+      if (get().inscriptionDrillActive) return;
 
       const now = Date.now();
 

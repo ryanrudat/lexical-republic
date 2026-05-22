@@ -7,6 +7,7 @@ export type TerminalApp =
   | 'clarity-queue'
   | 'harmony'
   | 'duty-roster'
-  | 'my-file';
+  | 'my-file'
+  | 'inscription-pool';
 
 export type TransitionType = 'enter-terminal' | 'exit-terminal' | 'none';

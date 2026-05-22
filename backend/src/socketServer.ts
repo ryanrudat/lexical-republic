@@ -4,6 +4,11 @@ import type { Express } from 'express';
 import { verifyToken, normalizePayload, isTeacherPayload, isPairPayload } from './utils/jwt';
 import cookie from 'cookie';
 import prisma from './utils/prisma';
+import {
+  registerInscriptionSocketHandlers,
+  freezeActiveInscriptionDrillsForClass,
+  thawPausedInscriptionDrillsForClass,
+} from './socket/inscriptionSocket';
 
 export let io: Server;
 
@@ -25,6 +30,10 @@ export interface StudentStatus {
   taskLabel: string | null;
   taskStartedAt: string | null;
   failCount: number;
+  /** Task category — used by ClassMonitor to pick task-aware flag thresholds (e.g. Writing tolerates more time + more attempts). */
+  taskKind: string | null;
+  /** Sub-progress shown next to the task label, e.g. "Writing: 47 words". Cleared on taskId change. */
+  progressLabel: string | null;
   tasks: { id: string; label: string }[];
 }
 
@@ -180,6 +189,8 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
         io.to(`class:${classId}`).emit('session:paused', { message, ts });
         // Notify all teacher sockets joined to this class room (including this one)
         io.to(`class:${classId}`).emit('teacher:pause-state', { classId, paused: true });
+        // Freeze any active inscription drills in this class
+        void freezeActiveInscriptionDrillsForClass(io, classId);
       });
 
       socket.on('teacher:resume-all', async (data?: { classId?: string }) => {
@@ -194,6 +205,8 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
         classPauseState.delete(classId);
         io.to(`class:${classId}`).emit('session:resumed');
         io.to(`class:${classId}`).emit('teacher:pause-state', { classId, paused: false });
+        // Thaw any paused inscription drills in this class
+        void thawPausedInscriptionDrillsForClass(io, classId);
       });
 
       // ── Per-student task controls — ownership-checked ──
@@ -285,6 +298,8 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
         taskLabel: existing?.taskLabel ?? null,
         taskStartedAt: existing?.taskStartedAt ?? null,
         failCount: existing?.failCount ?? 0,
+        taskKind: existing?.taskKind ?? null,
+        progressLabel: existing?.progressLabel ?? null,
         tasks: existing?.tasks ?? [],
       };
       onlineStudents.set(entityId, status);
@@ -340,6 +355,8 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
         if (existing.taskId !== data.taskId) {
           existing.taskStartedAt = new Date().toISOString();
           existing.failCount = 0;
+          existing.taskKind = null;
+          existing.progressLabel = null;
         }
         existing.taskId = data.taskId;
         existing.taskLabel = data.taskLabel;
@@ -349,6 +366,22 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
       }
     });
 
+    // Partial update — does NOT change taskId/taskLabel or reset taskStartedAt.
+    // Used by sub-component progress (e.g. WritingEvaluator word count + attempt counter).
+    socket.on('student:task-progress', (data: {
+      taskKind?: string | null;
+      progressLabel?: string | null;
+      failCount?: number;
+    }) => {
+      const existing = onlineStudents.get(entityId);
+      if (!existing) return;
+      if (data.taskKind !== undefined) existing.taskKind = data.taskKind;
+      if (data.progressLabel !== undefined) existing.progressLabel = data.progressLabel;
+      if (data.failCount !== undefined) existing.failCount = data.failCount;
+      existing.lastActivityAt = new Date().toISOString();
+      io.to('teacher').emit('student:status-updated', existing);
+    });
+
     // ── Existing week room logic (unchanged) ──
     socket.on('join:week', (weekId: string) => {
       socket.join(`week:${weekId}`);
@@ -356,6 +389,9 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
     socket.on('leave:week', (weekId: string) => {
       socket.leave(`week:${weekId}`);
     });
+
+    // ── Inscription Pool socket events (Phase 2) ──
+    registerInscriptionSocketHandlers(io, socket);
 
     // ── Disconnect cleanup ──
     socket.on('disconnect', () => {

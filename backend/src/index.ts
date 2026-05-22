@@ -29,6 +29,8 @@ import narrativeChoicesRoutes from './routes/narrative-choices';
 import clarityCheckRoutes from './routes/clarity-check';
 import complianceCheckRoutes from './routes/compliance-check';
 import remediationRoutes from './routes/remediation';
+import inscriptionRoutes from './routes/inscription';
+import { recoverAbandonedInscriptionDrills } from './utils/inscriptionRecovery';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -109,6 +111,7 @@ app.use('/api/narrative-choices', narrativeChoicesRoutes);
 app.use('/api/clarity-check', clarityCheckRoutes);
 app.use('/api/compliance-check', complianceCheckRoutes);
 app.use('/api/remediation', remediationRoutes);
+app.use('/api/inscription', inscriptionRoutes);
 
 httpServer.listen(PORT, async () => {
   console.log(`[Lexical Republic] Server running on port ${PORT}`);
@@ -119,6 +122,9 @@ httpServer.listen(PORT, async () => {
   );
   ensureQueueMissionsForAllWeeks().catch(err =>
     console.error('[Lexical Republic] Queue mission migration failed:', err),
+  );
+  recoverAbandonedInscriptionDrills().catch(err =>
+    console.error('[Lexical Republic] Inscription drill recovery failed:', err),
   );
   console.log(`[Lexical Republic] Upload dir: ${uploadPath} (UPLOAD_DIR=${UPLOAD_DIR})`);
   console.log(`[Lexical Republic] Upload dir exists: ${require('fs').existsSync(uploadPath)}`);
