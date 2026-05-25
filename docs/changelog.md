@@ -4,6 +4,66 @@ Day-by-day work history. Moved here from `CLAUDE.md` on 2026-04-30 to keep the a
 
 ---
 
+## 2026-05-25 (W4 frontend complete + Word Pool 2.0 redesign + class-monitor polish — 15 commits)
+
+Long session covering three threads. Full daily summary in `Dplan/Daily_2026_05_25.md`; highlights below.
+
+### Shift 4 frontend build (commit `91ec935`)
+
+Closed the 5-piece W4 redesign backlog in one large commit. Now functionally complete code-wise — only Clip A and Clip B Canva videos remain.
+
+- **`[ ].edited` app shell** in `frontend/src/components/terminal/apps/EditedApp/`: EditedApp.tsx + LexiconTab.tsx + CipherTab.tsx + DropBoxTab.tsx. Dead-internet aesthetic (plain monospace on dark slate, NOT collage, NOT hand-scrawled). Tap-to-reveal Mandarin. No audio buttons on Lexicon entries.
+- **5 TOEIC B1 Black Words** (replaces earlier A1 list): `witness / relative / individual / independent / private`. Mandarin glosses: 證人 / 親屬 / 個人 / 獨立 / 私人. Cipher passage in `week4.ts` rewritten to use `witness` + `relative` for blanks 3 and 4.
+- **`CipherActivity.tsx`** wraps the same cloze-fill scoring + lifecycle in `[ ].edited` chrome (`[ ]` brackets instead of underscores, Frey signature on completion). `ShiftQueue.tsx` ID-routes `cloze_fill_w4` to it. Vocab interstitial bypassed for this one task so Unedited register survives until Ivan's next moment.
+- **`DropBoxOverlay.tsx` + `RecruitmentModal.tsx`** in `w4/` subdir. `w4Stage` state machine in `ShiftQueue.tsx` cascades them between Shift Report and ShiftClosing, refresh-safe via `fetchNarrativeChoices`. Recruitment vote uses full-sentence buttons (compliant/curious/guarded) — the label IS the narrative beat. Gates W5 content depth.
+- **`CaseQueueSidebar.tsx`** — right-column panel (lg+ only) listing today's 4 cases on the Reconciliation Desk. Citizen-4488 marked PRIORITY.
+- **`.edited-tile-materialize`** CSS animation — 1.4s stuttery materialize, localStorage-gated to one-shot per pair on first W4 desktop visit.
+- **Frey bridge** in `InterTaskMoment.tsx` simplified from styled card chrome to plain monospace dead-internet (matches `[ ].edited`). Removed dead `.unedited-bridge-card` / `.unedited-line-in` / `.unedited-action-button` CSS.
+- **Stale code cleaned**: removed `w4FragmentObservation` block in `ShiftClosing.tsx` that read the deprecated `w4_doc_review_frag3` NarrativeChoice from the pre-redesign Evidence Board. Orphan `narrativeChoices` state + fetch + imports removed too.
+
+### Word Pool redesign (commits `5373a19` + 10 follow-ups)
+
+- **Initial commit** (`5373a19`): Inscription Pool feature (multiplayer TOEIC typing drill — built earlier, committed today as the first step of the session).
+- **Freeze fix #1** (`72a3780`): `useGhostTicker` throttled from RAF 60fps → setInterval 100ms (10fps), which was choking the input via constant re-renders. Also fixed `abandoned: false && abandoned` typo (always evaluated false; timer-expired drills weren't being recorded as abandoned).
+- **Amber DOS-CRT redesign** (`00b99f9`): visual register overhaul. All 8 components rewritten in `.crt-amber-monitor` style + `.amber-text*` palette. Layout reads top to bottom as monospace text — no cards, no panels.
+- **Hybrid word/sentence drills** (same commit): new `backend/src/utils/inscriptionSentencePool.ts` with 7 hand-authored in-world sentences per shift (W1–4). `pickInscriptionPrompts()` wraps `pickInscriptionWords()` and appends sentence-shaped prompts. Default split: ~60% words + ~40% sentences for solo/open; trial stays words-only.
+- **Stale-frontend fallback** (`a3c59fe`): backend accepts bare target word OR full sentence on sentence prompts so the Railway deploy window doesn't penalize in-flight students.
+- **Pixel art icon added** (`e3ec613`): replaced dark text tile with PNG icon.
+- **Amber → phosphor green** (`00547e5`): user preference. CSS classes renamed `.amber-*` → `.phosphor-*`, `.crt-amber-monitor` → `.crt-phosphor-monitor`. Hardcoded hex updated. Lobby layout tightened (top padding reduced, status strip compressed, mode picker now bordered button cards with `[1]`/`[2]` prefixes).
+- **"Word Pool" display rename** (`101898e`): tile label + window title only. Backend route remains `/api/inscription/*`, tables remain `inscription_drills`, component dirs remain `InscriptionPool/`.
+- **Icon sizing iterations** (`101898e` → `ad0b9e5` → `98fc343` → `ea59d24`): user wanted size + background to match other tiles. Final: 1254×1254 square PNG constrained by `h-[160px] w-auto` so displayed height matches the other 1536×1024 (240×160) tiles.
+- **Racing-track redesign** (`c3689c9`): completely changed the drill UX. `PoolStandings.tsx` rewritten as horizontal racing lanes at the TOP showing per-citizen progress as 24-cell tracks. `DrillPromptCard.tsx` rewritten as per-character display with hidden `<input>` + auto-advance on exact match. No submit button. Eliminated the submit-cycle race condition that left the input frozen after word 1.
+- **Wrong-char unfreeze + viewport fix** (`26964a7`): wrong-character freeze fixed by allowing input past target length (monkeytype overflow + red overflow chars + "> backspace to correct." hint). Bottom cyan bleed fixed via `flex flex-col` + `flex-1 w-full` on the wrapper.
+
+### ClassMonitor visibility batch (commit `c6c9b15`)
+
+Teacher dashboard polish (per `memory/project_classmonitor_visibility_2026_05_08.md`):
+
+- Task-aware flag thresholds: default warn 7m / 2 attempts, alert 12m / 4 attempts. Writing: warn 10m / 3 attempts, alert 18m / 5 attempts. Writing tolerates more time because each draft re-evaluation is iteration, not struggle.
+- Always-visible 4-state activity-dot legend pill above the student grid.
+- Idle window 30 → 10 min (more classroom-realistic).
+- "fails" → "attempts" label (neutral slate, not accusatory red).
+- WritingEvaluator emits debounced `student:task-progress` socket event so the dashboard shows "Writing: 47 words" sub-line without needing to expand the card.
+
+### Docs (commit `06ffa58`)
+
+Three new Dplan documents committed:
+
+- `Admin_God_Access_Plan.md` — full plan for admin role with cross-class visibility + student impersonation. ~140 lines across 11 files. Not yet built.
+- `Harmony_Updated.md` — Phase D design: Junior Compliance Reviewer censor mechanic, Reg 14-C + Conduct Code §1/§2 across W1/W2/W3.
+- `Narrative_Pedagogy_Review_2026_04_17.md` — cross-cutting corpus review of shift scripts, Harmony posts, and PEARL voice with prioritized findings + W4–6 forward-look.
+- `Harmony_Expansion_Review.md` updated: Phase D status → PARTIAL with PR #2/#6 landed and PR #12 (Citizen-4488 visibility) pending.
+
+### Cleanup
+
+- Three macOS Finder duplicate files deleted (`Admin_God_Access_Plan 2.md`, `Narrative_Pedagogy_Review_2026_04_17 2.md`, `backend/src/data/week-configs/week4 2.ts`).
+
+### Working tree state at end of session
+
+Clean. All commits live on master via fast-forward merges from `docs/remediation-module`. Working branch back to clean state.
+
+---
+
 ## 2026-05-19 (Shift 4 end-to-end hookup + teacher dashboard "current shift" fixes)
 
 Three commits to master in one session. W4 was committed as a WeekConfig (`d784aa4`) and content-redesigned (`77e5937`) earlier, but the wiring that lets teachers see it / students play it had several gaps. Plus a separate display bug surfaced that made the dashboard appear to auto-advance the class to Shift 4 when students were still on Shift 3.
