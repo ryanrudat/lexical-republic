@@ -27,7 +27,12 @@ import ContradictionReport from './tasks/ContradictionReport';
 import PriorityBriefing from './tasks/PriorityBriefing';
 import PrioritySort from './tasks/PrioritySort';
 import ShiftReport from './tasks/ShiftReport';
+import CipherActivity from './tasks/CipherActivity';
+import DropBoxOverlay from './w4/DropBoxOverlay';
+import RecruitmentModal from './w4/RecruitmentModal';
+import CaseQueueSidebar from './w4/CaseQueueSidebar';
 import TaskGateOverlay from './TaskGateOverlay';
+import { fetchNarrativeChoices } from '../../api/narrative-choices';
 import type { TaskProps, BridgingBriefing, InterTaskMomentConfig, ClarityCheckConfig } from '../../types/shiftQueue';
 
 /** Bridging briefing overlay for condensed-route students who skipped weeks */
@@ -139,6 +144,12 @@ export default function ShiftQueue() {
   const completedComplianceTemplateIdsRef = useRef<Set<string>>(new Set());
   const [shiftEndComplianceFetched, setShiftEndComplianceFetched] = useState(false);
 
+  // W4 epilogue cascade (Drop Box → Recruitment vote → ShiftClosing).
+  // Resolves which stage to render based on existing NarrativeChoices —
+  // refresh-safe. 'loading' is the initial state while we fetch; 'done'
+  // means both choices are recorded and ShiftClosing should render.
+  const [w4Stage, setW4Stage] = useState<'loading' | 'dropbox' | 'recruitment' | 'done'>('loading');
+
   const findClarityCheckForPlacement = useCallback(
     (
       placementMatch: (placement: ClarityCheckConfig['placement']) => boolean,
@@ -166,7 +177,30 @@ export default function ShiftQueue() {
     pendingComplianceCheckRef.current = null;
     completedComplianceTemplateIdsRef.current = new Set();
     setShiftEndComplianceFetched(false);
+    setW4Stage('loading');
   }, [weekConfig?.weekNumber, taskResetKey]);
+
+  // W4 epilogue resolver — fires when shiftComplete first becomes true.
+  // Reads existing NarrativeChoices to decide which epilogue stage to show
+  // (or to skip the epilogue entirely if both choices are already on file).
+  useEffect(() => {
+    if (!shiftComplete || weekNumber !== 4) return;
+    if (w4Stage !== 'loading') return;
+    let cancelled = false;
+    fetchNarrativeChoices(4)
+      .then((choices) => {
+        if (cancelled) return;
+        const keys = new Set(choices.map((c) => c.choiceKey));
+        if (keys.has('w4_recruitment_vote')) setW4Stage('done');
+        else if (keys.has('w4_drop_box_first_submission')) setW4Stage('recruitment');
+        else setW4Stage('dropbox');
+      })
+      .catch(() => {
+        // On fetch failure, fall through to ShiftClosing rather than blocking.
+        if (!cancelled) setW4Stage('done');
+      });
+    return () => { cancelled = true; };
+  }, [shiftComplete, weekNumber, w4Stage]);
 
   // Fetch a pending Compliance Check for the given placement, or null.
   const fetchComplianceCheckFor = useCallback(
@@ -311,7 +345,12 @@ export default function ShiftQueue() {
       ? resolveUploadUrl(currentTask.clipAfter)
       : '';
     const completedTaskId = currentTask.id;
-    const wasVocabTask = VOCAB_TASK_TYPES.has(currentTask.type);
+    // cloze_fill_w4 renders inside the [ ].edited app and ends with Frey's
+    // bark — skipping the cream Party-flavored vocab interstitial keeps
+    // the Unedited register intact through the next inter-task moment.
+    const wasVocabTask = completedTaskId === 'cloze_fill_w4'
+      ? false
+      : VOCAB_TASK_TYPES.has(currentTask.type);
     const momentConfig = weekConfig.interTaskMoments?.[completedTaskId] ?? null;
     const clarityCheckConfig = findClarityCheckForPlacement(
       (p) => typeof p === 'object' && p.afterTaskId === completedTaskId,
@@ -560,6 +599,36 @@ export default function ShiftQueue() {
     if (!shiftEndComplianceFetched) return null;
     if (pendingComplianceCheckRef.current) return null;
 
+    // W4 epilogue: Drop Box → Recruitment vote → ShiftClosing. Stage
+    // resolves async from existing NarrativeChoices (refresh-safe). While
+    // loading, render a brief Frey-register beat instead of flashing
+    // ShiftClosing or any Party chrome.
+    if (weekNumber === 4 && w4Stage !== 'done') {
+      if (w4Stage === 'loading') {
+        return (
+          <div className="bg-slate-950 min-h-[300px] -mx-4 -my-3 px-6 py-12 rounded-xl text-slate-400 font-ibm-mono text-sm">
+            <p className="lowercase">&gt; reading...</p>
+          </div>
+        );
+      }
+      if (w4Stage === 'dropbox') {
+        return (
+          <DropBoxOverlay
+            weekNumber={weekNumber}
+            onComplete={() => setW4Stage('recruitment')}
+          />
+        );
+      }
+      if (w4Stage === 'recruitment') {
+        return (
+          <RecruitmentModal
+            weekNumber={weekNumber}
+            onComplete={() => setW4Stage('done')}
+          />
+        );
+      }
+    }
+
     const sock = getSocket();
     if (sock?.connected) {
       sock.emit('student:task-update', { taskId: 'shift_complete', taskLabel: 'Shift Complete', failCount: 0 });
@@ -567,8 +636,15 @@ export default function ShiftQueue() {
     return <ShiftClosing />;
   }
 
-  // Resolve current task component
-  const TaskComponent = currentTask ? TASK_REGISTRY[currentTask.type] : null;
+  // Resolve current task component.
+  // ID-level override: cloze_fill_w4 renders inside the [ ].edited app's
+  // Cipher chrome (CipherActivity), not the standard ClozeFill. Same
+  // task lifecycle — different visual register.
+  const TaskComponent = currentTask
+    ? currentTask.id === 'cloze_fill_w4'
+      ? CipherActivity
+      : TASK_REGISTRY[currentTask.type]
+    : null;
 
   // Video clip gate — full-screen "movie theater" overlay
   if (currentTask && watchingClip) {
@@ -606,40 +682,48 @@ export default function ShiftQueue() {
     );
   }
 
+  // W4 layout: main task area + right-column case queue sidebar (lg+).
+  // Below lg, the sidebar hides and the task gets the full width.
+  const isW4 = weekNumber === 4;
+
   return (
-    <div className="flex flex-col gap-4">
-      {/* ─── Progress Bar ─── */}
-      <div className="flex gap-1.5 mb-1">
-        {taskProgress.map((tp, idx) => (
-          <div
-            key={tp.taskId}
-            className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
-              tp.status === 'complete'
-                ? 'bg-emerald-400'
-                : tp.status === 'current'
-                  ? 'bg-sky-400 animate-pulse'
-                  : 'bg-[#D4CFC6]'
-            }`}
-            aria-label={`Task ${idx + 1}: ${tp.status}`}
-          />
-        ))}
+    <div className={isW4 ? 'lg:flex lg:gap-6 lg:items-start' : ''}>
+      <div className={`flex flex-col gap-4${isW4 ? ' lg:flex-1 min-w-0' : ''}`}>
+        {/* ─── Progress Bar ─── */}
+        <div className="flex gap-1.5 mb-1">
+          {taskProgress.map((tp, idx) => (
+            <div
+              key={tp.taskId}
+              className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
+                tp.status === 'complete'
+                  ? 'bg-emerald-400'
+                  : tp.status === 'current'
+                    ? 'bg-sky-400 animate-pulse'
+                    : 'bg-[#D4CFC6]'
+              }`}
+              aria-label={`Task ${idx + 1}: ${tp.status}`}
+            />
+          ))}
+        </div>
+
+        {/* ─── Current Task ─── */}
+        {currentTask && TaskComponent && weekConfig && (
+          <TaskCard
+            taskId={currentTask.id}
+            label={currentTask.label}
+            status="idle"
+          >
+            <TaskComponent
+              key={`${currentTask.id}-${taskResetKey}`}
+              config={currentTask.config}
+              weekConfig={weekConfig}
+              onComplete={handleComplete}
+            />
+          </TaskCard>
+        )}
       </div>
 
-      {/* ─── Current Task ─── */}
-      {currentTask && TaskComponent && weekConfig && (
-        <TaskCard
-          taskId={currentTask.id}
-          label={currentTask.label}
-          status="idle"
-        >
-          <TaskComponent
-            key={`${currentTask.id}-${taskResetKey}`}
-            config={currentTask.config}
-            weekConfig={weekConfig}
-            onComplete={handleComplete}
-          />
-        </TaskCard>
-      )}
+      {isW4 && <CaseQueueSidebar />}
     </div>
   );
 }

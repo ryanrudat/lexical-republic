@@ -714,6 +714,91 @@ body.view-terminal {
   50% { box-shadow: 0 0 16px rgba(105, 240, 174, 0.4); }
 }
 
+/* ─── W4 Observation Mutation — RESTRICTED stamp ─────────────── */
+/* Used by ObservationMutationView. Red, angled, drops in after the
+   target observation row has greyed. Doesn't pulse — single stamp. */
+
+.restricted-stamp {
+  font-family: 'Special Elite', cursive;
+  color: rgba(190, 18, 60, 0.85);
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  border: 3px solid rgba(190, 18, 60, 0.75);
+  padding: 4px 14px;
+  border-radius: 4px;
+  transform: rotate(-8deg);
+  opacity: 0;
+  animation: restricted-stamp-in 600ms cubic-bezier(0.34, 1.56, 0.64, 1) 1500ms forwards;
+  pointer-events: none;
+  white-space: nowrap;
+  font-size: 1.05rem;
+  box-shadow: 0 1px 0 rgba(190, 18, 60, 0.25);
+}
+
+@keyframes restricted-stamp-in {
+  from {
+    opacity: 0;
+    transform: rotate(-8deg) scale(1.6);
+  }
+  to {
+    opacity: 0.9;
+    transform: rotate(-8deg) scale(1);
+  }
+}
+
+/* Greying transition applied to the restricted observation row.
+   Delay matches the stamp's pre-roll so the row dims first. */
+.observation-row-restricting {
+  animation: observation-restrict 800ms ease-out 700ms forwards;
+}
+
+@keyframes observation-restrict {
+  from {
+    color: inherit;
+    opacity: 1;
+    text-decoration: none;
+  }
+  to {
+    color: rgb(156, 163, 175);
+    opacity: 0.55;
+    text-decoration: line-through;
+    text-decoration-color: rgba(156, 163, 175, 0.65);
+  }
+}
+
+.archive-control-line {
+  opacity: 0;
+  animation: archive-control-line-in 400ms ease-out forwards;
+}
+
+@keyframes archive-control-line-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── [ ].edited tile materialize ────────────────────────────── */
+/* Plays once on the first W4 desktop visit — the tile stutters in
+   like a download that failed mid-install, then settles in its
+   permanent "broken pixel" state. localStorage gates re-runs. */
+
+.edited-tile-materialize {
+  animation: edited-tile-glitch-in 1400ms steps(1, end) forwards;
+}
+
+@keyframes edited-tile-glitch-in {
+  0%   { opacity: 0; transform: translateX(0); }
+  8%   { opacity: 0.4; transform: translateX(-2px); filter: hue-rotate(20deg); }
+  12%  { opacity: 0; transform: translateX(2px); }
+  20%  { opacity: 0.7; transform: translateX(-1px); filter: hue-rotate(-15deg); }
+  26%  { opacity: 0.2; transform: translateX(1px); }
+  34%  { opacity: 0.9; transform: translateX(0); filter: hue-rotate(0); }
+  42%  { opacity: 0.5; }
+  50%  { opacity: 1; }
+  58%  { opacity: 0.7; transform: translateX(-1px); }
+  66%  { opacity: 1; transform: translateX(0); }
+  100% { opacity: 1; transform: translateX(0); filter: hue-rotate(0); }
+}
+
 /* ─── Messaging Notification Animations ──────────────────────── */
 
 .animate-slideInRight {

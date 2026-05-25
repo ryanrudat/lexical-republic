@@ -8,6 +8,7 @@ export type TerminalApp =
   | 'harmony'
   | 'duty-roster'
   | 'my-file'
-  | 'inscription-pool';
+  | 'inscription-pool'
+  | 'edited';
 
 export type TransitionType = 'enter-terminal' | 'exit-terminal' | 'none';

@@ -13,6 +13,7 @@ import DutyRosterApp from './apps/DutyRosterApp';
 import HarmonyApp from './apps/HarmonyApp';
 import MyFileApp from './apps/MyFileApp';
 import InscriptionApp from './apps/InscriptionPool/InscriptionApp';
+import EditedApp from './apps/EditedApp/EditedApp';
 import ConcernTooltip from './ConcernTooltip';
 import PearlEye from '../pearl/PearlEye';
 import PearlPanel from '../pearl/PearlPanel';
@@ -30,6 +31,7 @@ const APP_CONFIG = {
   'duty-roster': { title: 'Duty Roster', component: DutyRosterApp },
   'my-file': { title: 'My File', component: MyFileApp },
   'inscription-pool': { title: 'Inscription Pool', component: InscriptionApp },
+  'edited': { title: '[ ].edited', component: EditedApp },
 } as const;
 
 export default function TerminalView() {

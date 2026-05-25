@@ -53,8 +53,13 @@ export interface InterTaskMomentReply {
 export interface InterTaskMomentConfig {
   /** Unique moment id, e.g. "w4_betty_aftertask1". Used as NarrativeChoice.choiceKey. */
   id: string;
-  /** "character" = choice-required. "ambient" = no-choice glitch/atmosphere beat. */
-  type: "character" | "ambient";
+  /**
+   * "character" = choice-required NPC message.
+   * "ambient" = no-choice glitch/atmosphere beat with timed Continue.
+   * "unedited_bridge" = Frey-style pop-up bridging shift flow into the
+   *   `[ ].edited` app. Structured recall block + single action button.
+   */
+  type: "character" | "ambient" | "unedited_bridge";
   // Character variant:
   characterName?: string;
   designation?: string;
@@ -64,6 +69,23 @@ export interface InterTaskMomentConfig {
   glitchText?: string;
   /** Minimum display time in ms before the Continue button appears. Default 2000. */
   durationMs?: number;
+  // unedited_bridge variant:
+  bridge?: UneditedBridgeConfig;
+}
+
+export interface UneditedBridgeConfig {
+  /** Header label, e.g. "[ ].edited — incoming". */
+  cardTitle: string;
+  /** Structured recall block. Each line renders as "label: value". */
+  lines: { label: string; value: string }[];
+  /** Free-text lines below the structured block (lowercase Unedited voice). */
+  closingLines: string[];
+  /** Signature line, e.g. "— F". */
+  signature: string;
+  /** Button label, e.g. "Open [ ].edited". */
+  actionLabel: string;
+  /** Value stored on NarrativeChoice when tapped (e.g. "opened"). */
+  choiceValue: string;
 }
 
 export interface TaskConfig {
@@ -216,6 +238,34 @@ export interface DocumentConfig {
    * student must pick an option. Stored as NarrativeChoice.choiceKey = id.
    */
   midTaskChoice?: MidTaskChoiceConfig;
+  /**
+   * Structured observation rows, rendered by the post-comprehension mutation
+   * view. Order is the displayed order. The first row whose `restrict` is true
+   * is the row that animates greyed + RESTRICTED-stamped during the mutation
+   * beat (W4 Observation E). Independent of `body`, which ComprehensionDoc
+   * still uses for the question phase.
+   */
+  observations?: ObservationEntry[];
+  /**
+   * When true on a `comprehension` doc, after the student finishes the
+   * questions the frontend renders an ObservationMutationView instead of
+   * advancing directly. Silent, no choice — 5s ARCHIVE CONTROL beat that
+   * greys + stamps the restricted observation, then auto-advances.
+   */
+  mutationAfterComprehension?: boolean;
+}
+
+export interface ObservationEntry {
+  /** Letter or short label shown left of the row, e.g. "A" or "E". */
+  label: string;
+  /** 24h timestamp, e.g. "07:23". */
+  time: string;
+  /** In-world location, e.g. "Sector 4 entrance". */
+  location: string;
+  /** Short action phrase, e.g. "badge scan". */
+  action: string;
+  /** When true, this row is the one that mutates to RESTRICTED. */
+  restrict?: boolean;
 }
 
 export interface MidTaskChoiceOption {

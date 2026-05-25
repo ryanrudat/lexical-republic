@@ -26,7 +26,29 @@ export default function InterTaskMoment({
   const [ambientReady, setAmbientReady] = useState(false);
 
   const isAmbient = moment.type === 'ambient';
+  const isUneditedBridge = moment.type === 'unedited_bridge';
   const durationMs = moment.durationMs ?? 2000;
+
+  const [bridgeSubmitting, setBridgeSubmitting] = useState(false);
+
+  const handleBridgeAction = async () => {
+    if (!moment.bridge || bridgeSubmitting) return;
+    setBridgeSubmitting(true);
+    try {
+      await postNarrativeChoice({
+        choiceKey: moment.id,
+        value: moment.bridge.choiceValue,
+        weekNumber,
+        context: { momentType: 'unedited_bridge' },
+      });
+    } catch (err) {
+      // Fail-open — must not block flow into the app.
+      console.error('Failed to save bridge narrative choice:', err);
+    } finally {
+      setBridgeSubmitting(false);
+      onComplete();
+    }
+  };
 
   // Ambient timer — Continue button appears after durationMs
   useEffect(() => {
@@ -70,6 +92,57 @@ export default function InterTaskMoment({
   const handleContinue = () => {
     onComplete();
   };
+
+  // ─── Unedited bridge variant ───────────────────────────────────
+  // Frey pop-up that hands the student toward the `[ ].edited` app.
+  // Dead-internet register: plain monospace on dark slate. No card
+  // chrome, no animations beyond a single fade-in. The text IS the
+  // composition.
+  if (isUneditedBridge && moment.bridge) {
+    const { cardTitle, lines, closingLines, signature, actionLabel } = moment.bridge;
+    return (
+      <div className="flex-1 overflow-y-auto bg-slate-950 animate-fade-in">
+        <div className="max-w-xl mx-auto px-6 py-10 font-ibm-mono text-sm text-slate-200">
+          {/* Header */}
+          <p className="text-rose-400 mb-6 lowercase">&gt; {cardTitle}</p>
+
+          {/* Structured recall block — looks like clipped surveillance log entries */}
+          <div className="mb-6 space-y-1">
+            {lines.map((line) => (
+              <p key={line.label} className="lowercase">
+                <span className="text-rose-400/60">&gt;</span>{' '}
+                <span className="text-slate-500">{line.label}:</span>{' '}
+                <span className="text-slate-100">{line.value}</span>
+              </p>
+            ))}
+          </div>
+
+          {/* Closing lines */}
+          <div className="mb-8 space-y-1.5">
+            {closingLines.map((line, idx) => (
+              <p key={idx} className="lowercase text-slate-200">
+                {line}
+              </p>
+            ))}
+          </div>
+
+          {/* Signature */}
+          <p className="mb-10 text-rose-400/80">{signature}</p>
+
+          {/* Action — plain bracketed text button */}
+          <button
+            onClick={handleBridgeAction}
+            disabled={bridgeSubmitting}
+            className="text-rose-400 hover:text-rose-300 disabled:opacity-50 lowercase tracking-wider transition-colors"
+          >
+            [ {actionLabel.toLowerCase()} ]
+          </button>
+
+          <hr className="mt-12 border-slate-800" />
+        </div>
+      </div>
+    );
+  }
 
   // ─── Ambient variant (no-choice glitch beat) ───────────────────
   if (isAmbient) {

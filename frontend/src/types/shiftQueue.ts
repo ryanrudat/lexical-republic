@@ -80,13 +80,35 @@ export interface InterTaskMomentReply {
 
 export interface InterTaskMomentConfig {
   id: string;
-  type: "character" | "ambient";
+  type: "character" | "ambient" | "unedited_bridge";
   characterName?: string;
   designation?: string;
   messageText?: string;
   replies?: InterTaskMomentReply[];
   glitchText?: string;
   durationMs?: number;
+  /**
+   * unedited_bridge variant: Frey pop-up that bridges the official shift
+   * flow into the `[ ].edited` app. Renders dark/glitchy chrome with a
+   * structured "name/time/place" recall block and a single action button.
+   * Tapping the button posts a NarrativeChoice and advances the queue.
+   */
+  bridge?: UneditedBridgeConfig;
+}
+
+export interface UneditedBridgeConfig {
+  /** Header label, e.g. "[ ].edited — incoming". */
+  cardTitle: string;
+  /** Structured recall block. Each line renders as "label: value". */
+  lines: { label: string; value: string }[];
+  /** Free-text lines below the structured block (lowercase Unedited voice). */
+  closingLines: string[];
+  /** Signature line, e.g. "— F". */
+  signature: string;
+  /** Button label, e.g. "Open [ ].edited". */
+  actionLabel: string;
+  /** Value stored on NarrativeChoice when tapped (e.g. "opened"). */
+  choiceValue: string;
 }
 
 export interface TaskConfig {

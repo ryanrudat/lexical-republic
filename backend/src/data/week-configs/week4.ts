@@ -99,6 +99,42 @@ export const WEEK_4_CONFIG: WeekConfig = {
               "Observation C — 12:00 — Common Mess — meal card swipe\n" +
               "Observation D — 14:30 — Records Wing — access log\n" +
               "Observation E — 17:30 — Block 7 Residential — badge scan, guest entry logged: Citizen-9020",
+            // After the 5 comprehension Qs, ArchiveControl reclassifies Obs E
+            // as RESTRICTED via a silent visual mutation. Handled frontend-only.
+            mutationAfterComprehension: true,
+            observations: [
+              {
+                label: "A",
+                time: "07:23",
+                location: "Sector 4 entrance",
+                action: "badge scan",
+              },
+              {
+                label: "B",
+                time: "08:15",
+                location: "Filing Desk 14",
+                action: "log-in",
+              },
+              {
+                label: "C",
+                time: "12:00",
+                location: "Common Mess",
+                action: "meal card swipe",
+              },
+              {
+                label: "D",
+                time: "14:30",
+                location: "Records Wing",
+                action: "access log",
+              },
+              {
+                label: "E",
+                time: "17:30",
+                location: "Block 7 Residential",
+                action: "badge scan — guest entry logged: Citizen-9020",
+                restrict: true,
+              },
+            ],
             questions: [
               {
                 question: "What did Citizen-4488 do first?",
@@ -259,17 +295,20 @@ export const WEEK_4_CONFIG: WeekConfig = {
         title: "[ ].edited · CIPHER",
         from: "— F",
         passage:
-          "Citizen — they {0} what they fear. They {1} you to {2} only what they choose. But the visitor had a {3}. The visitor had a {4}.",
+          "Citizen — they {0} what they fear. They {1} you to {2} only what they choose. But the visitor was a {3}. The visitor had a {4}.",
         blanks: [
           { index: 0, correctWord: "reclassify" },
           { index: 1, correctWord: "ask" },
           { index: 2, correctWord: "record" },
-          { index: 3, correctWord: "name" },
-          { index: 4, correctWord: "mother" },
+          { index: 3, correctWord: "witness" },
+          { index: 4, correctWord: "relative" },
         ],
+        // Word bank: 5 correct + 5 distractors. The other 3 Black Words
+        // (individual / independent / private) appear as distractors so
+        // students must discriminate which Black Words fit these blanks.
         wordBank: [
-          "reclassify", "ask", "record", "name", "mother",
-          "examine", "arrange", "truth", "freedom", "locate",
+          "reclassify", "ask", "record", "witness", "relative",
+          "individual", "independent", "private", "examine", "locate",
         ],
         // Unedited bark (frontend should render as Unedited register, not PEARL).
         // Schema field name kept as pearlBarkOnComplete for backward compatibility.
@@ -579,6 +618,32 @@ export const WEEK_4_CONFIG: WeekConfig = {
   // before the next task loads. Choices are stored as NarrativeChoice
   // records and will condition W5 content in a subsequent pass.
   interTaskMoments: {
+    // After Task 2 (document_review) — Frey bridges the student into the
+    // `[ ].edited` app. Fires AFTER the Obs E silent mutation event has
+    // played, so the student is sitting in the silence of the reclassification.
+    // The structured recall block quotes back the redacted facts so the
+    // student has them top-of-mind for the Cipher fill-ins.
+    document_review: {
+      id: "w4_unedited_revealed",
+      type: "unedited_bridge",
+      bridge: {
+        cardTitle: "[ ].edited — incoming",
+        lines: [
+          { label: "name", value: "citizen-9020" },
+          { label: "time", value: "17:30" },
+          { label: "place", value: "block 7 residential" },
+        ],
+        closingLines: [
+          "they will deny this happened.",
+          "remember what you saw.",
+          "come to the app. i'll show you why.",
+        ],
+        signature: "— F",
+        actionLabel: "Open [ ].edited",
+        choiceValue: "opened",
+      },
+    },
+
     // After Task 1 — Betty warms up the student before Activity Reconciliation.
     word_match_w4: {
       id: "w4_betty_aftertask1",

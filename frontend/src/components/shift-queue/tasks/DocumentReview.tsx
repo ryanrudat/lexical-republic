@@ -6,6 +6,7 @@ import ErrorCorrectionDoc from './ErrorCorrectionDoc';
 import type { ErrorCorrectionResult } from './ErrorCorrectionDoc';
 import ComprehensionDoc from './ComprehensionDoc';
 import type { ComprehensionResult } from './ComprehensionDoc';
+import ObservationMutationView from './ObservationMutationView';
 import { postNarrativeChoice } from '../../../api/narrative-choices';
 
 
@@ -20,6 +21,14 @@ interface MidTaskChoice {
   title: string;
   message: string;
   options: MidTaskChoiceOption[];
+}
+
+interface ObservationEntry {
+  label: string;
+  time: string;
+  location: string;
+  action: string;
+  restrict?: boolean;
 }
 
 interface DocumentConfig {
@@ -52,6 +61,9 @@ interface DocumentConfig {
   }>;
   // Mid-task C choice — fires after this doc completes, before advance
   midTaskChoice?: MidTaskChoice;
+  // Post-comprehension mutation beat (W4 Observation E reclassification)
+  observations?: ObservationEntry[];
+  mutationAfterComprehension?: boolean;
 }
 
 interface DocResultDetail {
@@ -82,6 +94,16 @@ export default function DocumentReview({
   const [midTaskChoicePicked, setMidTaskChoicePicked] = useState<MidTaskChoiceOption | null>(null);
   const [midTaskChoiceSubmitting, setMidTaskChoiceSubmitting] = useState(false);
   const resolvedChoicesRef = useRef<Set<string>>(new Set());
+
+  // Post-comprehension mutation beat (W4 Observation E). When the just-finished
+  // comprehension doc carries `mutationAfterComprehension`, we hold the score
+  // + result here and render ObservationMutationView for ~5s before falling
+  // through to the standard markDocComplete → PROCESSED stamp → advance flow.
+  const [pendingMutation, setPendingMutation] = useState<{
+    docId: string;
+    score: number;
+    result: DocResultDetail;
+  } | null>(null);
 
   // Clean up timer on unmount
   useEffect(() => {
@@ -250,14 +272,30 @@ export default function DocumentReview({
   const handleComprehensionComplete = useCallback(
     (score: number, result: ComprehensionResult) => {
       if (!currentDoc) return;
-      markDocComplete(currentDoc.id, score, {
+      const detail: DocResultDetail = {
         correctCount: result.correctCount,
         itemTotal: result.totalQuestions,
         answerLog: result.answerLog,
-      });
+      };
+      // W4 Observation E beat: if this doc carries the mutation flag, hold
+      // the result and render ObservationMutationView instead of advancing.
+      if (currentDoc.mutationAfterComprehension && currentDoc.observations?.length) {
+        setPendingMutation({ docId: currentDoc.id, score, result: detail });
+        return;
+      }
+      markDocComplete(currentDoc.id, score, detail);
     },
     [currentDoc, markDocComplete],
   );
+
+  // Called when ObservationMutationView's 5s beat finishes. Fall through to
+  // the normal completion path so the standard PROCESSED stamp + advance fires.
+  const handleMutationAdvance = useCallback(() => {
+    if (!pendingMutation) return;
+    const { docId, score, result } = pendingMutation;
+    setPendingMutation(null);
+    markDocComplete(docId, score, result);
+  }, [pendingMutation, markDocComplete]);
 
   if (!currentDoc) {
     return (
@@ -266,6 +304,24 @@ export default function DocumentReview({
           No documents in queue
         </span>
       </div>
+    );
+  }
+
+  // Post-comprehension mutation beat — silent ARCHIVE CONTROL takeover that
+  // greys Obs E and stamps RESTRICTED before falling through to advance.
+  if (pendingMutation && currentDoc?.observations?.length) {
+    return (
+      <ObservationMutationView
+        title={currentDoc.title}
+        department={currentDoc.department}
+        classification={currentDoc.classification}
+        priority={currentDoc.priority}
+        from={currentDoc.from}
+        to={currentDoc.to}
+        re={currentDoc.re}
+        observations={currentDoc.observations}
+        onAdvance={handleMutationAdvance}
+      />
     );
   }
 

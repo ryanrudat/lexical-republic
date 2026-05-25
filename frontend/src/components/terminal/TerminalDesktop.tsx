@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useViewStore } from '../../stores/viewStore';
 import { useStudentStore } from '../../stores/studentStore';
@@ -7,6 +7,11 @@ import { useDictionaryStore } from '../../stores/dictionaryStore';
 import { useHarmonyStore } from '../../stores/harmonyStore';
 import type { TerminalApp } from '../../types/views';
 import { GUIDED_STUDENT_MODE } from '../../config/runtimeFlags';
+
+// localStorage key for the [ ].edited first-visit glitch animation —
+// one-shot per pair, plays the stuttery materialize once and then
+// the tile renders cleanly on all subsequent loads.
+const EDITED_REVEALED_KEY = (pairId: string) => `lr_w4_app_revealed_${pairId}`;
 
 interface AppTile {
   id: TerminalApp;
@@ -51,8 +56,18 @@ const APPS: AppTile[] = [
     description: 'Productivity demonstration',
     emoji: '⌨',
   },
+  {
+    // [ ].edited — Unedited's smuggled surface. Appears at W4. Rendered
+    // with a custom dark/glitched tile (see special-case branch below),
+    // NOT through the standard retro-panel tile path.
+    id: 'edited',
+    name: '[ ].edited',
+    description: 'unsigned. unfiled.',
+    emoji: '[ ]',
+    lockWeek: 4,
+  },
 ];
-const GUIDED_STUDENT_APPS: TerminalApp[] = ['clarity-queue', 'harmony', 'my-file', 'inscription-pool'];
+const GUIDED_STUDENT_APPS: TerminalApp[] = ['clarity-queue', 'harmony', 'my-file', 'inscription-pool', 'edited'];
 
 function getHighestUnlockedWeek(weeks: Array<{ weekNumber: number; clockedOut: boolean }>): number {
   if (weeks.length === 0) return 1;
@@ -93,9 +108,34 @@ export default function TerminalDesktop() {
   }, [checkNewContent]);
 
   const highestUnlockedWeek = getHighestUnlockedWeek(weeks);
-  const visibleApps = GUIDED_STUDENT_MODE && user?.role === 'student'
+  const guidedFiltered = GUIDED_STUDENT_MODE && user?.role === 'student'
     ? APPS.filter((app) => GUIDED_STUDENT_APPS.includes(app.id))
     : APPS;
+  // [ ].edited stays HIDDEN before W4 — no "Unlocks in Shift 4" tease.
+  // The Unedited's surface is supposed to appear via the post-login
+  // glitch on first W4 entry, not preview itself for three shifts.
+  const visibleApps = guidedFiltered.filter((app) =>
+    app.id === 'edited' ? highestUnlockedWeek >= 4 : true
+  );
+
+  // First-visit glitch gate for the [ ].edited tile. Plays once per
+  // pair (localStorage), then renders cleanly forever. If localStorage
+  // is unavailable or the user isn't a Pair, skip the animation entirely
+  // (don't loop the glitch on every visit).
+  const [playEditedGlitch, setPlayEditedGlitch] = useState(false);
+  useEffect(() => {
+    if (highestUnlockedWeek < 4) return;
+    if (!user?.id) return;
+    if (typeof window === 'undefined') return;
+    try {
+      const key = EDITED_REVEALED_KEY(user.id);
+      if (localStorage.getItem(key)) return;
+      setPlayEditedGlitch(true);
+      localStorage.setItem(key, '1');
+    } catch {
+      // localStorage blocked (private mode, etc.) — skip animation silently.
+    }
+  }, [highestUnlockedWeek, user?.id]);
 
   return (
     <div className="flex-1 flex flex-col overflow-auto ios-scroll px-6 py-8 crt-monitor-screen">
@@ -150,6 +190,35 @@ export default function TerminalDesktop() {
 
         {visibleApps.map((app, idx) => {
           const isLocked = app.lockWeek !== undefined && highestUnlockedWeek < app.lockWeek;
+
+          // [ ].edited — dead-internet aesthetic tile. Dashed border,
+          // dark slate, italic name, "unsigned" status. Deliberately
+          // does not look like the Party's other apps. First-visit glitch
+          // animation plays on the very first W4 desktop mount.
+          if (app.id === 'edited' && !isLocked) {
+            return (
+              <button
+                key={app.id}
+                onClick={() => openApp(app.id)}
+                className={`w-[240px] shrink-0 text-left p-5 bg-slate-900 border border-dashed border-slate-700 hover:border-rose-500 rounded-xl transition-colors duration-200 group active:scale-[0.97]${
+                  playEditedGlitch ? ' edited-tile-materialize' : ''
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full bg-rose-500/60 group-hover:bg-rose-500 transition-colors" />
+                  <span className="font-ibm-mono text-[8px] text-slate-500 tracking-[0.3em] uppercase">
+                    unsigned
+                  </span>
+                </div>
+                <h3 className="font-ibm-mono text-sm text-slate-200 italic mb-1 lowercase tracking-wider">
+                  {app.name}
+                </h3>
+                <p className="font-ibm-mono text-[10px] text-slate-500 tracking-wider lowercase">
+                  {app.description}
+                </p>
+              </button>
+            );
+          }
 
           // Full-image tile — the image IS the app button
           if (app.icon && !isLocked) {
