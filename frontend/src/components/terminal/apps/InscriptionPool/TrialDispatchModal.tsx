@@ -48,30 +48,30 @@ export default function TrialDispatchModal() {
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/90 backdrop-blur-sm">
-      <div className="crt-amber-monitor max-w-md w-full mx-4 px-8 py-7 pixel-mono border border-[#FFB000]/60">
-        <p className="amber-text-bright text-[12px] uppercase tracking-[0.4em] amber-glow mb-3">
+      <div className="crt-phosphor-monitor max-w-md w-full mx-4 px-8 py-7 pixel-mono border border-[#33CC66]/60">
+        <p className="phosphor-text-bright text-[12px] uppercase tracking-[0.4em] phosphor-glow mb-3">
           ◇ sector trial scheduled ◇
         </p>
-        <p className="amber-text text-base uppercase tracking-[0.2em] mb-3">
+        <p className="phosphor-text text-base uppercase tracking-[0.2em] mb-3">
           report to the inscription pool
         </p>
-        <p className="amber-text-dim text-[12px] uppercase tracking-[0.3em] leading-relaxed mb-6">
+        <p className="phosphor-text-dim text-[12px] uppercase tracking-[0.3em] leading-relaxed mb-6">
           citizens of your sector shall report.
           reasonable accommodations may apply.
         </p>
 
-        <div className="grid grid-cols-3 gap-4 mb-6 border-t border-b border-dashed border-[#FFB000]/40 py-4 text-center">
+        <div className="grid grid-cols-3 gap-4 mb-6 border-t border-b border-dashed border-[#33CC66]/40 py-4 text-center">
           <div>
-            <p className="amber-text-dim text-[10px] uppercase tracking-[0.3em] mb-1">In</p>
-            <p className="amber-text-bright text-lg tabular-nums amber-glow">{secondsLeft}s</p>
+            <p className="phosphor-text-dim text-[10px] uppercase tracking-[0.3em] mb-1">In</p>
+            <p className="phosphor-text-bright text-lg tabular-nums phosphor-glow">{secondsLeft}s</p>
           </div>
           <div>
-            <p className="amber-text-dim text-[10px] uppercase tracking-[0.3em] mb-1">Words</p>
-            <p className="amber-text-bright text-lg tabular-nums amber-glow">{pendingTrial.wordCount}</p>
+            <p className="phosphor-text-dim text-[10px] uppercase tracking-[0.3em] mb-1">Words</p>
+            <p className="phosphor-text-bright text-lg tabular-nums phosphor-glow">{pendingTrial.wordCount}</p>
           </div>
           <div>
-            <p className="amber-text-dim text-[10px] uppercase tracking-[0.3em] mb-1">Duration</p>
-            <p className="amber-text-bright text-lg tabular-nums amber-glow">{pendingTrial.durationSec}s</p>
+            <p className="phosphor-text-dim text-[10px] uppercase tracking-[0.3em] mb-1">Duration</p>
+            <p className="phosphor-text-bright text-lg tabular-nums phosphor-glow">{pendingTrial.durationSec}s</p>
           </div>
         </div>
 
@@ -79,14 +79,14 @@ export default function TrialDispatchModal() {
           <button
             type="button"
             onClick={clearPendingTrial}
-            className="amber-text-dim hover:amber-text text-[12px] uppercase tracking-[0.3em]"
+            className="phosphor-text-dim hover:phosphor-text text-[12px] uppercase tracking-[0.3em]"
           >
             [ acknowledge ]
           </button>
           <button
             type="button"
             onClick={handleReport}
-            className="amber-text-bright hover:amber-glow-strong text-[12px] uppercase tracking-[0.3em] ml-auto"
+            className="phosphor-text-bright hover:phosphor-glow-strong text-[12px] uppercase tracking-[0.3em] ml-auto"
           >
             [ report to pool ➤ ]
           </button>

@@ -8,7 +8,7 @@ import type { DrillDesk } from '../../../../types/inscription';
 // list. Matches the user's preview mock:
 //   C-4488  ||  C-1102  ||  C-7715  ||  C-2840
 //
-// Renders inside the parent's .crt-amber-monitor + .pixel-mono. Does
+// Renders inside the parent's .crt-phosphor-monitor + .pixel-mono. Does
 // NOT run its own animation loop — relies on parent re-renders driven
 // by the 10fps ghost ticker for typing-pulse updates.
 
@@ -29,7 +29,7 @@ export default function PoolStandings({
 }: Props) {
   return (
     <div>
-      <p className="amber-text-dim text-[11px] uppercase tracking-[0.4em] mb-3 text-center">
+      <p className="phosphor-text-dim text-[11px] uppercase tracking-[0.4em] mb-3 text-center">
         — Pool —
       </p>
       <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
@@ -46,17 +46,17 @@ export default function PoolStandings({
           //   typing    → bright with subtle glow
           //   idle      → dim
           const colorClass = finished
-            ? 'amber-text-faint line-through'
+            ? 'phosphor-text-faint line-through'
             : isSelf
-            ? 'amber-text-bright amber-glow'
+            ? 'phosphor-text-bright phosphor-glow'
             : isTyping
-            ? 'amber-text amber-glow'
-            : 'amber-text-dim';
+            ? 'phosphor-text phosphor-glow'
+            : 'phosphor-text-dim';
 
           return (
             <span key={d.desk} className="flex items-center gap-3">
               {idx > 0 && (
-                <span className="amber-text-faint" aria-hidden>
+                <span className="phosphor-text-faint" aria-hidden>
                   ||
                 </span>
               )}

@@ -10,7 +10,7 @@ import ShiftGateModal from './ShiftGateModal';
 //
 // Amber CRT / DOS-typing-tutor register. Pre-drill screen with
 // citizen identity, cooldown + solo-cap status, and the mode picker.
-// Lives inside .crt-amber-monitor; everything is pixel-mono on black.
+// Lives inside .crt-phosphor-monitor; everything is pixel-mono on black.
 
 interface Props {
   classId: string | null;
@@ -72,81 +72,71 @@ export default function InscriptionLobby({ classId }: Props) {
     : 'READY';
 
   return (
-    <div className="crt-amber-monitor h-full overflow-y-auto ios-scroll">
-      <div className="max-w-2xl mx-auto px-8 py-10 pixel-mono">
-        {/* Title */}
-        <p className="amber-text-bright text-[12px] uppercase tracking-[0.4em] text-center mb-1 amber-glow">
-          Ministry of Civic Compliance
-        </p>
-        <p className="amber-text-dim text-[11px] uppercase tracking-[0.3em] text-center mb-6">
-          · Lexical Division ·
-        </p>
-
-        <h1 className="amber-text-bright text-3xl tracking-[0.2em] uppercase text-center mb-3 amber-glow-strong">
-          The Inscription Pool
-        </h1>
-        <p className="amber-text-dim text-[12px] uppercase tracking-[0.3em] text-center mb-10">
-          demonstrate lexical compliance
+    <div className="crt-phosphor-monitor h-full overflow-y-auto ios-scroll">
+      <div className="max-w-xl mx-auto px-6 py-5 pixel-mono">
+        {/* Compact header — single status bar across the top */}
+        <div className="flex items-baseline justify-between mb-1">
+          <p className="phosphor-text-bright text-[11px] uppercase tracking-[0.3em] phosphor-glow">
+            ▸ Inscription Pool
+          </p>
+          <p className="phosphor-text-dim text-[10px] uppercase tracking-[0.3em]">
+            ministry · lexical division
+          </p>
+        </div>
+        <p className="phosphor-text-dim text-[10px] uppercase tracking-[0.3em] mb-5">
+          demonstrate lexical compliance · period {inferredWeek}
         </p>
 
-        <div className="border-t border-dashed border-[#FFB000]/40 mb-8" />
+        <div className="border-t border-dashed border-[#1F8540] mb-5" />
 
-        {/* Status strip */}
-        <div className="grid grid-cols-3 gap-6 mb-10 text-center">
+        {/* Status strip — single row, compact */}
+        <div className="grid grid-cols-3 gap-3 mb-6 text-center text-[11px]">
           <div>
-            <p className="amber-text-dim text-[10px] uppercase tracking-[0.3em] mb-2">
-              Citizen
-            </p>
-            <p className="amber-text-bright text-base tracking-wider amber-glow">
+            <p className="phosphor-text-dim uppercase tracking-[0.25em] mb-1">Citizen</p>
+            <p className="phosphor-text-bright tracking-wider phosphor-glow tabular-nums">
               {citizenNumber || 'C-????'}
             </p>
           </div>
           <div>
-            <p className="amber-text-dim text-[10px] uppercase tracking-[0.3em] mb-2">
-              Cooldown
-            </p>
-            <p className={`text-base tracking-wider tabular-nums amber-glow ${cooldownLocked ? 'amber-text' : 'amber-text-bright'}`}>
+            <p className="phosphor-text-dim uppercase tracking-[0.25em] mb-1">Cooldown</p>
+            <p className={`tracking-wider tabular-nums phosphor-glow ${cooldownLocked ? 'phosphor-text' : 'phosphor-text-bright'}`}>
               {cooldownDisplay}
             </p>
           </div>
           <div>
-            <p className="amber-text-dim text-[10px] uppercase tracking-[0.3em] mb-2">
-              Solo Allocation
-            </p>
-            <p className={`text-base tracking-wider tabular-nums amber-glow ${soloCapped ? 'amber-text' : 'amber-text-bright'}`}>
+            <p className="phosphor-text-dim uppercase tracking-[0.25em] mb-1">Solo</p>
+            <p className={`tracking-wider tabular-nums phosphor-glow ${soloCapped ? 'phosphor-text' : 'phosphor-text-bright'}`}>
               {soloUsedToday} / {soloCap}
             </p>
           </div>
         </div>
 
-        <div className="border-t border-dashed border-[#FFB000]/40 mb-8" />
-
-        {/* Period label */}
-        <p className="amber-text-dim text-[12px] uppercase tracking-[0.3em] mb-4">
-          &gt; productivity allocation · period {inferredWeek}
-        </p>
-
         {/* Error banner */}
         {error && (
-          <div className="mb-6 px-4 py-3 border border-red-500/60 text-red-400 text-[12px] tracking-wider">
+          <div className="mb-4 px-3 py-2 border border-red-500/60 text-red-400 text-[11px] tracking-wider">
             &gt; {error}
           </div>
         )}
 
-        {/* Mode picker */}
-        <div className="space-y-6 mb-10">
+        {/* Mode picker — bordered button cards so they read as clickable */}
+        <p className="phosphor-text-dim text-[10px] uppercase tracking-[0.3em] mb-2">
+          &gt; select mode
+        </p>
+        <div className="space-y-2 mb-5">
           <ModeOption
+            keyLabel="1"
             title="Open Pool"
-            description="Race ghosts of recent classmates. Counts for full P.I. + Roll of Distinction."
+            description="race classmates · full p.i. + roll of distinction"
             disabled={cooldownLocked || loading}
             onClick={() => handleStart('open')}
           />
           <ModeOption
+            keyLabel="2"
             title="Solo Practice"
             description={
               soloCapped
-                ? 'Allocation exhausted for today. Practice continues without P.I. credit.'
-                : 'Race against your past-best ghost. Half P.I. weight.'
+                ? 'allocation exhausted · practice without p.i. credit'
+                : 'race your past-best ghost · half p.i. weight'
             }
             disabled={cooldownLocked || loading}
             onClick={() => handleStart('solo')}
@@ -154,7 +144,7 @@ export default function InscriptionLobby({ classId }: Props) {
         </div>
 
         {cooldownLocked && (
-          <p className="amber-text-dim text-[11px] uppercase tracking-[0.3em] text-center mb-8">
+          <p className="phosphor-text-dim text-[10px] uppercase tracking-[0.3em] text-center mb-5">
             &gt; cooldown — next drill in {cooldownRemainingSec}s
           </p>
         )}
@@ -162,13 +152,13 @@ export default function InscriptionLobby({ classId }: Props) {
         {/* Roll of Distinction */}
         {classId && (
           <>
-            <div className="border-t border-dashed border-[#FFB000]/40 mb-8" />
+            <div className="border-t border-dashed border-[#1F8540] mb-5" />
             <RollOfDistinction classId={classId} />
           </>
         )}
 
-        <p className="amber-text-faint text-[11px] uppercase tracking-[0.3em] italic text-center mt-10">
-          "citizens shall demonstrate lexical compliance through accurate inscription."
+        <p className="phosphor-text-faint text-[10px] uppercase tracking-[0.3em] italic text-center mt-6">
+          "demonstrate compliance through accurate inscription."
         </p>
       </div>
 
@@ -190,24 +180,29 @@ export default function InscriptionLobby({ classId }: Props) {
 }
 
 interface ModeOptionProps {
+  keyLabel: string;
   title: string;
   description: string;
   disabled: boolean;
   onClick: () => void;
 }
 
-function ModeOption({ title, description, disabled, onClick }: ModeOptionProps) {
+// Mode option — bordered card with hover affordance so it reads as
+// clickable. Numbered prefix (e.g. "[1]") makes the picker feel like
+// a real DOS menu rather than a list of text links.
+function ModeOption({ keyLabel, title, description, disabled, onClick }: ModeOptionProps) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="block w-full text-left disabled:opacity-30 group"
+      className="block w-full text-left px-4 py-3 border border-[#1F8540] hover:border-[#33CC66] hover:bg-[#33CC66]/5 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-[#1F8540] transition-colors group"
     >
-      <p className="amber-text-bright text-lg tracking-[0.15em] uppercase mb-1 group-hover:amber-glow-strong group-disabled:no-underline">
-        &gt; [ {title} ]
+      <p className="phosphor-text-bright text-base tracking-[0.15em] uppercase group-hover:phosphor-glow">
+        <span className="phosphor-text-dim mr-2">[{keyLabel}]</span>
+        {title}
       </p>
-      <p className="amber-text-dim text-[12px] leading-relaxed ml-4">
+      <p className="phosphor-text-dim text-[11px] leading-relaxed mt-1 ml-7 uppercase tracking-[0.15em]">
         {description}
       </p>
     </button>

@@ -5,8 +5,8 @@ import type { InscriptionWord } from '../../../../types/inscription';
 //
 // Amber CRT / Mavis-Beacon-era register. The prompt sits above the
 // student's input on the same chunky monospace page. No card chrome,
-// no rounded corners — just amber text on black with subtle scanlines
-// inherited from the parent .crt-amber-monitor container.
+// no rounded corners — just green text on black with subtle scanlines
+// inherited from the parent .crt-phosphor-monitor container.
 //
 // Lane handling is unchanged from the prior implementation: Lane 1
 // pre-fills the first letter + offers Mandarin gloss + reveal-next-
@@ -160,17 +160,17 @@ export default function DrillPromptCard({
       ? '#7AD17A'
       : feedback === 'incorrect'
       ? '#E84A4A'
-      : '#FFB000';
+      : '#33CC66';
 
   return (
     <form onSubmit={handleSubmit} className="pixel-mono">
       {/* Lane 1 audio + Mandarin row (top right) */}
       {(lane === 1 || lane === 2) && (
-        <div className="flex items-center justify-end gap-4 mb-4 text-[12px] amber-text-dim">
+        <div className="flex items-center justify-end gap-4 mb-4 text-[12px] phosphor-text-dim">
           <button
             type="button"
             onClick={playAudio}
-            className="amber-text-dim hover:amber-text uppercase tracking-wider"
+            className="phosphor-text-dim hover:phosphor-text uppercase tracking-wider"
             aria-label="Play audio"
           >
             [ audio ]
@@ -179,7 +179,7 @@ export default function DrillPromptCard({
             <button
               type="button"
               onClick={() => setShowMandarin((v) => !v)}
-              className="amber-text-dim hover:amber-text uppercase tracking-wider"
+              className="phosphor-text-dim hover:phosphor-text uppercase tracking-wider"
             >
               [ {showMandarin ? '隱藏 中文' : '顯示 中文'} ]
             </button>
@@ -189,10 +189,10 @@ export default function DrillPromptCard({
 
       {/* Mandarin gloss — Lane 1 always shown, Lane 2 toggleable */}
       {((lane === 1) || (lane === 2 && showMandarin)) && word.translationZhTw && (
-        <div className="mb-4 amber-text-bright text-lg">
+        <div className="mb-4 phosphor-text-bright text-lg">
           中文 &nbsp;&nbsp; {word.translationZhTw}
           {word.phonetic && (
-            <span className="amber-text-dim text-sm ml-3">[{word.phonetic}]</span>
+            <span className="phosphor-text-dim text-sm ml-3">[{word.phonetic}]</span>
           )}
         </div>
       )}
@@ -202,19 +202,19 @@ export default function DrillPromptCard({
           target word the sentence is teaching). */}
       {!isSentence ? (
         <>
-          <p className="amber-text-dim text-[12px] uppercase tracking-[0.3em] mb-2">
+          <p className="phosphor-text-dim text-[12px] uppercase tracking-[0.3em] mb-2">
             Definition
           </p>
-          <p className="amber-text text-lg leading-snug mb-8 amber-glow">
+          <p className="phosphor-text text-lg leading-snug mb-8 phosphor-glow">
             {word.definition}
           </p>
         </>
       ) : (
         <>
-          <p className="amber-text-dim text-[12px] uppercase tracking-[0.3em] mb-2">
+          <p className="phosphor-text-dim text-[12px] uppercase tracking-[0.3em] mb-2">
             Sentence Drill &nbsp;·&nbsp; uses "{word.word}"
           </p>
-          <p className="amber-text text-[13px] leading-snug mb-8 amber-text-dim">
+          <p className="phosphor-text text-[13px] leading-snug mb-8 phosphor-text-dim">
             {word.definition}
           </p>
         </>
@@ -223,21 +223,21 @@ export default function DrillPromptCard({
       {/* TYPE THIS — sentence prompts use a smaller, multi-line layout
           so longer sentences wrap cleanly without scrolling. Word prompts
           stay big + caps for emphasis on the spelling. */}
-      <p className="amber-text-dim text-[12px] uppercase tracking-[0.3em] mb-2">
+      <p className="phosphor-text-dim text-[12px] uppercase tracking-[0.3em] mb-2">
         Type This
       </p>
       {isSentence ? (
-        <p className="amber-text-bright text-xl leading-relaxed mb-8 amber-glow">
+        <p className="phosphor-text-bright text-xl leading-relaxed mb-8 phosphor-glow">
           &gt; {target}
         </p>
       ) : (
-        <p className="amber-text-bright text-3xl tracking-[0.15em] mb-8 amber-glow-strong">
+        <p className="phosphor-text-bright text-3xl tracking-[0.15em] mb-8 phosphor-glow-strong">
           &gt; {word.word.toUpperCase()}
         </p>
       )}
 
       {/* YOU — the input */}
-      <p className="amber-text-dim text-[12px] uppercase tracking-[0.3em] mb-2">
+      <p className="phosphor-text-dim text-[12px] uppercase tracking-[0.3em] mb-2">
         You
       </p>
       <div
@@ -249,7 +249,7 @@ export default function DrillPromptCard({
           paddingBottom: '12px',
         }}
       >
-        <span className="amber-text text-2xl mr-3 amber-glow">&gt;</span>
+        <span className="phosphor-text text-2xl mr-3 phosphor-glow">&gt;</span>
         <input
           ref={inputRef}
           type="text"
@@ -262,20 +262,20 @@ export default function DrillPromptCard({
           data-gramm="false"
           aria-autocomplete="none"
           disabled={disabled || feedback === 'correct'}
-          className="pixel-mono flex-1 bg-transparent border-none outline-none text-2xl amber-text amber-glow tracking-[0.1em] disabled:opacity-70"
+          className="pixel-mono flex-1 bg-transparent border-none outline-none text-2xl phosphor-text phosphor-glow tracking-[0.1em] disabled:opacity-70"
           style={{
-            caretColor: '#FFB000',
+            caretColor: '#33CC66',
           }}
         />
       </div>
 
       {/* Stats row */}
-      <div className="flex items-center gap-8 mb-2 amber-text-dim text-[12px] uppercase tracking-[0.3em]">
-        <span>WPM <span className="amber-text-bright ml-2 tabular-nums">{wpm}</span></span>
-        <span>ACC <span className="amber-text-bright ml-2 tabular-nums">{acc}%</span></span>
+      <div className="flex items-center gap-8 mb-2 phosphor-text-dim text-[12px] uppercase tracking-[0.3em]">
+        <span>WPM <span className="phosphor-text-bright ml-2 tabular-nums">{wpm}</span></span>
+        <span>ACC <span className="phosphor-text-bright ml-2 tabular-nums">{acc}%</span></span>
         <button
           type="submit"
-          className="ml-auto amber-text-dim hover:amber-text uppercase tracking-[0.3em]"
+          className="ml-auto phosphor-text-dim hover:phosphor-text uppercase tracking-[0.3em]"
         >
           [ enter ↵ ]
         </button>
@@ -287,7 +287,7 @@ export default function DrillPromptCard({
           type="button"
           onClick={handleHint}
           disabled={hintsUsed >= word.word.length - 1 || feedback === 'correct'}
-          className="mt-4 amber-text-dim hover:amber-text-bright text-[12px] uppercase tracking-[0.3em] disabled:opacity-30"
+          className="mt-4 phosphor-text-dim hover:phosphor-text-bright text-[12px] uppercase tracking-[0.3em] disabled:opacity-30"
         >
           [ reveal next letter (-50%) ]
         </button>

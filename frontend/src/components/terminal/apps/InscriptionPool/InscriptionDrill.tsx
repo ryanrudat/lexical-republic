@@ -11,7 +11,7 @@ import { connectSocket } from '../../../../utils/socket';
 // ─── InscriptionDrill ────────────────────────────────────────────
 //
 // Amber CRT / DOS typing-tutor register. Container is the
-// .crt-amber-monitor (black + amber scanlines). Layout reads top to
+// .crt-phosphor-monitor (black + green scanlines). Layout reads top to
 // bottom as a single column of monospace text — no cards, no panels.
 // The student types into the input in the middle of the page; the
 // citizens being raced sit at the bottom in a single horizontal row.
@@ -128,32 +128,32 @@ export default function InscriptionDrill() {
   const mmss = `${Math.floor(remainingSec / 60).toString().padStart(2, '0')}:${(remainingSec % 60).toString().padStart(2, '0')}`;
 
   return (
-    <div className="crt-amber-monitor h-full overflow-y-auto ios-scroll">
-      <div className="max-w-2xl mx-auto px-8 py-8 pixel-mono">
+    <div className="crt-phosphor-monitor h-full overflow-y-auto ios-scroll">
+      <div className="max-w-xl mx-auto px-6 py-5 pixel-mono">
         {/* Title bar */}
         <div className="flex items-baseline justify-between mb-2">
-          <p className="amber-text-bright text-[12px] uppercase tracking-[0.4em] amber-glow">
+          <p className="phosphor-text-bright text-[12px] uppercase tracking-[0.4em] phosphor-glow">
             Productivity Demonstration
           </p>
-          <p className="amber-text-bright text-base tabular-nums amber-glow">
+          <p className="phosphor-text-bright text-base tabular-nums phosphor-glow">
             {mmss}
           </p>
         </div>
         <div className="flex items-baseline justify-between mb-8">
-          <p className="amber-text-dim text-[12px] uppercase tracking-[0.3em]">
+          <p className="phosphor-text-dim text-[12px] uppercase tracking-[0.3em]">
             Shift {drill.weekNumber} &nbsp;·&nbsp; Word {currentIdx + 1} / {drill.wordCount}
           </p>
           <button
             type="button"
             onClick={() => setShowAbortConfirm(true)}
-            className="amber-text-dim hover:amber-text text-[12px] uppercase tracking-[0.3em]"
+            className="phosphor-text-dim hover:phosphor-text text-[12px] uppercase tracking-[0.3em]"
           >
             [ withdraw ]
           </button>
         </div>
 
         {/* Horizontal rule */}
-        <div className="border-t border-dashed border-[#FFB000]/40 mb-8" />
+        <div className="border-t border-dashed border-[#33CC66]/40 mb-8" />
 
         {/* Prompt card */}
         {word && (
@@ -172,7 +172,7 @@ export default function InscriptionDrill() {
         )}
 
         {/* Horizontal rule */}
-        <div className="border-t border-dashed border-[#FFB000]/40 mt-8 mb-4" />
+        <div className="border-t border-dashed border-[#33CC66]/40 mt-8 mb-4" />
 
         {/* Pool standings — bottom row */}
         <PoolStandings
@@ -183,7 +183,7 @@ export default function InscriptionDrill() {
           selfDesk={1}
         />
 
-        <p className="amber-text-faint text-[11px] uppercase tracking-[0.3em] italic text-center mt-10">
+        <p className="phosphor-text-faint text-[11px] uppercase tracking-[0.3em] italic text-center mt-10">
           "the ministry observes your diligence."
         </p>
       </div>
@@ -192,11 +192,11 @@ export default function InscriptionDrill() {
 
       {showAbortConfirm && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 backdrop-blur-sm">
-          <div className="max-w-sm w-full mx-4 crt-amber-monitor p-6 pixel-mono border border-[#FFB000]/60">
-            <p className="amber-text-bright text-[12px] uppercase tracking-[0.3em] mb-3 amber-glow">
+          <div className="max-w-sm w-full mx-4 crt-phosphor-monitor p-6 pixel-mono border border-[#33CC66]/60">
+            <p className="phosphor-text-bright text-[12px] uppercase tracking-[0.3em] mb-3 phosphor-glow">
               &gt; withdraw inscription?
             </p>
-            <p className="amber-text-dim text-[12px] leading-relaxed mb-6">
+            <p className="phosphor-text-dim text-[12px] leading-relaxed mb-6">
               Inscription will be recorded as incomplete.
               No Productivity Index awarded.
             </p>
@@ -204,7 +204,7 @@ export default function InscriptionDrill() {
               <button
                 type="button"
                 onClick={() => setShowAbortConfirm(false)}
-                className="amber-text hover:amber-text-bright text-[12px] uppercase tracking-[0.3em]"
+                className="phosphor-text hover:phosphor-text-bright text-[12px] uppercase tracking-[0.3em]"
               >
                 [ continue ]
               </button>
@@ -215,7 +215,7 @@ export default function InscriptionDrill() {
                   completedRef.current = true;
                   void completeDrill({ abandoned: true });
                 }}
-                className="amber-text-dim hover:amber-text text-[12px] uppercase tracking-[0.3em] ml-auto"
+                className="phosphor-text-dim hover:phosphor-text text-[12px] uppercase tracking-[0.3em] ml-auto"
               >
                 [ withdraw ]
               </button>
