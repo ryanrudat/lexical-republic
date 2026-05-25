@@ -54,7 +54,8 @@ const APPS: AppTile[] = [
     id: 'inscription-pool',
     name: 'Inscription Pool',
     description: 'Productivity demonstration',
-    emoji: '⌨',
+    emoji: '',
+    icon: '/images/inscription-pool-icon.png',
   },
   {
     // [ ].edited — Unedited's smuggled surface. Appears at W4. Rendered
