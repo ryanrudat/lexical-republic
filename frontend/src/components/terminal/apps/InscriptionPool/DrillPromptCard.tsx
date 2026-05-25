@@ -1,36 +1,38 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { InscriptionWord } from '../../../../types/inscription';
 
 // ─── DrillPromptCard ────────────────────────────────────────────
 //
-// Amber CRT / Mavis-Beacon-era register. The prompt sits above the
-// student's input on the same chunky monospace page. No card chrome,
-// no rounded corners — just green text on black with subtle scanlines
-// inherited from the parent .crt-phosphor-monitor container.
+// Per-character live coloring + auto-advance. The target word (or
+// sentence) is rendered character by character; each cell shows
+// green when matched, red when wrong, and a filled cursor block at
+// the current position. There is no submit button — when the input
+// matches the target exactly the parent advances automatically.
 //
-// Lane handling is unchanged from the prior implementation: Lane 1
-// pre-fills the first letter + offers Mandarin gloss + reveal-next-
-// letter hint. Lane 2/3 are unprefixed. Scoring + lifecycle hooks
-// (onSubmit, onKeystrokeTick) are also unchanged — only the visual
-// register and the local progress display are new.
+// This eliminates the prior submit-cycle race condition that left
+// the input frozen after the first word (setFeedback('correct') in
+// an async handler running after the parent had already advanced).
+//
+// A hidden <input> captures keystrokes; clicking anywhere on the
+// prompt area focuses it. Backspace works normally to correct
+// mistakes; over-typing past the target length is silently ignored.
 
 interface Props {
   word: InscriptionWord;
   wordIdx: number;
   lane: number;
-  /** Returns true when answer was correct (parent advances) */
+  /** Returns when the answer has been recorded. Parent advances via store. */
   onSubmit: (text: string, errorsRecovered: number) => Promise<{ correct: boolean }>;
   /** Fired with `true` when user is actively typing, `false` when they pause. */
   onKeystrokeTick?: (typing: boolean) => void;
   disabled?: boolean;
-  /** Drill start timestamp — used to compute live WPM display. */
   drillStartedAt_ms: number | null;
-  /** Running count of words completed so far in the drill (for WPM math). */
   wordsCompleted: number;
-  /** Running count of total attempts in the drill (for accuracy math). */
-  totalAttempts: number;
-  /** Running count of correct attempts in the drill. */
-  totalCorrect: number;
+  /** Local accuracy counters for the per-character tracker. */
+  charsTyped: number;
+  charsCorrect: number;
+  /** Called on every keystroke so the parent can track local accuracy. */
+  onCharTyped: (wasCorrect: boolean) => void;
 }
 
 const KEYSTROKE_IDLE_MS = 800;
@@ -44,43 +46,49 @@ export default function DrillPromptCard({
   disabled,
   drillStartedAt_ms,
   wordsCompleted,
-  totalAttempts,
-  totalCorrect,
+  charsTyped,
+  charsCorrect,
+  onCharTyped,
 }: Props) {
   // Sentence prompts type the full sentence; word prompts type the word.
+  // Both render the same character-by-character way.
   const target = word.sentence ?? word.word;
   const isSentence = !!word.sentence;
-  // Lane 1 prefix help applies to word prompts only — sentences are
-  // already long enough without auto-typing the first character.
-  const prefix = !isSentence && lane === 1 && word.word.length > 0 ? word.word[0] : '';
-  const [text, setText] = useState(prefix);
-  const [errorsRecovered, setErrorsRecovered] = useState(0);
-  const [feedback, setFeedback] = useState<'correct' | 'incorrect' | null>(null);
-  const [hintsUsed, setHintsUsed] = useState(0);
+
+  // Lane 1 prefix help: pre-fill the first character on word prompts.
+  const prefix = !isSentence && lane === 1 && word.word.length > 0
+    ? word.word[0]
+    : '';
+
+  const [input, setInput] = useState(prefix);
   const [showMandarin, setShowMandarin] = useState(false);
+  const [hintsUsed, setHintsUsed] = useState(0);
+  const [errorsRecovered, setErrorsRecovered] = useState(0);
+
+  const submittingRef = useRef(false);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const prevInputLengthRef = useRef(prefix.length);
 
-  // Reset on new word
+  // Reset on new word — every state that needs to clear, plus refocus.
   useEffect(() => {
-    setText(prefix);
-    setFeedback(null);
-    setErrorsRecovered(0);
-    setHintsUsed(0);
+    setInput(prefix);
     setShowMandarin(false);
+    setHintsUsed(0);
+    setErrorsRecovered(0);
+    submittingRef.current = false;
+    prevInputLengthRef.current = prefix.length;
     requestAnimationFrame(() => inputRef.current?.focus());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wordIdx]);
 
-  const playAudio = useCallback(() => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-    const utter = new SpeechSynthesisUtterance(target);
-    utter.lang = 'en-US';
-    utter.rate = 0.9;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utter);
-  }, [target]);
+  // Cleanup idle timer
+  useEffect(() => {
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, []);
 
   const triggerKeystrokeTick = useCallback(
     (typing: boolean) => {
@@ -100,85 +108,106 @@ export default function DrillPromptCard({
     [onKeystrokeTick],
   );
 
-  useEffect(() => {
-    return () => {
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-    };
+  const playAudio = useCallback(() => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    const utter = new SpeechSynthesisUtterance(target);
+    utter.lang = 'en-US';
+    utter.rate = 0.9;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utter);
+  }, [target]);
+
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (disabled || submittingRef.current) return;
+      const raw = e.target.value;
+
+      // Don't allow typing past the target length — silently truncate.
+      const newInput = raw.length > target.length ? raw.slice(0, target.length) : raw;
+
+      // Lane 1: enforce prefix at the start (can't backspace past it).
+      const safeInput = lane === 1 && prefix && !newInput.toLowerCase().startsWith(prefix.toLowerCase())
+        ? prefix + newInput.replace(new RegExp(`^${prefix}`, 'i'), '')
+        : newInput;
+
+      const prevLen = prevInputLengthRef.current;
+      const newLen = safeInput.length;
+
+      if (newLen < prevLen) {
+        // Backspace — count as error recovery (the student is correcting a mistake)
+        setErrorsRecovered((n) => n + (prevLen - newLen));
+      } else if (newLen > prevLen) {
+        // New characters typed — track correctness per char
+        for (let i = prevLen; i < newLen; i++) {
+          const isCorrect = safeInput[i] === target[i];
+          onCharTyped(isCorrect);
+        }
+      }
+
+      prevInputLengthRef.current = newLen;
+      setInput(safeInput);
+      triggerKeystrokeTick(true);
+
+      // Auto-submit when the input matches the target exactly. Sentence
+      // mode is forgiving on a trailing period/comma so students don't
+      // have to type the closing punctuation perfectly; word mode is strict.
+      const matchesTarget = isSentence
+        ? safeInput.replace(/[.,;]\s*$/, '') === target.replace(/[.,;]\s*$/, '')
+        : safeInput === target;
+
+      if (matchesTarget && !submittingRef.current) {
+        submittingRef.current = true;
+        void onSubmit(safeInput, errorsRecovered);
+      }
+    },
+    [disabled, target, lane, prefix, isSentence, onSubmit, errorsRecovered, onCharTyped, triggerKeystrokeTick],
+  );
+
+  const handleHint = useCallback(() => {
+    if (lane !== 1 || disabled || isSentence) return;
+    if (hintsUsed >= word.word.length - 1) return;
+    const newHints = hintsUsed + 1;
+    setHintsUsed(newHints);
+    const newInput = word.word.slice(0, prefix.length + newHints);
+    setInput(newInput);
+    prevInputLengthRef.current = newInput.length;
+    inputRef.current?.focus();
+  }, [lane, disabled, isSentence, hintsUsed, word.word, prefix]);
+
+  const focusInput = useCallback(() => {
+    inputRef.current?.focus();
   }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (disabled || feedback === 'correct') return;
-    const val = e.target.value;
-    if (lane === 1 && !val.toLowerCase().startsWith(prefix.toLowerCase())) {
-      setText(prefix + val.replace(new RegExp(`^${prefix}`, 'i'), ''));
-      return;
-    }
-    if (val.length < text.length) setErrorsRecovered((n) => n + 1);
-    setText(val);
-    triggerKeystrokeTick(true);
-  };
-
-  const handleSubmit = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (disabled || feedback === 'correct') return;
-    // Sentence prompts compare on the full sentence; trim trailing spaces
-    // and normalize internal whitespace so the student doesn't fail for
-    // extra spacing. Punctuation must still match — students learn it.
-    const submitted = isSentence
-      ? text.trim().replace(/\s+/g, ' ')
-      : text.trim();
-    if (submitted.length === 0) return;
-    const res = await onSubmit(submitted, errorsRecovered);
-    if (res.correct) {
-      setFeedback('correct');
-    } else {
-      setFeedback('incorrect');
-      setTimeout(() => setFeedback(null), 500);
-    }
-  };
-
-  const handleHint = () => {
-    if (lane !== 1 || disabled || feedback === 'correct') return;
-    if (hintsUsed >= word.word.length - 1) return;
-    setHintsUsed((n) => n + 1);
-    setText(word.word.slice(0, prefix.length + hintsUsed + 1));
-    inputRef.current?.focus();
-  };
-
-  // Live WPM display. Conservative: words-per-minute is typed-words /
-  // elapsed-minutes. Avoids divide-by-zero in the first few seconds.
-  const wpm = (() => {
+  // Live WPM — words per minute based on full words completed
+  const wpm = useMemo(() => {
     if (!drillStartedAt_ms) return 0;
     const elapsedMin = (Date.now() - drillStartedAt_ms) / 60000;
     if (elapsedMin < 0.05) return 0;
     return Math.round(wordsCompleted / elapsedMin);
-  })();
-  const acc = totalAttempts === 0 ? 100 : Math.round((totalCorrect / totalAttempts) * 100);
+  }, [drillStartedAt_ms, wordsCompleted]);
 
-  const inputBorderColor =
-    feedback === 'correct'
-      ? '#7AD17A'
-      : feedback === 'incorrect'
-      ? '#E84A4A'
-      : '#33CC66';
+  // Live accuracy — correct chars / total chars typed (incl. recovered errors)
+  const acc = charsTyped === 0 ? 100 : Math.round((charsCorrect / charsTyped) * 100);
+
+  // Build the per-character display for the target word/sentence
+  const chars = useMemo(() => target.split(''), [target]);
 
   return (
-    <form onSubmit={handleSubmit} className="pixel-mono">
-      {/* Lane 1 audio + Mandarin row (top right) */}
+    <div className="pixel-mono relative" onClick={focusInput}>
+      {/* Top row — audio + Mandarin toggle */}
       {(lane === 1 || lane === 2) && (
-        <div className="flex items-center justify-end gap-4 mb-4 text-[12px] phosphor-text-dim">
+        <div className="flex items-center justify-end gap-4 mb-3 text-[11px]">
           <button
             type="button"
-            onClick={playAudio}
+            onClick={(e) => { e.stopPropagation(); playAudio(); }}
             className="phosphor-text-dim hover:phosphor-text uppercase tracking-wider"
-            aria-label="Play audio"
           >
             [ audio ]
           </button>
           {word.translationZhTw && (
             <button
               type="button"
-              onClick={() => setShowMandarin((v) => !v)}
+              onClick={(e) => { e.stopPropagation(); setShowMandarin((v) => !v); }}
               className="phosphor-text-dim hover:phosphor-text uppercase tracking-wider"
             >
               [ {showMandarin ? '隱藏 中文' : '顯示 中文'} ]
@@ -189,109 +218,105 @@ export default function DrillPromptCard({
 
       {/* Mandarin gloss — Lane 1 always shown, Lane 2 toggleable */}
       {((lane === 1) || (lane === 2 && showMandarin)) && word.translationZhTw && (
-        <div className="mb-4 phosphor-text-bright text-lg">
-          中文 &nbsp;&nbsp; {word.translationZhTw}
+        <p className="phosphor-text-bright text-base mb-3">
+          中文 &nbsp; {word.translationZhTw}
           {word.phonetic && (
-            <span className="phosphor-text-dim text-sm ml-3">[{word.phonetic}]</span>
+            <span className="phosphor-text-dim text-xs ml-3">[{word.phonetic}]</span>
           )}
-        </div>
+        </p>
       )}
 
-      {/* Definition prompt (word mode shows definition; sentence mode
-          shows a small "uses [word]" hint instead so students know which
-          target word the sentence is teaching). */}
+      {/* Definition / sentence-mode label */}
       {!isSentence ? (
         <>
-          <p className="phosphor-text-dim text-[12px] uppercase tracking-[0.3em] mb-2">
+          <p className="phosphor-text-dim text-[11px] uppercase tracking-[0.3em] mb-1">
             Definition
           </p>
-          <p className="phosphor-text text-lg leading-snug mb-8 phosphor-glow">
+          <p className="phosphor-text text-base leading-snug mb-5">
             {word.definition}
           </p>
         </>
       ) : (
         <>
-          <p className="phosphor-text-dim text-[12px] uppercase tracking-[0.3em] mb-2">
+          <p className="phosphor-text-dim text-[11px] uppercase tracking-[0.3em] mb-1">
             Sentence Drill &nbsp;·&nbsp; uses "{word.word}"
           </p>
-          <p className="phosphor-text text-[13px] leading-snug mb-8 phosphor-text-dim">
+          <p className="phosphor-text-dim text-[12px] leading-snug mb-5">
             {word.definition}
           </p>
         </>
       )}
 
-      {/* TYPE THIS — sentence prompts use a smaller, multi-line layout
-          so longer sentences wrap cleanly without scrolling. Word prompts
-          stay big + caps for emphasis on the spelling. */}
-      <p className="phosphor-text-dim text-[12px] uppercase tracking-[0.3em] mb-2">
-        Type This
-      </p>
-      {isSentence ? (
-        <p className="phosphor-text-bright text-xl leading-relaxed mb-8 phosphor-glow">
-          &gt; {target}
-        </p>
-      ) : (
-        <p className="phosphor-text-bright text-3xl tracking-[0.15em] mb-8 phosphor-glow-strong">
-          &gt; {word.word.toUpperCase()}
-        </p>
-      )}
-
-      {/* YOU — the input */}
-      <p className="phosphor-text-dim text-[12px] uppercase tracking-[0.3em] mb-2">
-        You
-      </p>
-      <div
-        className="mb-6 flex items-center"
-        style={{
-          borderTop: `1px dashed ${inputBorderColor}`,
-          borderBottom: `1px dashed ${inputBorderColor}`,
-          paddingTop: '12px',
-          paddingBottom: '12px',
-        }}
-      >
-        <span className="phosphor-text text-2xl mr-3 phosphor-glow">&gt;</span>
-        <input
-          ref={inputRef}
-          type="text"
-          value={text}
-          onChange={handleChange}
-          onBlur={() => triggerKeystrokeTick(false)}
-          autoComplete="off"
-          autoCorrect="off"
-          spellCheck={false}
-          data-gramm="false"
-          aria-autocomplete="none"
-          disabled={disabled || feedback === 'correct'}
-          className="pixel-mono flex-1 bg-transparent border-none outline-none text-2xl phosphor-text phosphor-glow tracking-[0.1em] disabled:opacity-70"
-          style={{
-            caretColor: '#33CC66',
-          }}
-        />
+      {/* Per-character display — the heart of the new design.
+          Each cell shows the target char with status-based coloring:
+            • correctly typed     → bright green
+            • wrong typed         → red
+            • cursor position     → bright background block
+            • not yet typed       → dim
+          Whitespace shows as a visible dot so sentences stay readable. */}
+      <div className="mb-5 flex flex-wrap gap-y-1">
+        {chars.map((char, i) => {
+          const typed = input[i];
+          const isWhitespace = char === ' ';
+          let cellClass = '';
+          if (i < input.length) {
+            cellClass = typed === char
+              ? 'phosphor-text-bright phosphor-glow'
+              : 'text-rose-400 underline';
+          } else if (i === input.length) {
+            cellClass = 'bg-[#66FF99] text-[#04120A] phosphor-glow-strong';
+          } else {
+            cellClass = 'phosphor-text-faint';
+          }
+          return (
+            <span
+              key={i}
+              className={`${cellClass} font-mono text-3xl tracking-normal inline-block min-w-[1ch] text-center transition-colors`}
+              aria-hidden
+            >
+              {isWhitespace ? '·' : char}
+            </span>
+          );
+        })}
       </div>
 
-      {/* Stats row */}
-      <div className="flex items-center gap-8 mb-2 phosphor-text-dim text-[12px] uppercase tracking-[0.3em]">
-        <span>WPM <span className="phosphor-text-bright ml-2 tabular-nums">{wpm}</span></span>
-        <span>ACC <span className="phosphor-text-bright ml-2 tabular-nums">{acc}%</span></span>
-        <button
-          type="submit"
-          className="ml-auto phosphor-text-dim hover:phosphor-text uppercase tracking-[0.3em]"
-        >
-          [ enter ↵ ]
-        </button>
+      {/* Hidden input — captures keystrokes; visually invisible but focusable. */}
+      <input
+        ref={inputRef}
+        type="text"
+        value={input}
+        onChange={handleInputChange}
+        onBlur={() => triggerKeystrokeTick(false)}
+        autoComplete="off"
+        autoCorrect="off"
+        spellCheck={false}
+        data-gramm="false"
+        aria-autocomplete="none"
+        aria-label="Inscription input"
+        disabled={disabled}
+        className="absolute opacity-0 -z-10 w-0 h-0"
+        autoFocus
+      />
+
+      {/* Footer — WPM / Accuracy + hint (Lane 1 only) */}
+      <div className="flex items-center gap-6 phosphor-text-dim text-[11px] uppercase tracking-[0.3em]">
+        <span>WPM <span className="phosphor-text-bright ml-1 tabular-nums">{wpm}</span></span>
+        <span>ACC <span className="phosphor-text-bright ml-1 tabular-nums">{acc}%</span></span>
+        {lane === 1 && !isSentence && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); handleHint(); }}
+            disabled={hintsUsed >= word.word.length - 1}
+            className="ml-auto phosphor-text-dim hover:phosphor-text-bright disabled:opacity-30"
+          >
+            [ hint -50% ]
+          </button>
+        )}
       </div>
 
-      {/* Lane 1 hint — word prompts only. Sentences don't get hint help. */}
-      {lane === 1 && !isSentence && (
-        <button
-          type="button"
-          onClick={handleHint}
-          disabled={hintsUsed >= word.word.length - 1 || feedback === 'correct'}
-          className="mt-4 phosphor-text-dim hover:phosphor-text-bright text-[12px] uppercase tracking-[0.3em] disabled:opacity-30"
-        >
-          [ reveal next letter (-50%) ]
-        </button>
-      )}
-    </form>
+      <p className="phosphor-text-faint text-[10px] uppercase tracking-[0.3em] mt-3 italic">
+        type the word above. it advances automatically.
+      </p>
+    </div>
   );
 }

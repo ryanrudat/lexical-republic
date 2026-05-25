@@ -27,11 +27,17 @@ export default function InscriptionDrill() {
   const [now, setNow] = useState(() => Date.now());
   const [showAbortConfirm, setShowAbortConfirm] = useState(false);
 
-  // Local stats for live WPM / accuracy display. We increment on every
-  // submission attempt here (rather than in the store) because they're
-  // display-only and don't affect server-side scoring.
-  const [attemptsTotal, setAttemptsTotal] = useState(0);
-  const [attemptsCorrect, setAttemptsCorrect] = useState(0);
+  // Local per-character accuracy counters for the WPM/ACC display.
+  // The new per-character prompt fires `onCharTyped(wasCorrect)` on
+  // every keystroke; we tally them here so the footer stats update
+  // live as the student types, not just on word completion.
+  const [charsTyped, setCharsTyped] = useState(0);
+  const [charsCorrect, setCharsCorrect] = useState(0);
+
+  const handleCharTyped = useCallback((wasCorrect: boolean) => {
+    setCharsTyped((n) => n + 1);
+    if (wasCorrect) setCharsCorrect((n) => n + 1);
+  }, []);
 
   useEffect(() => {
     setInDrill(true);
@@ -107,14 +113,12 @@ export default function InscriptionDrill() {
     [drill],
   );
 
-  // Wraps submitWord to track local attempt + correct counts for the
-  // live WPM / accuracy display in DrillPromptCard.
+  // Thin wrapper around the store action. The per-character tracker
+  // already handles local accuracy; this just forwards the submission
+  // and returns the result so the auto-advance flow stays clean.
   const wrappedSubmit = useCallback(
     async (text: string, errorsRecovered: number) => {
-      setAttemptsTotal((n) => n + 1);
-      const res = await submitWord(text, errorsRecovered);
-      if (res.correct) setAttemptsCorrect((n) => n + 1);
-      return res;
+      return submitWord(text, errorsRecovered);
     },
     [submitWord],
   );
@@ -129,9 +133,9 @@ export default function InscriptionDrill() {
 
   return (
     <div className="crt-phosphor-monitor h-full overflow-y-auto ios-scroll">
-      <div className="max-w-xl mx-auto px-6 py-5 pixel-mono">
+      <div className="max-w-2xl mx-auto px-6 py-5 pixel-mono">
         {/* Title bar */}
-        <div className="flex items-baseline justify-between mb-2">
+        <div className="flex items-baseline justify-between mb-1">
           <p className="phosphor-text-bright text-[12px] uppercase tracking-[0.4em] phosphor-glow">
             Productivity Demonstration
           </p>
@@ -139,23 +143,34 @@ export default function InscriptionDrill() {
             {mmss}
           </p>
         </div>
-        <div className="flex items-baseline justify-between mb-8">
-          <p className="phosphor-text-dim text-[12px] uppercase tracking-[0.3em]">
+        <div className="flex items-baseline justify-between mb-4">
+          <p className="phosphor-text-dim text-[11px] uppercase tracking-[0.3em]">
             Shift {drill.weekNumber} &nbsp;·&nbsp; Word {currentIdx + 1} / {drill.wordCount}
           </p>
           <button
             type="button"
             onClick={() => setShowAbortConfirm(true)}
-            className="phosphor-text-dim hover:phosphor-text text-[12px] uppercase tracking-[0.3em]"
+            className="phosphor-text-dim hover:phosphor-text text-[11px] uppercase tracking-[0.3em]"
           >
             [ withdraw ]
           </button>
         </div>
 
-        {/* Horizontal rule */}
-        <div className="border-t border-dashed border-[#33CC66]/40 mb-8" />
+        <div className="border-t border-dashed border-[#1F8540] mb-4" />
 
-        {/* Prompt card */}
+        {/* Racing track — sits at TOP now so the student sees who's
+            ahead at a glance while they type. */}
+        <PoolStandings
+          desks={drill.desks}
+          liveProgress={liveProgress}
+          wordCount={drill.wordCount}
+          typingByDesk={typingByDesk}
+          selfDesk={1}
+        />
+
+        <div className="border-t border-dashed border-[#1F8540] mt-4 mb-6" />
+
+        {/* Prompt — per-character display + auto-advance */}
         {word && (
           <DrillPromptCard
             word={word}
@@ -166,24 +181,13 @@ export default function InscriptionDrill() {
             disabled={screen !== 'drill'}
             drillStartedAt_ms={drill.startedAt_ms}
             wordsCompleted={wordsCompleted}
-            totalAttempts={attemptsTotal}
-            totalCorrect={attemptsCorrect}
+            charsTyped={charsTyped}
+            charsCorrect={charsCorrect}
+            onCharTyped={handleCharTyped}
           />
         )}
 
-        {/* Horizontal rule */}
-        <div className="border-t border-dashed border-[#33CC66]/40 mt-8 mb-4" />
-
-        {/* Pool standings — bottom row */}
-        <PoolStandings
-          desks={drill.desks}
-          liveProgress={liveProgress}
-          wordCount={drill.wordCount}
-          typingByDesk={typingByDesk}
-          selfDesk={1}
-        />
-
-        <p className="phosphor-text-faint text-[11px] uppercase tracking-[0.3em] italic text-center mt-10">
+        <p className="phosphor-text-faint text-[10px] uppercase tracking-[0.3em] italic text-center mt-8">
           "the ministry observes your diligence."
         </p>
       </div>

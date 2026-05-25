@@ -1,16 +1,19 @@
 import type { DrillDesk } from '../../../../types/inscription';
 
-// ─── PoolStandings ───────────────────────────────────────────────
+// ─── PoolStandings (Racing Track) ─────────────────────────────────
 //
-// Single horizontal row of citizen IDs along the bottom of the drill
-// screen. Each citizen is shown brighter when actively typing, struck
-// through when finished. Replaces the prior multi-row progress-bar
-// list. Matches the user's preview mock:
-//   C-4488  ||  C-1102  ||  C-7715  ||  C-2840
+// One row per citizen with a horizontal lane that fills left to
+// right as they finish words. The student sees at a glance who's
+// ahead, how far, and whether they're catching up.
 //
-// Renders inside the parent's .crt-phosphor-monitor + .pixel-mono. Does
-// NOT run its own animation loop — relies on parent re-renders driven
-// by the 10fps ghost ticker for typing-pulse updates.
+// Each lane is a fixed-width row of monospace characters:
+//   ▸▸▸▸▸▸▸▶·······   wordsCorrect / wordCount
+//
+// ▸ marks completed positions, ▶ is the current position, · is
+// remaining. The lane width is fixed (LANE_CELLS) regardless of
+// wordCount so all citizens' positions are visually comparable.
+
+const LANE_CELLS = 24;
 
 interface Props {
   desks: DrillDesk[];
@@ -27,47 +30,98 @@ export default function PoolStandings({
   typingByDesk,
   selfDesk = 1,
 }: Props) {
+  // Compute ranking (most words → highest rank; tiebreaker on finish time)
+  const ranked = [...desks]
+    .map((d) => {
+      const live = liveProgress.get(d.desk);
+      return {
+        desk: d.desk,
+        wordsCorrect: live?.wordsCorrect ?? d.wordsCorrect,
+        finishedAt_ms: live?.finishedAt_ms ?? d.finishedAt_ms,
+      };
+    })
+    .sort((a, b) => {
+      if (a.wordsCorrect !== b.wordsCorrect) return b.wordsCorrect - a.wordsCorrect;
+      const aFin = a.finishedAt_ms ?? Number.MAX_SAFE_INTEGER;
+      const bFin = b.finishedAt_ms ?? Number.MAX_SAFE_INTEGER;
+      return aFin - bFin;
+    });
+  const leaderDesk = ranked[0]?.desk ?? null;
+  const leaderHasProgress = (ranked[0]?.wordsCorrect ?? 0) > 0;
+
   return (
-    <div>
-      <p className="phosphor-text-dim text-[11px] uppercase tracking-[0.4em] mb-3 text-center">
-        — Pool —
-      </p>
-      <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-        {desks.map((d, idx) => {
-          const live = liveProgress.get(d.desk);
-          const wordsCorrect = live?.wordsCorrect ?? d.wordsCorrect;
-          const isSelf = d.desk === selfDesk;
-          const isTyping = typingByDesk?.get(d.desk) ?? false;
-          const finished = wordsCorrect >= wordCount;
+    <div className="space-y-1">
+      {desks.map((d) => {
+        const live = liveProgress.get(d.desk);
+        const wordsCorrect = live?.wordsCorrect ?? d.wordsCorrect;
+        const isSelf = d.desk === selfDesk;
+        const isTyping = typingByDesk?.get(d.desk) ?? false;
+        const finished = wordsCorrect >= wordCount;
+        const isLeader = d.desk === leaderDesk && leaderHasProgress;
 
-          // Visual states (ranked by importance):
-          //   finished  → strikethrough, dim
-          //   self      → always bright
-          //   typing    → bright with subtle glow
-          //   idle      → dim
-          const colorClass = finished
-            ? 'phosphor-text-faint line-through'
-            : isSelf
-            ? 'phosphor-text-bright phosphor-glow'
-            : isTyping
-            ? 'phosphor-text phosphor-glow'
-            : 'phosphor-text-dim';
+        // Position on the lane: 0..LANE_CELLS
+        const ratio = wordCount > 0 ? Math.min(1, wordsCorrect / wordCount) : 0;
+        const position = Math.floor(ratio * LANE_CELLS);
 
-          return (
-            <span key={d.desk} className="flex items-center gap-3">
-              {idx > 0 && (
-                <span className="phosphor-text-faint" aria-hidden>
-                  ||
-                </span>
-              )}
-              <span className={`text-base tracking-wider ${colorClass}`}>
-                {d.citizenNumber}
-                {finished && <span className="ml-1">✓</span>}
-              </span>
+        // Color cues — self always bright, leader gets a hint, others dim
+        const labelColor = isSelf
+          ? 'phosphor-text-bright phosphor-glow'
+          : isLeader
+          ? 'phosphor-text phosphor-glow'
+          : 'phosphor-text-dim';
+        const markerColor = isSelf
+          ? 'phosphor-text-bright phosphor-glow'
+          : 'phosphor-text';
+        const trackColor = isSelf
+          ? 'phosphor-text'
+          : 'phosphor-text-dim';
+
+        return (
+          <div
+            key={d.desk}
+            className="grid grid-cols-[110px_1fr_60px_18px] gap-3 items-center text-[12px] leading-snug"
+          >
+            {/* Citizen name */}
+            <span className={`${labelColor} tracking-wider tabular-nums truncate`}>
+              {d.citizenNumber}
+              {isSelf && <span className="phosphor-text-dim ml-1">(you)</span>}
             </span>
-          );
-        })}
-      </div>
+
+            {/* Lane visualization — monospace cells */}
+            <div className="flex font-mono text-[14px]" aria-label={`${wordsCorrect} of ${wordCount} words`}>
+              {Array.from({ length: LANE_CELLS }).map((_, i) => {
+                if (finished) {
+                  return <span key={i} className={`${trackColor} px-px`}>▸</span>;
+                }
+                if (i < position) {
+                  return <span key={i} className={`${trackColor} px-px`}>▸</span>;
+                }
+                if (i === position) {
+                  return (
+                    <span
+                      key={i}
+                      className={`${markerColor} px-px ${isTyping && !isSelf ? 'animate-pulse' : ''}`}
+                    >
+                      ▶
+                    </span>
+                  );
+                }
+                return <span key={i} className="phosphor-text-faint px-px">·</span>;
+              })}
+            </div>
+
+            {/* Count */}
+            <span className={`${labelColor} tabular-nums text-right tracking-wider`}>
+              {wordsCorrect}/{wordCount}
+            </span>
+
+            {/* Leader indicator */}
+            <span className={`text-right ${isLeader && !isSelf ? 'phosphor-text-bright phosphor-glow' : 'phosphor-text-faint'}`}>
+              {finished ? '✓' : isLeader ? '▲' : ' '}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }
