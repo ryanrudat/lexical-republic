@@ -19,6 +19,10 @@ export interface OnlineStudent {
   taskLabel: string | null;
   taskStartedAt: string | null;
   failCount: number;
+  /** Task category — drives task-aware ClassMonitor flag thresholds (Writing gets a longer window + higher attempt ceiling). */
+  taskKind?: string | null;
+  /** Sub-progress text shown next to the task label, e.g. "Writing: 47 words". */
+  progressLabel?: string | null;
   tasks: { id: string; label: string }[];
 }
 

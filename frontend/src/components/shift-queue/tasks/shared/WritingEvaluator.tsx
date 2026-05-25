@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import client from '../../../../api/client';
 import { sendPearlChat } from '../../../../api/pearl';
 import { fetchPearlFeedback } from '../../../../api/pearl-feedback';
@@ -59,6 +59,35 @@ export default function WritingEvaluator({
   const [attempt, setAttempt] = useState(1);
   const [evaluating, setEvaluating] = useState(false);
   const [lastResult, setLastResult] = useState<EvalResult | null>(null);
+
+  // Push word count to teacher dashboard (debounced) so they can see writing
+  // progress without click-to-expand. Cleared on unmount to avoid stale labels.
+  const lastSentLabelRef = useRef<string | null>(null);
+  useEffect(() => {
+    const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+    const nextLabel = wordCount > 0 ? `Writing: ${wordCount} word${wordCount === 1 ? '' : 's'}` : null;
+    const t = setTimeout(() => {
+      if (lastSentLabelRef.current === nextLabel) return;
+      lastSentLabelRef.current = nextLabel;
+      const sock = getSocket();
+      if (sock?.connected) {
+        sock.emit('student:task-progress', {
+          taskKind: 'writing',
+          progressLabel: nextLabel,
+        });
+      }
+    }, 800);
+    return () => clearTimeout(t);
+  }, [text]);
+
+  useEffect(() => {
+    return () => {
+      const sock = getSocket();
+      if (sock?.connected) {
+        sock.emit('student:task-progress', { taskKind: null, progressLabel: null });
+      }
+    };
+  }, []);
 
   // Second AI pass: reasoning feedback. Separate from grammar/vocab so it can stream in asynchronously without blocking the main result.
   const [pearlReasoning, setPearlReasoning] = useState<string | null>(null);
@@ -154,7 +183,7 @@ export default function WritingEvaluator({
         setNudgeCount(0); // reset nudge count for new attempt
         const sock = getSocket();
         if (sock?.connected) {
-          sock.emit('student:task-update', { taskId: missionId ?? 'writing', taskLabel: 'Writing', failCount: currentAttempt });
+          sock.emit('student:task-progress', { taskKind: 'writing', failCount: currentAttempt });
         }
       }
       onResult(result, currentAttempt);

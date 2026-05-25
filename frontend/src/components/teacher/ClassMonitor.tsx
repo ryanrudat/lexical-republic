@@ -12,17 +12,42 @@ import { getAvailableShifts } from '../../data/narrative-routes';
 const stepLabel = (stepId: string) =>
   STEP_ORDER.find((s) => s.id === stepId)?.label ?? stepId;
 
-const WARN_TIME_MS = 5 * 60 * 1000;   // 5 min → yellow
-const ALERT_TIME_MS = 8 * 60 * 1000;  // 8 min → red
-const FAIL_ALERT_THRESHOLD = 2;        // 2 fails → red
+// Default thresholds (multi-choice / cloze / match). Relaxed from old 5/8 + 1/2
+// because some tasks legitimately take longer than a quiz round.
+const DEFAULT_THRESHOLDS = {
+  warnMs: 7 * 60 * 1000,
+  alertMs: 12 * 60 * 1000,
+  warnAttempts: 2,
+  alertAttempts: 4,
+};
+
+// Writing tasks naturally drift longer (compose → evaluate → revise loop, up
+// to 3 attempts). Old 8min/2-attempt alert fired on routine drafting.
+const WRITING_THRESHOLDS = {
+  warnMs: 10 * 60 * 1000,
+  alertMs: 18 * 60 * 1000,
+  warnAttempts: 3,
+  alertAttempts: 5,
+};
+
 const AUTO_REFRESH_MS = 30_000;        // 30s auto-refresh
 
 type FlagLevel = 'ok' | 'warn' | 'alert';
 
-function getFlag(taskStartedAt: string | null, failCount: number, now: number): FlagLevel {
+function thresholdsFor(taskKind?: string | null) {
+  return taskKind === 'writing' ? WRITING_THRESHOLDS : DEFAULT_THRESHOLDS;
+}
+
+function getFlag(
+  taskStartedAt: string | null,
+  failCount: number,
+  taskKind: string | null | undefined,
+  now: number,
+): FlagLevel {
   const elapsed = taskStartedAt ? now - new Date(taskStartedAt).getTime() : 0;
-  if (elapsed >= ALERT_TIME_MS || failCount >= FAIL_ALERT_THRESHOLD) return 'alert';
-  if (elapsed >= WARN_TIME_MS || failCount === 1) return 'warn';
+  const t = thresholdsFor(taskKind);
+  if (elapsed >= t.alertMs || failCount >= t.alertAttempts) return 'alert';
+  if (elapsed >= t.warnMs || failCount >= t.warnAttempts) return 'warn';
   return 'ok';
 }
 
@@ -39,8 +64,8 @@ function formatElapsed(ms: number): string {
 // alone isn't enough — Recent/Idle picks up students who were active
 // just before the restart and haven't reconnected yet.
 type ActivityState = 'active' | 'recent' | 'idle' | 'offline';
-const RECENT_WINDOW_MS = 5 * 60 * 1000;   // 5 min
-const IDLE_WINDOW_MS = 30 * 60 * 1000;    // 30 min
+const RECENT_WINDOW_MS = 5 * 60 * 1000;   // 5 min — sky dot
+const IDLE_WINDOW_MS = 10 * 60 * 1000;    // 10 min — amber dot. Past this, treat as offline (slate). Classroom-realistic: a kid who hasn't pinged in 10 min has left.
 
 function getActivityState(
   online: unknown,
@@ -373,7 +398,7 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
   let alertCount = 0;
   for (const s of merged) {
     if (!s.online) continue;
-    const flag = getFlag(s.online.taskStartedAt, s.online.failCount, now);
+    const flag = getFlag(s.online.taskStartedAt, s.online.failCount, s.online.taskKind, now);
     if (flag === 'ok') okCount++;
     else if (flag === 'warn') warnCount++;
     else alertCount++;
@@ -591,10 +616,37 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
         </div>
       )}
 
+      {/* Activity-dot legend — explains the colored circle next to each student's name. */}
+      {students.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500 bg-white border border-slate-200 rounded-lg px-4 py-2">
+          <span className="font-medium text-slate-600">Status dot:</span>
+          <span className="flex items-center gap-1.5" title="Currently socket-connected">
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500" />
+            <span className="text-slate-700">Active</span>
+            <span className="text-slate-400">— in app now</span>
+          </span>
+          <span className="flex items-center gap-1.5" title="Disconnected within the last 5 min — likely tab switch or brief drop">
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-sky-500" />
+            <span className="text-slate-700">Recent</span>
+            <span className="text-slate-400">— &lt;5 min ago</span>
+          </span>
+          <span className="flex items-center gap-1.5" title="Disconnected 5–10 min ago — probably stepped away">
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500" />
+            <span className="text-slate-700">Idle</span>
+            <span className="text-slate-400">— 5–10 min</span>
+          </span>
+          <span className="flex items-center gap-1.5" title="Closed the tab, logged out, or hasn't pinged in 10+ min">
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-300" />
+            <span className="text-slate-700">Offline</span>
+            <span className="text-slate-400">— gone</span>
+          </span>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {merged.map((student) => {
           const flag = student.online
-            ? getFlag(student.online.taskStartedAt, student.online.failCount, now)
+            ? getFlag(student.online.taskStartedAt, student.online.failCount, student.online.taskKind, now)
             : 'ok';
           const flagBorder =
             flag === 'alert'
@@ -698,21 +750,31 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
 
                       {/* Task info + time on task */}
                       {student.online.taskLabel ? (
-                        <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                          <span className="truncate">
-                            Task: {student.online.taskLabel}
-                          </span>
-                          {student.online.taskStartedAt && (
-                            <span className={`shrink-0 font-medium ${
-                              flag === 'alert' ? 'text-red-500' : flag === 'warn' ? 'text-amber-500' : ''
-                            }`}>
-                              {formatElapsed(now - new Date(student.online.taskStartedAt).getTime())}
+                        <div className="space-y-0.5">
+                          <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                            <span className="truncate">
+                              Task: {student.online.taskLabel}
                             </span>
-                          )}
-                          {student.online.failCount > 0 && (
-                            <span className="shrink-0 text-red-400" title="Failed attempts">
-                              {student.online.failCount} fail{student.online.failCount !== 1 ? 's' : ''}
-                            </span>
+                            {student.online.taskStartedAt && (
+                              <span className={`shrink-0 font-medium ${
+                                flag === 'alert' ? 'text-red-500' : flag === 'warn' ? 'text-amber-500' : ''
+                              }`}>
+                                {formatElapsed(now - new Date(student.online.taskStartedAt).getTime())}
+                              </span>
+                            )}
+                            {student.online.failCount > 0 && (
+                              <span
+                                className="shrink-0 text-slate-500"
+                                title={student.online.taskKind === 'writing' ? 'Writing attempts (each draft re-evaluated)' : 'Submission attempts'}
+                              >
+                                {student.online.failCount} attempt{student.online.failCount !== 1 ? 's' : ''}
+                              </span>
+                            )}
+                          </div>
+                          {student.online.progressLabel && (
+                            <div className="text-[11px] text-slate-500 truncate" title={student.online.progressLabel}>
+                              {student.online.progressLabel}
+                            </div>
                           )}
                         </div>
                       ) : student.online.weekNumber ? (
