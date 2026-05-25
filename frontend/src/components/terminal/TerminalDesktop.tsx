@@ -192,34 +192,6 @@ export default function TerminalDesktop() {
         {visibleApps.map((app, idx) => {
           const isLocked = app.lockWeek !== undefined && highestUnlockedWeek < app.lockWeek;
 
-          // Inscription Pool (Word Pool) — the source PNG is square
-          // (1254x1254) while the other icon PNGs are 3:2 landscape
-          // (1536x1024). At the same w-[240px] both would render at
-          // 240px wide, but the square one would be 240px tall and
-          // visually dominate. We constrain by HEIGHT to 160px so the
-          // displayed icon matches the visible height of the other
-          // tiles (which display at 240x160). The button itself stays
-          // w-[240px] to keep the grid slot consistent. JSX label
-          // below since this PNG doesn't have one baked in.
-          if (app.id === 'inscription-pool' && !isLocked) {
-            return (
-              <button
-                key={app.id}
-                onClick={() => openApp(app.id)}
-                className="w-[240px] shrink-0 flex flex-col items-center transition-transform duration-200 group hover:scale-105 active:scale-95"
-              >
-                <img
-                  src={app.icon}
-                  alt={app.name}
-                  className="h-[160px] w-auto object-contain"
-                />
-                <p className="font-ibm-mono text-[13px] text-[#6B5D45] tracking-wider mt-2">
-                  {app.name}
-                </p>
-              </button>
-            );
-          }
-
           // [ ].edited — dead-internet aesthetic tile. Dashed border,
           // dark slate, italic name, "unsigned" status. Deliberately
           // does not look like the Party's other apps. First-visit glitch
@@ -265,6 +237,17 @@ export default function TerminalDesktop() {
                 {/* Notification badge for Harmony */}
                 {app.id === 'harmony' && hasNewHarmonyContent && (
                   <span className="absolute top-2 right-2 w-4 h-4 bg-rose-500 rounded-full border-2 border-[#8EBCC1] animate-pulse" />
+                )}
+                {/* Word Pool's PNG has no baked-in label (the other icons
+                    do), so overlay one at the same vertical position the
+                    baked labels occupy (~74.5% of the 3:2 frame). */}
+                {app.id === 'inscription-pool' && (
+                  <p
+                    className="absolute inset-x-0 text-center font-ibm-mono text-[12px] text-[#6B5D45] tracking-wider"
+                    style={{ top: '74.5%', transform: 'translateY(-50%)' }}
+                  >
+                    {app.name}
+                  </p>
                 )}
               </button>
             );
