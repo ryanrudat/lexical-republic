@@ -192,12 +192,15 @@ export default function TerminalDesktop() {
         {visibleApps.map((app, idx) => {
           const isLocked = app.lockWeek !== undefined && highestUnlockedWeek < app.lockWeek;
 
-          // Inscription Pool (Word Pool) — pixel-art icon that doesn't
-          // have a baked-in label like the other PNGs. Renders the image
-          // at a constrained size (so its dense edge-to-edge artwork
-          // doesn't read larger than the others) with rounded-mask to
-          // hide the PNG's flat-color corner bleed, then a JSX label
-          // below in the same warm gold style as the other tiles.
+          // Inscription Pool (Word Pool) — pixel-art icon that fills its
+          // PNG edge-to-edge, unlike the other icon PNGs which have
+          // transparent padding around their visible shapes. To match
+          // the visual icon size of the other tiles (~150px shape inside
+          // a 240px slot), we render the image at 140px and clip its
+          // corners with rounded-[20%] so the PNG's flat-teal corner
+          // bleed gets masked away — the desktop shows through where
+          // the masked corners used to be. No blend mode (multiply
+          // darkened the icon rather than blending the corners).
           if (app.id === 'inscription-pool' && !isLocked) {
             return (
               <button
@@ -208,8 +211,7 @@ export default function TerminalDesktop() {
                 <img
                   src={app.icon}
                   alt={app.name}
-                  className="w-[176px] h-[176px] object-contain rounded-3xl"
-                  style={{ mixBlendMode: 'multiply' }}
+                  className="w-[140px] h-[140px] object-contain rounded-[20%]"
                 />
                 <p className="font-ibm-mono text-[13px] text-[#6B5D45] tracking-wider mt-2">
                   {app.name}
