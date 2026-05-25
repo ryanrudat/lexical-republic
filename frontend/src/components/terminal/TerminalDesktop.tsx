@@ -55,7 +55,10 @@ const APPS: AppTile[] = [
     name: 'Word Pool',
     description: 'Productivity demonstration',
     emoji: '',
-    icon: '/images/inscription-pool-icon.png',
+    // -v2 suffix cache-busts the stable /images path: the old square PNG
+    // was 1-day cached, so clients kept rendering it (240x240, opaque box)
+    // against the new code. Renaming forces a fresh fetch on next load.
+    icon: '/images/inscription-pool-icon-v2.png',
   },
   {
     // [ ].edited — Unedited's smuggled surface. Appears at W4. Rendered
