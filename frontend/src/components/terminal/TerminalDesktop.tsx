@@ -192,15 +192,17 @@ export default function TerminalDesktop() {
         {visibleApps.map((app, idx) => {
           const isLocked = app.lockWeek !== undefined && highestUnlockedWeek < app.lockWeek;
 
-          // Inscription Pool (Word Pool) — pixel-art icon that fills its
-          // PNG edge-to-edge, unlike the other icon PNGs which have
-          // transparent padding around their visible shapes. To match
-          // the visual icon size of the other tiles (~150px shape inside
-          // a 240px slot), we render the image at 140px and clip its
-          // corners with rounded-[20%] so the PNG's flat-teal corner
-          // bleed gets masked away — the desktop shows through where
-          // the masked corners used to be. No blend mode (multiply
-          // darkened the icon rather than blending the corners).
+          // Inscription Pool (Word Pool) — the source PNG has a flat
+          // teal background built INTO the image around the icon shape,
+          // so simple CSS rounding leaves a visible rectangle of that
+          // teal bleeding past the icon's natural edges. Fix:
+          //   1. Visible container is 124px (matches the inner-shape
+          //      size of the other tiles' PNGs at their 240px renders).
+          //   2. Image inside is rendered LARGER (148px) and clipped
+          //      by the container's overflow-hidden — this trims ~12px
+          //      of teal padding off each edge.
+          //   3. Container is rounded-[20%] to round the final visible
+          //      shape cleanly so the desktop shows around the corners.
           if (app.id === 'inscription-pool' && !isLocked) {
             return (
               <button
@@ -208,11 +210,13 @@ export default function TerminalDesktop() {
                 onClick={() => openApp(app.id)}
                 className="w-[240px] shrink-0 flex flex-col items-center transition-transform duration-200 group hover:scale-105 active:scale-95"
               >
-                <img
-                  src={app.icon}
-                  alt={app.name}
-                  className="w-[140px] h-[140px] object-contain rounded-[20%]"
-                />
+                <div className="w-[124px] h-[124px] overflow-hidden rounded-[20%] flex items-center justify-center">
+                  <img
+                    src={app.icon}
+                    alt={app.name}
+                    className="w-[148px] h-[148px] object-contain"
+                  />
+                </div>
                 <p className="font-ibm-mono text-[13px] text-[#6B5D45] tracking-wider mt-2">
                   {app.name}
                 </p>
