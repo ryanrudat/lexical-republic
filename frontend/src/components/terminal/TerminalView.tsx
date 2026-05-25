@@ -30,7 +30,7 @@ const APP_CONFIG = {
   'harmony': { title: 'Harmony', component: HarmonyApp },
   'duty-roster': { title: 'Duty Roster', component: DutyRosterApp },
   'my-file': { title: 'My File', component: MyFileApp },
-  'inscription-pool': { title: 'Inscription Pool', component: InscriptionApp },
+  'inscription-pool': { title: 'Word Pool', component: InscriptionApp },
   'edited': { title: '[ ].edited', component: EditedApp },
 } as const;
 

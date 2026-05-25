@@ -52,7 +52,7 @@ const APPS: AppTile[] = [
   },
   {
     id: 'inscription-pool',
-    name: 'Inscription Pool',
+    name: 'Word Pool',
     description: 'Productivity demonstration',
     emoji: '',
     icon: '/images/inscription-pool-icon.png',
@@ -191,6 +191,32 @@ export default function TerminalDesktop() {
 
         {visibleApps.map((app, idx) => {
           const isLocked = app.lockWeek !== undefined && highestUnlockedWeek < app.lockWeek;
+
+          // Inscription Pool (Word Pool) — pixel-art icon that doesn't
+          // have a baked-in label like the other PNGs. Renders the image
+          // at a constrained size (so its dense edge-to-edge artwork
+          // doesn't read larger than the others) with rounded-mask to
+          // hide the PNG's flat-color corner bleed, then a JSX label
+          // below in the same warm gold style as the other tiles.
+          if (app.id === 'inscription-pool' && !isLocked) {
+            return (
+              <button
+                key={app.id}
+                onClick={() => openApp(app.id)}
+                className="w-[240px] shrink-0 flex flex-col items-center transition-transform duration-200 group hover:scale-105 active:scale-95"
+              >
+                <img
+                  src={app.icon}
+                  alt={app.name}
+                  className="w-[176px] h-[176px] object-contain rounded-3xl"
+                  style={{ mixBlendMode: 'multiply' }}
+                />
+                <p className="font-ibm-mono text-[13px] text-[#6B5D45] tracking-wider mt-2">
+                  {app.name}
+                </p>
+              </button>
+            );
+          }
 
           // [ ].edited — dead-internet aesthetic tile. Dashed border,
           // dark slate, italic name, "unsigned" status. Deliberately
