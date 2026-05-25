@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { DrillDesk } from '../../../../types/inscription';
 
 interface UseGhostTickerOpts {
@@ -29,18 +29,18 @@ interface TickerState {
 export function useGhostTicker(opts: UseGhostTickerOpts): TickerState {
   const { desks, wordCount, drillStartedAt_ms, totalPausedMs, pausedAt_ms } = opts;
   const [tick, setTick] = useState(0);
-  const rafRef = useRef<number | null>(null);
 
+  // 10fps via setInterval — plenty for the "is this ghost typing?" pulse
+  // (humans can't perceive faster updates on a small indicator). The prior
+  // requestAnimationFrame loop ran at 60fps, which cascaded re-renders into
+  // the parent drill subtree (including the text input) and made keystrokes
+  // queue up behind paints, causing the input to feel frozen on longer drills.
   useEffect(() => {
     if (!drillStartedAt_ms) return;
-    const loop = () => {
+    const id = setInterval(() => {
       setTick((n) => (n + 1) & 0xffff);
-      rafRef.current = requestAnimationFrame(loop);
-    };
-    rafRef.current = requestAnimationFrame(loop);
-    return () => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    };
+    }, 100);
+    return () => clearInterval(id);
   }, [drillStartedAt_ms]);
 
   if (!drillStartedAt_ms) {

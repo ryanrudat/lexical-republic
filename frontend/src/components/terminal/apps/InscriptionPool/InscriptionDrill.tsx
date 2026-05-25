@@ -83,9 +83,12 @@ export default function InscriptionDrill() {
     if (!drill || completedRef.current) return;
     if (completedAllWords || remainingSec === 0) {
       completedRef.current = true;
+      // Mark abandoned when the timer ran out before all words were finished.
+      // Pre-fix the expression read `abandoned: false && abandoned` which always
+      // resolved to `false`, so the backend never knew a drill timed out.
       const abandoned = !completedAllWords && remainingSec === 0;
       // tiny delay so the final word feedback flashes
-      const t = setTimeout(() => void completeDrill({ abandoned: false && abandoned }), 600);
+      const t = setTimeout(() => void completeDrill({ abandoned }), 600);
       return () => clearTimeout(t);
     }
   }, [drill, completedAllWords, remainingSec, completeDrill]);
