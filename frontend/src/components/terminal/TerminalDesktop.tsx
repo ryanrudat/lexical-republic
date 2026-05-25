@@ -192,17 +192,15 @@ export default function TerminalDesktop() {
         {visibleApps.map((app, idx) => {
           const isLocked = app.lockWeek !== undefined && highestUnlockedWeek < app.lockWeek;
 
-          // Inscription Pool (Word Pool) — the source PNG has a flat
-          // teal background built INTO the image around the icon shape,
-          // so simple CSS rounding leaves a visible rectangle of that
-          // teal bleeding past the icon's natural edges. Fix:
-          //   1. Visible container is 124px (matches the inner-shape
-          //      size of the other tiles' PNGs at their 240px renders).
-          //   2. Image inside is rendered LARGER (148px) and clipped
-          //      by the container's overflow-hidden — this trims ~12px
-          //      of teal padding off each edge.
-          //   3. Container is rounded-[20%] to round the final visible
-          //      shape cleanly so the desktop shows around the corners.
+          // Inscription Pool (Word Pool) — the source PNG is square
+          // (1254x1254) while the other icon PNGs are 3:2 landscape
+          // (1536x1024). At the same w-[240px] both would render at
+          // 240px wide, but the square one would be 240px tall and
+          // visually dominate. We constrain by HEIGHT to 160px so the
+          // displayed icon matches the visible height of the other
+          // tiles (which display at 240x160). The button itself stays
+          // w-[240px] to keep the grid slot consistent. JSX label
+          // below since this PNG doesn't have one baked in.
           if (app.id === 'inscription-pool' && !isLocked) {
             return (
               <button
@@ -210,13 +208,11 @@ export default function TerminalDesktop() {
                 onClick={() => openApp(app.id)}
                 className="w-[240px] shrink-0 flex flex-col items-center transition-transform duration-200 group hover:scale-105 active:scale-95"
               >
-                <div className="w-[124px] h-[124px] overflow-hidden rounded-[20%] flex items-center justify-center">
-                  <img
-                    src={app.icon}
-                    alt={app.name}
-                    className="w-[148px] h-[148px] object-contain"
-                  />
-                </div>
+                <img
+                  src={app.icon}
+                  alt={app.name}
+                  className="h-[160px] w-auto object-contain"
+                />
                 <p className="font-ibm-mono text-[13px] text-[#6B5D45] tracking-wider mt-2">
                   {app.name}
                 </p>
