@@ -5,32 +5,32 @@ interface Props {
 
 export default function ShiftGateModal({ onConfirm, onCancel }: Props) {
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="max-w-md w-full mx-4 rounded-lg border-2 border-[#5BB8B0]/40 bg-[#04181B] p-6 shadow-2xl">
-        <p className="font-ibm-mono text-[10px] text-[#5BB88C] tracking-[0.3em] uppercase mb-3">
-          P.E.A.R.L. · Notice
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 backdrop-blur-sm">
+      <div className="crt-amber-monitor max-w-md w-full mx-4 px-8 py-7 pixel-mono border border-[#FFB000]/60">
+        <p className="amber-text-bright text-[12px] uppercase tracking-[0.4em] amber-glow mb-3">
+          &gt; ministry notice
         </p>
-        <h2 className="font-ibm-mono text-base text-[#D4E8E5] tracking-wider mb-2">
-          Citizen, your shift remains in progress.
-        </h2>
-        <p className="font-ibm-mono text-[11px] text-[#82B0B5] leading-relaxed mb-5">
-          Inscription Pool deprioritizes shift completion. The Ministry recommends returning to
-          your shift first. Do you wish to proceed?
+        <p className="amber-text text-base mb-3">
+          citizen, your shift remains in progress.
         </p>
-        <div className="flex gap-3">
+        <p className="amber-text-dim text-[12px] uppercase tracking-[0.3em] leading-relaxed mb-6">
+          inscription pool deprioritizes shift completion. the ministry
+          recommends returning to your shift first.
+        </p>
+        <div className="flex gap-6">
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 px-4 py-2.5 rounded border border-[#5BB8B0]/40 bg-transparent font-ibm-mono text-[11px] text-[#82B0B5] hover:text-[#D4E8E5] hover:border-[#5BB8B0] tracking-wider active:scale-[0.98] transition-colors"
+            className="amber-text hover:amber-text-bright text-[12px] uppercase tracking-[0.3em]"
           >
-            Return to Shift
+            [ return to shift ]
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className="flex-1 px-4 py-2.5 rounded border border-amber-500/40 bg-amber-500/10 font-ibm-mono text-[11px] text-amber-300 hover:bg-amber-500/20 tracking-wider active:scale-[0.98] transition-colors"
+            className="amber-text-dim hover:amber-text text-[12px] uppercase tracking-[0.3em] ml-auto"
           >
-            Proceed
+            [ proceed ]
           </button>
         </div>
       </div>

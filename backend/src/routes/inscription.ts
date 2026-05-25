@@ -3,7 +3,7 @@ import type { Request, Response } from 'express';
 import { authenticate, getPairId, getTeacherId } from '../middleware/auth';
 import prisma from '../utils/prisma';
 import { io } from '../socketServer';
-import { pickInscriptionWords, type InscriptionWord } from '../utils/inscriptionWordPool';
+import { pickInscriptionPrompts, type InscriptionWord } from '../utils/inscriptionWordPool';
 import { pickGhostRecordings } from '../utils/inscriptionGhosts';
 import { calcInscriptionScore, utcDateKey } from '../utils/inscriptionScoring';
 import { assignCitizenNumber } from '../utils/citizenNumber';
@@ -67,6 +67,20 @@ function normalizeWord(s: string): string {
   return s
     .toLowerCase()
     .replace(/[^a-z'-]/g, '')
+    .trim();
+}
+
+/**
+ * Sentence comparison normalizer — lowercase, collapse runs of whitespace
+ * to a single space, strip a trailing period/comma/semicolon (forgiving
+ * about whether the student typed the final stop). Preserves internal
+ * punctuation and apostrophes so students still learn punctuation.
+ */
+function normalizeSentence(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/[.,;]\s*$/, '')
     .trim();
 }
 
@@ -140,13 +154,21 @@ router.post('/drills', async (req, res) => {
       durationSec = durationForLane(ctx.lane);
     }
 
-    // Pick words + ghosts
-    const words = await pickInscriptionWords({
+    // Pick words + sentences (hybrid drill). Default split: ~60% words /
+    // ~40% sentences, with a minimum of 2 words as warm-up so the first
+    // couple of prompts are spelling-only before the sentence challenge.
+    // Teacher-set trials override to all words (no sentences) for now —
+    // keeps existing trial behavior intact until sentence trials get a UI.
+    const sentenceCount = mode === 'trial'
+      ? 0
+      : Math.max(0, Math.floor(wordCount * 0.4));
+    const words = await pickInscriptionPrompts({
       classId: ctx.classId,
       weekNumber,
       count: wordCount,
       pairId: ctx.pairId,
       poolStrategy,
+      sentenceCount,
     });
     if (words.length === 0) {
       res.status(400).json({
@@ -277,8 +299,18 @@ router.post('/drills/:id/word', async (req, res) => {
       res.status(400).json({ error: 'wordIdx out of range' });
       return;
     }
-    const expected = normalizeWord(wordQueue[wordIdx].word);
-    const submitted = normalizeWord(finalText);
+    // Sentence prompts compare against the full sentence; word prompts
+    // compare against the word. The two normalizers differ — sentence
+    // mode preserves internal punctuation + spacing; word mode strips
+    // everything but letters/hyphens/apostrophes.
+    const prompt = wordQueue[wordIdx];
+    const isSentencePrompt = typeof prompt.sentence === 'string' && prompt.sentence.length > 0;
+    const expected = isSentencePrompt
+      ? normalizeSentence(prompt.sentence as string)
+      : normalizeWord(prompt.word);
+    const submitted = isSentencePrompt
+      ? normalizeSentence(finalText)
+      : normalizeWord(finalText);
     const correct = expected.length > 0 && expected === submitted;
 
     const myRec = drill.recordings[0];

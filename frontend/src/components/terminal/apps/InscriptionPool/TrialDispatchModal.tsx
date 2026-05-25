@@ -4,6 +4,11 @@ import { useInscriptionStore } from '../../../../stores/inscriptionStore';
 import { useViewStore } from '../../../../stores/viewStore';
 import { useShiftQueueStore } from '../../../../stores/shiftQueueStore';
 
+// ─── TrialDispatchModal ─────────────────────────────────────────
+//
+// Class-wide invite that pops when the teacher schedules a Sector
+// Trial. Amber CRT register to match the Inscription Pool itself.
+
 export default function TrialDispatchModal() {
   const pendingTrial = useInscriptionStore((s) => s.pendingTrial);
   const clearPendingTrial = useInscriptionStore((s) => s.clearPendingTrial);
@@ -19,10 +24,7 @@ export default function TrialDispatchModal() {
     const tick = () => {
       const remaining = Math.max(0, Math.ceil((pendingTrial.startsAt_ms - Date.now()) / 1000));
       setSecondsLeft(remaining);
-      if (remaining === 0) {
-        // Auto-dismiss; teacher's trial window passed
-        clearPendingTrial();
-      }
+      if (remaining === 0) clearPendingTrial();
     };
     tick();
     const id = setInterval(tick, 1000);
@@ -34,7 +36,6 @@ export default function TrialDispatchModal() {
   const handleReport = () => {
     openApp('inscription-pool');
     navigate('/terminal', { replace: true });
-    // Auto-start a trial drill at the inferred week
     const wk = weekConfig?.weekNumber ?? 1;
     void startDrill({
       mode: 'trial',
@@ -45,63 +46,49 @@ export default function TrialDispatchModal() {
     clearPendingTrial();
   };
 
-  const handleDismiss = () => {
-    clearPendingTrial();
-  };
-
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 backdrop-blur-sm">
-      <div className="max-w-md w-full mx-4 rounded-lg border-2 border-cyan-400/50 bg-[#04181B] p-6 shadow-2xl">
-        <p className="font-ibm-mono text-[10px] text-cyan-300 tracking-[0.4em] uppercase mb-3 animate-pulse">
-          ◇ Sector Trial Scheduled ◇
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/90 backdrop-blur-sm">
+      <div className="crt-amber-monitor max-w-md w-full mx-4 px-8 py-7 pixel-mono border border-[#FFB000]/60">
+        <p className="amber-text-bright text-[12px] uppercase tracking-[0.4em] amber-glow mb-3">
+          ◇ sector trial scheduled ◇
         </p>
-        <h2 className="font-ibm-mono text-base text-[#D4E8E5] tracking-[0.2em] uppercase mb-2">
-          Report to the Inscription Pool
-        </h2>
-        <p className="font-ibm-mono text-[11px] text-[#82B0B5] leading-relaxed mb-4">
-          Citizens of your sector shall report to the Inscription Pool. Reasonable
-          accommodations may apply.
+        <p className="amber-text text-base uppercase tracking-[0.2em] mb-3">
+          report to the inscription pool
         </p>
-        <div className="rounded border border-cyan-400/30 bg-cyan-400/5 p-3 mb-4 grid grid-cols-3 gap-2 text-center">
+        <p className="amber-text-dim text-[12px] uppercase tracking-[0.3em] leading-relaxed mb-6">
+          citizens of your sector shall report.
+          reasonable accommodations may apply.
+        </p>
+
+        <div className="grid grid-cols-3 gap-4 mb-6 border-t border-b border-dashed border-[#FFB000]/40 py-4 text-center">
           <div>
-            <p className="font-ibm-mono text-[9px] text-cyan-300/70 tracking-wider uppercase">
-              In
-            </p>
-            <p className="font-ibm-mono text-base text-cyan-200 tabular-nums tracking-wider">
-              {secondsLeft}s
-            </p>
+            <p className="amber-text-dim text-[10px] uppercase tracking-[0.3em] mb-1">In</p>
+            <p className="amber-text-bright text-lg tabular-nums amber-glow">{secondsLeft}s</p>
           </div>
           <div>
-            <p className="font-ibm-mono text-[9px] text-cyan-300/70 tracking-wider uppercase">
-              Words
-            </p>
-            <p className="font-ibm-mono text-base text-cyan-200 tabular-nums tracking-wider">
-              {pendingTrial.wordCount}
-            </p>
+            <p className="amber-text-dim text-[10px] uppercase tracking-[0.3em] mb-1">Words</p>
+            <p className="amber-text-bright text-lg tabular-nums amber-glow">{pendingTrial.wordCount}</p>
           </div>
           <div>
-            <p className="font-ibm-mono text-[9px] text-cyan-300/70 tracking-wider uppercase">
-              Duration
-            </p>
-            <p className="font-ibm-mono text-base text-cyan-200 tabular-nums tracking-wider">
-              {pendingTrial.durationSec}s
-            </p>
+            <p className="amber-text-dim text-[10px] uppercase tracking-[0.3em] mb-1">Duration</p>
+            <p className="amber-text-bright text-lg tabular-nums amber-glow">{pendingTrial.durationSec}s</p>
           </div>
         </div>
-        <div className="flex gap-3">
+
+        <div className="flex gap-6">
           <button
             type="button"
-            onClick={handleDismiss}
-            className="flex-1 px-4 py-2.5 rounded border border-[#5BB8B0]/40 font-ibm-mono text-[11px] text-[#82B0B5] hover:text-[#D4E8E5] tracking-wider active:scale-[0.98]"
+            onClick={clearPendingTrial}
+            className="amber-text-dim hover:amber-text text-[12px] uppercase tracking-[0.3em]"
           >
-            Acknowledge
+            [ acknowledge ]
           </button>
           <button
             type="button"
             onClick={handleReport}
-            className="flex-1 px-4 py-2.5 rounded border-2 border-cyan-400/60 bg-cyan-400/10 font-ibm-mono text-[11px] text-cyan-200 hover:bg-cyan-400/20 tracking-wider active:scale-[0.98]"
+            className="amber-text-bright hover:amber-glow-strong text-[12px] uppercase tracking-[0.3em] ml-auto"
           >
-            Report to Pool ➤
+            [ report to pool ➤ ]
           </button>
         </div>
       </div>

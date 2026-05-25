@@ -1,9 +1,15 @@
 import { useInscriptionStore } from '../../../../stores/inscriptionStore';
 
-const TIER_LABEL: Record<string, { label: string; color: string }> = {
-  gold: { label: '◆ GOLD COMMENDATION', color: 'text-amber-300' },
-  silver: { label: '◆ SILVER COMMENDATION', color: 'text-slate-200' },
-  bronze: { label: '◆ BRONZE COMMENDATION', color: 'text-orange-400' },
+// ─── InscriptionResults ──────────────────────────────────────────
+//
+// Amber CRT register. End-of-drill summary: final standings, P.I.
+// awarded, personal breakdown (avg / fastest / slowest words).
+// No styled cards — sections divided by dashed amber rules.
+
+const TIER_LABEL: Record<string, string> = {
+  gold:   '◆ GOLD COMMENDATION',
+  silver: '◆ SILVER COMMENDATION',
+  bronze: '◆ BRONZE COMMENDATION',
 };
 
 export default function InscriptionResults() {
@@ -12,122 +18,127 @@ export default function InscriptionResults() {
 
   if (!result) return null;
 
-  const tierInfo = result.commendationTier ? TIER_LABEL[result.commendationTier] : null;
+  const tierLabel = result.commendationTier ? TIER_LABEL[result.commendationTier] : null;
   const breakdown = result.personalBreakdown;
 
   return (
-    <div className="h-full overflow-y-auto px-6 py-6 ios-scroll crt-monitor-screen">
-      <div className="max-w-3xl mx-auto space-y-5 relative z-[1]">
-        <header className="text-center">
-          <p className="font-ibm-mono text-[10px] text-[#5BB88C] tracking-[0.4em] uppercase mb-2">
-            Inscription Drill · Complete
-          </p>
-          <h1 className="font-ibm-mono text-xl text-[#D4E8E5] tracking-[0.2em] uppercase">
-            Period Demonstration Recorded
-          </h1>
-        </header>
+    <div className="crt-amber-monitor h-full overflow-y-auto ios-scroll">
+      <div className="max-w-2xl mx-auto px-8 py-10 pixel-mono">
+        {/* Header */}
+        <p className="amber-text-bright text-[12px] uppercase tracking-[0.4em] text-center mb-2 amber-glow">
+          Inscription Drill · Complete
+        </p>
+        <h1 className="amber-text-bright text-2xl uppercase tracking-[0.2em] text-center mb-10 amber-glow-strong">
+          Period Demonstration Recorded
+        </h1>
+
+        <div className="border-t border-dashed border-[#FFB000]/40 mb-8" />
 
         {/* Standings */}
-        <section className="rounded-lg border border-[#5BB8B0]/30 bg-[#04181B]/60 p-4">
-          <p className="font-ibm-mono text-[10px] text-[#5BB88C] tracking-[0.3em] uppercase mb-3">
-            Final Standings
-          </p>
-          <ul className="space-y-1.5">
-            {result.standings.map((s) => {
-              const isSelf = s.desk === 1;
-              const isFirst = s.rank === 1;
-              return (
-                <li
-                  key={s.desk}
-                  className={`flex items-center gap-3 rounded px-2 py-1.5 ${
-                    isFirst ? 'bg-amber-500/10 ring-1 ring-amber-300/30' : ''
-                  } ${isSelf ? 'ring-1 ring-sky-300/40' : ''}`}
-                >
-                  <span className="font-ibm-mono text-base font-bold w-7 shrink-0 tabular-nums text-[#D4E8E5]">
-                    {s.rank}
-                  </span>
-                  <span className="font-ibm-mono text-sm text-[#D4E8E5] tracking-wider flex-1">
-                    {s.citizenNumber} {isSelf && <span className="text-sky-300">(you)</span>}
-                  </span>
-                  <span className="font-ibm-mono text-[11px] text-[#82B0B5] tracking-wider tabular-nums">
-                    {s.wordsCorrect} words
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
+        <p className="amber-text-dim text-[12px] uppercase tracking-[0.3em] mb-4">
+          &gt; final standings
+        </p>
+        <ul className="space-y-1.5 mb-10">
+          {result.standings.map((s) => {
+            const isSelf = s.desk === 1;
+            const isFirst = s.rank === 1;
+            const colorClass = isFirst
+              ? 'amber-text-bright amber-glow'
+              : isSelf
+              ? 'amber-text amber-glow'
+              : 'amber-text-dim';
+            return (
+              <li key={s.desk} className={`flex items-center gap-4 ${colorClass}`}>
+                <span className="text-base tabular-nums w-8">
+                  {s.rank}.
+                </span>
+                <span className="text-base tracking-wider flex-1">
+                  {s.citizenNumber}
+                  {isSelf && <span className="amber-text-dim ml-2">(you)</span>}
+                </span>
+                <span className="text-[12px] tabular-nums tracking-wider">
+                  {s.wordsCorrect} words
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+
+        <div className="border-t border-dashed border-[#FFB000]/40 mb-8" />
 
         {/* P.I. + commendation */}
-        <section className="rounded-lg border border-[#5BB8B0]/30 bg-[#04181B]/60 p-4 text-center">
-          <p className="font-ibm-mono text-[10px] text-[#5BB88C] tracking-[0.3em] uppercase mb-2">
-            Productivity Index Awarded
+        <p className="amber-text-dim text-[12px] uppercase tracking-[0.3em] mb-2">
+          &gt; productivity index awarded
+        </p>
+        <p className={`text-5xl mb-3 amber-glow-strong ${result.piAwarded > 0 ? 'amber-text-bright' : 'amber-text-dim'}`}>
+          {result.piAwarded > 0 ? `+${result.piAwarded}` : '0'}
+        </p>
+        {result.piCapped && (
+          <p className="amber-text text-[11px] uppercase tracking-[0.3em] mb-2">
+            &gt; daily solo allocation exhausted. practice without p.i. credit.
           </p>
-          <p className={`font-ibm-mono text-3xl tracking-[0.1em] mb-1 ${result.piAwarded > 0 ? 'text-sky-300' : 'text-slate-400'}`}>
-            {result.piAwarded > 0 ? `+${result.piAwarded}` : '0'}
+        )}
+        {tierLabel && (
+          <p className="amber-text-bright text-[12px] uppercase tracking-[0.4em] amber-glow mb-10">
+            {tierLabel}
           </p>
-          {result.piCapped && (
-            <p className="font-ibm-mono text-[10px] text-amber-300 tracking-wider mt-2">
-              Daily solo allocation exhausted. Practice continues without P.I. credit.
-            </p>
-          )}
-          {tierInfo && (
-            <p className={`font-ibm-mono text-[11px] tracking-[0.3em] uppercase mt-3 ${tierInfo.color}`}>
-              {tierInfo.label}
-            </p>
-          )}
-        </section>
+        )}
+
+        {!tierLabel && <div className="mb-10" />}
+
+        <div className="border-t border-dashed border-[#FFB000]/40 mb-8" />
 
         {/* Personal breakdown */}
         {breakdown && (
-          <section className="rounded-lg border border-[#5BB8B0]/30 bg-[#04181B]/60 p-4">
-            <p className="font-ibm-mono text-[10px] text-[#5BB88C] tracking-[0.3em] uppercase mb-3">
-              Your Performance
+          <>
+            <p className="amber-text-dim text-[12px] uppercase tracking-[0.3em] mb-4">
+              &gt; your performance
             </p>
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 font-ibm-mono text-[11px]">
-              <dt className="text-[#5BB88C]/80 tracking-wider">Inscribed</dt>
-              <dd className="text-[#D4E8E5] tracking-wider tabular-nums">
+            <dl className="grid grid-cols-[140px_1fr] gap-y-2 text-[13px] amber-text mb-10">
+              <dt className="amber-text-dim uppercase tracking-wider text-[11px]">Inscribed</dt>
+              <dd className="amber-text-bright tabular-nums">
                 {breakdown.wordsCorrect} / {breakdown.wordsTotal}
               </dd>
-              <dt className="text-[#5BB88C]/80 tracking-wider">Avg per word</dt>
-              <dd className="text-[#D4E8E5] tracking-wider tabular-nums">
+              <dt className="amber-text-dim uppercase tracking-wider text-[11px]">Avg / word</dt>
+              <dd className="amber-text-bright tabular-nums">
                 {breakdown.averagePerWordSec !== null
                   ? `${breakdown.averagePerWordSec.toFixed(1)}s`
                   : '—'}
               </dd>
               {breakdown.fastestWord && (
                 <>
-                  <dt className="text-[#5BB88C]/80 tracking-wider">Fastest</dt>
-                  <dd className="text-[#D4E8E5] tracking-wider">
+                  <dt className="amber-text-dim uppercase tracking-wider text-[11px]">Fastest</dt>
+                  <dd className="amber-text-bright tracking-wider">
                     "{breakdown.fastestWord.word}" · {breakdown.fastestWord.secs.toFixed(1)}s
                   </dd>
                 </>
               )}
               {breakdown.slowestWord && (
                 <>
-                  <dt className="text-[#5BB88C]/80 tracking-wider">Slowest</dt>
-                  <dd className="text-[#D4E8E5] tracking-wider">
+                  <dt className="amber-text-dim uppercase tracking-wider text-[11px]">Slowest</dt>
+                  <dd className="amber-text-bright tracking-wider">
                     "{breakdown.slowestWord.word}" · {breakdown.slowestWord.secs.toFixed(1)}s
                   </dd>
                 </>
               )}
             </dl>
-          </section>
+
+            <div className="border-t border-dashed border-[#FFB000]/40 mb-8" />
+          </>
         )}
 
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={backToLobby}
-            className="flex-1 px-5 py-3 rounded border border-[#5BB8B0]/40 bg-[#0A2A2E]/60 font-ibm-mono text-[11px] text-[#D4E8E5] hover:bg-[#0A2A2E] tracking-wider active:scale-[0.98]"
-          >
-            Return
-          </button>
-        </div>
+        {/* Return action */}
+        <button
+          type="button"
+          onClick={backToLobby}
+          className="amber-text-bright hover:amber-glow-strong text-base uppercase tracking-[0.3em]"
+        >
+          &gt; [ return ]
+        </button>
 
         {breakdown?.slowestWord && (
-          <p className="font-ibm-mono text-[9px] text-[#5BB88C]/60 tracking-wider italic text-center">
-            "Continue practicing '{breakdown.slowestWord.word}', Citizen."
+          <p className="amber-text-faint text-[11px] uppercase tracking-[0.3em] italic text-center mt-10">
+            "continue practicing '{breakdown.slowestWord.word}', citizen."
           </p>
         )}
       </div>

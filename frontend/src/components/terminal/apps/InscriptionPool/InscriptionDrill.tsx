@@ -8,6 +8,14 @@ import PausedOverlay from './PausedOverlay';
 import { useGhostTicker } from './useGhostTicker';
 import { connectSocket } from '../../../../utils/socket';
 
+// ─── InscriptionDrill ────────────────────────────────────────────
+//
+// Amber CRT / DOS typing-tutor register. Container is the
+// .crt-amber-monitor (black + amber scanlines). Layout reads top to
+// bottom as a single column of monospace text — no cards, no panels.
+// The student types into the input in the middle of the page; the
+// citizens being raced sit at the bottom in a single horizontal row.
+
 export default function InscriptionDrill() {
   const drill = useInscriptionStore((s) => s.drill);
   const screen = useInscriptionStore((s) => s.screen);
@@ -19,19 +27,23 @@ export default function InscriptionDrill() {
   const [now, setNow] = useState(() => Date.now());
   const [showAbortConfirm, setShowAbortConfirm] = useState(false);
 
-  // Mark in-drill so concern rate buffer + remediation modal defer
+  // Local stats for live WPM / accuracy display. We increment on every
+  // submission attempt here (rather than in the store) because they're
+  // display-only and don't affect server-side scoring.
+  const [attemptsTotal, setAttemptsTotal] = useState(0);
+  const [attemptsCorrect, setAttemptsCorrect] = useState(0);
+
   useEffect(() => {
     setInDrill(true);
     return () => setInDrill(false);
   }, [setInDrill]);
 
-  // Real-time clock tick
+  // Real-time clock tick — 250ms is plenty for a second-resolution timer.
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(id);
   }, []);
 
-  // Socket subscription for live keystroke + word-complete from other desks
   useEffect(() => {
     if (!drill?.drillId) return;
     const sock = connectSocket();
@@ -54,7 +66,6 @@ export default function InscriptionDrill() {
   );
   const { ghostProgress, ghostTyping } = useGhostTicker(ghostTickerInput);
 
-  // Merge live self progress with ghost progress
   const liveProgress = useMemo(() => {
     const map = new Map<number, { wordsCorrect: number; finishedAt_ms: number | null }>();
     if (drill) {
@@ -70,24 +81,18 @@ export default function InscriptionDrill() {
     return map;
   }, [ghostTyping]);
 
-  // Detect drill completion (all words submitted OR timer expired)
   const elapsedMs = drill
     ? now - drill.startedAt_ms - drill.totalPausedMs - (drill.pausedAt_ms ? now - drill.pausedAt_ms : 0)
     : 0;
   const remainingSec = drill ? Math.max(0, Math.ceil((drill.durationSec * 1000 - elapsedMs) / 1000)) : 0;
   const completedAllWords = drill ? drill.currentWordIdx >= drill.words.length : false;
 
-  // Auto-complete on time-up or all words inscribed (debounced)
   const completedRef = useRef(false);
   useEffect(() => {
     if (!drill || completedRef.current) return;
     if (completedAllWords || remainingSec === 0) {
       completedRef.current = true;
-      // Mark abandoned when the timer ran out before all words were finished.
-      // Pre-fix the expression read `abandoned: false && abandoned` which always
-      // resolved to `false`, so the backend never knew a drill timed out.
       const abandoned = !completedAllWords && remainingSec === 0;
-      // tiny delay so the final word feedback flashes
       const t = setTimeout(() => void completeDrill({ abandoned }), 600);
       return () => clearTimeout(t);
     }
@@ -102,36 +107,53 @@ export default function InscriptionDrill() {
     [drill],
   );
 
+  // Wraps submitWord to track local attempt + correct counts for the
+  // live WPM / accuracy display in DrillPromptCard.
+  const wrappedSubmit = useCallback(
+    async (text: string, errorsRecovered: number) => {
+      setAttemptsTotal((n) => n + 1);
+      const res = await submitWord(text, errorsRecovered);
+      if (res.correct) setAttemptsCorrect((n) => n + 1);
+      return res;
+    },
+    [submitWord],
+  );
+
   if (!drill) return null;
 
   const currentIdx = drill.currentWordIdx;
   const word = drill.words[currentIdx];
+  const wordsCompleted = drill.liveDeskState.get(1)?.wordsCorrect ?? 0;
+
+  const mmss = `${Math.floor(remainingSec / 60).toString().padStart(2, '0')}:${(remainingSec % 60).toString().padStart(2, '0')}`;
 
   return (
-    <div className="h-full overflow-y-auto px-6 py-5 ios-scroll crt-monitor-screen relative">
-      <div className="max-w-3xl mx-auto space-y-4 relative z-[1]">
-        {/* Header row */}
-        <div className="flex items-center justify-between">
-          <p className="font-ibm-mono text-[10px] text-[#5BB88C] tracking-[0.3em] uppercase">
-            Inscription Drill · Shift {drill.weekNumber}
+    <div className="crt-amber-monitor h-full overflow-y-auto ios-scroll">
+      <div className="max-w-2xl mx-auto px-8 py-8 pixel-mono">
+        {/* Title bar */}
+        <div className="flex items-baseline justify-between mb-2">
+          <p className="amber-text-bright text-[12px] uppercase tracking-[0.4em] amber-glow">
+            Productivity Demonstration
           </p>
-          <div className="flex items-center gap-3">
-            <span className="font-ibm-mono text-[10px] text-[#82B0B5] tracking-wider tabular-nums">
-              {Math.floor(remainingSec / 60).toString().padStart(2, '0')}:
-              {(remainingSec % 60).toString().padStart(2, '0')}
-            </span>
-            <span className="font-ibm-mono text-[10px] text-[#82B0B5] tracking-wider">
-              Words {currentIdx} / {drill.wordCount}
-            </span>
-            <button
-              type="button"
-              onClick={() => setShowAbortConfirm(true)}
-              className="font-ibm-mono text-[10px] text-rose-400/70 hover:text-rose-300 tracking-wider"
-            >
-              Withdraw
-            </button>
-          </div>
+          <p className="amber-text-bright text-base tabular-nums amber-glow">
+            {mmss}
+          </p>
         </div>
+        <div className="flex items-baseline justify-between mb-8">
+          <p className="amber-text-dim text-[12px] uppercase tracking-[0.3em]">
+            Shift {drill.weekNumber} &nbsp;·&nbsp; Word {currentIdx + 1} / {drill.wordCount}
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowAbortConfirm(true)}
+            className="amber-text-dim hover:amber-text text-[12px] uppercase tracking-[0.3em]"
+          >
+            [ withdraw ]
+          </button>
+        </div>
+
+        {/* Horizontal rule */}
+        <div className="border-t border-dashed border-[#FFB000]/40 mb-8" />
 
         {/* Prompt card */}
         {word && (
@@ -139,13 +161,20 @@ export default function InscriptionDrill() {
             word={word}
             wordIdx={currentIdx}
             lane={lane}
-            onSubmit={submitWord}
+            onSubmit={wrappedSubmit}
             onKeystrokeTick={handleKeystrokeTick}
             disabled={screen !== 'drill'}
+            drillStartedAt_ms={drill.startedAt_ms}
+            wordsCompleted={wordsCompleted}
+            totalAttempts={attemptsTotal}
+            totalCorrect={attemptsCorrect}
           />
         )}
 
-        {/* Live pool standings */}
+        {/* Horizontal rule */}
+        <div className="border-t border-dashed border-[#FFB000]/40 mt-8 mb-4" />
+
+        {/* Pool standings — bottom row */}
         <PoolStandings
           desks={drill.desks}
           liveProgress={liveProgress}
@@ -154,29 +183,30 @@ export default function InscriptionDrill() {
           selfDesk={1}
         />
 
-        <p className="font-ibm-mono text-[9px] text-[#5BB88C]/60 tracking-wider italic text-center">
-          "Inscribe accurately. The Ministry observes your diligence."
+        <p className="amber-text-faint text-[11px] uppercase tracking-[0.3em] italic text-center mt-10">
+          "the ministry observes your diligence."
         </p>
       </div>
 
       {screen === 'paused' && <PausedOverlay />}
 
       {showAbortConfirm && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="max-w-sm w-full mx-4 rounded-lg border-2 border-rose-500/40 bg-[#04181B] p-5 shadow-2xl">
-            <p className="font-ibm-mono text-[10px] text-rose-300 tracking-[0.3em] uppercase mb-2">
-              Withdraw Inscription
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 backdrop-blur-sm">
+          <div className="max-w-sm w-full mx-4 crt-amber-monitor p-6 pixel-mono border border-[#FFB000]/60">
+            <p className="amber-text-bright text-[12px] uppercase tracking-[0.3em] mb-3 amber-glow">
+              &gt; withdraw inscription?
             </p>
-            <p className="font-ibm-mono text-[11px] text-[#82B0B5] leading-relaxed mb-4">
-              Inscription will be recorded as incomplete. No Productivity Index awarded.
+            <p className="amber-text-dim text-[12px] leading-relaxed mb-6">
+              Inscription will be recorded as incomplete.
+              No Productivity Index awarded.
             </p>
-            <div className="flex gap-3">
+            <div className="flex gap-4">
               <button
                 type="button"
                 onClick={() => setShowAbortConfirm(false)}
-                className="flex-1 px-4 py-2 rounded border border-[#5BB8B0]/40 font-ibm-mono text-[10px] text-[#82B0B5] hover:text-[#D4E8E5] tracking-wider active:scale-[0.98]"
+                className="amber-text hover:amber-text-bright text-[12px] uppercase tracking-[0.3em]"
               >
-                Continue
+                [ continue ]
               </button>
               <button
                 type="button"
@@ -185,9 +215,9 @@ export default function InscriptionDrill() {
                   completedRef.current = true;
                   void completeDrill({ abandoned: true });
                 }}
-                className="flex-1 px-4 py-2 rounded border border-rose-500/40 bg-rose-500/10 font-ibm-mono text-[10px] text-rose-300 hover:bg-rose-500/20 tracking-wider active:scale-[0.98]"
+                className="amber-text-dim hover:amber-text text-[12px] uppercase tracking-[0.3em] ml-auto"
               >
-                Withdraw
+                [ withdraw ]
               </button>
             </div>
           </div>

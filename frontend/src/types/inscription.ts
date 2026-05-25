@@ -11,6 +11,13 @@ export interface InscriptionWord {
   translationZhTw: string | null;
   exampleSentence: string;
   sourceWeek: number;
+  /**
+   * Optional sentence prompt. When present, the student types this full
+   * sentence (which embeds `word`) instead of the word in isolation.
+   * Hybrid drills produce a mix: first prompts are word-only (warm-up),
+   * later prompts carry sentences using the same words.
+   */
+  sentence?: string;
 }
 
 export interface DrillDesk {

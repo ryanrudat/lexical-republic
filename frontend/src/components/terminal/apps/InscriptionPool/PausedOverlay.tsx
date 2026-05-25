@@ -1,16 +1,16 @@
 export default function PausedOverlay() {
   return (
-    <div className="absolute inset-0 z-[40] flex items-center justify-center bg-black/80 backdrop-blur-sm pointer-events-auto">
-      <div className="max-w-md w-full mx-4 rounded-lg border-2 border-amber-500/50 bg-[#04181B] p-6 shadow-2xl text-center">
-        <p className="font-ibm-mono text-[11px] text-amber-300 tracking-[0.4em] uppercase mb-3">
-          ◇ Paused by Administrator ◇
+    <div className="absolute inset-0 z-[40] flex items-center justify-center bg-black/90 backdrop-blur-sm pointer-events-auto">
+      <div className="crt-amber-monitor max-w-md w-full mx-4 px-8 py-8 pixel-mono border border-[#FFB000]/60 text-center">
+        <p className="amber-text-bright text-[12px] uppercase tracking-[0.4em] amber-glow mb-4">
+          ◇ paused by administrator ◇
         </p>
-        <h2 className="font-ibm-mono text-lg text-[#D4E8E5] tracking-[0.15em] uppercase mb-2">
+        <h2 className="amber-text-bright text-xl uppercase tracking-[0.2em] amber-glow-strong mb-4">
           Inscription Paused
         </h2>
-        <p className="font-ibm-mono text-[11px] text-[#82B0B5] leading-relaxed">
-          Inscription Drill paused for administrative review.<br />
-          Resume imminent, Citizen.
+        <p className="amber-text-dim text-[12px] uppercase tracking-[0.3em] leading-relaxed">
+          drill paused for administrative review.<br />
+          resume imminent, citizen.
         </p>
       </div>
     </div>

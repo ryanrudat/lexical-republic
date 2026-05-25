@@ -776,6 +776,83 @@ body.view-terminal {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ─── Amber CRT (DOS typing-tutor aesthetic) ────────────────── */
+/* Used by the Inscription Pool — Mavis-Beacon-era amber phosphor
+   look. Black background, amber text, scanline overlay. Distinct
+   from .crt-monitor-screen (cyan terminal) and the warm Party UI.
+   The horror is that the Party still issues 1987 terminals. */
+
+.crt-amber-monitor {
+  background: #0A0A05;
+  position: relative;
+  isolation: isolate;
+}
+
+.crt-amber-monitor::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(ellipse 90% 65% at 50% 45%, rgba(255, 176, 0, 0.05) 0%, transparent 70%);
+}
+
+.crt-amber-monitor::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.18) 3px,
+    transparent 4px
+  );
+}
+
+.crt-amber-monitor > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Amber phosphor palette */
+.amber-text { color: #FFB000; }
+.amber-text-bright { color: #FFD060; }
+.amber-text-dim { color: #B07A00; }
+.amber-text-faint { color: #704D00; }
+
+.amber-glow {
+  text-shadow: 0 0 6px rgba(255, 176, 0, 0.55);
+}
+
+.amber-glow-strong {
+  text-shadow: 0 0 10px rgba(255, 176, 0, 0.85), 0 0 2px rgba(255, 208, 96, 0.9);
+}
+
+/* Pixelated text rendering — disables anti-aliasing so monospace
+   characters look chunkier and more like a hardware terminal. */
+.pixel-mono {
+  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: grayscale;
+  font-smooth: never;
+  text-rendering: geometricPrecision;
+  letter-spacing: 0.02em;
+}
+
+/* Soft blink for the input caret only — not a full element flash. */
+.amber-caret::after {
+  content: '_';
+  color: #FFB000;
+  animation: amber-caret-blink 1s steps(2) infinite;
+}
+
+@keyframes amber-caret-blink {
+  50% { opacity: 0; }
+}
+
 /* ─── [ ].edited tile materialize ────────────────────────────── */
 /* Plays once on the first W4 desktop visit — the tile stutters in
    like a download that failed mid-install, then settles in its

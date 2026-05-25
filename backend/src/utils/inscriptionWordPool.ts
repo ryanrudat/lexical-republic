@@ -2,6 +2,7 @@ import { prisma } from './prisma';
 import { getWeekConfig } from '../data/week-configs';
 import { getRouteWeeks } from '../data/narrative-routes';
 import type { PoolStrategy } from './inscriptionConstants';
+import { pickSentences } from './inscriptionSentencePool';
 
 export interface InscriptionWord {
   word: string;
@@ -15,6 +16,13 @@ export interface InscriptionWord {
   exampleSentence: string;
   /** Source week the word was introduced (for tier highlighting). */
   sourceWeek: number;
+  /**
+   * Optional sentence prompt. When present, the student types this full
+   * sentence (which embeds `word`) instead of typing the word in isolation.
+   * Hybrid drills produce a mix: first prompts are word-only (warm-up),
+   * later prompts carry sentences using the same words.
+   */
+  sentence?: string;
 }
 
 interface PickWordsOpts {
@@ -181,6 +189,82 @@ export async function pickInscriptionWords(opts: PickWordsOpts): Promise<Inscrip
   // 9. Shuffle the final queue
   shuffle(result);
   return result.slice(0, count);
+}
+
+/**
+ * Hybrid picker: produces a mixed list of word and sentence prompts.
+ *
+ * Returns `count` total prompts. The first `wordsBeforeSentences` items
+ * are word-only (warm-up). Remaining slots are filled with sentence
+ * prompts (drawn from inscriptionSentencePool) — each sentence ALSO
+ * carries dictionary metadata for the embedded target word, so frontend
+ * lane handling (Mandarin gloss, IPA, etc.) still works.
+ *
+ * Sentences are preferentially chosen to use words that just appeared
+ * in the warm-up rounds, reinforcing the just-practiced spelling in
+ * immediate context.
+ */
+export async function pickInscriptionPrompts(opts: PickWordsOpts & {
+  /** How many of the `count` total prompts should be sentences. */
+  sentenceCount?: number;
+  /** Where in the queue the sentences start (defaults to after warm-up words). */
+  wordsBeforeSentences?: number;
+}): Promise<InscriptionWord[]> {
+  const sentenceCount = Math.max(0, Math.min(opts.sentenceCount ?? 0, opts.count));
+  const warmUpCount = opts.count - sentenceCount;
+
+  // Pick warm-up words via the existing single-word path
+  const warmUpWords: InscriptionWord[] = warmUpCount > 0
+    ? await pickInscriptionWords({ ...opts, count: warmUpCount })
+    : [];
+
+  if (sentenceCount === 0) return warmUpWords;
+
+  // Pick sentences — prefer ones using a warm-up word
+  const sentences = pickSentences({
+    weekNumber: opts.weekNumber,
+    count: sentenceCount,
+    preferredWords: warmUpWords.map((w) => w.word),
+  });
+
+  if (sentences.length === 0) return warmUpWords;
+
+  // Look up dictionary metadata for the sentence target words
+  const targetWords = Array.from(new Set(sentences.map((s) => s.targetWord)));
+  const dictRows = await prisma.dictionaryWord.findMany({
+    where: { word: { in: targetWords } },
+    select: {
+      word: true,
+      phonetic: true,
+      definition: true,
+      exampleSentence: true,
+      translationZhTw: true,
+    },
+  });
+  const dictByWord = new Map(dictRows.map((r) => [r.word.toLowerCase(), r]));
+
+  // Also try to inherit metadata from any warm-up word that matches
+  // (saves a lookup miss for words not yet in DictionaryWord — W4's
+  // target words are not seeded there yet, per backlog).
+  const warmUpByWord = new Map(warmUpWords.map((w) => [w.word.toLowerCase(), w]));
+
+  const sentencePrompts: InscriptionWord[] = sentences.map((s) => {
+    const key = s.targetWord.toLowerCase();
+    const dict = dictByWord.get(key);
+    const fallback = warmUpByWord.get(key);
+    return {
+      word: s.targetWord,
+      definition: dict?.definition ?? fallback?.definition ?? s.targetWord,
+      phonetic: dict?.phonetic ?? fallback?.phonetic ?? '',
+      translationZhTw: dict?.translationZhTw ?? fallback?.translationZhTw ?? null,
+      exampleSentence: dict?.exampleSentence ?? fallback?.exampleSentence ?? s.sentence,
+      sourceWeek: s.sourceWeek,
+      sentence: s.sentence,
+    };
+  });
+
+  // Concat in the order the player sees them: warm-up words then sentences
+  return [...warmUpWords, ...sentencePrompts];
 }
 
 function wordsForWeek(weekNumber: number): string[] {

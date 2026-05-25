@@ -6,6 +6,12 @@ import { useSeasonStore } from '../../../../stores/seasonStore';
 import RollOfDistinction from './RollOfDistinction';
 import ShiftGateModal from './ShiftGateModal';
 
+// ─── InscriptionLobby ────────────────────────────────────────────
+//
+// Amber CRT / DOS-typing-tutor register. Pre-drill screen with
+// citizen identity, cooldown + solo-cap status, and the mode picker.
+// Lives inside .crt-amber-monitor; everything is pixel-mono on black.
+
 interface Props {
   classId: string | null;
 }
@@ -24,7 +30,6 @@ export default function InscriptionLobby({ classId }: Props) {
   const legacyWeek = useShiftStore((s) => s.currentWeek);
   const weeks = useSeasonStore((s) => s.weeks);
 
-  // Resolve current week: prefer active shift queue, then legacy shift, then highest unlocked
   const inActiveShift = !!weekConfig;
   const inferredWeek =
     weekConfig?.weekNumber ??
@@ -62,98 +67,108 @@ export default function InscriptionLobby({ classId }: Props) {
 
   const cooldownLocked = cooldownRemainingSec > 0;
   const soloCapped = soloUsedToday >= soloCap;
+  const cooldownDisplay = cooldownLocked
+    ? `${Math.floor(cooldownRemainingSec / 60)}:${String(cooldownRemainingSec % 60).padStart(2, '0')}`
+    : 'READY';
 
   return (
-    <div className="h-full overflow-y-auto px-6 py-6 ios-scroll crt-monitor-screen">
-      <div className="max-w-3xl mx-auto space-y-6 relative z-[1]">
-        {/* Header */}
-        <header className="text-center mb-2">
-          <p className="font-ibm-mono text-[10px] text-[#5BB88C] tracking-[0.4em] uppercase mb-2">
-            Ministry of Civic Compliance · Lexical Division
-          </p>
-          <h1 className="font-ibm-mono text-2xl text-[#D4E8E5] tracking-[0.2em] uppercase">
-            The Inscription Pool
-          </h1>
-          <p className="font-ibm-mono text-[10px] text-[#82B0B5] tracking-wider mt-2">
-            Demonstrate Lexical Compliance, {citizenNumber || 'Citizen'}.
-          </p>
-        </header>
+    <div className="crt-amber-monitor h-full overflow-y-auto ios-scroll">
+      <div className="max-w-2xl mx-auto px-8 py-10 pixel-mono">
+        {/* Title */}
+        <p className="amber-text-bright text-[12px] uppercase tracking-[0.4em] text-center mb-1 amber-glow">
+          Ministry of Civic Compliance
+        </p>
+        <p className="amber-text-dim text-[11px] uppercase tracking-[0.3em] text-center mb-6">
+          · Lexical Division ·
+        </p>
+
+        <h1 className="amber-text-bright text-3xl tracking-[0.2em] uppercase text-center mb-3 amber-glow-strong">
+          The Inscription Pool
+        </h1>
+        <p className="amber-text-dim text-[12px] uppercase tracking-[0.3em] text-center mb-10">
+          demonstrate lexical compliance
+        </p>
+
+        <div className="border-t border-dashed border-[#FFB000]/40 mb-8" />
 
         {/* Status strip */}
-        <div className="rounded-lg border border-[#5BB8B0]/30 bg-[#04181B]/60 p-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
+        <div className="grid grid-cols-3 gap-6 mb-10 text-center">
           <div>
-            <p className="font-ibm-mono text-[9px] text-[#5BB88C] tracking-[0.3em] uppercase mb-1">
+            <p className="amber-text-dim text-[10px] uppercase tracking-[0.3em] mb-2">
               Citizen
             </p>
-            <p className="font-ibm-mono text-base text-[#D4E8E5] tracking-wider">
+            <p className="amber-text-bright text-base tracking-wider amber-glow">
               {citizenNumber || 'C-????'}
             </p>
           </div>
           <div>
-            <p className="font-ibm-mono text-[9px] text-[#5BB88C] tracking-[0.3em] uppercase mb-1">
+            <p className="amber-text-dim text-[10px] uppercase tracking-[0.3em] mb-2">
               Cooldown
             </p>
-            <p className="font-ibm-mono text-base text-[#D4E8E5] tracking-wider tabular-nums">
-              {cooldownLocked
-                ? `${Math.floor(cooldownRemainingSec / 60)}:${String(cooldownRemainingSec % 60).padStart(2, '0')}`
-                : 'Ready'}
+            <p className={`text-base tracking-wider tabular-nums amber-glow ${cooldownLocked ? 'amber-text' : 'amber-text-bright'}`}>
+              {cooldownDisplay}
             </p>
           </div>
           <div>
-            <p className="font-ibm-mono text-[9px] text-[#5BB88C] tracking-[0.3em] uppercase mb-1">
+            <p className="amber-text-dim text-[10px] uppercase tracking-[0.3em] mb-2">
               Solo Allocation
             </p>
-            <p className={`font-ibm-mono text-base tracking-wider tabular-nums ${soloCapped ? 'text-amber-300' : 'text-[#D4E8E5]'}`}>
+            <p className={`text-base tracking-wider tabular-nums amber-glow ${soloCapped ? 'amber-text' : 'amber-text-bright'}`}>
               {soloUsedToday} / {soloCap}
             </p>
           </div>
         </div>
 
-        {/* Mode picker */}
-        <section className="rounded-lg border border-[#5BB8B0]/30 bg-[#0A2A2E]/50 p-5">
-          <p className="font-ibm-mono text-[10px] text-[#5BB88C] tracking-[0.3em] uppercase mb-4">
-            Productivity Allocation · Period {inferredWeek}
-          </p>
+        <div className="border-t border-dashed border-[#FFB000]/40 mb-8" />
 
-          {error && (
-            <div className="mb-4 px-3 py-2 rounded border border-rose-500/40 bg-rose-500/10 font-ibm-mono text-[11px] text-rose-300">
-              {error}
-            </div>
-          )}
+        {/* Period label */}
+        <p className="amber-text-dim text-[12px] uppercase tracking-[0.3em] mb-4">
+          &gt; productivity allocation · period {inferredWeek}
+        </p>
 
-          <div className="grid gap-3">
-            <ModeButton
-              title="Open Pool"
-              description="Race ghosts of recent classmates. Counts for full P.I. + Roll of Distinction."
-              tier="amber"
-              disabled={cooldownLocked || loading}
-              onClick={() => handleStart('open')}
-            />
-            <ModeButton
-              title="Solo Practice"
-              description={
-                soloCapped
-                  ? 'Allocation exhausted for today. Practice continues without P.I. credit.'
-                  : 'Race against your past-best ghost. Half P.I. weight.'
-              }
-              tier="sky"
-              disabled={cooldownLocked || loading}
-              onClick={() => handleStart('solo')}
-            />
+        {/* Error banner */}
+        {error && (
+          <div className="mb-6 px-4 py-3 border border-red-500/60 text-red-400 text-[12px] tracking-wider">
+            &gt; {error}
           </div>
+        )}
 
-          {cooldownLocked && (
-            <p className="font-ibm-mono text-[10px] text-amber-300 tracking-wider mt-3 text-center">
-              Productivity Allocation cooldown — next drill in {cooldownRemainingSec}s.
-            </p>
-          )}
-        </section>
+        {/* Mode picker */}
+        <div className="space-y-6 mb-10">
+          <ModeOption
+            title="Open Pool"
+            description="Race ghosts of recent classmates. Counts for full P.I. + Roll of Distinction."
+            disabled={cooldownLocked || loading}
+            onClick={() => handleStart('open')}
+          />
+          <ModeOption
+            title="Solo Practice"
+            description={
+              soloCapped
+                ? 'Allocation exhausted for today. Practice continues without P.I. credit.'
+                : 'Race against your past-best ghost. Half P.I. weight.'
+            }
+            disabled={cooldownLocked || loading}
+            onClick={() => handleStart('solo')}
+          />
+        </div>
+
+        {cooldownLocked && (
+          <p className="amber-text-dim text-[11px] uppercase tracking-[0.3em] text-center mb-8">
+            &gt; cooldown — next drill in {cooldownRemainingSec}s
+          </p>
+        )}
 
         {/* Roll of Distinction */}
-        {classId && <RollOfDistinction classId={classId} />}
+        {classId && (
+          <>
+            <div className="border-t border-dashed border-[#FFB000]/40 mb-8" />
+            <RollOfDistinction classId={classId} />
+          </>
+        )}
 
-        <p className="font-ibm-mono text-[9px] text-[#5BB88C]/70 tracking-wider text-center italic">
-          "Citizens shall demonstrate lexical compliance through accurate inscription."
+        <p className="amber-text-faint text-[11px] uppercase tracking-[0.3em] italic text-center mt-10">
+          "citizens shall demonstrate lexical compliance through accurate inscription."
         </p>
       </div>
 
@@ -174,30 +189,27 @@ export default function InscriptionLobby({ classId }: Props) {
   );
 }
 
-interface ModeButtonProps {
+interface ModeOptionProps {
   title: string;
   description: string;
-  tier: 'sky' | 'amber';
   disabled: boolean;
   onClick: () => void;
 }
 
-function ModeButton({ title, description, tier, disabled, onClick }: ModeButtonProps) {
-  const tierClasses =
-    tier === 'amber'
-      ? 'border-amber-500/40 hover:border-amber-300 active:bg-amber-500/15'
-      : 'border-sky-500/40 hover:border-sky-300 active:bg-sky-500/15';
+function ModeOption({ title, description, disabled, onClick }: ModeOptionProps) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`text-left rounded-md border ${tierClasses} bg-[#04181B]/40 px-4 py-3 transition-colors disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.98]`}
+      className="block w-full text-left disabled:opacity-30 group"
     >
-      <p className="font-ibm-mono text-sm text-[#D4E8E5] tracking-wider uppercase mb-1">
-        {title}
+      <p className="amber-text-bright text-lg tracking-[0.15em] uppercase mb-1 group-hover:amber-glow-strong group-disabled:no-underline">
+        &gt; [ {title} ]
       </p>
-      <p className="font-ibm-mono text-[11px] text-[#82B0B5] leading-relaxed">{description}</p>
+      <p className="amber-text-dim text-[12px] leading-relaxed ml-4">
+        {description}
+      </p>
     </button>
   );
 }

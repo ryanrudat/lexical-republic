@@ -1,15 +1,36 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { InscriptionWord } from '../../../../types/inscription';
 
+// ─── DrillPromptCard ────────────────────────────────────────────
+//
+// Amber CRT / Mavis-Beacon-era register. The prompt sits above the
+// student's input on the same chunky monospace page. No card chrome,
+// no rounded corners — just amber text on black with subtle scanlines
+// inherited from the parent .crt-amber-monitor container.
+//
+// Lane handling is unchanged from the prior implementation: Lane 1
+// pre-fills the first letter + offers Mandarin gloss + reveal-next-
+// letter hint. Lane 2/3 are unprefixed. Scoring + lifecycle hooks
+// (onSubmit, onKeystrokeTick) are also unchanged — only the visual
+// register and the local progress display are new.
+
 interface Props {
   word: InscriptionWord;
   wordIdx: number;
   lane: number;
   /** Returns true when answer was correct (parent advances) */
   onSubmit: (text: string, errorsRecovered: number) => Promise<{ correct: boolean }>;
-  /** Fired with `true` when user is actively typing, `false` when they pause. Edge-triggered. */
+  /** Fired with `true` when user is actively typing, `false` when they pause. */
   onKeystrokeTick?: (typing: boolean) => void;
   disabled?: boolean;
+  /** Drill start timestamp — used to compute live WPM display. */
+  drillStartedAt_ms: number | null;
+  /** Running count of words completed so far in the drill (for WPM math). */
+  wordsCompleted: number;
+  /** Running count of total attempts in the drill (for accuracy math). */
+  totalAttempts: number;
+  /** Running count of correct attempts in the drill. */
+  totalCorrect: number;
 }
 
 const KEYSTROKE_IDLE_MS = 800;
@@ -21,13 +42,22 @@ export default function DrillPromptCard({
   onSubmit,
   onKeystrokeTick,
   disabled,
+  drillStartedAt_ms,
+  wordsCompleted,
+  totalAttempts,
+  totalCorrect,
 }: Props) {
-  // Lane 1 gets the first letter pre-filled
-  const prefix = lane === 1 && word.word.length > 0 ? word.word[0] : '';
+  // Sentence prompts type the full sentence; word prompts type the word.
+  const target = word.sentence ?? word.word;
+  const isSentence = !!word.sentence;
+  // Lane 1 prefix help applies to word prompts only — sentences are
+  // already long enough without auto-typing the first character.
+  const prefix = !isSentence && lane === 1 && word.word.length > 0 ? word.word[0] : '';
   const [text, setText] = useState(prefix);
   const [errorsRecovered, setErrorsRecovered] = useState(0);
   const [feedback, setFeedback] = useState<'correct' | 'incorrect' | null>(null);
   const [hintsUsed, setHintsUsed] = useState(0);
+  const [showMandarin, setShowMandarin] = useState(false);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -38,19 +68,19 @@ export default function DrillPromptCard({
     setFeedback(null);
     setErrorsRecovered(0);
     setHintsUsed(0);
+    setShowMandarin(false);
     requestAnimationFrame(() => inputRef.current?.focus());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wordIdx]);
 
   const playAudio = useCallback(() => {
-    // Use Web Speech API for audio fallback when no audio asset
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-    const utter = new SpeechSynthesisUtterance(word.word);
+    const utter = new SpeechSynthesisUtterance(target);
     utter.lang = 'en-US';
     utter.rate = 0.9;
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utter);
-  }, [word.word]);
+  }, [target]);
 
   const triggerKeystrokeTick = useCallback(
     (typing: boolean) => {
@@ -79,7 +109,6 @@ export default function DrillPromptCard({
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (disabled || feedback === 'correct') return;
     const val = e.target.value;
-    // Lane 1 enforced prefix
     if (lane === 1 && !val.toLowerCase().startsWith(prefix.toLowerCase())) {
       setText(prefix + val.replace(new RegExp(`^${prefix}`, 'i'), ''));
       return;
@@ -92,7 +121,12 @@ export default function DrillPromptCard({
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (disabled || feedback === 'correct') return;
-    const submitted = text.trim();
+    // Sentence prompts compare on the full sentence; trim trailing spaces
+    // and normalize internal whitespace so the student doesn't fail for
+    // extra spacing. Punctuation must still match — students learn it.
+    const submitted = isSentence
+      ? text.trim().replace(/\s+/g, ' ')
+      : text.trim();
     if (submitted.length === 0) return;
     const res = await onSubmit(submitted, errorsRecovered);
     if (res.correct) {
@@ -111,60 +145,111 @@ export default function DrillPromptCard({
     inputRef.current?.focus();
   };
 
-  return (
-    <form
-      onSubmit={handleSubmit}
-      className="rounded-lg border border-[#5BB8B0]/30 bg-[#0A2A2E]/40 p-5 shadow-inner relative"
-    >
-      <div className="flex items-center justify-between mb-3">
-        <p className="font-ibm-mono text-[10px] text-[#5BB88C] tracking-[0.3em] uppercase">
-          Inscribe This Term
-        </p>
-        <button
-          type="button"
-          onClick={playAudio}
-          className="font-ibm-mono text-[10px] text-[#82B0B5] hover:text-[#5BB8B0] tracking-wider transition-colors"
-          aria-label="Play audio"
-        >
-          ◀▶ AUDIO
-        </button>
-      </div>
+  // Live WPM display. Conservative: words-per-minute is typed-words /
+  // elapsed-minutes. Avoids divide-by-zero in the first few seconds.
+  const wpm = (() => {
+    if (!drillStartedAt_ms) return 0;
+    const elapsedMin = (Date.now() - drillStartedAt_ms) / 60000;
+    if (elapsedMin < 0.05) return 0;
+    return Math.round(wordsCompleted / elapsedMin);
+  })();
+  const acc = totalAttempts === 0 ? 100 : Math.round((totalCorrect / totalAttempts) * 100);
 
-      {/* Lane-aware prompt */}
-      <div className="mb-4 space-y-1.5">
-        {lane === 1 && word.translationZhTw && (
-          <div className="flex items-center gap-2">
-            <span className="font-ibm-mono text-[9px] text-[#5BB88C] tracking-[0.2em] uppercase">
-              中文
-            </span>
-            <span className="text-base text-[#D4E8E5]">{word.translationZhTw}</span>
-            {word.phonetic && (
-              <span className="text-xs text-[#82B0B5] font-mono ml-2">[{word.phonetic}]</span>
-            )}
-          </div>
-        )}
-        <p className="text-sm text-[#D4E8E5] leading-relaxed">
-          {lane === 3 || lane === 2 ? word.definition : word.definition}
-        </p>
-        {lane === 2 && word.translationZhTw && (
+  const inputBorderColor =
+    feedback === 'correct'
+      ? '#7AD17A'
+      : feedback === 'incorrect'
+      ? '#E84A4A'
+      : '#FFB000';
+
+  return (
+    <form onSubmit={handleSubmit} className="pixel-mono">
+      {/* Lane 1 audio + Mandarin row (top right) */}
+      {(lane === 1 || lane === 2) && (
+        <div className="flex items-center justify-end gap-4 mb-4 text-[12px] amber-text-dim">
           <button
             type="button"
-            onClick={(e) => {
-              const el = e.currentTarget.nextElementSibling as HTMLElement | null;
-              if (el) el.classList.toggle('hidden');
-            }}
-            className="font-ibm-mono text-[10px] text-[#5BB88C] hover:text-[#82E8D0] tracking-[0.2em] uppercase mt-1"
+            onClick={playAudio}
+            className="amber-text-dim hover:amber-text uppercase tracking-wider"
+            aria-label="Play audio"
           >
-            Tap for 中文
+            [ audio ]
           </button>
-        )}
-        {lane === 2 && word.translationZhTw && (
-          <p className="hidden text-xs text-[#D4E8E5]">{word.translationZhTw}</p>
-        )}
-      </div>
+          {word.translationZhTw && (
+            <button
+              type="button"
+              onClick={() => setShowMandarin((v) => !v)}
+              className="amber-text-dim hover:amber-text uppercase tracking-wider"
+            >
+              [ {showMandarin ? '隱藏 中文' : '顯示 中文'} ]
+            </button>
+          )}
+        </div>
+      )}
 
-      {/* Input field */}
-      <div className="relative">
+      {/* Mandarin gloss — Lane 1 always shown, Lane 2 toggleable */}
+      {((lane === 1) || (lane === 2 && showMandarin)) && word.translationZhTw && (
+        <div className="mb-4 amber-text-bright text-lg">
+          中文 &nbsp;&nbsp; {word.translationZhTw}
+          {word.phonetic && (
+            <span className="amber-text-dim text-sm ml-3">[{word.phonetic}]</span>
+          )}
+        </div>
+      )}
+
+      {/* Definition prompt (word mode shows definition; sentence mode
+          shows a small "uses [word]" hint instead so students know which
+          target word the sentence is teaching). */}
+      {!isSentence ? (
+        <>
+          <p className="amber-text-dim text-[12px] uppercase tracking-[0.3em] mb-2">
+            Definition
+          </p>
+          <p className="amber-text text-lg leading-snug mb-8 amber-glow">
+            {word.definition}
+          </p>
+        </>
+      ) : (
+        <>
+          <p className="amber-text-dim text-[12px] uppercase tracking-[0.3em] mb-2">
+            Sentence Drill &nbsp;·&nbsp; uses "{word.word}"
+          </p>
+          <p className="amber-text text-[13px] leading-snug mb-8 amber-text-dim">
+            {word.definition}
+          </p>
+        </>
+      )}
+
+      {/* TYPE THIS — sentence prompts use a smaller, multi-line layout
+          so longer sentences wrap cleanly without scrolling. Word prompts
+          stay big + caps for emphasis on the spelling. */}
+      <p className="amber-text-dim text-[12px] uppercase tracking-[0.3em] mb-2">
+        Type This
+      </p>
+      {isSentence ? (
+        <p className="amber-text-bright text-xl leading-relaxed mb-8 amber-glow">
+          &gt; {target}
+        </p>
+      ) : (
+        <p className="amber-text-bright text-3xl tracking-[0.15em] mb-8 amber-glow-strong">
+          &gt; {word.word.toUpperCase()}
+        </p>
+      )}
+
+      {/* YOU — the input */}
+      <p className="amber-text-dim text-[12px] uppercase tracking-[0.3em] mb-2">
+        You
+      </p>
+      <div
+        className="mb-6 flex items-center"
+        style={{
+          borderTop: `1px dashed ${inputBorderColor}`,
+          borderBottom: `1px dashed ${inputBorderColor}`,
+          paddingTop: '12px',
+          paddingBottom: '12px',
+        }}
+      >
+        <span className="amber-text text-2xl mr-3 amber-glow">&gt;</span>
         <input
           ref={inputRef}
           type="text"
@@ -177,33 +262,34 @@ export default function DrillPromptCard({
           data-gramm="false"
           aria-autocomplete="none"
           disabled={disabled || feedback === 'correct'}
-          className={`w-full font-ibm-mono text-xl bg-[#04181B] border-2 rounded-md px-4 py-3 text-[#D4E8E5] tracking-wider outline-none transition-colors ${
-            feedback === 'correct'
-              ? 'border-emerald-400 text-emerald-200'
-              : feedback === 'incorrect'
-                ? 'border-rose-400 animate-pulse'
-                : 'border-[#5BB8B0]/40 focus:border-[#5BB8B0]'
-          }`}
-          placeholder={lane === 1 ? `${prefix}_____` : '_______'}
+          className="pixel-mono flex-1 bg-transparent border-none outline-none text-2xl amber-text amber-glow tracking-[0.1em] disabled:opacity-70"
+          style={{
+            caretColor: '#FFB000',
+          }}
         />
+      </div>
+
+      {/* Stats row */}
+      <div className="flex items-center gap-8 mb-2 amber-text-dim text-[12px] uppercase tracking-[0.3em]">
+        <span>WPM <span className="amber-text-bright ml-2 tabular-nums">{wpm}</span></span>
+        <span>ACC <span className="amber-text-bright ml-2 tabular-nums">{acc}%</span></span>
         <button
           type="submit"
-          className="absolute top-1/2 -translate-y-1/2 right-3 font-ibm-mono text-[10px] text-[#82B0B5] hover:text-[#5BB8B0] tracking-wider px-2 py-1 active:scale-95"
-          aria-label="Submit inscription"
+          className="ml-auto amber-text-dim hover:amber-text uppercase tracking-[0.3em]"
         >
-          ENTER ↵
+          [ enter ↵ ]
         </button>
       </div>
 
-      {/* Lane 1 hint button */}
-      {lane === 1 && (
+      {/* Lane 1 hint — word prompts only. Sentences don't get hint help. */}
+      {lane === 1 && !isSentence && (
         <button
           type="button"
           onClick={handleHint}
           disabled={hintsUsed >= word.word.length - 1 || feedback === 'correct'}
-          className="mt-3 font-ibm-mono text-[10px] text-[#C9944A] hover:text-[#E6B470] tracking-wider px-2 py-1 active:scale-95 disabled:opacity-30"
+          className="mt-4 amber-text-dim hover:amber-text-bright text-[12px] uppercase tracking-[0.3em] disabled:opacity-30"
         >
-          Reveal next letter (–50%)
+          [ reveal next letter (-50%) ]
         </button>
       )}
     </form>
