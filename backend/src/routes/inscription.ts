@@ -311,7 +311,14 @@ router.post('/drills/:id/word', async (req, res) => {
     const submitted = isSentencePrompt
       ? normalizeSentence(finalText)
       : normalizeWord(finalText);
-    const correct = expected.length > 0 && expected === submitted;
+    // Backward-compat: if the student's frontend bundle is stale (deploy
+    // window) and only knows about word prompts, accept the bare target
+    // word as a correct submission for sentence prompts so the deploy
+    // doesn't penalize in-flight drills.
+    const stalefrontendFallback =
+      isSentencePrompt && normalizeWord(prompt.word) === normalizeWord(finalText);
+    const correct =
+      expected.length > 0 && (expected === submitted || stalefrontendFallback);
 
     const myRec = drill.recordings[0];
     if (!myRec) {
