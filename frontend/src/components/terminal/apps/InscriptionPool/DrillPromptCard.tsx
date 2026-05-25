@@ -122,13 +122,10 @@ export default function DrillPromptCard({
       if (disabled || submittingRef.current) return;
       const raw = e.target.value;
 
-      // Don't allow typing past the target length — silently truncate.
-      const newInput = raw.length > target.length ? raw.slice(0, target.length) : raw;
-
       // Lane 1: enforce prefix at the start (can't backspace past it).
-      const safeInput = lane === 1 && prefix && !newInput.toLowerCase().startsWith(prefix.toLowerCase())
-        ? prefix + newInput.replace(new RegExp(`^${prefix}`, 'i'), '')
-        : newInput;
+      const safeInput = lane === 1 && prefix && !raw.toLowerCase().startsWith(prefix.toLowerCase())
+        ? prefix + raw.replace(new RegExp(`^${prefix}`, 'i'), '')
+        : raw;
 
       const prevLen = prevInputLengthRef.current;
       const newLen = safeInput.length;
@@ -137,9 +134,10 @@ export default function DrillPromptCard({
         // Backspace — count as error recovery (the student is correcting a mistake)
         setErrorsRecovered((n) => n + (prevLen - newLen));
       } else if (newLen > prevLen) {
-        // New characters typed — track correctness per char
+        // New characters typed — track correctness per char. Overflow chars
+        // (past target length) count as wrong.
         for (let i = prevLen; i < newLen; i++) {
-          const isCorrect = safeInput[i] === target[i];
+          const isCorrect = i < target.length && safeInput[i] === target[i];
           onCharTyped(isCorrect);
         }
       }
@@ -247,14 +245,16 @@ export default function DrillPromptCard({
         </>
       )}
 
-      {/* Per-character display — the heart of the new design.
-          Each cell shows the target char with status-based coloring:
+      {/* Per-character display.
             • correctly typed     → bright green
-            • wrong typed         → red
+            • wrong typed         → red underlined target char
             • cursor position     → bright background block
             • not yet typed       → dim
-          Whitespace shows as a visible dot so sentences stay readable. */}
-      <div className="mb-5 flex flex-wrap gap-y-1">
+            • overflow (past end) → red typed char on dim background (you've
+              typed extra characters — backspace them off)
+          Whitespace renders as a dot so sentences stay readable. */}
+      <div className="mb-3 flex flex-wrap gap-y-1">
+        {/* Target chars + correctness coloring */}
         {chars.map((char, i) => {
           const typed = input[i];
           const isWhitespace = char === ' ';
@@ -278,7 +278,33 @@ export default function DrillPromptCard({
             </span>
           );
         })}
+        {/* Overflow chars — what the student typed past the end. Shown in
+            red so it's obvious they need to backspace. */}
+        {input.length > target.length &&
+          Array.from(input.slice(target.length)).map((char, i) => (
+            <span
+              key={`overflow-${i}`}
+              className="text-rose-400 bg-rose-950/40 underline font-mono text-3xl tracking-normal inline-block min-w-[1ch] text-center"
+              aria-hidden
+            >
+              {char === ' ' ? '·' : char}
+            </span>
+          ))}
       </div>
+
+      {/* Backspace hint — appears when input is wrong or has overflow. */}
+      {(() => {
+        const hasWrong =
+          input.length > target.length ||
+          Array.from(input).some((c, i) => i < target.length && c !== target[i]);
+        return hasWrong ? (
+          <p className="text-rose-400/80 text-[11px] uppercase tracking-[0.3em] mb-3">
+            &gt; backspace to correct.
+          </p>
+        ) : (
+          <div className="mb-3 h-[14px]" /> /* spacer keeps layout stable */
+        );
+      })()}
 
       {/* Hidden input — captures keystrokes; visually invisible but focusable. */}
       <input

@@ -72,8 +72,8 @@ export default function InscriptionLobby({ classId }: Props) {
     : 'READY';
 
   return (
-    <div className="crt-phosphor-monitor h-full overflow-y-auto ios-scroll">
-      <div className="max-w-xl mx-auto px-6 py-5 pixel-mono">
+    <div className="crt-phosphor-monitor h-full min-h-full flex flex-col overflow-y-auto ios-scroll">
+      <div className="max-w-xl mx-auto px-6 py-5 pixel-mono flex-1 w-full">
         {/* Compact header — single status bar across the top */}
         <div className="flex items-baseline justify-between mb-1">
           <p className="phosphor-text-bright text-[11px] uppercase tracking-[0.3em] phosphor-glow">

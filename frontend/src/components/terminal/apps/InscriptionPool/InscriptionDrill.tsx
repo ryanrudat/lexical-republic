@@ -132,8 +132,8 @@ export default function InscriptionDrill() {
   const mmss = `${Math.floor(remainingSec / 60).toString().padStart(2, '0')}:${(remainingSec % 60).toString().padStart(2, '0')}`;
 
   return (
-    <div className="crt-phosphor-monitor h-full overflow-y-auto ios-scroll">
-      <div className="max-w-2xl mx-auto px-6 py-5 pixel-mono">
+    <div className="crt-phosphor-monitor h-full min-h-full flex flex-col overflow-y-auto ios-scroll">
+      <div className="max-w-2xl mx-auto px-6 py-5 pixel-mono flex-1 w-full">
         {/* Title bar */}
         <div className="flex items-baseline justify-between mb-1">
           <p className="phosphor-text-bright text-[12px] uppercase tracking-[0.4em] phosphor-glow">

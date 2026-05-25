@@ -22,8 +22,8 @@ export default function InscriptionResults() {
   const breakdown = result.personalBreakdown;
 
   return (
-    <div className="crt-phosphor-monitor h-full overflow-y-auto ios-scroll">
-      <div className="max-w-2xl mx-auto px-8 py-10 pixel-mono">
+    <div className="crt-phosphor-monitor h-full min-h-full flex flex-col overflow-y-auto ios-scroll">
+      <div className="max-w-2xl mx-auto px-8 py-10 pixel-mono flex-1 w-full">
         {/* Header */}
         <p className="phosphor-text-bright text-[12px] uppercase tracking-[0.4em] text-center mb-2 phosphor-glow">
           Inscription Drill · Complete
