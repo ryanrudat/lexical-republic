@@ -23,7 +23,7 @@ import RemediationDevTrigger from './components/dev/RemediationDevTrigger';
 import UpdateBanner from './components/system/UpdateBanner';
 import { useUpdateChecker } from './hooks/useUpdateChecker';
 import TrialDispatchModal from './components/terminal/apps/InscriptionPool/TrialDispatchModal';
-import { useInscriptionStore } from './stores/inscriptionStore';
+import { useInscriptionStore, type PoolFormedPayload } from './stores/inscriptionStore';
 
 export default function App() {
   const { user, loading, refresh } = useStudentStore();
@@ -194,6 +194,24 @@ export default function App() {
           void store.completeDrill({ abandoned: true });
         }
       };
+      // ── Live Open Pool matchmaking ──
+      const onInscriptionPoolFormed = (data: PoolFormedPayload) => {
+        useInscriptionStore.getState().applyPoolFormed(data);
+      };
+      const onInscriptionQueueUpdate = (data: { count: number; max: number; designations: string[] }) => {
+        useInscriptionStore.getState().applyQueueUpdate(data);
+      };
+      const onInscriptionParticipantProgress = (data: {
+        lobbyId: string;
+        pairId: string;
+        wordsCorrect: number;
+        finishedAt_ms: number | null;
+      }) => {
+        useInscriptionStore.getState().applyParticipantProgress(data);
+      };
+      const onInscriptionQueueError = (data: { error: string; message: string; drillId?: string }) => {
+        useInscriptionStore.getState().applyQueueError(data);
+      };
 
       sock.on('connect_error', onError);
       sock.on('session:paused', onPaused);
@@ -209,6 +227,10 @@ export default function App() {
       sock.on('inscription:word-complete', onInscriptionWordComplete);
       sock.on('inscription:trial-scheduled', onTrialScheduled);
       sock.on('inscription:force-aborted', onForceAborted);
+      sock.on('inscription:pool-formed', onInscriptionPoolFormed);
+      sock.on('inscription:queue-update', onInscriptionQueueUpdate);
+      sock.on('inscription:participant-progress', onInscriptionParticipantProgress);
+      sock.on('inscription:queue-error', onInscriptionQueueError);
 
       return () => {
         sock.off('connect_error', onError);
@@ -225,6 +247,10 @@ export default function App() {
         sock.off('inscription:word-complete', onInscriptionWordComplete);
         sock.off('inscription:trial-scheduled', onTrialScheduled);
         sock.off('inscription:force-aborted', onForceAborted);
+        sock.off('inscription:pool-formed', onInscriptionPoolFormed);
+        sock.off('inscription:queue-update', onInscriptionQueueUpdate);
+        sock.off('inscription:participant-progress', onInscriptionParticipantProgress);
+        sock.off('inscription:queue-error', onInscriptionQueueError);
       };
     }
   }, [user?.id, user?.role, user?.designation, user?.displayName, navigate]);

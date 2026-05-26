@@ -18,11 +18,27 @@ import {
   startInscriptionDrill,
   submitInscriptionWord,
 } from '../api/inscription';
+import { connectSocket } from '../utils/socket';
 
-export type InscriptionScreen = 'lobby' | 'shift-gate' | 'drill' | 'results' | 'paused';
+export type InscriptionScreen = 'lobby' | 'shift-gate' | 'queue' | 'drill' | 'results' | 'paused';
+
+export interface PoolFormedPayload {
+  drillId: string;
+  lobbyId: string;
+  mode: DrillMode;
+  durationSec: number;
+  wordCount: number;
+  lane: number;
+  weekNumber: number;
+  words: InscriptionWord[];
+  desks: DrillDesk[];
+  startAt_ms: number;
+}
 
 interface ActiveDrill {
   drillId: string;
+  /** Set for live Open Pool drills (links sibling players); null for solo/trial. */
+  lobbyId: string | null;
   mode: DrillMode;
   durationSec: number;
   wordCount: number;
@@ -49,6 +65,9 @@ interface InscriptionStoreState {
   soloCap: number;
   loading: boolean;
   error: string | null;
+
+  // Live Open Pool matchmaking
+  queueInfo: { count: number; max: number; designations: string[] } | null;
 
   // Active drill state
   drill: ActiveDrill | null;
@@ -84,6 +103,14 @@ interface InscriptionStoreState {
   backToLobby: () => void;
   loadRoll: (classId: string) => Promise<void>;
 
+  // Live Open Pool matchmaking
+  joinQueue: (weekNumber: number) => void;
+  leaveQueue: () => void;
+  applyQueueUpdate: (info: { count: number; max: number; designations: string[] }) => void;
+  applyPoolFormed: (payload: PoolFormedPayload) => void;
+  applyParticipantProgress: (data: { lobbyId: string; pairId: string; wordsCorrect: number; finishedAt_ms: number | null }) => void;
+  applyQueueError: (data: { error: string; message: string; drillId?: string }) => void;
+
   // Pause / resume (from socket)
   applyServerPaused: (drillId: string, pausedAt_ms: number) => void;
   applyServerResumed: (drillId: string, totalPausedMs: number) => void;
@@ -114,6 +141,8 @@ export const useInscriptionStore = create<InscriptionStoreState>((set, get) => (
   soloCap: 3,
   loading: false,
   error: null,
+
+  queueInfo: null,
 
   drill: initialDrill,
   result: null,
@@ -156,6 +185,7 @@ export const useInscriptionStore = create<InscriptionStoreState>((set, get) => (
       set({
         drill: {
           drillId: payload.drillId,
+          lobbyId: null,
           mode: payload.mode,
           durationSec: payload.durationSec,
           wordCount: payload.wordCount,
@@ -249,8 +279,74 @@ export const useInscriptionStore = create<InscriptionStoreState>((set, get) => (
   },
 
   backToLobby: () => {
-    set({ screen: 'lobby', drill: null, result: null });
+    set({ screen: 'lobby', drill: null, result: null, queueInfo: null });
     void get().refreshState();
+  },
+
+  joinQueue: (weekNumber) => {
+    const sock = connectSocket();
+    if (!sock) {
+      set({ error: 'No connection — cannot join the pool.' });
+      return;
+    }
+    set({ screen: 'queue', queueInfo: { count: 1, max: 5, designations: [] }, error: null, result: null });
+    sock.emit('inscription:join-queue', { weekNumber });
+  },
+
+  leaveQueue: () => {
+    connectSocket()?.emit('inscription:leave-queue');
+    set({ screen: 'lobby', queueInfo: null });
+  },
+
+  applyQueueUpdate: (info) => {
+    set((s) => (s.screen === 'queue' ? { ...s, queueInfo: info } : s));
+  },
+
+  applyPoolFormed: (payload) => {
+    const liveDeskState = new Map<number, { wordsCorrect: number; finishedAt_ms: number | null }>();
+    for (const d of payload.desks) {
+      liveDeskState.set(d.desk, { wordsCorrect: d.wordsCorrect, finishedAt_ms: d.finishedAt_ms });
+    }
+    set({
+      drill: {
+        drillId: payload.drillId,
+        lobbyId: payload.lobbyId,
+        mode: payload.mode,
+        durationSec: payload.durationSec,
+        wordCount: payload.wordCount,
+        lane: payload.lane,
+        weekNumber: payload.weekNumber,
+        words: payload.words,
+        desks: payload.desks,
+        // Race begins at startAt_ms (a few seconds out). Elapsed math floors at
+        // 0 until then; InscriptionDrill shows a countdown overlay meanwhile.
+        startedAt_ms: payload.startAt_ms,
+        currentWordIdx: 0,
+        liveDeskState,
+        totalPausedMs: 0,
+        pausedAt_ms: null,
+      },
+      screen: 'drill',
+      queueInfo: null,
+      loading: false,
+      error: null,
+    });
+  },
+
+  applyParticipantProgress: (data) => {
+    set((s) => {
+      if (!s.drill || s.drill.lobbyId !== data.lobbyId) return s;
+      const entry = s.drill.desks.find((d) => d.pairId === data.pairId);
+      if (!entry || entry.desk === 1) return s; // ignore self + unknown pairs
+      const updated = new Map(s.drill.liveDeskState);
+      updated.set(entry.desk, { wordsCorrect: data.wordsCorrect, finishedAt_ms: data.finishedAt_ms });
+      return { ...s, drill: { ...s.drill, liveDeskState: updated } };
+    });
+  },
+
+  applyQueueError: (data) => {
+    // e.g. active_drill: surface the message and return to the lobby.
+    set({ screen: 'lobby', queueInfo: null, error: data.message });
   },
 
   loadRoll: async (classId) => {

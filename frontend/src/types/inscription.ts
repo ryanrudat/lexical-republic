@@ -24,6 +24,8 @@ export interface DrillDesk {
   desk: number;
   citizenNumber: string;
   isGhost: boolean;
+  /** Live Open Pool: the real classmate this desk represents (opponent desks). Null for self + ghosts. */
+  pairId?: string | null;
   wordTimings: Array<{
     wordIdx: number;
     finishedAt_ms: number;

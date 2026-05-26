@@ -16,6 +16,7 @@ import {
   KEYSTROKE_PULSE_WINDOW_MS,
   MAX_INPUT_CHARS_PER_SEC,
 } from '../utils/inscriptionConstants';
+import { joinPoolQueue, leavePoolQueue } from './inscriptionMatchmaking';
 
 // Track last keystroke timestamps per (drillId, pairId) for rate-limit / anti-cheat
 const lastKeystrokeTs = new Map<string, number>();
@@ -116,6 +117,43 @@ export function registerInscriptionSocketHandlers(io: Server, socket: Socket): v
       });
     },
   );
+
+  // ── Live Open Pool: join the matchmaking queue ──
+  socket.on('inscription:join-queue', async (data: { weekNumber?: number }) => {
+    if (role !== 'student' || typeof data?.weekNumber !== 'number') return;
+    try {
+      const pair = await prisma.pair.findUnique({
+        where: { id: entityId },
+        select: { lane: true, designation: true },
+      });
+      if (!pair) return;
+      const enrollment = await prisma.classEnrollment.findFirst({
+        where: { pairId: entityId },
+        select: { classId: true },
+      });
+      if (!enrollment) return;
+      await joinPoolQueue(io, socket.id, {
+        pairId: entityId,
+        designation: pair.designation,
+        classId: enrollment.classId,
+        lane: pair.lane,
+        weekNumber: data.weekNumber,
+      });
+    } catch (err) {
+      console.error('[inscription] join-queue error', err);
+    }
+  });
+
+  // ── Live Open Pool: cancel queue (student backed out) ──
+  socket.on('inscription:leave-queue', () => {
+    if (role !== 'student') return;
+    leavePoolQueue(io, socket.id);
+  });
+
+  // Drop out of any pending queue if this socket disconnects mid-wait.
+  socket.on('disconnect', () => {
+    leavePoolQueue(io, socket.id);
+  });
 }
 
 /**

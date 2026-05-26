@@ -670,6 +670,9 @@ model InscriptionRecording {
   drill         InscriptionDrill @relation(fields: [drillId], references: [id], onDelete: Cascade)
   isGhost       Boolean          @default(false)
   sourceDrillId String?
+  // Live Open Pool: the real classmate this desk represents (opponent desks).
+  // Null for the self desk, ghost desks, and Ministry NPC desks.
+  pairId        String?
   citizenNumber String
   desk          Int
   wordTimings   Json
@@ -680,6 +683,7 @@ model InscriptionRecording {
 
   @@index([drillId])
   @@index([sourceDrillId])
+  @@index([pairId])
   @@map("inscription_recordings")
 }
 

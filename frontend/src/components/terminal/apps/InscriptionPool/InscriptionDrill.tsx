@@ -62,7 +62,10 @@ export default function InscriptionDrill() {
 
   const ghostTickerInput = useMemo(
     () => ({
-      desks: drill?.desks ?? [],
+      // Only ghost desks replay from baked timings. Live opponent desks get
+      // their progress from socket events (liveDeskState); keep the ticker
+      // away from them or it would overwrite live progress with zeros.
+      desks: (drill?.desks ?? []).filter((d) => d.isGhost),
       wordCount: drill?.wordCount ?? 0,
       drillStartedAt_ms: drill?.startedAt_ms ?? null,
       totalPausedMs: drill?.totalPausedMs ?? 0,
@@ -131,6 +134,12 @@ export default function InscriptionDrill() {
 
   const mmss = `${Math.floor(remainingSec / 60).toString().padStart(2, '0')}:${(remainingSec % 60).toString().padStart(2, '0')}`;
 
+  // Live pool: the race begins at startedAt_ms (a few seconds out). Until then,
+  // show a synchronized countdown and block input. Solo/trial start immediately
+  // (startedAt_ms ≈ now), so notStarted is false and no countdown shows.
+  const notStarted = now < drill.startedAt_ms;
+  const countdownSecs = Math.max(0, Math.ceil((drill.startedAt_ms - now) / 1000));
+
   return (
     <div className="crt-phosphor-monitor h-full min-h-full flex flex-col overflow-y-auto ios-scroll">
       <div className="max-w-2xl mx-auto px-6 py-5 pixel-mono flex-1 w-full">
@@ -178,7 +187,7 @@ export default function InscriptionDrill() {
             lane={lane}
             onSubmit={wrappedSubmit}
             onKeystrokeTick={handleKeystrokeTick}
-            disabled={screen !== 'drill'}
+            disabled={screen !== 'drill' || notStarted}
             drillStartedAt_ms={drill.startedAt_ms}
             wordsCompleted={wordsCompleted}
             charsTyped={charsTyped}
@@ -193,6 +202,18 @@ export default function InscriptionDrill() {
       </div>
 
       {screen === 'paused' && <PausedOverlay />}
+
+      {notStarted && screen === 'drill' && (
+        <div className="fixed inset-0 z-[80] flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm">
+          <p className="phosphor-text-dim text-[12px] uppercase tracking-[0.4em] mb-4">
+            pool assembled — stand by
+          </p>
+          <p className="phosphor-text-bright text-7xl tabular-nums phosphor-glow">{countdownSecs}</p>
+          <p className="phosphor-text-dim text-[11px] uppercase tracking-[0.3em] mt-4">
+            inscription begins…
+          </p>
+        </div>
+      )}
 
       {showAbortConfirm && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 backdrop-blur-sm">

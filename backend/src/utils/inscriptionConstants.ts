@@ -33,6 +33,12 @@ export const MODE_MULTIPLIERS: Record<string, number> = {
 
 export const LOBBY_AUTO_FILL_TIMEOUT_MS = 30_000;
 export const COUNTDOWN_DURATION_MS = 5_000;
+
+// ─── Live Open Pool matchmaking (Phase 3) ────────────────────────
+export const POOL_MIN_LIVE_PLAYERS = 2;   // < 2 real players after the wait → solo-with-ghosts fallback (still 'open')
+export const POOL_MAX_PLAYERS = 5;        // cap real players per pool; overflow forms the next pool
+export const POOL_TARGET_DESKS = 4;       // top up a small live pool with ghosts up to this many desks
+export const POOL_WAIT_MS = 12_000;       // wait window after the first joiner before forming (form early when full)
 export const HEARTBEAT_TIMEOUT_MS = 15_000;
 export const RECONNECT_WINDOW_MS = 60_000;
 export const KEYSTROKE_PULSE_WINDOW_MS = 800;

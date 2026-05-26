@@ -28,7 +28,7 @@ interface PickGhostsOpts {
   wordCount: number;
   count: number;                       // how many ghosts to return
   excludeCitizenDigits?: Set<string>;  // active classmate Citizen-XXXX digits to avoid collision
-  selfPairId?: string;                 // exclude the player's OWN past recordings from the opponent pool
+  excludePairIds?: string[];           // exclude these pairs' OWN past recordings (self + live-pool members)
 }
 
 /**
@@ -38,7 +38,7 @@ interface PickGhostsOpts {
  * is empty.
  */
 export async function pickGhostRecordings(opts: PickGhostsOpts): Promise<GhostRecording[]> {
-  const { classId, lane, durationSec, count, wordCount, excludeCitizenDigits, selfPairId } = opts;
+  const { classId, lane, durationSec, count, wordCount, excludeCitizenDigits, excludePairIds } = opts;
   if (count <= 0) return [];
 
   const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
@@ -54,9 +54,12 @@ export async function pickGhostRecordings(opts: PickGhostsOpts): Promise<GhostRe
         durationSec,
         status: 'completed',
         completedAt: { gte: cutoff },
-        // Don't race the player against their own past ghost — it would
-        // duplicate their designation (e.g. two "CA-1" rows) in the standings.
-        ...(selfPairId ? { pairId: { not: selfPairId } } : {}),
+        // Don't race players against their own past ghost — it would
+        // duplicate a designation in the standings. In a live pool this
+        // excludes every pool member, not just the caller.
+        ...(excludePairIds && excludePairIds.length > 0
+          ? { pairId: { notIn: excludePairIds } }
+          : {}),
       },
     },
     include: {

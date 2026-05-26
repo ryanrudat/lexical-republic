@@ -191,7 +191,7 @@ router.post('/drills', async (req, res) => {
       wordCount,
       count: ghostCount,
       excludeCitizenDigits: excludeDigits,
-      selfPairId: ctx.pairId,
+      excludePairIds: [ctx.pairId],
     });
 
     // Create the drill + self-recording (desk 1) + ghost recordings (desks 2..N)
@@ -355,13 +355,16 @@ router.post('/drills/:id/word', async (req, res) => {
       },
     });
 
-    // Broadcast (Phase 2 socket will pick this up; Phase 1 emit lands in pair's room)
+    // Live Open Pool: broadcast this participant's running progress to the
+    // shared lobby room, keyed by pairId so each opponent maps it to the right
+    // desk. finishedAt_ms is set only once all words are done (for tiebreaks).
     if (drill.lobbyId) {
-      io.to(`inscription:lobby:${drill.lobbyId}`).emit('inscription:word-complete', {
-        desk: myRec.desk,
-        wordIdx,
-        finishedAt_ms,
-        correct,
+      const finishedAll = newCorrectCount >= drill.wordCount;
+      io.to(`inscription:lobby:${drill.lobbyId}`).emit('inscription:participant-progress', {
+        lobbyId: drill.lobbyId,
+        pairId: drill.pairId,
+        wordsCorrect: newCorrectCount,
+        finishedAt_ms: finishedAll ? finishedAt_ms : null,
       });
     }
 
@@ -594,7 +597,40 @@ export async function finalizeDrill(opts: {
   const selfTimings = coerceWordTimings(selfRec.wordTimings);
   const wordsCorrect = selfTimings.filter((t) => t.correct).length;
 
-  // Compute final rank vs ghosts
+  // Live Open Pool: snapshot each opponent's real progress from their sibling
+  // drill (same lobbyId) onto this drill's opponent recordings, so ranking and
+  // the results screen reflect the actual live pool instead of zeros.
+  if (drill.lobbyId) {
+    const siblings = await prisma.inscriptionDrill.findMany({
+      where: { lobbyId: drill.lobbyId, id: { not: drill.id } },
+      select: {
+        pairId: true,
+        recordings: { where: { isGhost: false, desk: 1 }, select: { wordTimings: true } },
+      },
+    });
+    const progressByPair = new Map<string, { wordsCorrect: number; finishedAt_ms: number | null }>();
+    for (const sib of siblings) {
+      const rec = sib.recordings[0];
+      if (!rec) continue;
+      const t = coerceWordTimings(rec.wordTimings);
+      const wc = t.filter((x) => x.correct).length;
+      const last = t.length > 0 ? t[t.length - 1].finishedAt_ms : null;
+      progressByPair.set(sib.pairId, { wordsCorrect: wc, finishedAt_ms: wc >= drill.wordCount ? last : null });
+    }
+    for (const r of drill.recordings) {
+      if (r.isGhost || r.desk === 1 || !r.pairId) continue;
+      const p = progressByPair.get(r.pairId);
+      if (!p) continue;
+      r.wordsCorrect = p.wordsCorrect;
+      r.finishedAt_ms = p.finishedAt_ms;
+      await prisma.inscriptionRecording.update({
+        where: { id: r.id },
+        data: { wordsCorrect: p.wordsCorrect, finishedAt_ms: p.finishedAt_ms },
+      });
+    }
+  }
+
+  // Compute final rank vs opponents + ghosts
   interface RankedDesk {
     id: string;
     desk: number;
@@ -605,17 +641,31 @@ export async function finalizeDrill(opts: {
     rank: number;
   }
   const standings = drill.recordings.map((r) => {
+    // Live opponent desks (real pairId, not self desk, not ghost) carry no
+    // local timings — their progress was snapshotted from the sibling drill
+    // above. Ghosts use their stored progress. Only the self desk derives
+    // from its own keystroke timings.
+    const isLiveOpponent = !r.isGhost && r.desk !== 1 && !!r.pairId;
+    if (r.isGhost || isLiveOpponent) {
+      return {
+        id: r.id,
+        desk: r.desk,
+        citizenNumber: r.citizenNumber,
+        isGhost: r.isGhost,
+        wordsCorrect: r.wordsCorrect,
+        finishedAt_ms: r.finishedAt_ms,
+      };
+    }
     const t = coerceWordTimings(r.wordTimings);
     const wc = t.filter((x) => x.correct).length;
     const last = t.length > 0 ? t[t.length - 1].finishedAt_ms : null;
-    const finished = wc === drill.wordCount ? last : null;
     return {
       id: r.id,
       desk: r.desk,
       citizenNumber: r.citizenNumber,
-      isGhost: r.isGhost,
+      isGhost: false,
       wordsCorrect: wc,
-      finishedAt_ms: r.isGhost ? r.finishedAt_ms : finished,
+      finishedAt_ms: wc === drill.wordCount ? last : null,
     };
   });
   // Rank: more words correct = better; if tied, faster finishedAt_ms = better
@@ -679,7 +729,11 @@ export async function finalizeDrill(opts: {
     // Update pair counters atomically
     const updates: Record<string, unknown> = {};
     if (!opts.abandoned) {
-      updates.lastInscriptionDrillCompletedAt = new Date();
+      // Open (live pool) is exempt from the 5-min cooldown so a class can run
+      // several races back-to-back. Solo/trial still stamp the cooldown.
+      if (drill.mode !== 'open') {
+        updates.lastInscriptionDrillCompletedAt = new Date();
+      }
       if (drill.mode === 'solo') {
         const isNewDay =
           (pair?.inscriptionSoloCounterDate ?? '') !== todayKey;

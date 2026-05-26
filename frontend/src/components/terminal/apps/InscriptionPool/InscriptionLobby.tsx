@@ -19,6 +19,7 @@ interface Props {
 export default function InscriptionLobby({ classId }: Props) {
   const refreshState = useInscriptionStore((s) => s.refreshState);
   const startDrill = useInscriptionStore((s) => s.startDrill);
+  const joinQueue = useInscriptionStore((s) => s.joinQueue);
   const cooldownRemainingSec = useInscriptionStore((s) => s.cooldownRemainingSec);
   const soloUsedToday = useInscriptionStore((s) => s.soloUsedToday);
   const soloCap = useInscriptionStore((s) => s.soloCap);
@@ -53,7 +54,12 @@ export default function InscriptionLobby({ classId }: Props) {
   }, [refreshState]);
 
   const launchDrill = (mode: 'solo' | 'open') => {
-    void startDrill({ mode, weekNumber: inferredWeek });
+    if (mode === 'open') {
+      // Live Open Pool: join the matchmaking queue (waiting room → synced race).
+      joinQueue(inferredWeek);
+    } else {
+      void startDrill({ mode, weekNumber: inferredWeek });
+    }
   };
 
   const handleStart = (mode: 'solo' | 'open') => {
@@ -126,8 +132,8 @@ export default function InscriptionLobby({ classId }: Props) {
           <ModeOption
             keyLabel="1"
             title="Open Pool"
-            description="race classmates · full p.i. + roll of distinction"
-            disabled={cooldownLocked || loading}
+            description="race classmates live · full p.i. + roll of distinction"
+            disabled={loading}
             onClick={() => handleStart('open')}
           />
           <ModeOption
