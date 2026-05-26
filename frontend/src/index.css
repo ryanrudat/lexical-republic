@@ -1092,6 +1092,12 @@ body.remediation-active .pearl-island {
   display: none !important;
 }
 
+/* While a PEARL Clarity Inquiry (spy interrogation) is active, suppress the
+   ambient Dynamic Island so it doesn't overlap the inquiry card. */
+body.pearl-inquiry-active .pearl-island {
+  display: none !important;
+}
+
 /* ─── Compliance Check — whole-modal open/close animations ─── */
 
 @keyframes compliance-modal-enter {

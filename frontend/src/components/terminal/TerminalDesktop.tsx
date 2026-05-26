@@ -7,6 +7,7 @@ import { useDictionaryStore } from '../../stores/dictionaryStore';
 import { useHarmonyStore } from '../../stores/harmonyStore';
 import type { TerminalApp } from '../../types/views';
 import { GUIDED_STUDENT_MODE } from '../../config/runtimeFlags';
+import { getHighestUnlockedWeek } from '../../utils/weekUnlock';
 
 // localStorage key for the [ ].edited first-visit glitch animation —
 // one-shot per pair, plays the stuttery materialize once and then
@@ -61,6 +62,17 @@ const APPS: AppTile[] = [
     icon: '/images/inscription-pool-icon-v2.png',
   },
   {
+    // Records Wing — Party archive terminal. Appears at W4 alongside the
+    // [ ].edited app — the Party-facing surface where the OPTIONAL snooping
+    // happens (off-limits files behind PEARL's dice-roll). Standard retro
+    // panel tile (it's a Party app), unlike the dark [ ].edited tile.
+    id: 'records-room',
+    name: 'Records Wing',
+    description: 'Archive access terminal',
+    emoji: '\u{1F5C4}',
+    lockWeek: 4,
+  },
+  {
     // [ ].edited — Unedited's smuggled surface. Appears at W4. Rendered
     // with a custom dark/glitched tile (see special-case branch below),
     // NOT through the standard retro-panel tile path.
@@ -71,23 +83,11 @@ const APPS: AppTile[] = [
     lockWeek: 4,
   },
 ];
-const GUIDED_STUDENT_APPS: TerminalApp[] = ['clarity-queue', 'harmony', 'my-file', 'inscription-pool', 'edited'];
+const GUIDED_STUDENT_APPS: TerminalApp[] = ['clarity-queue', 'harmony', 'my-file', 'inscription-pool', 'records-room', 'edited'];
 
-function getHighestUnlockedWeek(weeks: Array<{ weekNumber: number; clockedOut: boolean }>): number {
-  if (weeks.length === 0) return 1;
-  const sortedWeeks = [...weeks].sort((a, b) => a.weekNumber - b.weekNumber);
-  let highestUnlocked = sortedWeeks[0].weekNumber;
-
-  for (let i = 1; i < sortedWeeks.length; i++) {
-    if (sortedWeeks[i - 1].clockedOut) {
-      highestUnlocked = sortedWeeks[i].weekNumber;
-    } else {
-      break;
-    }
-  }
-
-  return highestUnlocked;
-}
+// Apps that stay HIDDEN before Shift 4 (no "Unlocks in Shift 4" tease) — the
+// resistance/spy surfaces appear together via the post-login glitch at W4.
+const W4_HIDDEN_UNTIL_UNLOCK = new Set<TerminalApp>(['edited', 'records-room']);
 
 export default function TerminalDesktop() {
   const openApp = useViewStore((s) => s.openApp);
@@ -119,7 +119,7 @@ export default function TerminalDesktop() {
   // The Unedited's surface is supposed to appear via the post-login
   // glitch on first W4 entry, not preview itself for three shifts.
   const visibleApps = guidedFiltered.filter((app) =>
-    app.id === 'edited' ? highestUnlockedWeek >= 4 : true
+    W4_HIDDEN_UNTIL_UNLOCK.has(app.id) ? highestUnlockedWeek >= 4 : true
   );
 
   // First-visit glitch gate for the [ ].edited tile. Plays once per

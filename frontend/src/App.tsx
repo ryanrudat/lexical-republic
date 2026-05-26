@@ -20,6 +20,8 @@ import { useViewStore } from './stores/viewStore';
 import ComplianceCheckPreview from './pages/ComplianceCheckPreview';
 import RemediationOverlay from './components/remediation/RemediationOverlay';
 import RemediationDevTrigger from './components/dev/RemediationDevTrigger';
+import PearlInquiryOverlay from './components/spy/PearlInquiryOverlay';
+import FunnelDrawer from './components/spy/FunnelDrawer';
 import UpdateBanner from './components/system/UpdateBanner';
 import { useUpdateChecker } from './hooks/useUpdateChecker';
 import TrialDispatchModal from './components/terminal/apps/InscriptionPool/TrialDispatchModal';
@@ -198,7 +200,7 @@ export default function App() {
       const onInscriptionPoolFormed = (data: PoolFormedPayload) => {
         useInscriptionStore.getState().applyPoolFormed(data);
       };
-      const onInscriptionQueueUpdate = (data: { count: number; max: number; designations: string[] }) => {
+      const onInscriptionQueueUpdate = (data: { count: number; max: number; designations: string[]; formsAt_ms?: number | null }) => {
         useInscriptionStore.getState().applyQueueUpdate(data);
       };
       const onInscriptionParticipantProgress = (data: {
@@ -344,6 +346,10 @@ export default function App() {
           mounting in teacher dashboard. */}
       {user.role === 'student' && <RemediationOverlay />}
       {user.role === 'student' && import.meta.env.DEV && <RemediationDevTrigger />}
+      {/* PEARL Clarity Inquiry — fires when the dice roll catches a student snooping. */}
+      {user.role === 'student' && <PearlInquiryOverlay />}
+      {/* [ ].edited funnel drawer — floating covert channel, reachable across the terminal. */}
+      {user.role === 'student' && <FunnelDrawer />}
       {/* Sector Trial invite — class-wide modal pops when teacher schedules a Trial. */}
       {user.role === 'student' && <TrialDispatchModal />}
       {/* New-version banner. Self-gates on `updateAvailable` from updateStore. */}

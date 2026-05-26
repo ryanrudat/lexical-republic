@@ -9,6 +9,7 @@ export type TerminalApp =
   | 'duty-roster'
   | 'my-file'
   | 'inscription-pool'
+  | 'records-room'
   | 'edited';
 
 export type TransitionType = 'enter-terminal' | 'exit-terminal' | 'none';
