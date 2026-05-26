@@ -4,6 +4,36 @@ Day-by-day work history. Moved here from `CLAUDE.md` on 2026-04-30 to keep the a
 
 ---
 
+## 2026-05-26 (Live Open Pool matchmaking + Word Pool names/polish + terminal cleanup)
+
+Full daily summary in `Dplan/Daily_2026_05_26.md`. Highlights below.
+
+### Word Pool icon — normalize + cache-bust (`13a0853`, `8d78cdb`; late 05-25)
+
+The uploaded icon was byte-identical to the deployed one; the real issue was format (1254×1254 opaque square vs the peers' 1536×1024 transparent landscape). Reformatted the asset to the canonical format (flood-fill the uniform bg to transparency, center the tile to match peers) and deleted the special-case `h-[160px]` render branch — Word Pool now uses the identical full-image tile path. **Supersedes** the 05-25 "square + `h-[160px]`" approach. Then renamed `inscription-pool-icon.png` → `-v2.png` to cache-bust (the stable `/images/` path is 1-day cached, so an in-place swap left clients on the old image rendered at 240×240 with an opaque "box").
+
+### Real identities in races (`6484193`)
+
+Players were labeled with a `Math.random()` `C-XXXX`. Now self + lobby + Roll of Distinction show the pair's `designation` (`CA-1`); classmate ghost opponents show their real designation (resolved in `pickGhostRecordings` via `drill.pair.designation` — reverses the prior anonymization, per user request); Ministry NPCs keep `C-000X`. Also excluded the player's own past recordings from the ghost pool. **Gotcha:** `InscriptionRecording.citizenNumber` / the `citizenNumber` field now holds a display label, not necessarily a number.
+
+### Live Open Pool matchmaking (`76292cf`) — the big one
+
+"Open Pool" now matches real online classmates into a synchronized live race (was async ghost-racing). **Per-player drills linked by a shared `lobbyId`** (reuses the dormant scaffolding). New `backend/src/socket/inscriptionMatchmaking.ts`: in-memory queue keyed `classId:lane:weekNumber`; forms on cap (`POOL_MAX_PLAYERS=5`) or wait window; same-lane only; ghost top-up to `POOL_TARGET_DESKS=4`; lone player falls back to solo-with-ghosts. Socket protocol: `join-queue`/`leave-queue`/`queue-update`/`pool-formed`/`participant-progress` (keyed by `pairId`)/`queue-error`. Completion ranks the pool from sibling drills + snapshots it (refresh-safe). Open exempt from the 5-min cooldown. Schema: `InscriptionRecording.pairId` + migration `20260526120000_add_recording_pair_id`. Frontend: `WaitingRoom.tsx`, store `queue` screen, synchronized countdown overlay, live opponent desks via socket. v1 limits: reconnect mid-race doesn't rejoin the feed; in-race drop-out just freezes the desk.
+
+### Prompt polish + 20s countdown (`1caa010`)
+
+Per-character prompt grouped each char as its own flex item, so lines broke mid-word ("sec"/"tor"); now chars are grouped into word-units (`inline-flex`, nowrap) and only break between words. Framed the prompt in a bordered panel + brightened untyped chars (`faint` → standard `phosphor-text`). `POOL_WAIT_MS` 12s → 20s; matchmaker sends a shared `formsAt_ms` deadline; waiting room shows a "starts in Ns" countdown.
+
+### Terminal app frame fills full height (`7584a13`)
+
+`TerminalAppFrame` wrapped children in a `height:auto` `relative` div, so full-height apps (Word Pool's `crt-phosphor-monitor h-full`) only grew to content height and let the cyan desktop bg peek through at the bottom. Made the wrapper `flex-1` in a flex column → definite height → `h-full` fills. One fix covers all Word Pool screens; other apps still sit on the cyan as before.
+
+### `[ ].edited` tile removal + Records rename (`2527c0a`, `30e4a8e`, `e467feb`)
+
+Layered on the user's insider-spy rebuild (`c79f6b3` — reworked `[ ].edited` into a `FreyChannel` reachable via a corner `FunnelDrawer` `[ ]` pill + added a Records archive app; see `Dplan/W4_Edited_App_Spy_Redesign.md`). Removed the redundant large `[ ].edited` desktop tile (it rendered the same `FreyChannel` as the pill); purged the now-dead tile code (render branch, `playEditedGlitch` state/effect, `EDITED_REVEALED_KEY`, unused `useState` import, `.edited-tile-materialize` keyframes — −76 lines); renamed the **"Records Wing" app → "Records"** (display only: tile label, window title, in-app header; id stays `records-room`).
+
+---
+
 ## 2026-05-25 (W4 frontend complete + Word Pool 2.0 redesign + class-monitor polish — 15 commits)
 
 Long session covering three threads. Full daily summary in `Dplan/Daily_2026_05_25.md`; highlights below.
