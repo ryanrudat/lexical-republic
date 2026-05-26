@@ -853,29 +853,6 @@ body.view-terminal {
   50% { opacity: 0; }
 }
 
-/* ─── [ ].edited tile materialize ────────────────────────────── */
-/* Plays once on the first W4 desktop visit — the tile stutters in
-   like a download that failed mid-install, then settles in its
-   permanent "broken pixel" state. localStorage gates re-runs. */
-
-.edited-tile-materialize {
-  animation: edited-tile-glitch-in 1400ms steps(1, end) forwards;
-}
-
-@keyframes edited-tile-glitch-in {
-  0%   { opacity: 0; transform: translateX(0); }
-  8%   { opacity: 0.4; transform: translateX(-2px); filter: hue-rotate(20deg); }
-  12%  { opacity: 0; transform: translateX(2px); }
-  20%  { opacity: 0.7; transform: translateX(-1px); filter: hue-rotate(-15deg); }
-  26%  { opacity: 0.2; transform: translateX(1px); }
-  34%  { opacity: 0.9; transform: translateX(0); filter: hue-rotate(0); }
-  42%  { opacity: 0.5; }
-  50%  { opacity: 1; }
-  58%  { opacity: 0.7; transform: translateX(-1px); }
-  66%  { opacity: 1; transform: translateX(0); }
-  100% { opacity: 1; transform: translateX(0); filter: hue-rotate(0); }
-}
-
 /* ─── Messaging Notification Animations ──────────────────────── */
 
 .animate-slideInRight {
