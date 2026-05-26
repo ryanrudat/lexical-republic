@@ -30,6 +30,8 @@ interface ResolvedContext {
   classId: string;
   lane: number;
   citizenNumber: string;
+  /** In-world identity shown to the student (e.g. "CA-1"), NOT the internal random C-XXXX. */
+  designation: string;
 }
 
 async function resolvePairContext(req: Request, res: Response): Promise<ResolvedContext | null> {
@@ -40,7 +42,7 @@ async function resolvePairContext(req: Request, res: Response): Promise<Resolved
   }
   const pair = await prisma.pair.findUnique({
     where: { id: pairId },
-    select: { id: true, lane: true, citizenNumber: true },
+    select: { id: true, lane: true, citizenNumber: true, designation: true },
   });
   if (!pair) {
     res.status(404).json({ error: 'Pair not found' });
@@ -60,6 +62,7 @@ async function resolvePairContext(req: Request, res: Response): Promise<Resolved
     classId: enrollment.classId,
     lane: pair.lane,
     citizenNumber,
+    designation: pair.designation,
   };
 }
 
@@ -188,6 +191,7 @@ router.post('/drills', async (req, res) => {
       wordCount,
       count: ghostCount,
       excludeCitizenDigits: excludeDigits,
+      selfPairId: ctx.pairId,
     });
 
     // Create the drill + self-recording (desk 1) + ghost recordings (desks 2..N)
@@ -207,7 +211,9 @@ router.post('/drills', async (req, res) => {
           create: [
             {
               isGhost: false,
-              citizenNumber: ctx.citizenNumber,
+              // Self desk shows the student's own designation (e.g. CA-1), the
+              // identity they log in with — not the internal random C-XXXX.
+              citizenNumber: ctx.designation,
               desk: 1,
               wordTimings: [],
               keystrokeLog: [],
@@ -482,7 +488,8 @@ router.get('/state', async (req, res) => {
       : 0;
 
     res.json({
-      citizenNumber: pair?.citizenNumber ?? ctx.citizenNumber,
+      // Lobby shows the student's designation (e.g. CA-1), not the internal random C-XXXX.
+      citizenNumber: ctx.designation,
       classId: ctx.classId,
       cooldownRemainingSec: cooldownRemaining,
       soloUsedToday,
@@ -529,10 +536,10 @@ router.get('/roll/:classId', async (req, res) => {
     const pairIds = Array.from(piByPair.keys());
     const pairs = await prisma.pair.findMany({
       where: { id: { in: pairIds } },
-      select: { id: true, citizenNumber: true },
+      select: { id: true, designation: true },
     });
-    const cnByPair = new Map<string, string | null>();
-    for (const p of pairs) cnByPair.set(p.id, p.citizenNumber);
+    const cnByPair = new Map<string, string>();
+    for (const p of pairs) cnByPair.set(p.id, p.designation);
 
     const ranked = Array.from(piByPair.entries())
       .map(([pairId, pi]) => ({

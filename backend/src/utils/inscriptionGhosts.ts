@@ -28,6 +28,7 @@ interface PickGhostsOpts {
   wordCount: number;
   count: number;                       // how many ghosts to return
   excludeCitizenDigits?: Set<string>;  // active classmate Citizen-XXXX digits to avoid collision
+  selfPairId?: string;                 // exclude the player's OWN past recordings from the opponent pool
 }
 
 /**
@@ -37,7 +38,7 @@ interface PickGhostsOpts {
  * is empty.
  */
 export async function pickGhostRecordings(opts: PickGhostsOpts): Promise<GhostRecording[]> {
-  const { classId, lane, durationSec, count, wordCount, excludeCitizenDigits } = opts;
+  const { classId, lane, durationSec, count, wordCount, excludeCitizenDigits, selfPairId } = opts;
   if (count <= 0) return [];
 
   const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
@@ -53,10 +54,13 @@ export async function pickGhostRecordings(opts: PickGhostsOpts): Promise<GhostRe
         durationSec,
         status: 'completed',
         completedAt: { gte: cutoff },
+        // Don't race the player against their own past ghost — it would
+        // duplicate their designation (e.g. two "CA-1" rows) in the standings.
+        ...(selfPairId ? { pairId: { not: selfPairId } } : {}),
       },
     },
     include: {
-      drill: { select: { id: true } },
+      drill: { select: { id: true, pair: { select: { designation: true } } } },
     },
     take: count * 5,    // over-sample then random-pick
     orderBy: { drill: { completedAt: 'desc' } },
@@ -69,9 +73,14 @@ export async function pickGhostRecordings(opts: PickGhostsOpts): Promise<GhostRe
     shuffle(candidates);
     for (const c of candidates) {
       if (ghosts.length >= count) break;
-      const cn = anonymizedCitizenNumber(excluded);
-      const cnDigits = cn.replace(/[^0-9]/g, '');
-      excluded.add(cnDigits);
+      // Reveal the real classmate's designation (e.g. CA-2) so the student
+      // can see who they're racing. Fall back to an anonymized C-XXXX only
+      // if the source pair's designation is somehow unavailable.
+      let cn = c.drill?.pair?.designation ?? '';
+      if (!cn) {
+        cn = anonymizedCitizenNumber(excluded);
+        excluded.add(cn.replace(/[^0-9]/g, ''));
+      }
       ghosts.push({
         citizenNumber: cn,
         sourceDrillId: c.drillId,
