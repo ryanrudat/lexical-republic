@@ -67,7 +67,7 @@ interface InscriptionStoreState {
   error: string | null;
 
   // Live Open Pool matchmaking
-  queueInfo: { count: number; max: number; designations: string[] } | null;
+  queueInfo: { count: number; max: number; designations: string[]; formsAt_ms?: number | null } | null;
 
   // Active drill state
   drill: ActiveDrill | null;
@@ -106,7 +106,7 @@ interface InscriptionStoreState {
   // Live Open Pool matchmaking
   joinQueue: (weekNumber: number) => void;
   leaveQueue: () => void;
-  applyQueueUpdate: (info: { count: number; max: number; designations: string[] }) => void;
+  applyQueueUpdate: (info: { count: number; max: number; designations: string[]; formsAt_ms?: number | null }) => void;
   applyPoolFormed: (payload: PoolFormedPayload) => void;
   applyParticipantProgress: (data: { lobbyId: string; pairId: string; wordsCorrect: number; finishedAt_ms: number | null }) => void;
   applyQueueError: (data: { error: string; message: string; drillId?: string }) => void;
@@ -289,7 +289,7 @@ export const useInscriptionStore = create<InscriptionStoreState>((set, get) => (
       set({ error: 'No connection — cannot join the pool.' });
       return;
     }
-    set({ screen: 'queue', queueInfo: { count: 1, max: 5, designations: [] }, error: null, result: null });
+    set({ screen: 'queue', queueInfo: { count: 1, max: 5, designations: [], formsAt_ms: null }, error: null, result: null });
     sock.emit('inscription:join-queue', { weekNumber });
   },
 

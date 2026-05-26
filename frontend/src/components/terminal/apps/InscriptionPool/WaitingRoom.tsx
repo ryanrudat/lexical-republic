@@ -20,9 +20,18 @@ export default function WaitingRoom() {
     return () => clearInterval(id);
   }, []);
 
+  // Tick the auto-start countdown (server sends the shared deadline).
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(id);
+  }, []);
+
   const count = queueInfo?.count ?? 1;
   const max = queueInfo?.max ?? 5;
   const designations = queueInfo?.designations ?? [];
+  const formsAt = queueInfo?.formsAt_ms ?? null;
+  const secsLeft = formsAt != null ? Math.max(0, Math.ceil((formsAt - now) / 1000)) : null;
 
   return (
     <div className="crt-phosphor-monitor h-full min-h-full flex flex-col overflow-y-auto ios-scroll">
@@ -45,8 +54,13 @@ export default function WaitingRoom() {
           <p className="phosphor-text text-4xl tabular-nums phosphor-glow mb-4">
             {count} / {max}
           </p>
+          {secsLeft != null && (
+            <p className="phosphor-text-bright text-base uppercase tracking-[0.3em] phosphor-glow mb-2 tabular-nums">
+              starts in {secsLeft}s
+            </p>
+          )}
           <p className="phosphor-text-dim text-[11px] uppercase tracking-[0.25em] mb-7 max-w-xs leading-relaxed">
-            the pool starts when full — or shortly, with ministry stand-ins.
+            the pool starts when full — or when the timer hits zero, with ministry stand-ins.
           </p>
 
           {/* Roster of queued citizens */}

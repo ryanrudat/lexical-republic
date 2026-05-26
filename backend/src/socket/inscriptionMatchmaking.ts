@@ -41,6 +41,8 @@ interface QueueEntry {
 interface PoolQueue {
   entries: QueueEntry[];
   timer: ReturnType<typeof setTimeout> | null;
+  /** Wall-clock ms when the pool will auto-form — drives the waiting-room countdown. */
+  formsAt: number | null;
 }
 
 interface PoolDesk {
@@ -80,6 +82,7 @@ function emitQueueUpdate(io: Server, q: PoolQueue): void {
       count,
       max: POOL_MAX_PLAYERS,
       designations,
+      formsAt_ms: q.formsAt,
     });
   }
 }
@@ -107,24 +110,26 @@ export async function joinPoolQueue(
   const key = keyOf(entry.classId, entry.lane, entry.weekNumber);
   let q = queues.get(key);
   if (!q) {
-    q = { entries: [], timer: null };
+    q = { entries: [], timer: null, formsAt: null };
     queues.set(key, q);
   }
   // De-dupe: drop any prior entry for this pair (re-join / multi-tab).
   q.entries = q.entries.filter((e) => e.pairId !== entry.pairId);
   q.entries.push({ ...entry, socketId, joinedAt: Date.now() });
 
-  emitQueueUpdate(io, q);
-
   if (q.entries.length >= POOL_MAX_PLAYERS) {
+    emitQueueUpdate(io, q);
     void formPool(io, key);
     return;
   }
+  // First joiner arms the auto-form timer + sets the shared countdown deadline.
   if (!q.timer) {
+    q.formsAt = Date.now() + POOL_WAIT_MS;
     q.timer = setTimeout(() => {
       void formPool(io, key);
     }, POOL_WAIT_MS);
   }
+  emitQueueUpdate(io, q);
 }
 
 /** Remove a socket from whatever queue it sits in (cancel / disconnect). */
@@ -159,9 +164,11 @@ async function formPool(io: Server, key: string): Promise<void> {
   if (q.entries.length === 0) {
     queues.delete(key);
   } else {
+    q.formsAt = Date.now() + POOL_WAIT_MS;
     q.timer = setTimeout(() => {
       void formPool(io, key);
     }, POOL_WAIT_MS);
+    emitQueueUpdate(io, q);
   }
   if (group.length === 0) return;
 

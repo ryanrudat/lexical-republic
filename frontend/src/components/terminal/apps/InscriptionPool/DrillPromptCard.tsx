@@ -190,6 +190,24 @@ export default function DrillPromptCard({
   // Build the per-character display for the target word/sentence
   const chars = useMemo(() => target.split(''), [target]);
 
+  // Group characters into word-units (each = a word plus its trailing space)
+  // so the line only ever wraps BETWEEN words, never mid-word. Each unit keeps
+  // its global start index so per-character input comparison still lines up.
+  const wordGroups = useMemo(() => {
+    const groups: { start: number; chars: string[] }[] = [];
+    let cur: { start: number; chars: string[] } | null = null;
+    for (let i = 0; i < chars.length; i++) {
+      if (!cur) cur = { start: i, chars: [] };
+      cur.chars.push(chars[i]);
+      if (chars[i] === ' ') {
+        groups.push(cur);
+        cur = null;
+      }
+    }
+    if (cur) groups.push(cur);
+    return groups;
+  }, [chars]);
+
   return (
     <div className="pixel-mono relative" onClick={focusInput}>
       {/* Top row — audio + Mandarin toggle */}
@@ -253,43 +271,52 @@ export default function DrillPromptCard({
             • overflow (past end) → red typed char on dim background (you've
               typed extra characters — backspace them off)
           Whitespace renders as a dot so sentences stay readable. */}
-      <div className="mb-3 flex flex-wrap gap-y-1">
-        {/* Target chars + correctness coloring */}
-        {chars.map((char, i) => {
-          const typed = input[i];
-          const isWhitespace = char === ' ';
-          let cellClass = '';
-          if (i < input.length) {
-            cellClass = typed === char
-              ? 'phosphor-text-bright phosphor-glow'
-              : 'text-rose-400 underline';
-          } else if (i === input.length) {
-            cellClass = 'bg-[#66FF99] text-[#04120A] phosphor-glow-strong';
-          } else {
-            cellClass = 'phosphor-text-faint';
-          }
-          return (
-            <span
-              key={i}
-              className={`${cellClass} font-mono text-3xl tracking-normal inline-block min-w-[1ch] text-center transition-colors`}
-              aria-hidden
-            >
-              {isWhitespace ? '·' : char}
-            </span>
-          );
-        })}
-        {/* Overflow chars — what the student typed past the end. Shown in
-            red so it's obvious they need to backspace. */}
-        {input.length > target.length &&
-          Array.from(input.slice(target.length)).map((char, i) => (
-            <span
-              key={`overflow-${i}`}
-              className="text-rose-400 bg-rose-950/40 underline font-mono text-3xl tracking-normal inline-block min-w-[1ch] text-center"
-              aria-hidden
-            >
-              {char === ' ' ? '·' : char}
+      <div className="mb-3 rounded-sm border border-[#1F8540]/60 bg-[#0B1F12]/70 px-5 py-4">
+        <div className="flex flex-wrap gap-y-1">
+          {/* Each word-unit is an inline-flex that never wraps internally, so
+              the line breaks only between words. */}
+          {wordGroups.map((g, gi) => (
+            <span key={gi} className="inline-flex whitespace-nowrap">
+              {g.chars.map((char, j) => {
+                const i = g.start + j;
+                const typed = input[i];
+                const isWhitespace = char === ' ';
+                let cellClass = '';
+                if (i < input.length) {
+                  cellClass = typed === char
+                    ? 'phosphor-text-bright phosphor-glow'
+                    : 'text-rose-400 underline';
+                } else if (i === input.length) {
+                  cellClass = 'bg-[#66FF99] text-[#04120A] phosphor-glow-strong';
+                } else {
+                  // Untyped — standard phosphor (not faint) so the prompt is legible.
+                  cellClass = 'phosphor-text';
+                }
+                return (
+                  <span
+                    key={i}
+                    className={`${cellClass} font-mono text-3xl tracking-normal inline-block min-w-[1ch] text-center transition-colors`}
+                    aria-hidden
+                  >
+                    {isWhitespace ? '·' : char}
+                  </span>
+                );
+              })}
             </span>
           ))}
+          {/* Overflow chars — what the student typed past the end. Shown in
+              red so it's obvious they need to backspace. */}
+          {input.length > target.length &&
+            Array.from(input.slice(target.length)).map((char, i) => (
+              <span
+                key={`overflow-${i}`}
+                className="text-rose-400 bg-rose-950/40 underline font-mono text-3xl tracking-normal inline-block min-w-[1ch] text-center"
+                aria-hidden
+              >
+                {char === ' ' ? '·' : char}
+              </span>
+            ))}
+        </div>
       </div>
 
       {/* Backspace hint — appears when input is wrong or has overflow. */}
