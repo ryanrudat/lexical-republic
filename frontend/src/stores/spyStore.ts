@@ -11,26 +11,23 @@ import {
 
 // ─── Spy Store — the optional snooping loop ──────────────────────
 //
-// Drives the insider-spy layer of Shift 4: opening off-limits Records
-// Room files, PEARL's "cover story" interrogation (dice roll), and
-// funnelling intel to Frey via [ ].edited.
+// Drives the insider-spy layer of Shift 4. Reading a Records Wing file is
+// FREE (browsing). EXTRACTING it — copying it into [ ].edited — is the
+// crime PEARL watches for, so that's where the dice roll lives:
 //
-// Outcomes persist as NarrativeChoice rows (key `w4_snoop_<id>`,
-// value 'funneled' | 'dark') — refresh-safe, and read at W5 start to
-// branch the resistance story. No backend changes needed: NarrativeChoice
-// accepts any key/value (same pattern as the drop box + recruitment vote).
-//
-// Flow per file:
-//   attemptOpen(file)  → dice roll by exposure
-//        caught  → activeInterrogation = file  (PEARL window appears)
-//        slipped → cleared[id] = true          (read freely, funnel-ready)
+//   startExtract(file)  → dice roll by exposure
+//        caught  → activeInterrogation = file  (PEARL cover-story modal)
+//        slipped → downloadingFile = file       (transfer animation runs)
 //   resolveInterrogation(correct)
-//        pass → cleared[id] = true (funnel-ready)
-//        fail → goDark(file)       (file pulled, Frey loses the lead)
-//   funnel(file) → writes 'funneled', locks the file
+//        pass → downloadingFile = file (transfer resumes to completion)
+//        fail → goDark(file)           (extraction blocked, Frey loses it)
+//   completeDownload(file) → writes 'funneled', opens the [ ].edited drawer
+//        so the student watches the file land in Frey's channel.
 //
-// Resolved files (funneled OR dark) are locked — one clean roll each,
-// no carried-over heat.
+// Outcomes persist as NarrativeChoice rows (key `w4_snoop_<id>`, value
+// 'funneled' | 'dark') — refresh-safe, read at W5 start to branch the
+// resistance story. No backend changes (NarrativeChoice is generic).
+// Resolved files are locked — one clean roll each, no carried-over heat.
 
 export type SnoopOutcome = 'funneled' | 'dark';
 
@@ -40,17 +37,17 @@ interface SpyState {
   dropBoxText: string | null;
   /** Persisted final outcomes by file id. */
   resolved: Record<string, SnoopOutcome>;
-  /** Session-only: files you got past PEARL on (slipped or talked your way out) — readable + funnel-ready. */
-  cleared: Record<string, true>;
-  /** The file PEARL is currently interrogating you about (drives the overlay). */
+  /** The file currently transferring into [ ].edited (drives the progress bar). */
+  downloadingFile: SnoopFile | null;
+  /** The file PEARL is interrogating you about (drives the inquiry overlay). */
   activeInterrogation: SnoopFile | null;
   /** Whether the [ ].edited funnel drawer overlay is open. */
   drawerOpen: boolean;
 
   loadChoices: () => Promise<void>;
-  attemptOpen: (file: SnoopFile) => void;
+  startExtract: (file: SnoopFile) => void;
   resolveInterrogation: (correct: boolean) => void;
-  funnel: (file: SnoopFile) => Promise<void>;
+  completeDownload: (file: SnoopFile) => Promise<void>;
   openDrawer: () => void;
   closeDrawer: () => void;
   reset: () => void;
@@ -60,7 +57,7 @@ export const useSpyStore = create<SpyState>((set, get) => ({
   loaded: false,
   dropBoxText: null,
   resolved: {},
-  cleared: {},
+  downloadingFile: null,
   activeInterrogation: null,
   drawerOpen: false,
 
@@ -88,16 +85,16 @@ export const useSpyStore = create<SpyState>((set, get) => ({
     }
   },
 
-  attemptOpen: (file) => {
-    const { resolved, cleared, activeInterrogation } = get();
-    // Already resolved, already open, or another interrogation in flight — ignore.
-    if (resolved[file.id] || cleared[file.id] || activeInterrogation) return;
+  startExtract: (file) => {
+    const { resolved, downloadingFile, activeInterrogation } = get();
+    // Already resolved, mid-transfer, or another interrogation in flight — ignore.
+    if (resolved[file.id] || downloadingFile || activeInterrogation) return;
 
     const caught = Math.random() < CATCH_PROBABILITY[file.exposure];
     if (caught) {
       set({ activeInterrogation: file });
     } else {
-      set((s) => ({ cleared: { ...s.cleared, [file.id]: true } }));
+      set({ downloadingFile: file });
     }
   },
 
@@ -105,25 +102,22 @@ export const useSpyStore = create<SpyState>((set, get) => ({
     const file = get().activeInterrogation;
     if (!file) return;
     if (correct) {
-      set((s) => ({
-        activeInterrogation: null,
-        cleared: { ...s.cleared, [file.id]: true },
-      }));
+      // Cover held — clear the modal and let the transfer run to completion.
+      set({ activeInterrogation: null, downloadingFile: file });
     } else {
-      // Cover blown — clear the window, then mark the lead lost.
+      // Cover blown — extraction blocked, lead goes dark.
       set({ activeInterrogation: null });
       void writeOutcome(file.id, 'dark', set);
     }
   },
 
-  funnel: async (file) => {
+  completeDownload: async (file) => {
+    // Guard against double-fire from the progress timer.
+    if (get().downloadingFile?.id !== file.id) return;
+    set({ downloadingFile: null });
     await writeOutcome(file.id, 'funneled', set);
-    // Funnelled files leave the session-cleared set (now permanently resolved).
-    set((s) => {
-      const cleared = { ...s.cleared };
-      delete cleared[file.id];
-      return { cleared };
-    });
+    // Open the channel so the student watches the intel land with Frey.
+    set({ drawerOpen: true });
   },
 
   openDrawer: () => set({ drawerOpen: true }),
@@ -134,7 +128,7 @@ export const useSpyStore = create<SpyState>((set, get) => ({
       loaded: false,
       dropBoxText: null,
       resolved: {},
-      cleared: {},
+      downloadingFile: null,
       activeInterrogation: null,
       drawerOpen: false,
     }),
@@ -144,10 +138,10 @@ export const useSpyStore = create<SpyState>((set, get) => ({
 async function writeOutcome(
   fileId: string,
   outcome: SnoopOutcome,
-  set: (fn: (s: SpyState) => Partial<SpyState>) => void,
+  set: (partial: Partial<SpyState>) => void,
 ) {
   // Optimistic local update so the UI reflects the outcome immediately.
-  set((s) => ({ resolved: { ...s.resolved, [fileId]: outcome } }));
+  set({ resolved: { ...useSpyStore.getState().resolved, [fileId]: outcome } });
   try {
     await postNarrativeChoice({
       choiceKey: snoopChoiceKey(fileId),

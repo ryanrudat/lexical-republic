@@ -1,18 +1,25 @@
 // ─── W4 Spy Files — the optional snooping layer ──────────────────
 //
 // The student is an insider for the Unedited. While doing their Party
-// shift, they can choose to open OFF-LIMITS files in the Records Room.
-// Each open is a gamble: PEARL might notice (a dice roll weighted by the
-// file's `exposure`). If PEARL pounces, the student must "pick a cover
-// story" — a short, deferential, Party-pleasing excuse. Pass and they
-// keep the intel to funnel to Frey via [ ].edited; fail and the file is
-// pulled (Frey "goes dark" on that lead).
+// shift they can VIEW off-limits Records Wing files freely (browsing is
+// low-risk) — but EXTRACTING one (copying it into [ ].edited) is the
+// crime PEARL watches for. Extraction rolls the dice (weighted by the
+// file's `exposure`); if PEARL notices, the student must "pick a cover
+// story" to talk their way out. Pass and the file transfers to Frey;
+// fail and the extraction is blocked (Frey "goes dark" on that lead).
 //
-// All four W4 files are grounded in EXISTING week4.ts content — we're
-// surfacing the secret layer the shift already implies, not inventing
-// new lore. See Dplan/W4_Edited_App_Spy_Redesign.md.
+// The files are deliberately NOT dry forms. They ladder from the human
+// cost (a confiscated photo, a last conversation) up to the machine
+// itself (how they rewrite records, the removal quota) — so the deeper
+// you dig, the more of the Party's inner workings you expose, and the
+// riskier the extraction. All grounded in existing W4 narrative (9020,
+// 4488). See Dplan/W4_Edited_App_Spy_Redesign.md.
 
 export type Exposure = 'low' | 'medium' | 'high';
+
+// What the file looks like — drives how the Records Wing renders it and
+// signals variety to the student (a photo log reads nothing like a memo).
+export type FileType = 'item' | 'transcript' | 'revision' | 'memo';
 
 export interface CoverStoryOption {
   text: string;
@@ -24,24 +31,29 @@ export interface CoverStoryInterrogation {
   /** PEARL's sweet-menacing (Umbridge) question. */
   pearlPrompt: string;
   options: CoverStoryOption[];
-  /** PEARL's delighted dismissal when the cover holds. */
+  /** PEARL's delighted dismissal when the cover holds (extraction resumes). */
   passLine: string;
-  /** PEARL's sweet menace when the cover fails. */
+  /** PEARL's sweet menace when the cover fails (extraction blocked). */
   failLine: string;
 }
 
 export interface SnoopFile {
   id: string;
   weekNumber: number;
-  /** RESTRICTED header shown on the file. */
+  /** Header title on the file. */
   title: string;
-  classification: string;
+  /** Display tag for the file's TYPE, e.g. "CONFISCATED ITEM". */
+  kind: string;
+  fileType: FileType;
+  /** How risky EXTRACTING this file is (shown up front — informed risk). */
   exposure: Exposure;
   /** Frey's whisper that points the student at this file. */
   freyHint: string;
-  /** The sensitive document body the student reads, line by line. */
+  /** Document body lines (used by item / transcript / memo). */
   body: string[];
-  /** The one-line intel headline that gets funneled to Frey. */
+  /** Before/after panels — used only by the `revision` type. */
+  revision?: { before: string[]; after: string[] };
+  /** The one-line intel headline that transfers to Frey's channel. */
   intel: string;
   interrogation: CoverStoryInterrogation;
 }
@@ -55,10 +67,10 @@ export interface ContrabandWord {
   freyLine: string;
 }
 
-// Chance PEARL CATCHES the student, by file exposure. The student is told
-// the exposure level up front (informed risk) — the outcome stays hidden
-// (the suspense). Justified in-world: the [ ].edited app itself proves
-// PEARL has blind spots, so sometimes you slip by unseen.
+// Chance PEARL CATCHES the student mid-EXTRACTION, by file exposure. The
+// student is told the exposure level up front (informed risk) — the
+// outcome stays hidden (the suspense). Justified in-world: the [ ].edited
+// app itself proves PEARL has blind spots, so sometimes the copy slips by.
 export const CATCH_PROBABILITY: Record<Exposure, number> = {
   low: 0.3,
   medium: 0.55,
@@ -72,13 +84,12 @@ export function snoopChoiceKey(fileId: string): string {
 }
 
 // Frey's opening transmission — the recruitment pitch + the standing order.
-// Shown at the top of the [ ].edited channel.
 export const FREY_INTRO: string[] = [
   'citizen. you found this.',
   "they don't know it's here. that's the point.",
   '',
   'you sit where we cannot. you read what they erase.',
-  'so read it. and tell me what they took.',
+  'so read it. and when you can, send it to me.',
 ];
 
 // ─── The contraband words ────────────────────────────────────────
@@ -123,137 +134,144 @@ export const CONTRABAND_WORDS: ContrabandWord[] = [
 ];
 
 // ─── The four W4 snoop files ─────────────────────────────────────
+// Laddered: human cost (low/medium risk) → the machine (high risk).
 export const W4_SNOOP_FILES: SnoopFile[] = [
-  // 1. 9020's reassignment — confirms the erased visitor was disappeared.
+  // 1. CONFISCATED ITEM — the human cost. 9020 was a parent with a life.
   {
-    id: '9020_transfer',
+    id: '9020_photo',
     weekNumber: 4,
-    title: 'PERSONNEL REASSIGNMENT — CITIZEN-9020',
-    classification: 'RESTRICTED',
-    exposure: 'medium',
-    freyHint: 'you saw the name they pulled. now find out where he went.',
-    body: [
-      'SUBJECT: Citizen-9020',
-      'STATUS: Reassigned — Sector [ ]',
-      'EFFECTIVE: today, 16:00',
-      '',
-      'NOTE: The guest entry logged at 17:30 is in error.',
-      'Citizen-9020 was reassigned before that time.',
-      'All prior records are to be reconciled.',
-      'Citizen-9020 has no surviving file.',
-    ],
-    intel: "they reassigned 9020 at 16:00 — an hour before he was 'seen' at 17:30. they are erasing him backwards.",
-    interrogation: {
-      pearlPrompt:
-        "Oh — Citizen. ☺ Citizen-9020's file is sealed. Whatever drew your eye to a reassignment notice?",
-      options: [
-        { text: 'I was confirming the reassignment was filed correctly, Madam.', correct: true },
-        { text: 'I wanted to know what happened to him.', correct: false },
-        { text: 'Ivan told me to look.', correct: false },
-        { text: 'I opened it by mistake.', correct: false },
-      ],
-      passLine: 'How conscientious. ☺ Do close it now — there is nothing there to keep.',
-      failLine: "Hm. That is not quite an answer, is it? ☺ I'll have the file withdrawn. For your protection.",
-    },
-  },
-
-  // 2. 4488's old informant report — the wheel: the informer is now the subject.
-  {
-    id: '4488_report',
-    weekNumber: 4,
-    title: 'PRIOR SUBMISSION — CITIZEN-4488 (INFORMANT)',
-    classification: 'RESTRICTED',
+    title: 'EVIDENCE LOG — BLOCK 7, UNIT 9020',
+    kind: 'CONFISCATED ITEM',
+    fileType: 'item',
     exposure: 'low',
-    freyHint: "the citizen you're reconciling today — read what he did before.",
+    freyHint: "they emptied 9020's room. see what they kept.",
     body: [
-      'INFORMANT: Citizen-4488',
-      'RE: Neighbor, Block 7 — irregular schedule',
+      'Recovered from Unit 9020:',
       '',
-      'She arrived every Tuesday. Then she stopped coming.',
-      'I reported the change, as instructed.',
+      'One photograph. Two adults, one child. A lake.',
+      'On the back, in pen: "Tuesday. She laughed."',
       '',
-      'OUTCOME: Subject removed from directory. Reassigned.',
-      'Citizen-4488 was commended for his vigilance.',
+      'One paper bird, folded by hand.',
+      '',
+      'DISPOSITION: incinerate.',
     ],
-    intel: '4488 informed on his own neighbor — and she was disappeared. now they are reconciling him. it is a wheel.',
+    intel: '9020 had a child, and someone he loved. they are burning the only proof he existed.',
     interrogation: {
       pearlPrompt:
-        "Reviewing Citizen-4488's history, are we? ☺ For the report, I'm sure.",
+        'Sorting old evidence, Citizen? ☺ Such sentimental clutter. Why would you copy it?',
       options: [
-        { text: 'Yes, Madam — context ensures an accurate reconciliation.', correct: true },
-        { text: 'I wanted to see if he had done anything wrong.', correct: false },
-        { text: 'I feel sorry for his neighbor.', correct: false },
-        { text: 'No reason. I was just curious.', correct: false },
+        { text: 'I am cataloguing the items for disposal, Madam.', correct: true },
+        { text: 'Someone should remember this family.', correct: false },
+        { text: 'I want to know who the child was.', correct: false },
+        { text: 'No reason. It caught my eye.', correct: false },
       ],
-      passLine: 'A thorough associate. ☺ The Party notices diligence like yours.',
-      failLine: "Curiosity is such a restless habit, Citizen. ☺ Let me take that file before it troubles you.",
+      passLine: 'How tidy of you. ☺ See that it is incinerated properly.',
+      failLine: "Sentiment is a kind of illness, Citizen. ☺ I'll withdraw this — and note it.",
     },
   },
 
-  // 3. The Archive's weekly deletion ledger — the scope of erasure (scanning task).
+  // 2. SURVEILLANCE TRANSCRIPT — the last exchange; 4488 is holding something.
   {
-    id: 'archive_list',
+    id: '9020_transcript',
     weekNumber: 4,
-    title: 'ARCHIVE CONTROL — WEEKLY RECONCILIATION LEDGER',
-    classification: 'RESTRICTED // ARCHIVE EYES ONLY',
-    exposure: 'high',
-    freyHint: "this is the big one — the whole week's deletions. they watch this file closely.",
-    body: [
-      'Observations reclassified RESTRICTED this cycle:',
-      '',
-      'Citizen-9020 — guest entry — removed',
-      'Citizen-3371 — correspondence — removed',
-      'Citizen-0148 — assembly — removed',
-      'Citizen-9020 — relative inquiry — removed',
-      'Citizen-7756 — directory listing — removed',
-      '',
-      'Net record adjustments this cycle: 11',
-    ],
-    intel: 'eleven people were erased this week. and someone made a "relative inquiry" about 9020 — his family is looking for him.',
-    interrogation: {
-      pearlPrompt:
-        "Oh, Citizen. ☺ That ledger belongs to Archive Control alone. You should not be able to see it at all. However did you find your way in?",
-      options: [
-        { text: 'My clearance must have updated in error, Madam. I will log out at once.', correct: true },
-        { text: 'The Unedited showed me the way in.', correct: false },
-        { text: 'I was looking for Citizen-9020.', correct: false },
-        { text: "I won't tell anyone what I saw.", correct: false },
-      ],
-      passLine: 'A clearance error. ☺ How tiresome for you. I\'ll see it corrected. Off you go.',
-      failLine: 'Now that is a worry, isn\'t it? ☺ I think we had best seal this one. And note the time.',
-    },
-  },
-
-  // 4. 4488's pending flag — the darkest: he's next, for doing what YOU are doing.
-  {
-    id: '4488_pending',
-    weekNumber: 4,
-    title: 'RECONCILIATION FLAG — CITIZEN-4488 (PENDING)',
-    classification: 'RESTRICTED',
+    title: 'AUDIO LOG — BLOCK 7 STAIRWELL — 17:28',
+    kind: 'SURVEILLANCE TRANSCRIPT',
+    fileType: 'transcript',
     exposure: 'medium',
-    freyHint: "you spent all day fixing his record. read the line at the bottom.",
+    freyHint: 'the last two minutes before they took 9020. listen.',
     body: [
-      'SUBJECT: Citizen-4488',
-      'FLAG: Pending reassignment review',
+      '17:28 — two voices, Block 7 stairwell.',
       '',
-      'REASON: Excessive inquiries into reclassified records.',
-      'See: Records Wing access, 14:30.',
+      '9020: "Did you keep it?"',
+      '4488: "Keep what?"',
+      '9020: "You know what. If they take me, it has to live somewhere."',
+      '4488: "...I kept it."',
+      '9020: "Then it wasn\'t for nothing."',
       '',
-      'RECOMMENDATION: Reconcile current record. Issue reassignment after filing.',
-      'The associate completing today\'s reconciliation is not to be informed.',
+      '17:30 — 9020 reassigned. Recording sealed.',
     ],
-    intel: 'they are erasing 4488 next — for looking into reclassified records. for doing exactly what i am doing now. and they are using me to tidy him up first.',
+    intel: '9020 gave something to 4488 to hide — two minutes before they took him. 4488 still has it.',
     interrogation: {
       pearlPrompt:
-        "That flag is for supervisor eyes, Citizen. ☺ Curious about your subject's future, are we?",
+        'An old stairwell recording? ☺ Whatever are you listening for, Citizen?',
       options: [
-        { text: 'I only need today\'s record, Madam. I will close it now.', correct: true },
-        { text: 'Are you going to disappear him?', correct: false },
-        { text: 'This is not right.', correct: false },
-        { text: 'Will I be flagged too?', correct: false },
+        { text: 'Verifying the reassignment timestamp, Madam.', correct: true },
+        { text: 'I want to know what 9020 hid.', correct: false },
+        { text: 'These two were friends. It is sad.', correct: false },
+        { text: 'Just curious who was speaking.', correct: false },
       ],
-      passLine: 'Just today\'s record. ☺ That is the spirit. Eyes on your own work, Citizen.',
-      failLine: 'Such questions, Citizen. ☺ I\'ll close this for you — and I\'ll remember that you asked.',
+      passLine: 'Timestamps. ☺ So dependable of you. Off you go.',
+      failLine: "Curiosity again, Citizen. ☺ I'll seal this tighter — and remember that you asked.",
+    },
+  },
+
+  // 3. REVISION RECORD — how they rewrite reality. Before/after two-panel.
+  {
+    id: '9020_revision',
+    weekNumber: 4,
+    title: 'RECORD ADJUSTMENT — CITIZEN-9020',
+    kind: 'REVISION RECORD',
+    fileType: 'revision',
+    exposure: 'medium',
+    freyHint: 'this is how they erase a person — before, and after.',
+    body: ['Adjustment applied this cycle.'],
+    revision: {
+      before: [
+        '"Citizen-9020 attended the Block 7 assembly.',
+        'He asked why the lists keep growing.',
+        'He was heard. He was real."',
+      ],
+      after: [
+        '"No assembly occurred in Block 7.',
+        'No such question was raised.',
+        'Citizen-9020: no surviving record."',
+      ],
+    },
+    intel: "they don't just remove people — they rewrite the record so it never happened. i have the original.",
+    interrogation: {
+      pearlPrompt:
+        'Comparing record versions, Citizen? ☺ The revised version is the correct one, you understand.',
+      options: [
+        { text: 'Confirming the revision was applied correctly, Madam.', correct: true },
+        { text: 'The first version was the truth.', correct: false },
+        { text: 'You changed what really happened.', correct: false },
+        { text: 'Which one is real?', correct: false },
+      ],
+      passLine: 'The revised version is real, Citizen. ☺ It always was. Good work.',
+      failLine: "Oh dear — confused about which version is true? ☺ We'll correct that. I'll note it.",
+    },
+  },
+
+  // 4. INTERNAL MEMO — the machine laid bare. Highest extraction risk.
+  {
+    id: 'reconciliation_quota',
+    weekNumber: 4,
+    title: 'RECONCILIATION QUOTA — CYCLE 14',
+    kind: 'INTERNAL — ARCHIVE CONTROL',
+    fileType: 'memo',
+    exposure: 'high',
+    freyHint: 'the big one. how many people they erase is just a number on a form.',
+    body: [
+      'ARCHIVE CONTROL — INTERNAL. Not for citizen view.',
+      '',
+      'Reconciliation target this cycle: minimum 10 removals.',
+      'Associates below target will be reviewed.',
+      '',
+      'Priority order: witnesses first, then relatives, then complainers.',
+      'Remember: a citizen who is never mentioned was never here.',
+    ],
+    intel: 'erasing people is a quota — ten a week, minimum. witnesses go first. and they review the workers who miss the number.',
+    interrogation: {
+      pearlPrompt:
+        'Oh, Citizen. ☺ That memo belongs to Archive Control. You should not see it at all. However did you reach it?',
+      options: [
+        { text: 'My clearance must have updated in error, Madam. Logging out now.', correct: true },
+        { text: 'Ten people a week? That is monstrous.', correct: false },
+        { text: 'The Unedited showed me the way in.', correct: false },
+        { text: 'I will not repeat what it says.', correct: false },
+      ],
+      passLine: "A clearance error. ☺ How tiresome. I'll see it corrected. Run along.",
+      failLine: "Now that is a worry, isn't it? ☺ I'll seal this — and watch your terminal closely.",
     },
   },
 ];

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useSpyStore } from '../../../stores/spyStore';
 import { getSnoopFiles, type Exposure, type SnoopFile } from '../../../data/spyFiles';
 
@@ -7,17 +7,17 @@ import { getSnoopFiles, type Exposure, type SnoopFile } from '../../../data/spyF
 // A Party facility, so it wears the institutional CRT look (dark teal on
 // the cyan monitor), deliberately UNLIKE the dark-slate [ ].edited
 // resistance channel. Authorized case work lives in Current Shift; this
-// surface holds the RESTRICTED files the student may CHOOSE to open.
+// surface holds the RESTRICTED files the student may CHOOSE to read.
 //
-// Opening a restricted file is a gamble: spyStore.attemptOpen rolls the
-// dice by exposure. If PEARL notices, the app-root PearlInquiryOverlay
-// takes over (cover-story interrogation); otherwise the file opens and the
-// student can funnel its intel to Frey. Resolved files are locked.
+// Reading a file is FREE. EXTRACTING it (copying into [ ].edited) is the
+// crime PEARL watches for — spyStore.startExtract rolls the dice by
+// exposure. If PEARL notices, the app-root PearlInquiryOverlay takes over
+// (cover-story); otherwise the file transfers to Frey. Resolved files lock.
 
-const EXPOSURE: Record<Exposure, { label: string; pill: string }> = {
-  low: { label: 'LOW EXPOSURE', pill: 'text-emerald-700 bg-emerald-100 border-emerald-300' },
-  medium: { label: 'MODERATE EXPOSURE', pill: 'text-amber-700 bg-amber-100 border-amber-300' },
-  high: { label: 'HIGH EXPOSURE', pill: 'text-rose-700 bg-rose-100 border-rose-300' },
+const RISK: Record<Exposure, { label: string; pill: string }> = {
+  low: { label: 'EXTRACT RISK · LOW', pill: 'text-emerald-700 bg-emerald-100 border-emerald-300' },
+  medium: { label: 'EXTRACT RISK · MODERATE', pill: 'text-amber-700 bg-amber-100 border-amber-300' },
+  high: { label: 'EXTRACT RISK · HIGH', pill: 'text-rose-700 bg-rose-100 border-rose-300' },
 };
 
 export default function RecordsRoomApp() {
@@ -58,7 +58,7 @@ export default function RecordsRoomApp() {
           ▰ Restricted
         </span>
         <span className="text-[10px] text-[#8B9B9E] tracking-wider">
-          access logged · authorization required
+          reading is logged · extraction is watched
         </span>
       </div>
 
@@ -77,96 +77,193 @@ export default function RecordsRoomApp() {
 
 function RecordsFile({ file }: { file: SnoopFile }) {
   const resolved = useSpyStore((s) => s.resolved[file.id]);
-  const cleared = useSpyStore((s) => Boolean(s.cleared[file.id]));
-  const interrogatingThis = useSpyStore(
-    (s) => s.activeInterrogation?.id === file.id,
-  );
-  const attemptOpen = useSpyStore((s) => s.attemptOpen);
-  const funnel = useSpyStore((s) => s.funnel);
-  const openDrawer = useSpyStore((s) => s.openDrawer);
+  const downloadingThis = useSpyStore((s) => s.downloadingFile?.id === file.id);
+  const interrogatingThis = useSpyStore((s) => s.activeInterrogation?.id === file.id);
+  const startExtract = useSpyStore((s) => s.startExtract);
+  const completeDownload = useSpyStore((s) => s.completeDownload);
 
-  const exposure = EXPOSURE[file.exposure];
-  const isOpen = cleared || resolved === 'funneled';
+  const [open, setOpen] = useState(false);
+  const [progress, setProgress] = useState(0);
 
-  const handleFunnel = async () => {
-    await funnel(file);
-    // Open the [ ].edited channel so the student sees the intel land with Frey.
-    openDrawer();
-  };
+  const isFunneled = resolved === 'funneled';
+  const isDark = resolved === 'dark';
+  const risk = RISK[file.exposure];
+
+  // Transfer animation: fill 0→100 while this file is downloading, then
+  // hand off to the store (which writes 'funneled' + opens the channel).
+  useEffect(() => {
+    if (!downloadingThis) return;
+    let p = 0;
+    const id = setInterval(() => {
+      p += 7;
+      if (p >= 100) {
+        clearInterval(id);
+        setProgress(100);
+        void completeDownload(file);
+      } else {
+        setProgress(p);
+      }
+    }, 110);
+    return () => clearInterval(id);
+  }, [downloadingThis, file, completeDownload]);
 
   return (
     <div className="rounded-xl border border-[#2A4A4E]/25 bg-white/45 overflow-hidden">
-      {/* File header row */}
+      {/* Header row: TYPE tag + title + status/risk badge */}
       <div className="flex items-start justify-between gap-3 px-4 pt-3.5 pb-3 border-b border-[#2A4A4E]/15">
         <div className="min-w-0">
           <p className="text-[9px] text-rose-700 tracking-[0.25em] uppercase mb-1">
-            {file.classification}
+            ▰ {file.kind}
           </p>
           <p className="text-[13px] text-[#1A3035] leading-snug">{file.title}</p>
         </div>
-        {/* Status / exposure badge */}
-        {resolved === 'funneled' ? (
-          <span className="shrink-0 text-[9px] text-emerald-700 bg-emerald-100 border border-emerald-300 rounded-full px-2 py-0.5 tracking-wider uppercase">
-            ✓ funnelled
-          </span>
-        ) : resolved === 'dark' ? (
-          <span className="shrink-0 text-[9px] text-[#8B9B9E] bg-slate-200/60 border border-slate-300 rounded-full px-2 py-0.5 tracking-wider uppercase">
-            ✗ withdrawn
-          </span>
+        {isFunneled ? (
+          <Badge className="text-emerald-700 bg-emerald-100 border-emerald-300">✓ secured</Badge>
+        ) : isDark ? (
+          <Badge className="text-[#8B9B9E] bg-slate-200/60 border-slate-300">✗ blocked</Badge>
         ) : (
-          <span
-            className={`shrink-0 text-[9px] rounded-full px-2 py-0.5 tracking-wider uppercase border ${exposure.pill}`}
-          >
-            {exposure.label}
-          </span>
+          <Badge className={risk.pill}>{risk.label}</Badge>
         )}
       </div>
 
       {/* Body */}
       <div className="px-4 py-3.5">
-        {resolved === 'dark' ? (
+        {isDark ? (
           <p className="text-[12px] text-[#8B9B9E] italic leading-relaxed">
-            &gt; Archive Control withdrew this file. The lead is lost.
+            &gt; Archive Control blocked the extraction. The lead is lost.
           </p>
-        ) : isOpen ? (
+        ) : downloadingThis ? (
+          <TransferProgress progress={progress} />
+        ) : isFunneled ? (
           <>
-            <div className="space-y-0.5 text-[12px] text-[#2A4A4E] leading-relaxed">
-              {file.body.map((line, i) =>
-                line === '' ? (
-                  <div key={i} className="h-2" />
-                ) : (
-                  <p key={i}>{line}</p>
-                ),
-              )}
-            </div>
-            {resolved === 'funneled' ? (
-              <p className="mt-3 text-[11px] text-emerald-700 tracking-wider">
-                &gt; funnelled to [ ]. Frey has it.
-              </p>
-            ) : (
+            <FileContent file={file} />
+            <p className="mt-3 text-[11px] text-emerald-700 tracking-wider">
+              &gt; secured in [ ]. Frey has it.
+            </p>
+          </>
+        ) : open ? (
+          <>
+            <FileContent file={file} />
+            <p className="mt-4 mb-2 text-[10px] text-[#8B7A5A] tracking-wider">
+              &gt; copying a file is what they watch for.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
               <button
-                onClick={handleFunnel}
-                className="mt-4 inline-flex items-center gap-2 rounded-lg border border-rose-300 bg-rose-50 px-3.5 py-2 text-[11px] text-rose-700 tracking-wider uppercase hover:bg-rose-100 active:scale-[0.98] transition-all"
+                onClick={() => startExtract(file)}
+                disabled={interrogatingThis}
+                className="inline-flex items-center gap-2 rounded-lg border border-rose-300 bg-rose-50 px-3.5 py-2 text-[11px] text-rose-700 tracking-wider uppercase hover:bg-rose-100 active:scale-[0.98] transition-all disabled:opacity-50"
               >
-                ▸ funnel to [ ]
+                {interrogatingThis ? '■ access queried…' : '⬇ extract to [ ]'}
               </button>
-            )}
+              <button
+                onClick={() => setOpen(false)}
+                className="text-[10px] text-[#8B9B9E] tracking-wider uppercase hover:text-[#2A4A4E] transition-colors"
+              >
+                close
+              </button>
+            </div>
           </>
         ) : (
           <>
             <p className="text-[11px] text-[#5A7A7E] leading-relaxed mb-3">
-              &gt; Opening this file may draw attention.
+              &gt; Reading is permitted. Extraction draws attention.
             </p>
             <button
-              onClick={() => attemptOpen(file)}
-              disabled={interrogatingThis}
-              className="inline-flex items-center gap-2 rounded-lg border border-[#2A4A4E]/35 bg-white/60 px-3.5 py-2 text-[11px] text-[#1A3035] tracking-wider uppercase hover:border-rose-400 hover:text-rose-700 active:scale-[0.98] transition-all disabled:opacity-50"
+              onClick={() => setOpen(true)}
+              className="inline-flex items-center gap-2 rounded-lg border border-[#2A4A4E]/35 bg-white/60 px-3.5 py-2 text-[11px] text-[#1A3035] tracking-wider uppercase hover:border-[#2A4A4E]/60 active:scale-[0.98] transition-all"
             >
-              {interrogatingThis ? '■ access queried…' : '⊟ open file'}
+              ⊟ view file
             </button>
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+function Badge({ className, children }: { className: string; children: ReactNode }) {
+  return (
+    <span
+      className={`shrink-0 text-[9px] rounded-full px-2 py-0.5 tracking-wider uppercase border ${className}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+// Renders the file body per type: a before/after pair for revision records,
+// otherwise plain document lines (item / transcript / memo).
+function FileContent({ file }: { file: SnoopFile }) {
+  if (file.fileType === 'revision' && file.revision) {
+    return (
+      <div className="space-y-3">
+        {file.body.map((line, i) => (
+          <p key={i} className="text-[12px] text-[#2A4A4E] leading-relaxed">{line}</p>
+        ))}
+        <RevisionPanel label="ORIGINAL · recovered" tone="truth" lines={file.revision.before} />
+        <RevisionPanel label="REVISED · official" tone="lie" lines={file.revision.after} />
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-0.5 text-[12px] text-[#2A4A4E] leading-relaxed">
+      {file.body.map((line, i) =>
+        line === '' ? <div key={i} className="h-2" /> : <p key={i}>{line}</p>,
+      )}
+    </div>
+  );
+}
+
+function RevisionPanel({
+  label,
+  tone,
+  lines,
+}: {
+  label: string;
+  tone: 'truth' | 'lie';
+  lines: string[];
+}) {
+  const truth = tone === 'truth';
+  return (
+    <div
+      className={`rounded-lg border px-3 py-2.5 ${
+        truth
+          ? 'border-emerald-300 bg-emerald-50/60'
+          : 'border-[#2A4A4E]/25 bg-slate-200/40'
+      }`}
+    >
+      <p
+        className={`text-[9px] tracking-[0.2em] uppercase mb-1.5 ${
+          truth ? 'text-emerald-700' : 'text-[#8B9B9E]'
+        }`}
+      >
+        {label}
+      </p>
+      <div className="space-y-0.5 text-[12px] text-[#2A4A4E] leading-relaxed">
+        {lines.map((line, i) => (
+          <p key={i}>{line}</p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// The download/transfer payoff: a progress bar copying the file into [ ].edited.
+function TransferProgress({ progress }: { progress: number }) {
+  return (
+    <div className="py-1">
+      <p className="text-[11px] text-rose-700 tracking-wider uppercase mb-2">
+        ⬇ extracting → [ ].edited
+      </p>
+      <div className="h-2 rounded-full bg-[#2A4A4E]/15 overflow-hidden">
+        <div
+          className="h-full bg-rose-500 transition-[width] duration-100 ease-linear"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+      <p className="mt-2 text-[10px] text-[#5A7A7E] tracking-wider tabular-nums">
+        copying to [ ].edited — {progress}%
+      </p>
     </div>
   );
 }

@@ -125,8 +125,8 @@ function PearlInquiryModal({ file }: { file: SnoopFile }) {
                 }`}
               >
                 {picked
-                  ? '> the lead is yours. funnel it when you can.'
-                  : '> file withdrawn. the lead is lost.'}
+                  ? '> clearance accepted. extracting…'
+                  : '> extraction blocked. the lead is lost.'}
               </p>
             </div>
           )}
