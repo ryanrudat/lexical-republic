@@ -72,22 +72,15 @@ const APPS: AppTile[] = [
     emoji: '\u{1F5C4}',
     lockWeek: 4,
   },
-  {
-    // [ ].edited — Unedited's smuggled surface. Appears at W4. Rendered
-    // with a custom dark/glitched tile (see special-case branch below),
-    // NOT through the standard retro-panel tile path.
-    id: 'edited',
-    name: '[ ].edited',
-    description: 'unsigned. unfiled.',
-    emoji: '[ ]',
-    lockWeek: 4,
-  },
+  // [ ].edited has NO desktop tile — it's reached via the corner FunnelDrawer
+  // `[ ]` pill (and the planned office-view door), which renders the same
+  // FreyChannel. The old large desktop card was redundant; removed 2026-05-26.
 ];
-const GUIDED_STUDENT_APPS: TerminalApp[] = ['clarity-queue', 'harmony', 'my-file', 'inscription-pool', 'records-room', 'edited'];
+const GUIDED_STUDENT_APPS: TerminalApp[] = ['clarity-queue', 'harmony', 'my-file', 'inscription-pool', 'records-room'];
 
 // Apps that stay HIDDEN before Shift 4 (no "Unlocks in Shift 4" tease) — the
 // resistance/spy surfaces appear together via the post-login glitch at W4.
-const W4_HIDDEN_UNTIL_UNLOCK = new Set<TerminalApp>(['edited', 'records-room']);
+const W4_HIDDEN_UNTIL_UNLOCK = new Set<TerminalApp>(['records-room']);
 
 export default function TerminalDesktop() {
   const openApp = useViewStore((s) => s.openApp);
