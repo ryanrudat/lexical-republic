@@ -32,7 +32,7 @@ const APP_CONFIG = {
   'duty-roster': { title: 'Duty Roster', component: DutyRosterApp },
   'my-file': { title: 'My File', component: MyFileApp },
   'inscription-pool': { title: 'Word Pool', component: InscriptionApp },
-  'records-room': { title: 'Records Wing', component: RecordsRoomApp },
+  'records-room': { title: 'Records', component: RecordsRoomApp },
   'edited': { title: '[ ].edited', component: EditedApp },
 } as const;
 

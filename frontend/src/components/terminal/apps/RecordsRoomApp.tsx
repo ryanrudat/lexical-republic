@@ -38,7 +38,7 @@ export default function RecordsRoomApp() {
           Department of Clarity
         </p>
         <h2 className="text-xl text-[#1A3035] tracking-[0.12em] uppercase">
-          Records Wing — Archive Terminal
+          Records — Archive Terminal
         </h2>
         <div className="mt-3 h-px bg-[#2A4A4E]/25" />
       </div>

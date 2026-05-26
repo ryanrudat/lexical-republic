@@ -62,7 +62,7 @@ const APPS: AppTile[] = [
     // happens (off-limits files behind PEARL's dice-roll). Standard retro
     // panel tile (it's a Party app), unlike the dark [ ].edited tile.
     id: 'records-room',
-    name: 'Records Wing',
+    name: 'Records',
     description: 'Archive access terminal',
     emoji: '\u{1F5C4}',
     lockWeek: 4,
