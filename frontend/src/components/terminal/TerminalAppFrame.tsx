@@ -36,8 +36,12 @@ export default function TerminalAppFrame({ title, children, onClose }: TerminalA
       </div>
 
       {/* App content */}
-      <div className="flex-1 overflow-auto ios-scroll crt-monitor-screen">
-        <div className="relative">{children}</div>
+      <div className="flex-1 overflow-auto ios-scroll crt-monitor-screen flex flex-col">
+        {/* flex-1 gives this wrapper a DEFINITE height, so full-height apps
+            (e.g. Word Pool's `crt-phosphor-monitor h-full`) fill the frame and
+            the cyan desktop background can't peek through at the bottom.
+            Apps that don't fill simply sit on the cyan as before. */}
+        <div className="relative flex-1 flex flex-col">{children}</div>
       </div>
     </div>
   );
