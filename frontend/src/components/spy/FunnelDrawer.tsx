@@ -3,19 +3,21 @@ import { useViewStore } from '../../stores/viewStore';
 import { useSeasonStore } from '../../stores/seasonStore';
 import { useSpyStore } from '../../stores/spyStore';
 import { getHighestUnlockedWeek } from '../../utils/weekUnlock';
-import FreyChannel from '../terminal/apps/EditedApp/FreyChannel';
+import EditedWindow from '../terminal/apps/EditedApp/EditedWindow';
 
 // ─── Funnel Drawer — [ ].edited, reachable mid-shift ─────────────
 //
 // App-root overlay. A small glitchy `[ ]` floats in the corner across the
 // terminal — Current Shift, the Records Wing, any app — so the student can
-// slide open Frey's channel and funnel WITHOUT leaving their post. That
-// toggle (Party work on top, secret channel underneath) is the feeling of
-// being an insider.
+// pop open Frey's channel and funnel WITHOUT leaving their post. That toggle
+// (Party work on top, secret channel underneath) is the feeling of being an
+// insider.
 //
-// Hidden in the 3D office (protect the art; the office-view door is the
-// planned entrance there) and inside the full [ ].edited app (redundant).
-// W4+ only. Reuses FreyChannel — same content as the full app.
+// The channel itself is a draggable, glitchy contraband window (EditedWindow)
+// that floats over the work with no backdrop — drag it wherever, peek at the
+// terminal behind it. Hidden in the 3D office (protect the art; the
+// office-view door is the planned entrance there) and inside the full
+// [ ].edited app (redundant). W4+ only.
 
 export default function FunnelDrawer() {
   const currentView = useViewStore((s) => s.currentView);
@@ -45,37 +47,13 @@ export default function FunnelDrawer() {
         <button
           onClick={openDrawer}
           aria-label="Open [ ].edited channel"
-          className="fixed bottom-4 left-4 z-[55] font-ibm-mono text-sm tracking-[0.3em] text-rose-400/90 bg-slate-900/90 border border-dashed border-slate-700 hover:border-rose-500 rounded-lg px-3 py-2 shadow-lg active:scale-95 transition-colors"
+          className="edited-pill fixed bottom-4 left-4 z-[55] font-ibm-mono text-sm tracking-[0.3em] text-rose-400/90 bg-slate-900/90 border border-dashed border-slate-700 hover:border-rose-500 rounded-lg px-3 py-2 shadow-lg active:scale-95 transition-colors"
         >
           [ ]
         </button>
       )}
 
-      {drawerOpen && (
-        <div className="fixed inset-0 z-[90]">
-          {/* Backdrop — tap to close */}
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={closeDrawer}
-          />
-          {/* Sliding channel panel */}
-          <div className="absolute inset-y-0 right-0 w-full max-w-md bg-slate-950 text-slate-200 font-ibm-mono text-sm shadow-2xl flex flex-col">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 shrink-0">
-              <span className="text-rose-400 text-xs tracking-wider">[ ].edited</span>
-              <button
-                onClick={closeDrawer}
-                className="text-slate-500 hover:text-slate-200 transition-colors active:scale-95"
-                aria-label="Close channel"
-              >
-                [ ✕ ]
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto ios-scroll">
-              <FreyChannel />
-            </div>
-          </div>
-        </div>
-      )}
+      {drawerOpen && <EditedWindow onClose={closeDrawer} />}
     </>
   );
 }

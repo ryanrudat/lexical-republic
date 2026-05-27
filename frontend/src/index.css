@@ -1125,3 +1125,97 @@ body.extraction-active .pearl-island {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ═══ [ ].edited — contraband floating window ═══════════════════════════
+   The Unedited's smuggled app, rebuilt as a draggable window the student
+   shoves around their Party desktop. Dead-internet register (square corners,
+   hairline border, IBM mono, rose accents — see the locked decision). The
+   "slightly glitchy / rough / suspicious" feel = rare, brief artifacts over
+   a mostly dead-still surface. The global prefers-reduced-motion rule above
+   already neutralises every animation here, so no separate guard is needed. */
+
+.edited-window {
+  /* faint baked-in scanlines — reads as a sketchy off-the-books screen-grab */
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(148, 163, 184, 0.05) 0px,
+    rgba(148, 163, 184, 0.05) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  animation: edited-window-jitter 11s steps(1, end) infinite;
+  will-change: transform;
+}
+
+/* dead-still for most of the cycle; a brief 3-frame stutter once per loop */
+@keyframes edited-window-jitter {
+  0%, 93%, 100% { transform: translate(0, 0) skewX(0deg); }
+  94% { transform: translate(-1px, 0.5px) skewX(0.35deg); }
+  95% { transform: translate(1.5px, -0.5px) skewX(-0.3deg); }
+  96% { transform: translate(-0.5px, 0) skewX(0deg); }
+}
+
+/* a thin rose tear that occasionally rips across the window */
+.edited-window::after {
+  content: '';
+  position: absolute;
+  left: -2px;
+  right: -2px;
+  height: 1px;
+  pointer-events: none;
+  background: rgba(244, 63, 94, 0.55);            /* rose-500 */
+  box-shadow: 0 0 6px rgba(244, 63, 94, 0.3);
+  opacity: 0;
+  z-index: 4;
+  animation: edited-window-tear 8.5s linear infinite;
+}
+@keyframes edited-window-tear {
+  0%, 90% { top: 18%; opacity: 0; }
+  91% { top: 18%; opacity: 0.85; }
+  92% { top: 61%; opacity: 0.6; }
+  93% { top: 34%; opacity: 0.9; }
+  94%, 100% { opacity: 0; }
+}
+
+/* the [ ].edited title chromatic-splits for a beat */
+.edited-glitch-text {
+  animation: edited-text-glitch 11s steps(1, end) infinite;
+}
+@keyframes edited-text-glitch {
+  0%, 92%, 100% { text-shadow: none; transform: translateX(0); }
+  93% { text-shadow: -1px 0 rgba(244, 63, 94, 0.9), 1px 0 rgba(226, 232, 240, 0.5); transform: translateX(0.5px); }
+  94% { text-shadow: 1px 0 rgba(244, 63, 94, 0.9), -1px 0 rgba(226, 232, 240, 0.5); transform: translateX(-0.5px); }
+  95% { text-shadow: none; transform: translateX(0); }
+}
+
+/* while the student drags, everything holds dead-still (glitch is idle menace,
+   not motion — a jittering target is miserable to drag) */
+.edited-window.is-dragging,
+.edited-window.is-dragging::after,
+.edited-window.is-dragging .edited-glitch-text {
+  animation: none;
+}
+.edited-window.is-dragging { transform: none; }
+.edited-window.is-dragging .edited-glitch-text { text-shadow: none; transform: none; }
+
+/* upload-bar fill flickers, like a transmission that won't hold */
+.edited-upload-fill {
+  animation: edited-upload-flicker 3.7s steps(1, end) infinite;
+}
+@keyframes edited-upload-flicker {
+  0%, 96%, 100% { opacity: 0.85; }
+  97% { opacity: 0.4; }
+  98% { opacity: 0.9; }
+  99% { opacity: 0.55; }
+}
+
+/* the corner launcher: a small, glitchy [ ] (per the W4 spec) */
+.edited-pill {
+  animation: edited-pill-flicker 6.5s steps(1, end) infinite;
+}
+@keyframes edited-pill-flicker {
+  0%, 90%, 100% { opacity: 0.9; text-shadow: none; }
+  91% { opacity: 0.6; text-shadow: -1px 0 rgba(244, 63, 94, 0.8); }
+  92% { opacity: 1; text-shadow: 1px 0 rgba(244, 63, 94, 0.8); }
+  93% { opacity: 0.85; text-shadow: none; }
+}

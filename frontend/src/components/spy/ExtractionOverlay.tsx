@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSpyStore } from '../../stores/spyStore';
-import DoublespeakDecoder from './DoublespeakDecoder';
+import WordgineeringDecoder from './WordgineeringDecoder';
 import ComprehensionActivity from './ComprehensionActivity';
 import ListeningActivity from './ListeningActivity';
 import SpotEditActivity from './SpotEditActivity';
@@ -58,7 +58,7 @@ function ActivityRouter({ file }: { file: SnoopFile }) {
   const done = () => completeActivity(file);
 
   if (activity?.type === 'decoder')
-    return <DoublespeakDecoder activity={activity} onComplete={done} />;
+    return <WordgineeringDecoder activity={activity} onComplete={done} />;
   if (activity?.type === 'comprehension')
     return <ComprehensionActivity activity={activity} onComplete={done} />;
   if (activity?.type === 'listening')

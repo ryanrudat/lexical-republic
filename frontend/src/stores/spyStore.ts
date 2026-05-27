@@ -14,7 +14,7 @@ import {
 // Reading a Records Wing file is FREE. EXTRACTING it (copying into
 // [ ].edited) is the crime PEARL watches for, so the dice roll lives there.
 // Then — before the file transfers — the student completes a language
-// ACTIVITY (e.g. the doublespeak decoder) to actually exfiltrate it. The
+// ACTIVITY (e.g. the wordgineering decoder) to actually exfiltrate it. The
 // activity is the learning; PEARL is the risk; the transfer is the payoff.
 //
 //   startExtract(file)  → dice roll by exposure

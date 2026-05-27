@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DecoderActivity } from '../../data/spyFiles';
 
-// ─── Doublespeak Decoder ─────────────────────────────────────────
+// ─── Wordgineering Decoder ───────────────────────────────────────
 //
-// The extraction activity for files written in Party doublespeak. A
+// The extraction activity for files written in Party "wordgineering" —
+// language engineered to hide meaning. A
 // resistance tool (dark-slate, rose accents — the [ ].edited world): the
 // Party euphemism sits at the wheel's centre, the possible meanings sit
 // around the ring, and a needle spins to your choice. Land on the hidden
@@ -28,7 +29,7 @@ interface Props {
   onComplete: () => void;
 }
 
-export default function DoublespeakDecoder({ activity, onComplete }: Props) {
+export default function WordgineeringDecoder({ activity, onComplete }: Props) {
   const [itemIndex, setItemIndex] = useState(0);
   const [pointerIndex, setPointerIndex] = useState(0);
   const [feedback, setFeedback] = useState<'idle' | 'wrong' | 'locked'>('idle');
@@ -95,6 +96,7 @@ export default function DoublespeakDecoder({ activity, onComplete }: Props) {
 
   return (
     <div className="font-ibm-mono text-sm text-slate-200">
+      <p className="text-rose-400 text-[10px] tracking-[0.3em] uppercase mb-3">▸ wordgineering</p>
       {/* Prompt + progress */}
       <p className="text-slate-400 leading-relaxed mb-1">
         <span className="text-rose-400/60">&gt;</span> {activity.prompt}

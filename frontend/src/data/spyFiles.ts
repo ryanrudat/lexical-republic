@@ -40,8 +40,8 @@ export interface CoverStoryInterrogation {
 // ─── Extraction activities ───────────────────────────────────────
 // The language task you complete to exfiltrate a file (runs AFTER any PEARL
 // interrogation, BEFORE the transfer). Forgiving — retry freely, no penalty.
-// Currently just the Doublespeak Decoder; comprehension / listening / spot-
-// edit variants will join this union as they're built.
+// Variants: the Wordgineering Decoder, comprehension, listening, and
+// spot-edit — one per file type.
 
 export interface DecoderItem {
   /** The Party euphemism shown in the wheel's centre, e.g. "RECONCILIATION". */
@@ -131,7 +131,7 @@ export interface SnoopFile {
   /** The one-line intel headline that transfers to Frey's channel. */
   intel: string;
   interrogation: CoverStoryInterrogation;
-  /** Optional language task gating the extraction (e.g. the doublespeak decoder). */
+  /** Optional language task gating the extraction (e.g. the wordgineering decoder). */
   activity?: ExtractionActivity;
 }
 
