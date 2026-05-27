@@ -1075,6 +1075,11 @@ body.pearl-inquiry-active .pearl-island {
   display: none !important;
 }
 
+/* While an extraction activity/transfer overlay is up, suppress the island. */
+body.extraction-active .pearl-island {
+  display: none !important;
+}
+
 /* ─── Compliance Check — whole-modal open/close animations ─── */
 
 @keyframes compliance-modal-enter {

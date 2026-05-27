@@ -37,6 +37,81 @@ export interface CoverStoryInterrogation {
   failLine: string;
 }
 
+// ─── Extraction activities ───────────────────────────────────────
+// The language task you complete to exfiltrate a file (runs AFTER any PEARL
+// interrogation, BEFORE the transfer). Forgiving — retry freely, no penalty.
+// Currently just the Doublespeak Decoder; comprehension / listening / spot-
+// edit variants will join this union as they're built.
+
+export interface DecoderItem {
+  /** The Party euphemism shown in the wheel's centre, e.g. "RECONCILIATION". */
+  code: string;
+  /** The hidden truth — the correct option to land under the pointer. */
+  truth: string;
+  /** Wheel options (must include `truth`); the first is the innocent "mask" trap. */
+  options: string[];
+  /** One-line reinforcement shown when the student locks the right answer. */
+  note: string;
+}
+
+export interface DecoderActivity {
+  type: 'decoder';
+  /** Frey's framing line. */
+  prompt: string;
+  items: DecoderItem[];
+  /** The de-euphemised text, shown as a reading payoff once all items are cracked. */
+  plainText: string[];
+}
+
+// Read-the-meaning: a single inference question about what the file proves.
+export interface ComprehensionActivity {
+  type: 'comprehension';
+  prompt: string;
+  question: string;
+  options: string[];
+  correctIndex: number;
+  note?: string;
+}
+
+// Clean-the-intercept: fill the gaps in a damaged recording. The browser
+// voice reads `script` aloud (listening); also solvable from context (so a
+// device with no speech never traps the student).
+export interface ListeningBlank {
+  index: number;
+  answer: string;
+}
+export interface ListeningActivity {
+  type: 'listening';
+  prompt: string;
+  /** Full text the browser voice reads aloud (the "recording"). */
+  script: string;
+  /** Text with {0},{1}… blanks and \n line breaks. */
+  template: string;
+  blanks: ListeningBlank[];
+  wordBank: string[];
+  note?: string;
+}
+
+// Spot-the-edit: compare original vs revised, select what the Party erased.
+export interface SpotEditClaim {
+  text: string;
+  changed: boolean;
+}
+export interface SpotEditActivity {
+  type: 'spot_edit';
+  prompt: string;
+  before: string[];
+  after: string[];
+  claims: SpotEditClaim[];
+  note?: string;
+}
+
+export type ExtractionActivity =
+  | DecoderActivity
+  | ComprehensionActivity
+  | ListeningActivity
+  | SpotEditActivity;
+
 export interface SnoopFile {
   id: string;
   weekNumber: number;
@@ -56,6 +131,8 @@ export interface SnoopFile {
   /** The one-line intel headline that transfers to Frey's channel. */
   intel: string;
   interrogation: CoverStoryInterrogation;
+  /** Optional language task gating the extraction (e.g. the doublespeak decoder). */
+  activity?: ExtractionActivity;
 }
 
 export interface ContrabandWord {
@@ -168,6 +245,19 @@ export const W4_SNOOP_FILES: SnoopFile[] = [
       passLine: 'How tidy of you. ☺ See that it is incinerated properly.',
       failLine: "Sentiment is a kind of illness, Citizen. ☺ I'll withdraw this — and note it.",
     },
+    activity: {
+      type: 'comprehension',
+      prompt: "you can't take the photo. but tell me what it proves.",
+      question: 'Why is this photograph dangerous to the Party?',
+      options: [
+        'It proves Citizen-9020 had a relative — a family.',
+        'It shows he broke a rule at the lake.',
+        'The photograph is poor quality.',
+        'It was filed in the wrong unit.',
+      ],
+      correctIndex: 0,
+      note: 'a man with a family is harder to erase. that is why they burn it.',
+    },
   },
 
   // 2. SURVEILLANCE TRANSCRIPT — the last exchange; 4488 is holding something.
@@ -202,6 +292,20 @@ export const W4_SNOOP_FILES: SnoopFile[] = [
       ],
       passLine: 'Timestamps. ☺ So dependable of you. Off you go.',
       failLine: "Curiosity again, Citizen. ☺ I'll seal this tighter — and remember that you asked.",
+    },
+    activity: {
+      type: 'listening',
+      prompt: 'the recording is damaged. play it, then restore what they said.',
+      script: 'Did you keep it? Keep what? You know what. If they take me, it has to live somewhere. I kept it.',
+      template:
+        '9020: did you {0} it?\n4488: keep what?\n9020: if they take me, it has to {1} somewhere.\n4488: i {2} it.',
+      blanks: [
+        { index: 0, answer: 'keep' },
+        { index: 1, answer: 'live' },
+        { index: 2, answer: 'kept' },
+      ],
+      wordBank: ['keep', 'live', 'kept', 'hide', 'leave'],
+      note: '9020 hid something with 4488 before they took him.',
     },
   },
 
@@ -240,6 +344,27 @@ export const W4_SNOOP_FILES: SnoopFile[] = [
       passLine: 'The revised version is real, Citizen. ☺ It always was. Good work.',
       failLine: "Oh dear — confused about which version is true? ☺ We'll correct that. I'll note it.",
     },
+    activity: {
+      type: 'spot_edit',
+      prompt: 'they rewrote this record. tap everything they erased.',
+      before: [
+        'Citizen-9020 attended the Block 7 assembly.',
+        'He asked why the lists keep growing.',
+        'He was heard. He was real.',
+      ],
+      after: [
+        'No assembly occurred in Block 7.',
+        'No such question was raised.',
+        'Citizen-9020: no surviving record.',
+      ],
+      claims: [
+        { text: 'That the assembly happened', changed: true },
+        { text: 'That he asked about the growing lists', changed: true },
+        { text: 'That Citizen-9020 existed at all', changed: true },
+        { text: 'The date of the report', changed: false },
+      ],
+      note: 'they did not just remove him. they made it so he was never there.',
+    },
   },
 
   // 4. INTERNAL MEMO — the machine laid bare. Highest extraction risk.
@@ -272,6 +397,44 @@ export const W4_SNOOP_FILES: SnoopFile[] = [
       ],
       passLine: "A clearance error. ☺ How tiresome. I'll see it corrected. Run along.",
       failLine: "Now that is a worry, isn't it? ☺ I'll seal this — and watch your terminal closely.",
+    },
+    activity: {
+      type: 'decoder',
+      prompt: "the memo is in their language. spin to reveal what each word hides.",
+      items: [
+        {
+          code: 'RECONCILIATION',
+          truth: 'erasing people from the record',
+          options: [
+            'making two records agree',
+            'erasing people from the record',
+            'counting the weekly budget',
+          ],
+          note: "they call erasing a person 'reconciliation.'",
+        },
+        {
+          code: 'REMOVALS',
+          truth: 'citizens made to disappear',
+          options: [
+            'taking old items away',
+            'citizens made to disappear',
+            'deleting unused files',
+          ],
+          note: "every 'removal' on this form is a person.",
+        },
+        {
+          code: 'REVIEWED',
+          truth: 'punished',
+          options: ['checked over', 'punished', 'promoted'],
+          note: "a worker who misses the quota is 'reviewed.'",
+        },
+      ],
+      plainText: [
+        'in plain words:',
+        'target — erase 10 people this cycle.',
+        'witnesses first.',
+        'workers who miss the number are punished.',
+      ],
     },
   },
 ];

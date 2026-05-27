@@ -11,8 +11,9 @@ import { getSnoopFiles, type Exposure, type SnoopFile } from '../../../data/spyF
 //
 // Reading a file is FREE. EXTRACTING it (copying into [ ].edited) is the
 // crime PEARL watches for — spyStore.startExtract rolls the dice by
-// exposure. If PEARL notices, the app-root PearlInquiryOverlay takes over
-// (cover-story); otherwise the file transfers to Frey. Resolved files lock.
+// exposure. If caught, PearlInquiryOverlay takes over (cover-story); then
+// the file's activity + the transfer run in ExtractionOverlay. Resolved
+// files lock.
 
 const RISK: Record<Exposure, { label: string; pill: string }> = {
   low: { label: 'EXTRACT RISK · LOW', pill: 'text-emerald-700 bg-emerald-100 border-emerald-300' },
@@ -77,35 +78,14 @@ export default function RecordsRoomApp() {
 
 function RecordsFile({ file }: { file: SnoopFile }) {
   const resolved = useSpyStore((s) => s.resolved[file.id]);
-  const downloadingThis = useSpyStore((s) => s.downloadingFile?.id === file.id);
   const interrogatingThis = useSpyStore((s) => s.activeInterrogation?.id === file.id);
   const startExtract = useSpyStore((s) => s.startExtract);
-  const completeDownload = useSpyStore((s) => s.completeDownload);
 
   const [open, setOpen] = useState(false);
-  const [progress, setProgress] = useState(0);
 
   const isFunneled = resolved === 'funneled';
   const isDark = resolved === 'dark';
   const risk = RISK[file.exposure];
-
-  // Transfer animation: fill 0→100 while this file is downloading, then
-  // hand off to the store (which writes 'funneled' + opens the channel).
-  useEffect(() => {
-    if (!downloadingThis) return;
-    let p = 0;
-    const id = setInterval(() => {
-      p += 7;
-      if (p >= 100) {
-        clearInterval(id);
-        setProgress(100);
-        void completeDownload(file);
-      } else {
-        setProgress(p);
-      }
-    }, 110);
-    return () => clearInterval(id);
-  }, [downloadingThis, file, completeDownload]);
 
   return (
     <div className="rounded-xl border border-[#2A4A4E]/25 bg-white/45 overflow-hidden">
@@ -132,8 +112,6 @@ function RecordsFile({ file }: { file: SnoopFile }) {
           <p className="text-[12px] text-[#8B9B9E] italic leading-relaxed">
             &gt; Archive Control blocked the extraction. The lead is lost.
           </p>
-        ) : downloadingThis ? (
-          <TransferProgress progress={progress} />
         ) : isFunneled ? (
           <>
             <FileContent file={file} />
@@ -244,26 +222,6 @@ function RevisionPanel({
           <p key={i}>{line}</p>
         ))}
       </div>
-    </div>
-  );
-}
-
-// The download/transfer payoff: a progress bar copying the file into [ ].edited.
-function TransferProgress({ progress }: { progress: number }) {
-  return (
-    <div className="py-1">
-      <p className="text-[11px] text-rose-700 tracking-wider uppercase mb-2">
-        ⬇ extracting → [ ].edited
-      </p>
-      <div className="h-2 rounded-full bg-[#2A4A4E]/15 overflow-hidden">
-        <div
-          className="h-full bg-rose-500 transition-[width] duration-100 ease-linear"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
-      <p className="mt-2 text-[10px] text-[#5A7A7E] tracking-wider tabular-nums">
-        copying to [ ].edited — {progress}%
-      </p>
     </div>
   );
 }

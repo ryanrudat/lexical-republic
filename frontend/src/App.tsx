@@ -21,6 +21,7 @@ import ComplianceCheckPreview from './pages/ComplianceCheckPreview';
 import RemediationOverlay from './components/remediation/RemediationOverlay';
 import RemediationDevTrigger from './components/dev/RemediationDevTrigger';
 import PearlInquiryOverlay from './components/spy/PearlInquiryOverlay';
+import ExtractionOverlay from './components/spy/ExtractionOverlay';
 import FunnelDrawer from './components/spy/FunnelDrawer';
 import UpdateBanner from './components/system/UpdateBanner';
 import { useUpdateChecker } from './hooks/useUpdateChecker';
@@ -348,6 +349,8 @@ export default function App() {
       {user.role === 'student' && import.meta.env.DEV && <RemediationDevTrigger />}
       {/* PEARL Clarity Inquiry — fires when the dice roll catches a student snooping. */}
       {user.role === 'student' && <PearlInquiryOverlay />}
+      {/* Extraction activity + transfer — the decode work, then the file lands in [ ].edited. */}
+      {user.role === 'student' && <ExtractionOverlay />}
       {/* [ ].edited funnel drawer — floating covert channel, reachable across the terminal. */}
       {user.role === 'student' && <FunnelDrawer />}
       {/* Sector Trial invite — class-wide modal pops when teacher schedules a Trial. */}

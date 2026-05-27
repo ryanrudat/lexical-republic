@@ -11,23 +11,23 @@ import {
 
 // ─── Spy Store — the optional snooping loop ──────────────────────
 //
-// Drives the insider-spy layer of Shift 4. Reading a Records Wing file is
-// FREE (browsing). EXTRACTING it — copying it into [ ].edited — is the
-// crime PEARL watches for, so that's where the dice roll lives:
+// Reading a Records Wing file is FREE. EXTRACTING it (copying into
+// [ ].edited) is the crime PEARL watches for, so the dice roll lives there.
+// Then — before the file transfers — the student completes a language
+// ACTIVITY (e.g. the doublespeak decoder) to actually exfiltrate it. The
+// activity is the learning; PEARL is the risk; the transfer is the payoff.
 //
 //   startExtract(file)  → dice roll by exposure
-//        caught  → activeInterrogation = file  (PEARL cover-story modal)
-//        slipped → downloadingFile = file       (transfer animation runs)
+//        caught  → activeInterrogation = file   (PEARL cover-story modal)
+//        slipped → activity (if any) else transfer
 //   resolveInterrogation(correct)
-//        pass → downloadingFile = file (transfer resumes to completion)
-//        fail → goDark(file)           (extraction blocked, Frey loses it)
+//        pass → activity (if any) else transfer
+//        fail → goDark(file)            (extraction blocked)
+//   completeActivity(file) → downloadingFile = file   (transfer runs)
 //   completeDownload(file) → writes 'funneled', opens the [ ].edited drawer
-//        so the student watches the file land in Frey's channel.
 //
-// Outcomes persist as NarrativeChoice rows (key `w4_snoop_<id>`, value
-// 'funneled' | 'dark') — refresh-safe, read at W5 start to branch the
-// resistance story. No backend changes (NarrativeChoice is generic).
-// Resolved files are locked — one clean roll each, no carried-over heat.
+// Outcomes persist as NarrativeChoice rows (`w4_snoop_<id>` = funneled|dark),
+// read at W5 start to branch the story. Resolved files lock (one clean roll).
 
 export type SnoopOutcome = 'funneled' | 'dark';
 
@@ -37,6 +37,8 @@ interface SpyState {
   dropBoxText: string | null;
   /** Persisted final outcomes by file id. */
   resolved: Record<string, SnoopOutcome>;
+  /** The file whose extraction ACTIVITY is currently running (decoder, etc.). */
+  activeActivity: SnoopFile | null;
   /** The file currently transferring into [ ].edited (drives the progress bar). */
   downloadingFile: SnoopFile | null;
   /** The file PEARL is interrogating you about (drives the inquiry overlay). */
@@ -47,16 +49,27 @@ interface SpyState {
   loadChoices: () => Promise<void>;
   startExtract: (file: SnoopFile) => void;
   resolveInterrogation: (correct: boolean) => void;
+  completeActivity: (file: SnoopFile) => void;
   completeDownload: (file: SnoopFile) => Promise<void>;
   openDrawer: () => void;
   closeDrawer: () => void;
   reset: () => void;
 }
 
+// Once past PEARL, either run the file's activity or go straight to transfer.
+function proceedAfterClearance(file: SnoopFile, set: (p: Partial<SpyState>) => void) {
+  if (file.activity) {
+    set({ activeActivity: file });
+  } else {
+    set({ downloadingFile: file });
+  }
+}
+
 export const useSpyStore = create<SpyState>((set, get) => ({
   loaded: false,
   dropBoxText: null,
   resolved: {},
+  activeActivity: null,
   downloadingFile: null,
   activeInterrogation: null,
   drawerOpen: false,
@@ -86,29 +99,33 @@ export const useSpyStore = create<SpyState>((set, get) => ({
   },
 
   startExtract: (file) => {
-    const { resolved, downloadingFile, activeInterrogation } = get();
-    // Already resolved, mid-transfer, or another interrogation in flight — ignore.
-    if (resolved[file.id] || downloadingFile || activeInterrogation) return;
+    const { resolved, downloadingFile, activeInterrogation, activeActivity } = get();
+    // Already resolved, mid-flow, or another interrogation in flight — ignore.
+    if (resolved[file.id] || downloadingFile || activeInterrogation || activeActivity) return;
 
     const caught = Math.random() < CATCH_PROBABILITY[file.exposure];
     if (caught) {
       set({ activeInterrogation: file });
     } else {
-      set({ downloadingFile: file });
+      proceedAfterClearance(file, set);
     }
   },
 
   resolveInterrogation: (correct) => {
     const file = get().activeInterrogation;
     if (!file) return;
+    set({ activeInterrogation: null });
     if (correct) {
-      // Cover held — clear the modal and let the transfer run to completion.
-      set({ activeInterrogation: null, downloadingFile: file });
+      proceedAfterClearance(file, set);
     } else {
       // Cover blown — extraction blocked, lead goes dark.
-      set({ activeInterrogation: null });
       void writeOutcome(file.id, 'dark', set);
     }
+  },
+
+  completeActivity: (file) => {
+    if (get().activeActivity?.id !== file.id) return;
+    set({ activeActivity: null, downloadingFile: file });
   },
 
   completeDownload: async (file) => {
@@ -128,6 +145,7 @@ export const useSpyStore = create<SpyState>((set, get) => ({
       loaded: false,
       dropBoxText: null,
       resolved: {},
+      activeActivity: null,
       downloadingFile: null,
       activeInterrogation: null,
       drawerOpen: false,
