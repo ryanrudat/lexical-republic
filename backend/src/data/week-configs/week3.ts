@@ -245,7 +245,7 @@ export const WEEK_3_CONFIG: WeekConfig = {
           {
             caseId: "case_5",
             title: "Citizen Complaint",
-            description: "Citizen-7291 submitted a complaint about missing community services. The citizen reports that Tuesday and Thursday activities at the Sector 4 community center were removed without notice. The citizen references a neighbor who has not been seen since the schedule change. The citizen requests a response from the Department of Clarity.",
+            description: "Citizen-7720 submitted a complaint about missing community services. The citizen reports that Tuesday and Thursday activities at the Sector 4 community center were removed without notice. The citizen references a neighbor who has not been seen since the schedule change. The citizen requests a response from the Department of Clarity.",
             correctColumn: "URGENT",
             disappears: true,
             disappearBark: "Case 5 has been reassigned to Wellness Division. Do not follow up.",
@@ -392,7 +392,7 @@ export const WEEK_3_CONFIG: WeekConfig = {
   // ─── Citizen-4488 Post ──────────────────────────────────────────
   citizen4488Post: {
     content:
-      "The community center schedule was updated again. All Tuesday and Thursday activities have been removed. I cannot identify who approved these changes. I should not delay my own schedule to ask questions. Delays cause problems for everyone.",
+      "The community center schedule was updated again. All Tuesday and Thursday activities have been removed. I cannot identify who approved these changes. My neighbor's cat still waits at her door, so I completed the adoption form. No one has responded. I should not delay my own schedule to ask questions. Everything is fine.",
     type: "concerning",
   },
 

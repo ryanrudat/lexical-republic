@@ -40,17 +40,20 @@ export const WEEK_STORY_PLANS: Record<number, WeekStoryPlan> = {
     weekSlogan: 'Accuracy is Kindness',
   },
   3: {
-    episodeTitle: 'Episode 3: Clarity Bay Intake',
+    // NOTE: W3 ships from week3.ts (WeekConfig wins); this storyPlan is only a
+    // fallback for weeks without a WeekConfig. Kept aligned to the shipped W3
+    // (Priority Queue — modals + the queue-processing target words) to avoid drift.
+    episodeTitle: 'Episode 3: Priority Queue',
     episodeSubtitle: 'Queue volume doubles; speed and precision are tested.',
     speaker: 'IVAN',
     line: 'Don\'t rush. Fast mistakes are still mistakes.',
-    objective: 'Process multiple entries while preserving grammar accuracy.',
-    grammarFocus: 'Imperatives, modal can/should, polite clarification requests.',
+    objective: 'Process and triage multiple entries while preserving grammar accuracy.',
+    grammarFocus: 'Modal verbs (must, should, can) for priority, procedure, and polite requests.',
     knownWords: ['help', 'question', 'line', 'message'],
-    newWords: ['clarify', 'queue', 'priority', 'dispatch'],
+    newWords: ['process', 'complete', 'review', 'delay', 'schedule', 'respond', 'identify', 'separate', 'maintain', 'forward'],
     cliffhanger: 'A citizen post asks about someone "reassigned" without explanation.',
     bridgeLine: 'The queue is watching. Demonstrate that speed and accuracy are not in conflict.',
-    weekSlogan: 'Calm is Compliance',
+    weekSlogan: 'Efficiency Is Community',
   },
   4: {
     episodeTitle: 'Episode 4: Evidence Board',

@@ -522,7 +522,7 @@ export const WEEK_4_CONFIG: WeekConfig = {
       triggerType: "task_start",
       triggerConfig: { taskId: "shift_report" },
       messageText:
-        "Wait — Observation E. The guest entry. Did you read the designation before it was pulled? Citizen-9020. They were transferred this afternoon, I heard. I recorded what I saw before it disappeared. Did you?",
+        "Wait — Observation E. The guest entry. Did you read the designation before it was pulled? Citizen-9020. Transferred this afternoon, I heard — to Wellness Division. Same as that Sector 4 complaint last shift. Same as my colleague. People go to Wellness and the records just... close. I recorded what I saw before it disappeared. Did you?",
       replyType: "canned",
       replyOptions: [
         {
