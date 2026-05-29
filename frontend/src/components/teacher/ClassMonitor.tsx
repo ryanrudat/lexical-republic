@@ -130,8 +130,11 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
   const selectedClassId = useTeacherStore((s) => s.selectedClassId);
   const remediationCounts = useTeacherStore((s) => s.remediationCounts);
   const remediationLastTriggers = useTeacherStore((s) => s.remediationLastTriggers);
+  const remediationClawback = useTeacherStore((s) => s.remediationClawback);
+  const liveConcern = useTeacherStore((s) => s.liveConcern);
   const setRemediationCounts = useTeacherStore((s) => s.setRemediationCounts);
   const setRemediationLastTriggers = useTeacherStore((s) => s.setRemediationLastTriggers);
+  const setRemediationClawback = useTeacherStore((s) => s.setRemediationClawback);
 
   const loadStudents = useCallback(() => {
     setLoading(true);
@@ -159,6 +162,7 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
     // Clear stale counts from the previous class so they don't flash during the fetch
     setRemediationCounts({});
     setRemediationLastTriggers({});
+    setRemediationClawback({});
     void fetchRemediationEvents(classId ? { classId } : undefined)
       .then((events) => {
         if (cancelled) return;
@@ -166,21 +170,26 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
         // Backend orders by `triggeredAt DESC`, so taking the first 3 per pair
         // gives us the most-recent triggers in display order.
         const triggers: Record<string, string[]> = {};
+        const clawback: Record<string, boolean> = {};
         for (const ev of events) {
           counts[ev.pairId] = (counts[ev.pairId] ?? 0) + 1;
           const list = triggers[ev.pairId] ?? (triggers[ev.pairId] = []);
           if (list.length < 3) list.push(ev.triggerReason);
+          if (ev.clawedBack) clawback[ev.pairId] = true;
         }
         setRemediationCounts(counts);
         setRemediationLastTriggers(triggers);
+        setRemediationClawback(clawback);
       })
       .catch(() => { /* silent — chip just won't render */ });
     return () => { cancelled = true; };
-  }, [classId, setRemediationCounts, setRemediationLastTriggers]);
+  }, [classId, setRemediationCounts, setRemediationLastTriggers, setRemediationClawback]);
 
-  // Update time-on-task display every 30 seconds
+  // Re-render the elapsed-time + struggle flags every 5s so time-driven
+  // escalation tracks the threshold closely (this is a pure re-render — the
+  // 30s data poll above is separate, so this adds no server load).
   useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 30_000);
+    const interval = setInterval(() => setNow(Date.now()), 5_000);
     return () => clearInterval(interval);
   }, []);
 
@@ -659,6 +668,10 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
           const shiftStatus = student.offlineShift;
           const remediationCount = remediationCounts[student.id] ?? 0;
           const remediationTriggers = remediationLastTriggers[student.id];
+          const clawedBack = remediationClawback[student.id] ?? false;
+          // Live concern (pushed by remediation completed/clawback) wins over the
+          // 30s-polled REST value.
+          const concern = liveConcern[student.id] ?? student.concernScore;
 
           // Determine task list for "Send to Task" — prefer online, then last-known (preserved
           // on disconnect), then DB-fetched shift status. lastKnown keeps the task list available
@@ -843,6 +856,28 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
                         title={`Recent triggers: ${remediationTriggers && remediationTriggers.length > 0 ? remediationTriggers.join(', ') : 'unknown'}`}
                       >
                         Remediation: {remediationCount}
+                      </span>
+                    )}
+                    {clawedBack && (
+                      <span
+                        className="inline-block px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-xs font-medium"
+                        title="Resumed grinding after a remediation module closed"
+                      >
+                        ↩ clawed back
+                      </span>
+                    )}
+                    {concern != null && concern > 0 && (
+                      <span
+                        className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
+                          concern >= 3
+                            ? 'bg-rose-50 text-rose-700'
+                            : concern >= 1.5
+                              ? 'bg-amber-50 text-amber-700'
+                              : 'bg-slate-100 text-slate-500'
+                        }`}
+                        title="Concern score — live after a remediation event, otherwise refreshed every 30s"
+                      >
+                        Concern: {concern.toFixed(1)}
                       </span>
                     )}
                     <button

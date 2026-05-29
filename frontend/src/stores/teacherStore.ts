@@ -70,6 +70,13 @@ interface TeacherState {
   setRemediationCounts: (counts: Record<string, number>) => void;
   setRemediationLastTriggers: (m: Record<string, string[]>) => void;
   incrementRemediation: (pairId: string, triggerReason: string) => void;
+  /** pairId → true once the student clawed back (resumed grinding after a remediation closed). */
+  remediationClawback: Record<string, boolean>;
+  /** pairId → latest concernScore pushed live by a remediation completed/clawback event. */
+  liveConcern: Record<string, number>;
+  setRemediationClawback: (m: Record<string, boolean>) => void;
+  flagRemediationClawback: (pairId: string) => void;
+  setLiveConcern: (pairId: string, score: number) => void;
 }
 
 export const useTeacherStore = create<TeacherState>((set) => ({
@@ -177,4 +184,12 @@ export const useTeacherStore = create<TeacherState>((set) => ({
         remediationLastTriggers: { ...state.remediationLastTriggers, [pairId]: nextTriggers },
       };
     }),
+
+  remediationClawback: {},
+  liveConcern: {},
+  setRemediationClawback: (m) => set({ remediationClawback: m }),
+  flagRemediationClawback: (pairId) =>
+    set((s) => ({ remediationClawback: { ...s.remediationClawback, [pairId]: true } })),
+  setLiveConcern: (pairId, score) =>
+    set((s) => ({ liveConcern: { ...s.liveConcern, [pairId]: score } })),
 }));

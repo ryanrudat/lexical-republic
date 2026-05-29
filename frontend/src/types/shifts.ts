@@ -103,6 +103,8 @@ export interface StudentSummary {
   streak: number;
   weeksCompleted: number;
   lastLoginAt: string | null;
+  /** Persisted concern score (server-provided in GET /students). Live overrides arrive via the remediation socket events. */
+  concernScore?: number;
   /** Updated on every authenticated request (throttled to 60s). Survives backend restarts. */
   lastSeenAt?: string | null;
   classId?: string | null;

@@ -70,11 +70,16 @@ export function purgeOnlineStudent(entityId: string): void {
   }
 }
 
-/** Emit to the class room of an online student, or no-op if classless. */
+/** Emit to the class room of an online student, or warn if classless. */
 function emitToStudentClass(studentId: string, event: string, payload: unknown): void {
   const classId = onlineStudents.get(studentId)?.classId;
   if (classId) {
     io.to(`class:${classId}`).emit(event, payload);
+  } else {
+    // No classId in the in-memory map → the relay silently no-ops and the
+    // teacher never sees this student's live update. Surface it so the gap is
+    // diagnosable (enrollment lookup failed at connect, or student unenrolled).
+    console.warn(`[socket] dropped ${event} for student ${studentId}: no classId in onlineStudents (teacher live update lost)`);
   }
 }
 

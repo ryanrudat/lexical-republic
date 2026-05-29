@@ -299,22 +299,23 @@ export default function ShiftQueue() {
     loadMessages(weekNumber).then(() => {
       messagesReadyRef.current = true;
       triggerMessage('shift_start', { weekNumber }, weekConfig);
-      // Emit full task list for teacher controls
-      const sock = getSocket();
-      if (sock?.connected) {
-        sock.emit('student:shift-tasks', weekConfig.tasks.map(t => ({ id: t.id, label: t.label })));
-      }
-      // Also fire initial task_start
+      // Fire initial task_start
       const task = weekConfig.tasks[currentTaskIndex];
       if (task) {
         lastTriggeredTaskRef.current = task.id;
         triggerMessage('task_start', { taskId: task.id, weekNumber }, weekConfig);
-        // Emit initial task to teacher's class monitor
-        const sock = getSocket();
-        if (sock?.connected) {
-          sock.emit('student:task-update', { taskId: task.id, taskLabel: task.label });
-        }
       }
+      // Emit the full task list + initial task to the teacher's monitor. If the
+      // socket is still mid-handshake on a cold open, queue via once('connect')
+      // so the teacher card doesn't get stuck on "Loading task info..." and
+      // Send-to-Task has buttons (mirrors ClarityQueueApp's enter-shift pattern).
+      const sock = getSocket();
+      const emitInitial = () => {
+        sock?.emit('student:shift-tasks', weekConfig.tasks.map(t => ({ id: t.id, label: t.label })));
+        if (task) sock?.emit('student:task-update', { taskId: task.id, taskLabel: task.label });
+      };
+      if (sock?.connected) emitInitial();
+      else sock?.once('connect', emitInitial);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekConfig?.weekNumber]);

@@ -15,6 +15,12 @@ interface RemediationFiredPayload {
   triggeredAt: string;
 }
 
+/** `student:remediation-completed` / `-clawback` both carry the post-event concern score. */
+interface RemediationResolvePayload {
+  pairId: string;
+  newConcernScore?: number;
+}
+
 export function useTeacherSocket() {
   const setClassSnapshot = useTeacherStore((s) => s.setClassSnapshot);
   const upsertStudent = useTeacherStore((s) => s.upsertStudent);
@@ -26,6 +32,8 @@ export function useTeacherSocket() {
   const appendClarityEntry = useTeacherStore((s) => s.appendClarityEntry);
   const bumpClarityReplyTick = useTeacherStore((s) => s.bumpClarityReplyTick);
   const incrementRemediation = useTeacherStore((s) => s.incrementRemediation);
+  const flagRemediationClawback = useTeacherStore((s) => s.flagRemediationClawback);
+  const setLiveConcern = useTeacherStore((s) => s.setLiveConcern);
 
   useEffect(() => {
     const sock = connectSocket();
@@ -59,6 +67,16 @@ export function useTeacherSocket() {
       if (!data?.pairId || !data?.triggerReason) return;
       incrementRemediation(data.pairId, data.triggerReason);
     };
+    const onRemediationCompleted = (data: RemediationResolvePayload) => {
+      if (!data?.pairId) return;
+      if (typeof data.newConcernScore === 'number') setLiveConcern(data.pairId, data.newConcernScore);
+    };
+    const onRemediationClawback = (data: RemediationResolvePayload) => {
+      if (!data?.pairId) return;
+      // The pedagogically interesting live signal: student resumed grinding.
+      flagRemediationClawback(data.pairId);
+      if (typeof data.newConcernScore === 'number') setLiveConcern(data.pairId, data.newConcernScore);
+    };
 
     sock.on('teacher:class-snapshot', onSnapshot);
     sock.on('student:connected', onConnected);
@@ -69,6 +87,8 @@ export function useTeacherSocket() {
     sock.on('teacher:pause-state', onPauseState);
     sock.on('teacher:clarity-reply', onClarityReply);
     sock.on('student:remediation-fired', onRemediationFired);
+    sock.on('student:remediation-completed', onRemediationCompleted);
+    sock.on('student:remediation-clawback', onRemediationClawback);
 
     // Track connection status
     const unsubStatus = onSocketStatus((status, error) => {
@@ -88,8 +108,10 @@ export function useTeacherSocket() {
         s.off('teacher:pause-state', onPauseState);
         s.off('teacher:clarity-reply', onClarityReply);
         s.off('student:remediation-fired', onRemediationFired);
+        s.off('student:remediation-completed', onRemediationCompleted);
+        s.off('student:remediation-clawback', onRemediationClawback);
       }
       unsubStatus();
     };
-  }, [setClassSnapshot, upsertStudent, removeStudent, purgeStudent, setSocketStatus, bumpRegistrationTick, setClassPaused, appendClarityEntry, bumpClarityReplyTick, incrementRemediation]);
+  }, [setClassSnapshot, upsertStudent, removeStudent, purgeStudent, setSocketStatus, bumpRegistrationTick, setClassPaused, appendClarityEntry, bumpClarityReplyTick, incrementRemediation, flagRemediationClawback, setLiveConcern]);
 }

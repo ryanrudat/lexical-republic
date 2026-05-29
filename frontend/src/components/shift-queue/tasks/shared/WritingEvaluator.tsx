@@ -82,10 +82,11 @@ export default function WritingEvaluator({
 
   useEffect(() => {
     return () => {
-      const sock = getSocket();
-      if (sock?.connected) {
-        sock.emit('student:task-progress', { taskKind: null, progressLabel: null });
-      }
+      // Clear the word-count sub-line on the teacher card. Emit unconditionally:
+      // socket.io buffers while connected and no-ops otherwise, and the old
+      // `connected` guard could drop the clear during a brief reconnect —
+      // leaving a stale "Writing: N words" after the student leaves the task.
+      getSocket()?.emit('student:task-progress', { taskKind: null, progressLabel: null });
     };
   }, []);
 
