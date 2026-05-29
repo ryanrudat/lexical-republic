@@ -6,6 +6,7 @@ import type {
   BulletinResponseResult,
   CensureResponseResult,
   ArchivesResponse,
+  VerdictResult,
 } from '../api/harmony';
 import {
   fetchHarmonyPosts,
@@ -17,6 +18,7 @@ import {
   fetchCensureQueue,
   submitCensureResponse,
   submitBulletinResponse,
+  submitVerdict as submitVerdictApi,
   fetchHarmonyArchives,
   checkHarmonyNewContent,
 } from '../api/harmony';
@@ -70,6 +72,13 @@ interface HarmonyState {
   // NEW content tracking
   hasNewContent: boolean;
 
+  // Live class presence — online classmate count from the per-class socket room.
+  classOnline: number;
+
+  // Harmony Credits — in-world reward points, persisted per pair in localStorage.
+  harmonyCredits: number;
+  creditsPairId: string | null;
+
   // PEARL ambient annotations (session-based)
   recentCensureResults: boolean[];
   pearlAnnotations: PearlAnnotation[];
@@ -82,6 +91,7 @@ interface HarmonyState {
   loadArchives: (section?: string) => Promise<void>;
   checkNewContent: () => Promise<void>;
   setHasNewContent: (v: boolean) => void;
+  setClassOnline: (n: number) => void;
   submitPost: (content: string) => Promise<void>;
   openThread: (postId: string) => Promise<void>;
   closeThread: () => void;
@@ -90,7 +100,19 @@ interface HarmonyState {
   censurePost: (postId: string, action: 'approve' | 'correct' | 'flag', weekNumber: number) => Promise<void>;
   respondToCensure: (postId: string, action: string, selectedIndex: number, selectedWord?: string) => Promise<CensureResponseResult | null>;
   respondToBulletin: (postId: string, questionIndex: number, selectedIndex: number) => Promise<BulletinResponseResult | null>;
+  submitVerdict: (postId: string, verdict: 'approve' | 'flag', details?: { rule?: string; word?: string; replacement?: string }) => Promise<VerdictResult | null>;
   trackCitizen4488Action: (postId: string, action: string) => void;
+  loadCredits: (pairId: string | null | undefined) => void;
+  awardCredits: (n: number) => void;
+  dismissPearlAnnotations: () => void;
+}
+
+/** Harmony Credits — in-world reward points awarded for correct review work. */
+const CENSURE_CREDIT = 2;
+const BULLETIN_CREDIT = 1;
+const VERDICT_CREDIT = 3;
+function creditsStorageKey(pairId: string): string {
+  return `harmony_credits_${pairId}`;
 }
 
 export const useHarmonyStore = create<HarmonyState>((set, get) => ({
@@ -118,6 +140,10 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
   archivesLoading: false,
 
   hasNewContent: false,
+  classOnline: 0,
+
+  harmonyCredits: 0,
+  creditsPairId: null,
 
   recentCensureResults: [],
   pearlAnnotations: [],
@@ -178,6 +204,8 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
   },
 
   setHasNewContent: (v) => set({ hasNewContent: v }),
+
+  setClassOnline: (n) => set({ classOnline: Math.max(0, n) }),
 
   submitPost: async (content) => {
     try {
@@ -275,17 +303,28 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
       const result = await submitCensureResponse(postId, action, selectedIndex, selectedWord);
       // Update local state
       const { censureItems, censureStats, recentCensureResults } = get();
+      const wasAlreadyReviewed = censureItems.find((i) => i.id === postId)?.reviewed ?? false;
       const updatedResults = [...recentCensureResults, result.isCorrect].slice(-10);
+      const updatedItems = censureItems.map((item) =>
+        item.id === postId
+          ? { ...item, reviewed: true, wasCorrect: result.isCorrect, studentAction: 'answer' }
+          : item,
+      );
+      // Derive `completed` from how many items are now reviewed (clamped to total)
+      // instead of blindly incrementing. Re-answering a spaced-repetition item used
+      // to double-count and push the progress bar past 100% (e.g. "6/5 reviewed").
+      const completed = Math.min(
+        censureStats.total,
+        updatedItems.filter((i) => i.reviewed).length,
+      );
       set({
-        censureItems: censureItems.map((item) =>
-          item.id === postId
-            ? { ...item, reviewed: true, wasCorrect: result.isCorrect, studentAction: 'answer' }
-            : item,
-        ),
-        censureStats: { ...censureStats, completed: censureStats.completed + 1 },
+        censureItems: updatedItems,
+        censureStats: { ...censureStats, completed },
         recentCensureResults: updatedResults,
         pearlAnnotations: computePearlAnnotations(updatedResults, get().citizen4488Actions),
       });
+      // Reward a first correct verdict with Harmony Credits (no farming on re-answer).
+      if (result.isCorrect && !wasAlreadyReviewed) get().awardCredits(CENSURE_CREDIT);
       return result;
     } catch {
       set({ error: 'Failed to submit response' });
@@ -297,6 +336,7 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
     try {
       const result = await submitBulletinResponse(postId, questionIndex, selectedIndex);
       const { bulletinAnswers } = get();
+      const alreadyAnswered = bulletinAnswers[postId]?.[questionIndex] !== undefined;
       set({
         bulletinAnswers: {
           ...bulletinAnswers,
@@ -306,9 +346,37 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
           },
         },
       });
+      // Reward a first correct comprehension answer (no farming on re-answer).
+      if (result.isCorrect && !alreadyAnswered) get().awardCredits(BULLETIN_CREDIT);
       return result;
     } catch {
       set({ error: 'Failed to submit bulletin response' });
+      return null;
+    }
+  },
+
+  submitVerdict: async (postId, verdict, details) => {
+    try {
+      const result = await submitVerdictApi(postId, verdict, details);
+      const { posts } = get();
+      set({
+        posts: posts.map((p) =>
+          p.id === postId
+            ? {
+                ...p,
+                pendingReview: false,
+                verdict,
+                verdictCorrect: result.isCorrect,
+                correctVerdict: result.correctVerdict,
+                violations: result.violations,
+              }
+            : p,
+        ),
+      });
+      if (result.isCorrect) get().awardCredits(VERDICT_CREDIT);
+      return result;
+    } catch {
+      set({ error: 'Failed to submit verdict' });
       return null;
     }
   },
@@ -321,6 +389,37 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
       pearlAnnotations: computePearlAnnotations(recentCensureResults, updated),
     });
   },
+
+  loadCredits: (pairId) => {
+    if (!pairId) {
+      set({ harmonyCredits: 0, creditsPairId: null });
+      return;
+    }
+    let stored = 0;
+    try {
+      const raw = localStorage.getItem(creditsStorageKey(pairId));
+      stored = raw ? Math.max(0, parseInt(raw, 10) || 0) : 0;
+    } catch {
+      stored = 0;
+    }
+    set({ harmonyCredits: stored, creditsPairId: pairId });
+  },
+
+  awardCredits: (n) => {
+    if (n <= 0) return;
+    const { harmonyCredits, creditsPairId } = get();
+    const next = harmonyCredits + n;
+    set({ harmonyCredits: next });
+    if (creditsPairId) {
+      try {
+        localStorage.setItem(creditsStorageKey(creditsPairId), String(next));
+      } catch {
+        /* localStorage unavailable — keep the in-memory value */
+      }
+    }
+  },
+
+  dismissPearlAnnotations: () => set({ pearlAnnotations: [] }),
 }));
 
 /** Compute PEARL ambient annotations from session state. */
@@ -346,18 +445,16 @@ function computePearlAnnotations(
     });
   }
 
-  // Flagged Citizen-4488
-  const hasFlagged = citizen4488Actions.some(a => a.action === 'flag');
-  if (hasFlagged) {
+  // Citizen-4488 — reflect ONLY the most recent action. A session-wide `.some()`
+  // used to pin "Flag received…" forever after a single flag and let approve+flag
+  // contradictions stack. The student can also dismiss the strip outright.
+  const last4488 = citizen4488Actions[citizen4488Actions.length - 1];
+  if (last4488?.action === 'flag') {
     annotations.push({
       type: 'flagged_4488',
       message: 'Flag received. Your compliance protects the community.',
     });
-  }
-
-  // Approved Citizen-4488
-  const hasApproved = citizen4488Actions.some(a => a.action === 'approve');
-  if (hasApproved) {
+  } else if (last4488?.action === 'approve') {
     annotations.push({
       type: 'approved_4488',
       message: 'Noted. Citizens who approve concerning content may receive guidance.',

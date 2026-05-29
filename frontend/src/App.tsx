@@ -161,6 +161,10 @@ export default function App() {
         }
       };
 
+      const onClassPresence = (data: { classId: string; online: number }) => {
+        useHarmonyStore.getState().setClassOnline(data.online);
+      };
+
       // ── Inscription Pool socket listeners ──
       const onInscriptionPaused = (data: { drillId: string; pausedAt_ms: number }) => {
         useInscriptionStore.getState().applyServerPaused(data.drillId, data.pausedAt_ms);
@@ -225,6 +229,7 @@ export default function App() {
       sock.on('session:shift-changed', onShiftChanged);
       sock.on('session:clarity-message', onClarityMessage);
       sock.on('harmony:new-content', onHarmonyNewContent);
+      sock.on('class:presence', onClassPresence);
       sock.on('inscription:paused', onInscriptionPaused);
       sock.on('inscription:resumed', onInscriptionResumed);
       sock.on('inscription:word-complete', onInscriptionWordComplete);
@@ -245,6 +250,7 @@ export default function App() {
         sock.off('session:shift-changed', onShiftChanged);
         sock.off('session:clarity-message', onClarityMessage);
         sock.off('harmony:new-content', onHarmonyNewContent);
+        sock.off('class:presence', onClassPresence);
         sock.off('inscription:paused', onInscriptionPaused);
         sock.off('inscription:resumed', onInscriptionResumed);
         sock.off('inscription:word-complete', onInscriptionWordComplete);

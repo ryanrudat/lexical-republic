@@ -78,6 +78,14 @@ function emitToStudentClass(studentId: string, event: string, payload: unknown):
   }
 }
 
+/** Broadcast the live online-student count for a class to everyone in its room. */
+function emitClassPresence(classId: string): void {
+  io.to(`class:${classId}`).emit('class:presence', {
+    classId,
+    online: getOnlineStudents(classId).length,
+  });
+}
+
 // ── Init ───────────────────────────────────────────────────────────
 
 export function initSocketServer(app: Express, allowedOrigins: string[]) {
@@ -314,8 +322,18 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
           socket.emit('session:paused', { message: pause.message, ts: pause.ts });
         }
         io.to(`class:${classId}`).emit('student:connected', status);
+        emitClassPresence(classId);
       }
     }
+
+    // Reply with the current class online count — lets a student opening Harmony
+    // get an immediate presence value without waiting for the next connect/disconnect.
+    socket.on('student:presence-request', () => {
+      const cid = onlineStudents.get(entityId)?.classId;
+      if (cid) {
+        socket.emit('class:presence', { classId: cid, online: getOnlineStudents(cid).length });
+      }
+    });
 
     // ── Student shift/step events ──
     socket.on('student:enter-shift', (data: { weekNumber: number; stepId?: string }) => {
@@ -379,7 +397,9 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
       if (data.progressLabel !== undefined) existing.progressLabel = data.progressLabel;
       if (data.failCount !== undefined) existing.failCount = data.failCount;
       existing.lastActivityAt = new Date().toISOString();
-      io.to('teacher').emit('student:status-updated', existing);
+      // Per-class scoping: the global 'teacher' room no longer exists; teachers
+      // join class:${classId}. Match the sibling task-update handler (line ~365).
+      emitToStudentClass(entityId, 'student:status-updated', existing);
     });
 
     // ── Existing week room logic (unchanged) ──
@@ -430,6 +450,7 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
           };
           if (classIdAtDisconnect) {
             io.to(`class:${classIdAtDisconnect}`).emit('student:disconnected', payload);
+            emitClassPresence(classIdAtDisconnect);
           }
         }, DISCONNECT_GRACE_MS);
         disconnectTimers.set(entityId, timer);

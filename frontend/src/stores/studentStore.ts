@@ -3,6 +3,7 @@ import type { User } from '../api/auth';
 import { loginStudent, loginTeacher as apiLoginTeacher, registerStudent as apiRegister, registerTeacher as apiRegisterTeacher, logout as apiLogout, getMe } from '../api/auth';
 import { disconnectSocket } from '../utils/socket';
 import { useSessionStore } from './sessionStore';
+import { useSpyStore } from './spyStore';
 
 interface ApiErrorShape {
   response?: {
@@ -100,6 +101,11 @@ export const useStudentStore = create<StudentState>((set) => ({
       disconnectSocket();
       await apiLogout();
     } finally {
+      // Reset the [ ].edited / Records spy singleton so a second student
+      // logging in on the same Chromebook (no page reload) doesn't inherit
+      // the first student's funneled leads / drop-box echo. reset() also
+      // clears `loaded`, so the next mount re-fetches their own choices.
+      useSpyStore.getState().reset();
       set({ user: null, loading: false, error: null });
     }
   },

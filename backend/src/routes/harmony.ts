@@ -8,7 +8,52 @@ import { generateNpcReplies } from '../utils/harmonyReplies';
 import { moderatePost } from '../utils/harmonyModeration';
 import { getRouteWeeks } from '../data/narrative-routes';
 import { STATIC_BULLETINS } from '../data/harmonyBulletins';
+import { VERDICT_RULE_LABEL, type VerdictViolation } from '../data/harmonyVerdictPosts';
 import { io } from '../socketServer';
+
+/** Verdict packet shape stored in a feed_review post's censureData JSON. */
+type VerdictPacket = { correctVerdict?: 'approve' | 'flag'; violations?: VerdictViolation[] };
+
+/** Build the read-time verdict fields for a feed_review post (answer key hidden until answered). */
+function buildVerdictFields(
+  censureData: unknown,
+  priorAction: string | null,
+  priorCorrect: boolean | null,
+) {
+  const data = (censureData ?? {}) as VerdictPacket;
+  const violations = data.violations ?? [];
+  const answered = priorAction !== null;
+  return {
+    pendingReview: !answered,
+    // Chip bank renders without revealing which option is correct (it's an MCQ).
+    flagOptions: violations[0]?.options ?? DEFAULT_FLAG_DECOYS,
+    verdict: priorAction,
+    verdictCorrect: priorCorrect,
+    // Reveal the answer key ONLY after the student has responded.
+    correctVerdict: answered ? data.correctVerdict ?? null : null,
+    violations: answered ? violations : null,
+  };
+}
+
+/** Forced-happy PEARL reaction for a verdict outcome — never punitive. */
+function buildVerdictPearlNote(
+  isCorrect: boolean,
+  verdict: 'approve' | 'flag',
+  correctVerdict: 'approve' | 'flag',
+  v: VerdictViolation | null,
+): string {
+  const label = v ? VERDICT_RULE_LABEL[v.rule] : 'the Approved List';
+  if (isCorrect && verdict === 'approve') {
+    return 'Approved. Clean compliance, Citizen. We value your vigilance.';
+  }
+  if (isCorrect && verdict === 'flag' && v) {
+    return `Infraction confirmed under ${label}. "${v.forbiddenWord}" is not approved — we use "${v.approvedWord}".`;
+  }
+  if (correctVerdict === 'flag' && v) {
+    return `Audit notice: this post used "${v.forbiddenWord}". The approved form is "${v.approvedWord}" (${label}). We will improve our vigilance together.`;
+  }
+  return 'This post is compliant, Citizen. No infraction here — review the Approved List and we will improve together.';
+}
 
 /** refNumber → list of per-question Mandarin translations from current STATIC_BULLETINS.
  *  Built once at module load. Used to backfill translationZhTw on bulletin posts whose
@@ -45,8 +90,12 @@ function enrichBulletinData(bulletinData: unknown): unknown {
 
 const router = Router();
 
-/** Post types that appear in the feed tab (not the censure queue). */
-const FEED_POST_TYPES = ['feed', 'bulletin', 'pearl_tip', 'community_notice', 'sector_report'];
+/** Post types that appear in the feed tab (not the censure queue).
+ *  `feed_review` = inline Approve/Flag verdict posts (Junior Compliance Reviewer). */
+const FEED_POST_TYPES = ['feed', 'bulletin', 'pearl_tip', 'community_notice', 'sector_report', 'feed_review'];
+
+/** Fallback chip bank for the flag modal on clean posts (no real violation). */
+const DEFAULT_FLAG_DECOYS = ['submit', 'inform', 'complete'];
 /** Post types that appear in the censure review queue. */
 const CENSURE_POST_TYPES = [
   'censure_grammar',
@@ -475,6 +524,11 @@ router.get('/posts', async (req, res) => {
         user: { select: { designation: true, displayName: true } },
         pair: { select: { designation: true, studentAName: true } },
         _count: { select: { replies: true } },
+        // The viewer's own prior verdict (for feed_review posts) — refresh-safe.
+        censureResponses: {
+          where: { pairId: viewer.pairId ?? '__none__' },
+          select: { action: true, isCorrect: true },
+        },
       },
       orderBy: { createdAt: 'desc' },
       take: 50,
@@ -482,7 +536,7 @@ router.get('/posts', async (req, res) => {
 
     // Sort by content type priority: bulletins first, then tips, reports, notices, feed
     const typeOrder: Record<string, number> = {
-      bulletin: 0, pearl_tip: 1, sector_report: 2, community_notice: 3, feed: 4,
+      bulletin: 0, pearl_tip: 1, sector_report: 2, community_notice: 3, feed: 4, feed_review: 4,
     };
     const sorted = [...posts].sort((a, b) => {
       const aOrder = typeOrder[a.postType] ?? 5;
@@ -511,12 +565,85 @@ router.get('/posts', async (req, res) => {
         postType: post.postType,
         bulletinData: enrichBulletinData(post.bulletinData) ?? null,
         isNew: lastVisit ? post.ingestedAt > lastVisit : false,
+        ...(post.postType === 'feed_review'
+          ? buildVerdictFields(
+              post.censureData,
+              post.censureResponses[0]?.action ?? null,
+              post.censureResponses[0]?.isCorrect ?? null,
+            )
+          : {}),
       })),
       ...reviewContext,
     });
   } catch (err) {
     console.error('Failed to fetch harmony posts:', err);
     res.status(500).json({ error: 'Failed to fetch posts' });
+  }
+});
+
+// POST /api/harmony/posts/:id/verdict — Junior Compliance Reviewer verdict on a feed_review post.
+// Verdict is graded against the hidden packet in censureData and stored in HarmonyCensureResponse
+// (reuses the censure-response table; @@unique([pairId,postId]) makes it refresh-safe + no farming).
+router.post('/posts/:id/verdict', async (req, res) => {
+  try {
+    const viewer = await getViewerContext(req);
+    if (!viewer?.pairId || !viewer.classId) {
+      res.status(403).json({ error: 'Pair auth required' });
+      return;
+    }
+
+    const postId = req.params.id as string;
+    const { verdict, rule, word, replacement } = req.body as {
+      verdict?: string; rule?: string; word?: string; replacement?: string;
+    };
+    if (verdict !== 'approve' && verdict !== 'flag') {
+      res.status(400).json({ error: 'verdict must be approve or flag' });
+      return;
+    }
+
+    const post = await prisma.harmonyPost.findUnique({ where: { id: postId } });
+    if (!post || post.postType !== 'feed_review') {
+      res.status(404).json({ error: 'Reviewable post not found' });
+      return;
+    }
+    if (post.classId !== viewer.classId) {
+      res.status(403).json({ error: 'Cross-class action not permitted' });
+      return;
+    }
+
+    const data = (post.censureData ?? {}) as VerdictPacket;
+    const correctVerdict: 'approve' | 'flag' = data.correctVerdict ?? 'approve';
+    const violations = data.violations ?? [];
+
+    const norm = (s?: string) => (s ?? '').trim().replace(/[^a-zA-Z]/g, '').toLowerCase();
+    let isCorrect = false;
+    let matched: VerdictViolation | null = null;
+    if (verdict === 'approve') {
+      isCorrect = correctVerdict === 'approve';
+    } else {
+      // Flag must match a violation on cited rule + tapped word + chosen replacement.
+      matched = violations.find(
+        (v) => v.rule === rule && norm(v.forbiddenWord) === norm(word) && norm(v.approvedWord) === norm(replacement),
+      ) ?? null;
+      isCorrect = correctVerdict === 'flag' && matched !== null;
+    }
+
+    await prisma.harmonyCensureResponse.upsert({
+      where: { pairId_postId: { pairId: viewer.pairId, postId } },
+      update: { action: verdict, isCorrect, createdAt: new Date() },
+      create: { pairId: viewer.pairId, postId, action: verdict, isCorrect },
+    });
+
+    const focus = matched ?? violations[0] ?? null;
+    res.json({
+      isCorrect,
+      correctVerdict,
+      violations,
+      pearlNote: buildVerdictPearlNote(isCorrect, verdict, correctVerdict, focus),
+    });
+  } catch (err) {
+    console.error('Failed to submit verdict:', err);
+    res.status(500).json({ error: 'Failed to submit verdict' });
   }
 });
 
@@ -670,11 +797,12 @@ async function lookupStudyWord(raw: string) {
 // POST /api/harmony/censure-queue/:id/respond — submit censure review response
 router.post('/censure-queue/:id/respond', async (req, res) => {
   try {
-    const pairId = getPairId(req);
-    if (!pairId) {
+    const viewer = await getViewerContext(req);
+    if (!viewer?.pairId || !viewer.classId) {
       res.status(403).json({ error: 'Pair auth required' });
       return;
     }
+    const pairId = viewer.pairId;
 
     const postId = req.params.id as string;
     const { action, selectedIndex, selectedWord } = req.body;
@@ -683,8 +811,15 @@ router.post('/censure-queue/:id/respond', async (req, res) => {
       where: { id: postId },
     });
 
-    if (!post || post.postType === 'feed') {
+    // Only genuine censure items are reviewable — reject feed/bulletin/tip/notice/report.
+    if (!post || !CENSURE_POST_TYPES.includes(post.postType)) {
       res.status(404).json({ error: 'Censure item not found' });
+      return;
+    }
+
+    // Block responding to a censure item from a class the student isn't in.
+    if (post.classId !== viewer.classId) {
+      res.status(403).json({ error: 'Cross-class action not permitted' });
       return;
     }
 

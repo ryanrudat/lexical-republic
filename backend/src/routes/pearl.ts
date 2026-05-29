@@ -4,6 +4,9 @@ import { authenticate, getPairId } from '../middleware/auth';
 import { getOpenAI, OPENAI_MODEL } from '../utils/openai';
 
 const router = Router();
+// Require auth for every PEARL route. Previously GET /messages had no guard,
+// allowing an anonymous read of the message pool.
+router.use(authenticate);
 
 // GET /api/pearl/messages — return active messages, shuffled
 router.get('/messages', async (_req: Request, res: Response) => {
@@ -118,7 +121,7 @@ interface BarkRequest {
   };
 }
 
-router.post('/bark', authenticate, async (req: Request, res: Response) => {
+router.post('/bark', async (req: Request, res: Response) => {
   const { barkType, context } = req.body as BarkRequest;
 
   if (!barkType || !BARK_POOLS[barkType]) {
@@ -461,7 +464,7 @@ function getChatUsageKey(pairId: string, weekNumber?: number): string {
   return `${pairId}-week${weekNumber ?? 0}`;
 }
 
-router.post('/chat', authenticate, async (req: Request, res: Response) => {
+router.post('/chat', async (req: Request, res: Response) => {
   const { message, history, taskContext } = req.body as {
     message?: string;
     history?: ChatMessage[];

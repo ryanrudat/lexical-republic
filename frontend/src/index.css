@@ -1219,3 +1219,28 @@ body.extraction-active .pearl-island {
   92% { opacity: 1; text-shadow: 1px 0 rgba(244, 63, 94, 0.8); }
   93% { opacity: 0.85; text-shadow: none; }
 }
+
+/* ═══ Harmony — propaganda ticker + Citizen-4488 glitch (M1) ═══════════
+   Stays inside the cream/sky Harmony palette (no neon/CRT-green). The global
+   prefers-reduced-motion rule above already neutralises both animations. */
+.harmony-ticker {
+  display: inline-block;
+  animation: harmony-ticker-scroll 26s linear infinite;
+}
+@keyframes harmony-ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* Brief one-shot RGB-tear when a Citizen-4488 post mounts — the self-censoring
+   neighbour thread should feel quietly wrong. Amber/rose only. */
+.harmony-4488-glitch {
+  animation: harmony-4488-tear 360ms ease-out 1;
+}
+@keyframes harmony-4488-tear {
+  0%   { transform: translateX(0); }
+  15%  { transform: translateX(-2px); box-shadow: 2px 0 0 rgba(244, 63, 94, 0.22), -2px 0 0 rgba(245, 158, 11, 0.22); }
+  35%  { transform: translateX(2px); }
+  55%  { transform: translateX(-1px); box-shadow: 1px 0 0 rgba(244, 63, 94, 0.16), -1px 0 0 rgba(245, 158, 11, 0.16); }
+  100% { transform: translateX(0); box-shadow: none; }
+}

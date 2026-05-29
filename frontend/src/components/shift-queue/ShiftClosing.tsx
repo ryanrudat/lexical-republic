@@ -138,8 +138,18 @@ export default function ShiftClosing() {
     { label: 'Concern Score', value: concernScoreDelta.toFixed(1) },
   ];
 
+  // Prefer the hand-tuned closing shim; fall back to the WeekConfig's own
+  // citizen4488Post so weeks without a shim entry (W4+) still render the
+  // Case File card instead of silently showing nothing.
   const citizen4488Post = weekConfig
-    ? getCitizen4488PostForWeek(weekConfig.weekNumber)
+    ? getCitizen4488PostForWeek(weekConfig.weekNumber) ??
+      (weekConfig.citizen4488Post?.content
+        ? {
+            weekNumber: weekConfig.weekNumber,
+            title: `Citizen-4488 — Shift ${weekConfig.weekNumber} community post`,
+            excerpt: weekConfig.citizen4488Post.content,
+          }
+        : null)
     : null;
 
   // Post shift result, update clearance, persist concern, mark complete

@@ -5,7 +5,26 @@ export type HarmonyPostType =
   | 'bulletin'
   | 'pearl_tip'
   | 'community_notice'
-  | 'sector_report';
+  | 'sector_report'
+  | 'feed_review';
+
+// ─── Verdict loop (Junior Compliance Reviewer) ─────────────────────
+export type VerdictRule = 'reg_14c' | 'conduct_s1';
+
+export interface VerdictViolation {
+  rule: VerdictRule;
+  forbiddenWord: string;
+  approvedWord: string;
+  options: string[];
+  weekApproved?: number;
+}
+
+export interface VerdictResult {
+  isCorrect: boolean;
+  correctVerdict: 'approve' | 'flag';
+  violations: VerdictViolation[];
+  pearlNote: string;
+}
 
 export interface BulletinQuestion {
   question: string;
@@ -44,6 +63,16 @@ export interface HarmonyPost {
     questions: BulletinQuestion[];
   } | null;
   isNew?: boolean;
+
+  // feed_review verdict fields (present only on pending/answered review posts)
+  pendingReview?: boolean;
+  flagOptions?: string[];
+  /** The viewer's prior verdict, if already judged. */
+  verdict?: 'approve' | 'flag' | null;
+  verdictCorrect?: boolean | null;
+  /** Answer key — only sent once the post has been answered. */
+  correctVerdict?: 'approve' | 'flag' | null;
+  violations?: VerdictViolation[] | null;
 }
 
 export interface HarmonyReply {
@@ -129,6 +158,15 @@ export async function submitCensureResponse(
     selectedIndex,
     selectedWord,
   });
+  return data;
+}
+
+export async function submitVerdict(
+  postId: string,
+  verdict: 'approve' | 'flag',
+  details?: { rule?: string; word?: string; replacement?: string },
+): Promise<VerdictResult> {
+  const { data } = await client.post(`/harmony/posts/${postId}/verdict`, { verdict, ...details });
   return data;
 }
 

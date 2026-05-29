@@ -8,6 +8,19 @@ import { io } from '../socketServer';
 const router = Router();
 router.use(authenticate);
 
+/**
+ * Resolve a pair's class socket room ("class:<id>"), or null if not enrolled.
+ * Teachers join class:${classId} rooms — the old global 'teacher' room is gone,
+ * so live remediation events must target the student's class room.
+ */
+async function classRoomForPair(pairId: string): Promise<string | null> {
+  const enr = await prisma.classEnrollment.findFirst({
+    where: { pairId },
+    select: { classId: true },
+  });
+  return enr?.classId ? `class:${enr.classId}` : null;
+}
+
 const TRIGGER_REASONS = new Set(['rate_warned', 'rate_double', 'absolute_3']);
 
 const COOLDOWN_BY_CORRECT = [0, 0.5, 1.0, 1.5] as const;
@@ -146,15 +159,18 @@ router.post('/trigger', async (req, res) => {
       },
     });
 
-    io.to('teacher').emit('student:remediation-fired', {
-      pairId,
-      designation: pair?.designation ?? null,
-      moduleId: row.id,
-      weekNumber,
-      triggerReason,
-      concernAtTrigger,
-      triggeredAt: row.triggeredAt,
-    });
+    const firedRoom = await classRoomForPair(pairId);
+    if (firedRoom) {
+      io.to(firedRoom).emit('student:remediation-fired', {
+        pairId,
+        designation: pair?.designation ?? null,
+        moduleId: row.id,
+        weekNumber,
+        triggerReason,
+        concernAtTrigger,
+        triggeredAt: row.triggeredAt,
+      });
+    }
 
     res.json({
       moduleId: row.id,
@@ -270,17 +286,20 @@ router.post('/:id/complete', async (req, res) => {
       return { newScore, designation: pair?.designation ?? null };
     });
 
-    io.to('teacher').emit('student:remediation-completed', {
-      pairId,
-      designation: updated.designation,
-      moduleId: id,
-      weekNumber: row.weekNumber,
-      correctCount,
-      totalCount: row.totalCount,
-      cooldownApplied,
-      newConcernScore: updated.newScore,
-      completedAt: new Date(),
-    });
+    const completedRoom = await classRoomForPair(pairId);
+    if (completedRoom) {
+      io.to(completedRoom).emit('student:remediation-completed', {
+        pairId,
+        designation: updated.designation,
+        moduleId: id,
+        weekNumber: row.weekNumber,
+        correctCount,
+        totalCount: row.totalCount,
+        cooldownApplied,
+        newConcernScore: updated.newScore,
+        completedAt: new Date(),
+      });
+    }
 
     res.json({
       success: true,
@@ -356,14 +375,17 @@ router.post('/:id/clawback', async (req, res) => {
       return { newScore, designation: pair?.designation ?? null };
     });
 
-    io.to('teacher').emit('student:remediation-clawback', {
-      pairId,
-      designation: updated.designation,
-      moduleId: id,
-      weekNumber: row.weekNumber,
-      restoredAmount,
-      newConcernScore: updated.newScore,
-    });
+    const clawbackRoom = await classRoomForPair(pairId);
+    if (clawbackRoom) {
+      io.to(clawbackRoom).emit('student:remediation-clawback', {
+        pairId,
+        designation: updated.designation,
+        moduleId: id,
+        weekNumber: row.weekNumber,
+        restoredAmount,
+        newConcernScore: updated.newScore,
+      });
+    }
 
     res.json({
       success: true,

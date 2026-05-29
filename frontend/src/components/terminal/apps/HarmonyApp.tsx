@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useHarmonyStore } from '../../../stores/harmonyStore';
 import { useStudentStore } from '../../../stores/studentStore';
+import { getSocket } from '../../../utils/socket';
 import type { HarmonyPost, CensureItem, CensureResponseResult } from '../../../api/harmony';
 import HarmonyBulletin from './HarmonyBulletin';
 import HarmonyPearlTip from './HarmonyPearlTip';
@@ -68,6 +69,158 @@ function formatTimestamp(iso: string): string {
 
 function isCitizen4488(post: HarmonyPost): boolean {
   return post.designation === 'Citizen-4488';
+}
+
+/* ─── Propaganda + PEARL presence + reward (M1) ─────────────────── */
+
+/** Frontend mirror of the weekly slogan (source of truth: harmonyWorldBible.ts). */
+const WEEKLY_SLOGANS: Record<number, string> = {
+  1: 'Harmony Starts With You',
+  2: 'Clear Words, Clear Minds',
+  3: 'Efficiency Is Community',
+  4: 'Accurate Records, Accurate Lives',
+};
+function sloganForWeek(week: number): string {
+  return WEEKLY_SLOGANS[week] ?? 'Compliance Is Care';
+}
+
+/** Small static PEARL eye glyph — the sanctioned pearl-eye-glow asset, no RAF. */
+function PearlGlyph({ className = 'w-6 h-6' }: { className?: string }) {
+  return <img src="/images/pearl-eye-glow.png" alt="" aria-hidden className={`${className} shrink-0 object-contain`} />;
+}
+
+/** Thin scrolling propaganda slogan bar — makes the Feed feel like live state media. */
+function PropagandaTicker({ week }: { week: number }) {
+  const slogan = sloganForWeek(week);
+  const line = Array.from({ length: 4 }, () => slogan).join('   ◆   ');
+  return (
+    <div className="overflow-hidden border-b border-[#E8E4DC] bg-sky-50/50">
+      <div className="harmony-ticker whitespace-nowrap py-1 text-[9px] tracking-[0.25em] uppercase text-sky-700/70">
+        <span className="px-3">{line}</span>
+        <span className="px-3" aria-hidden>{line}</span>
+      </div>
+    </div>
+  );
+}
+
+/** PEARL goal banner — gives the Feed a session objective + a "done" state. */
+function HarmonyGoalBanner({
+  remaining,
+  total,
+  credits,
+}: {
+  remaining: number;
+  total: number;
+  credits: number;
+}) {
+  const done = total > 0 && remaining === 0;
+  const message = total === 0
+    ? 'Welcome back, Citizen. Read, review, and keep our words clear.'
+    : done
+      ? 'Every document is reviewed. Exemplary clarity, Citizen.'
+      : `${remaining} document${remaining === 1 ? '' : 's'} await${remaining === 1 ? 's' : ''} your review in the Queue, Citizen.`;
+  return (
+    <div className="mx-4 mt-3 flex items-center gap-2.5 rounded-xl border border-sky-200 bg-sky-50/60 px-3 py-2">
+      <PearlGlyph className="w-7 h-7" />
+      <p className="flex-1 text-[11px] text-sky-800/90 italic leading-snug">{message}</p>
+      <span className="shrink-0 text-[10px] font-mono font-semibold text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+        HC {credits}
+      </span>
+    </div>
+  );
+}
+
+/** Shift-end summary shown when the Review queue is cleared. */
+function ShiftComplianceReport({
+  reviewed,
+  correct,
+  credits,
+}: {
+  reviewed: number;
+  correct: number;
+  credits: number;
+}) {
+  const accuracy = reviewed > 0 ? Math.round((correct / reviewed) * 100) : 0;
+  return (
+    <div className="mx-4 mb-4 rounded-xl border border-emerald-200 bg-emerald-50/40 overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-emerald-200/60 bg-emerald-50">
+        <PearlGlyph />
+        <span className="text-[11px] font-semibold tracking-[0.12em] uppercase text-emerald-700">
+          Shift Compliance Report
+        </span>
+      </div>
+      <div className="px-4 py-3 grid grid-cols-3 gap-2 text-center">
+        <div>
+          <p className="text-[18px] font-semibold text-emerald-700">{reviewed}</p>
+          <p className="text-[9px] tracking-wider uppercase text-[#8B8578]">Reviewed</p>
+        </div>
+        <div>
+          <p className="text-[18px] font-semibold text-emerald-700">{accuracy}%</p>
+          <p className="text-[9px] tracking-wider uppercase text-[#8B8578]">Accuracy</p>
+        </div>
+        <div>
+          <p className="text-[18px] font-semibold text-amber-600">{credits}</p>
+          <p className="text-[9px] tracking-wider uppercase text-[#8B8578]">Credits</p>
+        </div>
+      </div>
+      <p className="px-4 pb-3 text-[11px] italic text-emerald-700/80 leading-snug">
+        PEARL: The Queue is clear, Citizen. Your diligence has been noted with appreciation.
+      </p>
+    </div>
+  );
+}
+
+/** Ambient "citizens online" strip — live count from the per-class socket room. */
+function ClassPresenceStrip({ online }: { online: number }) {
+  if (online <= 0) return null;
+  return (
+    <div className="flex items-center justify-center gap-1.5 px-4 py-1 bg-emerald-50/40 border-b border-[#E8E4DC]">
+      <span className="relative flex h-1.5 w-1.5">
+        <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60 animate-ping" />
+        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+      </span>
+      <span className="text-[9px] tracking-[0.15em] uppercase text-emerald-700/70">
+        {online} citizen{online === 1 ? '' : 's'} on shift in your sector
+      </span>
+    </div>
+  );
+}
+
+/** Periodic "Citizen-4488 is typing…" indicator — pure client-side timing, never posts. */
+function Citizen4488Typing() {
+  const [typing, setTyping] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const loop = (initial = false) => {
+      const hiddenFor = (initial ? 11000 : 24000) + Math.random() * 18000;
+      timer = setTimeout(() => {
+        if (cancelled) return;
+        setTyping(true);
+        timer = setTimeout(() => {
+          if (cancelled) return;
+          setTyping(false);
+          loop();
+        }, 3500 + Math.random() * 2500);
+      }, hiddenFor);
+    };
+    loop(true);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, []);
+
+  if (!typing) return null;
+  return (
+    <div className="mx-4 mb-2 flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-50/60 border border-amber-200/60">
+      <div className="w-6 h-6 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center shrink-0">
+        <span className="text-[8px] font-bold text-amber-700">4488</span>
+      </div>
+      <span className="text-[11px] text-amber-700/80 italic">Citizen-4488 is typing</span>
+      <span className="text-amber-600 text-[14px] leading-none animate-pulse">&hellip;</span>
+    </div>
+  );
 }
 
 /* ─── Word Highlighting ─────────────────────────────────────────── */
@@ -218,6 +371,219 @@ function ComposeBox({
   );
 }
 
+/* ─── Verdict loop (feed_review posts — Junior Compliance Reviewer) ─ */
+
+const VERDICT_RULE_LABEL: Record<string, string> = {
+  reg_14c: 'Regulation 14-C — Approved Vocabulary',
+  conduct_s1: 'Conduct Code §1 — Collective Voice',
+};
+function activeRulesForWeek(week: number): string[] {
+  return week >= 2 ? ['reg_14c', 'conduct_s1'] : ['reg_14c'];
+}
+
+/** Reconstruct a forced-happy reaction for a reloaded (already-answered) post. */
+function buildClientReaction(
+  verdict: 'approve' | 'flag' | null,
+  correct: boolean | null,
+  correctVerdict: 'approve' | 'flag' | null,
+  violations: { rule: string; forbiddenWord: string; approvedWord: string }[] | null,
+): string {
+  const v = violations?.[0] ?? null;
+  const label = v ? VERDICT_RULE_LABEL[v.rule] ?? 'the Approved List' : 'the Approved List';
+  if (correct && verdict === 'approve') return 'Approved. Clean compliance, Citizen.';
+  if (correct && verdict === 'flag' && v) return `Infraction confirmed under ${label}. "${v.forbiddenWord}" → "${v.approvedWord}".`;
+  if (correctVerdict === 'flag' && v) return `Audit notice: this post used "${v.forbiddenWord}". The approved form is "${v.approvedWord}".`;
+  return 'This post is compliant, Citizen.';
+}
+
+/** Free word selector for the flag modal — no answer hints. */
+function FlagTappableWords({ content, selected, onSelect }: { content: string; selected: string | null; onSelect: (w: string) => void }) {
+  const tokens = content.split(/(\s+)/);
+  const sel = (selected ?? '').trim().replace(/[^a-zA-Z]/g, '').toLowerCase();
+  return (
+    <p className="text-[13px] text-[#2C3340] leading-relaxed">
+      {tokens.map((tok, i) => {
+        const cleaned = tok.replace(/[^a-zA-Z]/g, '').toLowerCase();
+        if (!cleaned) return <span key={i}>{tok}</span>;
+        const isSel = cleaned === sel;
+        return (
+          <span
+            key={i}
+            onClick={() => onSelect(tok)}
+            className={`px-0.5 rounded cursor-pointer transition-colors ${
+              isSel ? 'bg-rose-100 text-rose-800 ring-2 ring-rose-300 font-medium' : 'hover:bg-amber-50 active:bg-amber-100'
+            }`}
+          >
+            {tok}
+          </span>
+        );
+      })}
+    </p>
+  );
+}
+
+function FlagModal({
+  post,
+  onCancel,
+  onSubmit,
+}: {
+  post: HarmonyPost;
+  onCancel: () => void;
+  onSubmit: (details: { rule: string; word: string; replacement: string }) => void;
+}) {
+  const week = useHarmonyStore((s) => s.currentWeekNumber);
+  const rules = activeRulesForWeek(week);
+  const [rule, setRule] = useState<string | null>(rules.length === 1 ? rules[0] : null);
+  const [word, setWord] = useState<string | null>(null);
+  const [replacement, setReplacement] = useState<string | null>(null);
+  const chips = post.flagOptions ?? [];
+  const ready = rule && word && replacement;
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/30 p-4" onClick={onCancel}>
+      <div
+        className="w-full max-w-sm rounded-2xl bg-[#FAFAF7] border border-[#D4CFC6] shadow-xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-4 py-3 border-b border-[#E8E4DC] bg-white">
+          <p className="text-[11px] font-semibold tracking-[0.12em] uppercase text-rose-700">File an Infraction</p>
+          <p className="text-[10px] text-[#8B8578] mt-0.5">Cite the regulation, mark the word, request the approved form.</p>
+        </div>
+        <div className="px-4 py-3 space-y-3 max-h-[60vh] overflow-auto">
+          <div>
+            <p className="text-[10px] tracking-wider uppercase text-[#8B8578] mb-1">1 · Regulation</p>
+            <div className="space-y-1">
+              {rules.map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setRule(r)}
+                  className={`w-full text-left text-[11px] px-3 py-2 rounded-lg border transition-colors ${
+                    rule === r ? 'border-rose-300 bg-rose-50 text-rose-800' : 'border-[#E8E4DC] bg-white text-[#4B5563] hover:border-[#D4CFC6]'
+                  }`}
+                >
+                  {VERDICT_RULE_LABEL[r] ?? r}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] tracking-wider uppercase text-[#8B8578] mb-1">2 · Tap the unapproved word</p>
+            <div className="rounded-lg border border-[#E8E4DC] bg-white px-3 py-2">
+              <FlagTappableWords content={post.content} selected={word} onSelect={setWord} />
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] tracking-wider uppercase text-[#8B8578] mb-1">3 · Approved replacement</p>
+            <div className="flex flex-wrap gap-1.5">
+              {chips.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setReplacement(c)}
+                  className={`text-[11px] px-3 py-1.5 rounded-full border transition-colors ${
+                    replacement === c ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-[#E8E4DC] bg-white text-[#4B5563] hover:border-[#D4CFC6]'
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="px-4 py-3 border-t border-[#E8E4DC] bg-white flex items-center justify-between gap-2">
+          <button onClick={onCancel} className="text-[11px] text-[#8B8578] hover:text-[#4B5563] px-3 py-1.5">
+            Cancel
+          </button>
+          <button
+            disabled={!ready}
+            onClick={() => ready && onSubmit({ rule: rule!, word: word!, replacement: replacement! })}
+            className="text-[11px] font-semibold tracking-wider px-4 py-1.5 rounded-full bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            FILE FLAG
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VerdictControls({ post }: { post: HarmonyPost }) {
+  const submitVerdict = useHarmonyStore((s) => s.submitVerdict);
+  const [showFlag, setShowFlag] = useState(false);
+  const [reaction, setReaction] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const answered = post.verdict != null;
+  const verdict = post.verdict ?? null;
+  const correct = post.verdictCorrect ?? null;
+
+  const doApprove = async () => {
+    if (busy) return;
+    setBusy(true);
+    const res = await submitVerdict(post.id, 'approve');
+    if (res) setReaction(res.pearlNote);
+    setBusy(false);
+  };
+  const doFlag = async (details: { rule: string; word: string; replacement: string }) => {
+    setShowFlag(false);
+    if (busy) return;
+    setBusy(true);
+    const res = await submitVerdict(post.id, 'flag', details);
+    if (res) setReaction(res.pearlNote);
+    setBusy(false);
+  };
+
+  if (!answered) {
+    return (
+      <div className="mt-2 pt-2 border-t border-gray-100">
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded tracking-wider font-medium">
+            PENDING REVIEW
+          </span>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={doApprove}
+              disabled={busy}
+              className="text-[11px] px-3 py-1 rounded-lg border border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 active:scale-95 font-medium disabled:opacity-40"
+            >
+              ✓ Approve
+            </button>
+            <button
+              onClick={() => setShowFlag(true)}
+              disabled={busy}
+              className="text-[11px] px-3 py-1 rounded-lg border border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100 active:scale-95 font-medium disabled:opacity-40"
+            >
+              ✗ Flag
+            </button>
+          </div>
+        </div>
+        {showFlag && <FlagModal post={post} onCancel={() => setShowFlag(false)} onSubmit={doFlag} />}
+      </div>
+    );
+  }
+
+  const wrongApprove = verdict === 'approve' && correct === false;
+  const badge = correct
+    ? verdict === 'approve'
+      ? { text: '✓ APPROVED', cls: 'text-emerald-700 bg-emerald-50 border-emerald-200' }
+      : { text: '✗ FLAGGED', cls: 'text-rose-700 bg-rose-50 border-rose-200' }
+    : wrongApprove
+      ? { text: '⚠ AUDIT NOTICE — REVIEWED IN ERROR', cls: 'text-amber-700 bg-amber-50 border-amber-300' }
+      : { text: '⚠ REVIEW IN ERROR', cls: 'text-amber-700 bg-amber-50 border-amber-300' };
+  const note = reaction ?? buildClientReaction(verdict, correct, post.correctVerdict ?? null, post.violations ?? null);
+
+  return (
+    <div className="mt-2 pt-2 border-t border-gray-100">
+      <span className={`text-[9px] px-1.5 py-0.5 rounded border tracking-wider font-medium ${badge.cls}`}>{badge.text}</span>
+      {note && (
+        <div className="mt-1.5 flex items-start gap-1.5">
+          <PearlGlyph className="w-4 h-4 mt-0.5" />
+          <p className="text-[10px] text-emerald-700/80 italic leading-relaxed">{note}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Post Card (Social Media Style) ────────────────────────────── */
 
 function PostCard({
@@ -259,7 +625,7 @@ function PostCard({
   return (
     <div
       className={`mx-4 mb-2 p-3 rounded-xl border shadow-sm transition-colors ${
-        is4488 ? 'bg-amber-50 border-amber-200' : 'bg-white border-[#E8E4DC] hover:border-[#D4CFC6]'
+        is4488 ? 'bg-amber-50 border-amber-200 harmony-4488-glitch' : 'bg-white border-[#E8E4DC] hover:border-[#D4CFC6]'
       }`}
     >
       <div className="flex gap-3">
@@ -320,6 +686,9 @@ function PostCard({
               </p>
             </div>
           )}
+
+          {/* Verdict loop — inline Approve/Flag for Junior Compliance Reviewer posts */}
+          {post.postType === 'feed_review' && <VerdictControls post={post} />}
 
           {/* Citizen-4488 interaction */}
           {is4488 && !post.isOwn && onCensure && (
@@ -997,7 +1366,7 @@ function CensureCard({ item }: { item: CensureItem }) {
 /* ─── Censure Queue Tab ─────────────────────────────────────────── */
 
 function CensureQueue() {
-  const { censureItems, censureStats, censureLoading, loadCensureQueue } = useHarmonyStore();
+  const { censureItems, censureStats, censureLoading, loadCensureQueue, harmonyCredits } = useHarmonyStore();
 
   useEffect(() => {
     void loadCensureQueue();
@@ -1005,6 +1374,8 @@ function CensureQueue() {
 
   const unreviewed = censureItems.filter(i => !i.reviewed);
   const reviewed = censureItems.filter(i => i.reviewed);
+  const correctCount = reviewed.filter(i => i.wasCorrect).length;
+  const queueCleared = censureStats.total > 0 && unreviewed.length === 0;
 
   if (censureLoading && censureItems.length === 0) {
     return (
@@ -1028,14 +1399,19 @@ function CensureQueue() {
         </span>
       </div>
 
-      {/* Progress bar */}
+      {/* Progress bar (clamped — completed can momentarily lead total on re-answer) */}
       {censureStats.total > 0 && (
         <div className="mx-4 mb-4 h-1 rounded-full bg-gray-100 overflow-hidden">
           <div
             className="h-full rounded-full bg-sky-200/40 transition-all duration-500"
-            style={{ width: `${(censureStats.completed / censureStats.total) * 100}%` }}
+            style={{ width: `${Math.min(100, (censureStats.completed / censureStats.total) * 100)}%` }}
           />
         </div>
+      )}
+
+      {/* Shift-end summary — appears once the queue is fully cleared */}
+      {queueCleared && (
+        <ShiftComplianceReport reviewed={reviewed.length} correct={correctCount} credits={harmonyCredits} />
       )}
 
       {/* Unreviewed items */}
@@ -1170,14 +1546,23 @@ export default function HarmonyApp() {
     setShowOnboarding(false);
   }, []);
 
-  const { loadCensureQueue, censureStats } = useHarmonyStore();
+  const { loadCensureQueue, censureStats, harmonyCredits, loadCredits, dismissPearlAnnotations, classOnline } = useHarmonyStore();
+  const pairId = useStudentStore((s) => s.user?.pairId ?? s.user?.id ?? null);
 
   useEffect(() => {
     void loadPosts();
     void loadCensureQueue();
+    loadCredits(pairId);
+    // Ask the server for the current class online count (live presence strip).
+    getSocket()?.emit('student:presence-request');
     // Clear new content flag when user opens Harmony
     setHasNewContent(false);
-  }, [loadPosts, loadCensureQueue, setHasNewContent]);
+  }, [loadPosts, loadCensureQueue, loadCredits, pairId, setHasNewContent]);
+
+  // Per-tab NEW indicators — lit when a tab holds posts unseen since last visit.
+  const feedHasNew = posts.some((p) => (p.postType === 'feed' || p.postType === 'feed_review' || !p.postType) && p.isNew);
+  const ministryHasNew = posts.some((p) => (p.postType === 'bulletin' || p.postType === 'pearl_tip') && p.isNew);
+  const sectorHasNew = posts.some((p) => (p.postType === 'community_notice' || p.postType === 'sector_report') && p.isNew);
 
   const handleCensure = useCallback(
     (postId: string, action: 'approve' | 'correct' | 'flag', weekNumber: number) => {
@@ -1206,18 +1591,32 @@ export default function HarmonyApp() {
   return (
     <div className="flex flex-col h-full min-h-full bg-[#F5F1EB]">
       {/* Header */}
-      <HarmonyHeader currentWeekNumber={currentWeekNumber} />
+      <HarmonyHeader currentWeekNumber={currentWeekNumber} credits={harmonyCredits} />
 
       {/* First-time onboarding */}
       {showOnboarding && <HarmonyOnboarding onDismiss={dismissOnboarding} />}
 
       {/* Tabs — government portal navigation */}
-      <HarmonyTabs activeTab={activeTab} setTab={setTab} censureStats={censureStats} ministryCount={posts.filter(p => p.postType === 'bulletin' || p.postType === 'pearl_tip').length} />
+      <HarmonyTabs
+        activeTab={activeTab}
+        setTab={setTab}
+        censureStats={censureStats}
+        ministryCount={posts.filter(p => p.postType === 'bulletin' || p.postType === 'pearl_tip').length}
+        newFlags={{ feed: feedHasNew, ministry: ministryHasNew, sector: sectorHasNew }}
+      />
 
       {/* Tab content */}
       {activeTab === 'feed' && (
-        <FeedTab
-          posts={posts.filter(p => p.postType === 'feed' || !p.postType)}
+        <>
+          <PropagandaTicker week={currentWeekNumber} />
+          <ClassPresenceStrip online={classOnline} />
+          <HarmonyGoalBanner
+            remaining={Math.max(0, censureStats.total - censureStats.completed)}
+            total={censureStats.total}
+            credits={harmonyCredits}
+          />
+          <FeedTab
+            posts={posts.filter(p => p.postType === 'feed' || p.postType === 'feed_review' || !p.postType)}
           focusWords={focusWords}
           recentWords={recentWords}
           deepReviewWords={deepReviewWords}
@@ -1227,8 +1626,9 @@ export default function HarmonyApp() {
           onSubmitPost={submitPost}
           onOpenThread={openThread}
           onCensure={handleCensure}
-          onDelete={deletePost}
-        />
+            onDelete={deletePost}
+          />
+        </>
       )}
       {activeTab === 'ministry' && (
         <MinistryTab
@@ -1250,15 +1650,27 @@ export default function HarmonyApp() {
         <ArchivesTab />
       )}
 
-      {/* PEARL ambient annotations — pinned at bottom of visible tab */}
+      {/* PEARL ambient annotations — pinned at bottom of feed, dismissible */}
       {pearlAnnotations.length > 0 && activeTab === 'feed' && (
         <div className="border-t border-emerald-200/50 bg-emerald-50/30 px-4 py-2">
-          {pearlAnnotations.map((a, i) => (
-            <div key={i} className="flex items-start gap-2 py-1">
-              <span className="text-[10px] text-emerald-600 font-bold tracking-wider shrink-0">P.E.A.R.L.</span>
-              <p className="text-[10px] text-emerald-700/80 italic leading-relaxed">{a.message}</p>
+          <div className="flex items-start gap-2">
+            <PearlGlyph className="w-5 h-5 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              {pearlAnnotations.map((a, i) => (
+                <p key={i} className="text-[10px] text-emerald-700/80 italic leading-relaxed py-0.5">
+                  <span className="font-bold not-italic tracking-wider text-emerald-600 mr-1">P.E.A.R.L.</span>
+                  {a.message}
+                </p>
+              ))}
             </div>
-          ))}
+            <button
+              onClick={dismissPearlAnnotations}
+              className="shrink-0 px-1 text-[13px] leading-none text-emerald-600/50 hover:text-emerald-700 transition-colors"
+              aria-label="Dismiss PEARL note"
+            >
+              &times;
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -1267,7 +1679,7 @@ export default function HarmonyApp() {
 
 /* ─── Header ────────────────────────────────────────────────────── */
 
-function HarmonyHeader({ currentWeekNumber }: { currentWeekNumber: number }) {
+function HarmonyHeader({ currentWeekNumber, credits = 0 }: { currentWeekNumber: number; credits?: number }) {
   return (
     <div className="bg-gradient-to-b from-[#E8E4DC] to-[#F5F1EB] border-b border-[#D4CFC6] px-4 py-3">
       <div className="flex items-center gap-3">
@@ -1285,9 +1697,19 @@ function HarmonyHeader({ currentWeekNumber }: { currentWeekNumber: number }) {
           </p>
         </div>
         {currentWeekNumber > 0 && (
-          <div className="flex items-center gap-1.5 bg-white/60 rounded-full px-2.5 py-1 border border-[#D4CFC6]">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            <span className="text-[10px] font-medium text-[#4B5563]">Shift {currentWeekNumber}</span>
+          <div className="flex items-center gap-1.5">
+            {/* Harmony Credits — in-world compliance reward balance */}
+            <div
+              className="flex items-center gap-1 bg-amber-50 rounded-full px-2.5 py-1 border border-amber-200"
+              title="Harmony Credits — earned for accurate review work"
+            >
+              <span className="text-[9px] font-bold text-amber-600 tracking-wider">HC</span>
+              <span className="text-[11px] font-semibold text-amber-700 font-mono tabular-nums">{credits}</span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-white/60 rounded-full px-2.5 py-1 border border-[#D4CFC6]">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span className="text-[10px] font-medium text-[#4B5563]">Shift {currentWeekNumber}</span>
+            </div>
           </div>
         )}
       </div>
@@ -1323,6 +1745,46 @@ function FeedTab({
   onDelete: (postId: string) => void;
 }) {
   const [showVocab, setShowVocab] = useState(false);
+
+  // ── Live feed drip (M2) ──────────────────────────────────────────
+  // Hold back the newest 1-2 posts and let them "arrive" over the session so
+  // the feed feels alive; a "↑ N NEW POST" pill nudges the student to scroll up.
+  // Content is never lost — held posts auto-reveal within the drip window.
+  const feedScrollRef = useRef<HTMLDivElement>(null);
+  const holdCount = posts.length >= 5 ? 2 : posts.length >= 3 ? 1 : 0;
+  const baseVisible = useMemo(() => posts.slice(holdCount), [posts, holdCount]);
+  const [revealedNewest, setRevealedNewest] = useState<HarmonyPost[]>([]);
+  const [newCount, setNewCount] = useState(0);
+
+  useEffect(() => {
+    // Reset on every feed reload / shift change (posts identity changes).
+    setRevealedNewest([]);
+    setNewCount(0);
+    if (holdCount === 0) return;
+    const queue = posts.slice(0, holdCount).reverse(); // reveal so final order == posts
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const revealNext = () => {
+      if (cancelled) return;
+      const next = queue.shift();
+      if (!next) return;
+      setRevealedNewest((prev) => [next, ...prev]);
+      setNewCount((c) => c + 1);
+      if (queue.length > 0) timer = setTimeout(revealNext, 9000 + Math.random() * 8000);
+    };
+    timer = setTimeout(revealNext, 7000 + Math.random() * 5000);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [posts, holdCount]);
+
+  const displayed = useMemo(() => [...revealedNewest, ...baseVisible], [revealedNewest, baseVisible]);
+
+  const handleSeeNew = () => {
+    setNewCount(0);
+    feedScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <>
@@ -1391,7 +1853,22 @@ function FeedTab({
       />
 
       {/* Feed */}
-      <div className="flex-1 overflow-auto">
+      <div ref={feedScrollRef} className="flex-1 overflow-auto relative">
+        {/* New-posts pill — appears as held-back posts drip in */}
+        {newCount > 0 && (
+          <div className="sticky top-2 z-[5] flex justify-center pointer-events-none">
+            <button
+              onClick={handleSeeNew}
+              className="pointer-events-auto px-3 py-1 rounded-full bg-sky-600 text-white text-[10px] font-semibold tracking-wider shadow-md hover:bg-sky-700 active:scale-95 transition-all"
+            >
+              ↑ {newCount} NEW POST{newCount === 1 ? '' : 'S'}
+            </button>
+          </div>
+        )}
+
+        {/* Ambient: Citizen-4488 occasionally "typing…" */}
+        <Citizen4488Typing />
+
         {loading && posts.length === 0 && (
           <div className="text-xs text-sky-700/50 animate-pulse text-center py-8 tracking-wider">
             LOADING FEED...
@@ -1410,7 +1887,7 @@ function FeedTab({
           </div>
         )}
 
-        {posts.map((post) => (
+        {displayed.map((post) => (
           <PostCard
             key={post.id}
             post={post}
@@ -1434,11 +1911,13 @@ function HarmonyTabs({
   setTab,
   censureStats,
   ministryCount,
+  newFlags,
 }: {
   activeTab: string;
   setTab: (tab: 'feed' | 'ministry' | 'sector' | 'censure' | 'archives') => void;
   censureStats: { total: number; completed: number };
   ministryCount: number;
+  newFlags?: { feed: boolean; ministry: boolean; sector: boolean };
 }) {
   const tabs: { key: 'feed' | 'ministry' | 'sector' | 'censure' | 'archives'; label: string; badge?: number; badgeColor?: string }[] = [
     { key: 'feed', label: 'Feed' },
@@ -1450,24 +1929,37 @@ function HarmonyTabs({
 
   return (
     <div className="flex gap-1 px-3 py-2 bg-[#EFEBE4] border-b border-[#D4CFC6]">
-      {tabs.map((tab) => (
-        <button
-          key={tab.key}
-          onClick={() => setTab(tab.key)}
-          className={`flex-1 py-1.5 rounded-lg text-[10px] font-semibold tracking-[0.08em] uppercase transition-all ${
-            activeTab === tab.key
-              ? 'bg-white text-[#2C3340] shadow-sm border border-[#D4CFC6]'
-              : 'text-[#8B8578] hover:text-[#4B5563] hover:bg-white/40'
-          }`}
-        >
-          {tab.label}
-          {tab.badge && (
-            <span className={`ml-1 inline-flex items-center justify-center min-w-[14px] h-3.5 px-1 rounded-full text-[8px] font-bold ${tab.badgeColor} text-white`}>
-              {tab.badge}
+      {tabs.map((tab) => {
+        const hasNew = !!newFlags && activeTab !== tab.key && (
+          tab.key === 'feed' ? newFlags.feed
+          : tab.key === 'ministry' ? newFlags.ministry
+          : tab.key === 'sector' ? newFlags.sector
+          : false
+        );
+        return (
+          <button
+            key={tab.key}
+            onClick={() => setTab(tab.key)}
+            className={`flex-1 py-1.5 rounded-lg text-[10px] font-semibold tracking-[0.08em] uppercase transition-all ${
+              activeTab === tab.key
+                ? 'bg-white text-[#2C3340] shadow-sm border border-[#D4CFC6]'
+                : 'text-[#8B8578] hover:text-[#4B5563] hover:bg-white/40'
+            }`}
+          >
+            <span className="relative inline-flex items-center">
+              {tab.label}
+              {hasNew && (
+                <span className="absolute -top-1 -right-2 h-1.5 w-1.5 rounded-full bg-sky-500" aria-label="new" />
+              )}
             </span>
-          )}
-        </button>
-      ))}
+            {tab.badge && (
+              <span className={`ml-1 inline-flex items-center justify-center min-w-[14px] h-3.5 px-1 rounded-full text-[8px] font-bold ${tab.badgeColor} text-white`}>
+                {tab.badge}
+              </span>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }

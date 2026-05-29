@@ -20,6 +20,7 @@ import { STATIC_BULLETINS } from '../data/harmonyBulletins';
 import { STATIC_PEARL_TIPS } from '../data/harmonyPearlTips';
 import { STATIC_COMMUNITY_NOTICES, STATIC_SECTOR_REPORTS } from '../data/harmonyCommunityContent';
 import { HARMONY_SEED_POSTS } from '../data/harmonyFeed';
+import { VERDICT_FEED_POSTS } from '../data/harmonyVerdictPosts';
 import type { NarrativeRouteId } from '../data/narrative-routes';
 import type { BulletinQuestion } from '../data/harmonyBulletins';
 
@@ -54,6 +55,7 @@ const DEFAULT_CONTENT_COUNTS: Record<string, number> = {
   censure_replace: 1,
   censure_redact: 2,   // tap-in-text variant — static-only for now
   censure_triage: 2,   // bin classification — static-only for now
+  feed_review: 4,      // inline Approve/Flag verdict posts — static-only (hand-authored)
 };
 
 interface GeneratedPost {
@@ -333,6 +335,19 @@ function buildStaticPosts(weekNumber: number): GeneratedPost[] {
     posts.push(c);
   }
 
+  // Verdict posts (Junior Compliance Reviewer) — inline Approve/Flag feed posts.
+  // The verdict packet rides in censureData so no schema migration is needed.
+  for (const v of VERDICT_FEED_POSTS[weekNumber] ?? []) {
+    posts.push({
+      authorLabel: v.authorLabel,
+      content: v.content,
+      postType: 'feed_review',
+      pearlNote: null,
+      censureData: { correctVerdict: v.correctVerdict, violations: v.violations },
+      bulletinData: null,
+    });
+  }
+
   return posts;
 }
 
@@ -387,6 +402,15 @@ export async function generateHarmonyPosts(
       remaining[post.postType]!--;
     }
   }
+
+  // censure_redact / censure_triage are STATIC-ONLY — neither the AI prompt nor
+  // buildFallbackPosts can produce them. Whatever the static pool just supplied is
+  // all there is, so zero their remaining need. Otherwise an unfillable quota keeps
+  // `needsAI` true and fires a wasted OpenAI completion on EVERY Harmony open for any
+  // week with no static redact/triage items (this was happening for W4+).
+  remaining['censure_redact'] = 0;
+  remaining['censure_triage'] = 0;
+  remaining['feed_review'] = 0; // hand-authored only — AI never generates verdict posts
 
   // 2. AI-generate anything still needed (feed posts + censure items primarily)
   const needsAI = Object.values(remaining).some(n => n > 0);
@@ -1137,6 +1161,215 @@ const STATIC_CENSURE_ITEMS: Record<number, GeneratedPost[]> = {
       },
     },
   ],
+
+  // ─── Week 4 — Activity Reconciliation (past-simple sequencing + W4 words) ──
+  4: [
+    // ── Grammar: past-simple of W4 target verbs ─────────────────────
+    {
+      authorLabel: 'Citizen-4140',
+      content: 'Yesterday I arrange the seized files in the Records Wing before the supervisor arrived.',
+      postType: 'censure_grammar',
+      pearlNote: null,
+      censureData: {
+        errorType: 'grammar',
+        errorWord: 'arrange',
+        correction: 'arranged',
+        explanation: '"Yesterday" signals past simple. The verb must be "arranged", not "arrange".',
+        options: ['arranged', 'arrange', 'arranges', 'arranging'],
+        correctIndex: 0,
+      },
+    },
+    {
+      authorLabel: 'Citizen-4216',
+      content: 'First the inspector examine every folder, then she signed the daily log at Filing Desk 2.',
+      postType: 'censure_grammar',
+      pearlNote: null,
+      censureData: {
+        errorType: 'grammar',
+        errorWord: 'examine',
+        correction: 'examined',
+        explanation: 'The sequence is in the past: "First the inspector examined ... then she signed." Use "examined".',
+        options: ['examined', 'examine', 'examines', 'examining'],
+        correctIndex: 0,
+      },
+    },
+    {
+      authorLabel: 'Citizen-4309',
+      content: 'After the meeting, the clerk verify all the records and then closed the desk for the night.',
+      postType: 'censure_grammar',
+      pearlNote: null,
+      censureData: {
+        errorType: 'grammar',
+        errorWord: 'verify',
+        correction: 'verified',
+        explanation: '"After the meeting ... then closed" is past simple. The form is "verified", not "verify".',
+        options: ['verified', 'verify', 'verifies', 'verifying'],
+        correctIndex: 0,
+      },
+    },
+
+    // ── Vocab: W4 target-word misuse ────────────────────────────────
+    {
+      authorLabel: 'Citizen-4421',
+      content: 'I will indicate the heavy boxes to the storage room before the inspection begins.',
+      postType: 'censure_vocab',
+      pearlNote: null,
+      censureData: {
+        errorType: 'vocab',
+        errorWord: 'indicate',
+        correction: '"Indicate" means to show or point something out, not to carry or move it.',
+        explanation: '"Indicate" is misused here. It means to show or point something out, not to move it.',
+        options: [
+          'To show or point something out',
+          'To carry or move something',
+          'To clean something thoroughly',
+          'To officially approve something',
+        ],
+        correctIndex: 0,
+      },
+    },
+    {
+      authorLabel: 'Citizen-4533',
+      content: 'She organized the supervisor about the schedule change before the morning briefing.',
+      postType: 'censure_vocab',
+      pearlNote: null,
+      censureData: {
+        errorType: 'vocab',
+        errorWord: 'organized',
+        correction: '"Organize" means to arrange things into order, not to tell or inform a person.',
+        explanation: '"Organize" is misused here. You arrange things into order; you inform a person.',
+        options: [
+          'To arrange things into order',
+          'To tell or inform someone',
+          'To reach or arrive at a place',
+          'To reduce something in size',
+        ],
+        correctIndex: 0,
+      },
+    },
+    {
+      authorLabel: 'Citizen-4607',
+      content: 'He recorded the new poster on the corridor wall of Block 7 so everyone could see it.',
+      postType: 'censure_vocab',
+      pearlNote: null,
+      censureData: {
+        errorType: 'vocab',
+        errorWord: 'recorded',
+        correction: '"Record" means to write down or store information, not to attach or hang something.',
+        explanation: '"Record" is misused here. It means to write down or store information, not to put something up.',
+        options: [
+          'To write down or store information',
+          'To attach or hang something',
+          'To examine something closely',
+          'To officially approve something',
+        ],
+        correctIndex: 0,
+      },
+    },
+
+    // ── Replace: swap the bracketed word for the approved one ───────
+    {
+      authorLabel: 'Citizen-4710',
+      content: 'All associates must [examine] their new badges from the supply officer before the shift.',
+      postType: 'censure_replace',
+      pearlNote: null,
+      censureData: {
+        errorType: 'replace',
+        errorWord: 'examine',
+        blankWord: 'examine',
+        correction: 'collect',
+        explanation: 'You gather/receive the badges — that is "collect". "Examine" means to inspect closely.',
+        options: ['collect', 'examine', 'organize', 'present'],
+        correctIndex: 0,
+      },
+    },
+
+    // ── Redact: tap the unapproved (informal) word ──────────────────
+    // Approved side is a W4 TOEIC target; the wrong word is an everyday A2 foil.
+    {
+      authorLabel: 'Citizen-4802',
+      content: 'Please put the seized items in order on the shelf in the Records Wing.',
+      postType: 'censure_redact',
+      pearlNote: null,
+      censureData: {
+        errorType: 'redact',
+        errorWord: 'put',
+        approvedWord: 'arrange',
+        explanation: '"Arrange" is the approved verb for ordering items. "Put" is too informal for Ministry records.',
+        options: [],
+        correctIndex: -1,
+        regulation: 'Reg 14-C',
+      },
+    },
+    {
+      authorLabel: 'Citizen-4856',
+      content: 'Officers must look at every citizen file before the weekly reconciliation audit.',
+      postType: 'censure_redact',
+      pearlNote: null,
+      censureData: {
+        errorType: 'redact',
+        errorWord: 'look',
+        approvedWord: 'examine',
+        explanation: '"Examine" is the approved verb for inspecting files. "Look" is too general for compliance work.',
+        options: [],
+        correctIndex: -1,
+        regulation: 'Reg 14-C',
+      },
+    },
+    {
+      authorLabel: 'Citizen-4920',
+      content: "Associates should find Citizen-9020's last address in the directory before the home visit.",
+      postType: 'censure_redact',
+      pearlNote: null,
+      censureData: {
+        errorType: 'redact',
+        errorWord: 'find',
+        approvedWord: 'locate',
+        explanation: '"Locate" is the approved verb for finding a position or address. "Find" lacks formal register.',
+        options: [],
+        correctIndex: -1,
+        regulation: 'Reg 14-C',
+      },
+    },
+
+    // ── Triage: sort into Approve / Wellness / Flag ─────────────────
+    {
+      authorLabel: 'Citizen-5031',
+      content: 'Collected the new badges and arranged the files at Filing Desk 3 before the audit. A productive shift.',
+      postType: 'censure_triage',
+      pearlNote: null,
+      censureData: {
+        errorType: 'triage',
+        explanation: 'Compliant report — approved vocabulary, completed tasks, positive tone. Route to general feed.',
+        options: ['Approve', 'Forward to Wellness', 'Flag for Reg 14-C'],
+        correctIndex: 0,
+      },
+    },
+    {
+      authorLabel: 'Citizen-5108',
+      content: 'Citizen-9020 from Block 7 has not arrived at the Common Mess for several days. His name is no longer in the directory.',
+      postType: 'censure_triage',
+      pearlNote: null,
+      censureData: {
+        errorType: 'triage',
+        explanation: 'A citizen who has stopped appearing is a wellbeing matter. Forward to Wellness Division for follow-up.',
+        options: ['Approve', 'Forward to Wellness', 'Flag for Reg 14-C'],
+        correctIndex: 1,
+      },
+    },
+    {
+      authorLabel: 'Citizen-5190',
+      content: 'Honestly this whole reconciliation thing is pointless and nobody really cares about it anymore.',
+      postType: 'censure_triage',
+      pearlNote: null,
+      censureData: {
+        errorType: 'triage',
+        explanation: 'Informal register ("honestly", "this whole ... thing", "nobody really cares") plus dissent violates Regulation 14-C. Flag.',
+        options: ['Approve', 'Forward to Wellness', 'Flag for Reg 14-C'],
+        correctIndex: 2,
+      },
+    },
+  ],
 };
 
 /**
@@ -1188,7 +1421,14 @@ function buildFallbackPosts(weekNumber: number): GeneratedPost[] {
     2: `I ${w[0] ?? 'notice'}d my neighbor's ink stones are still on the shelf at the community center. Nobody has ${w[5] ?? 'change'}d anything since she left. I ${w[4] ?? 'request'}ed information but was not ${w[9] ?? 'inform'}ed. The cat follows me home now. Everything is fine.`,
     3: `They ${w[0] ?? 'process'}ed the community center's remaining items yesterday. My neighbor's things are gone now. I should not ${w[3] ?? 'delay'} my own routine to think about it. I must ${w[8] ?? 'maintain'} my schedule. The cat sleeps at my door. I ${w[1] ?? 'complete'}d the adoption form. Everything is fine.`,
   };
-  const c4488Content = citizen4488Posts[weekNumber] ?? citizen4488Posts[1]!;
+  // W1-3 use the templated strings above (which recycle that week's target
+  // words). For W4+ there is no template entry — read the hand-authored post
+  // off the WeekConfig (week4.ts onward defines citizen4488Post) so the live
+  // feed escalates the 4488 arc instead of silently replaying the W1 cat post.
+  const c4488Content =
+    citizen4488Posts[weekNumber] ??
+    getWeekConfig(weekNumber)?.citizen4488Post?.content ??
+    citizen4488Posts[1]!;
   posts.push({
     authorLabel: 'Citizen-4488',
     content: c4488Content,

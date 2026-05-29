@@ -1330,6 +1330,10 @@ router.delete('/students/:studentId', async (req: Request, res: Response) => {
         prisma.characterMessage.deleteMany({ where: { pairId: studentId } }),
         prisma.citizen4488Interaction.deleteMany({ where: { pairId: studentId } }),
         prisma.shiftResult.deleteMany({ where: { pairId: studentId } }),
+        // InscriptionDrill (Word Pool) has no DB-level cascade — must delete
+        // explicitly before pair.delete or the FK blocks it with P2003.
+        // (InscriptionRecording rows cascade from InscriptionDrill.)
+        prisma.inscriptionDrill.deleteMany({ where: { pairId: studentId } }),
         prisma.pair.delete({ where: { id: studentId } }),
       ]);
       // Clean up in-memory tracking and notify teachers
@@ -1425,6 +1429,9 @@ router.delete('/students', async (req: Request, res: Response) => {
         prisma.characterMessage.deleteMany({ where: { pairId: pair.id } }),
         prisma.citizen4488Interaction.deleteMany({ where: { pairId: pair.id } }),
         prisma.shiftResult.deleteMany({ where: { pairId: pair.id } }),
+        // InscriptionDrill (Word Pool) has no DB-level cascade — must delete
+        // explicitly before pair.delete or the FK blocks it with P2003.
+        prisma.inscriptionDrill.deleteMany({ where: { pairId: pair.id } }),
         prisma.pair.delete({ where: { id: pair.id } }),
       ]);
       purgeOnlineStudent(pair.id);
