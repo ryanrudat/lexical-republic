@@ -9,7 +9,7 @@ export type HarmonyPostType =
   | 'feed_review';
 
 // ─── Verdict loop (Junior Compliance Reviewer) ─────────────────────
-export type VerdictRule = 'reg_14c' | 'conduct_s1';
+export type VerdictRule = 'reg_14c' | 'conduct_s1' | 'conduct_sentiment';
 
 export interface VerdictViolation {
   rule: VerdictRule;
@@ -82,6 +82,11 @@ export interface HarmonyReply {
   createdAt: string;
 }
 
+export interface AuditPair {
+  word: string;
+  definition: string;
+}
+
 export interface HarmonyFeedResponse {
   locked: boolean;
   lockMessage?: string;
@@ -90,6 +95,7 @@ export interface HarmonyFeedResponse {
   focusWords: string[];
   recentWords: string[];
   deepReviewWords: string[];
+  auditPairs?: AuditPair[];
 }
 
 export interface CensureItem {

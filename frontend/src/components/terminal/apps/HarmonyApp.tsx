@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useHarmonyStore } from '../../../stores/harmonyStore';
 import { useStudentStore } from '../../../stores/studentStore';
 import { getSocket } from '../../../utils/socket';
-import type { HarmonyPost, CensureItem, CensureResponseResult } from '../../../api/harmony';
+import type { HarmonyPost, CensureItem, CensureResponseResult, AuditPair } from '../../../api/harmony';
 import HarmonyBulletin from './HarmonyBulletin';
 import HarmonyPearlTip from './HarmonyPearlTip';
 import HarmonyNoticeCard from './HarmonyNoticeCard';
@@ -166,6 +166,117 @@ function ShiftComplianceReport({
       <p className="px-4 pb-3 text-[11px] italic text-emerald-700/80 leading-snug">
         PEARL: The Queue is clear, Citizen. Your diligence has been noted with appreciation.
       </p>
+    </div>
+  );
+}
+
+/** Daily Vocabulary Audit — top-of-feed 3-pair word↔definition match on
+ *  PRIOR-shift words (spaced retrieval). Once per shift; awards Harmony Credits. */
+function DailyVocabAudit({ pairs, week, pairId }: { pairs: AuditPair[]; week: number; pairId: string | null }) {
+  const awardCredits = useHarmonyStore((s) => s.awardCredits);
+  const doneKey = `harmony_audit_${pairId ?? 'anon'}_w${week}`;
+  const [done, setDone] = useState(() => {
+    try { return localStorage.getItem(doneKey) === '1'; } catch { return false; }
+  });
+  const [selectedWord, setSelectedWord] = useState<string | null>(null);
+  const [matched, setMatched] = useState<Set<string>>(new Set());
+  const [wrongDef, setWrongDef] = useState<string | null>(null);
+
+  // Stable shuffled definition column.
+  const shuffledDefs = useMemo(() => {
+    const arr = [...pairs];
+    for (let k = arr.length - 1; k > 0; k--) {
+      const j = Math.floor(Math.random() * (k + 1));
+      [arr[k], arr[j]] = [arr[j], arr[k]];
+    }
+    return arr;
+  }, [pairs]);
+
+  useEffect(() => {
+    if (!done && pairs.length >= 2 && matched.size === pairs.length) {
+      setDone(true);
+      try { localStorage.setItem(doneKey, '1'); } catch { /* ignore */ }
+      awardCredits(2);
+    }
+  }, [matched, pairs.length, done, doneKey, awardCredits]);
+
+  if (pairs.length < 2) return null;
+
+  if (done) {
+    return (
+      <div className="mx-4 mt-3 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/40 px-3 py-1.5">
+        <PearlGlyph className="w-4 h-4" />
+        <span className="text-[10px] tracking-[0.12em] uppercase text-emerald-700/80">Daily Vocabulary Audit — complete</span>
+      </div>
+    );
+  }
+
+  const tapDef = (d: AuditPair) => {
+    if (!selectedWord || matched.has(d.word)) return;
+    if (d.word === selectedWord) {
+      const w = selectedWord;
+      setMatched((prev) => new Set(prev).add(w));
+      setSelectedWord(null);
+    } else {
+      setWrongDef(d.definition);
+      setSelectedWord(null);
+      setTimeout(() => setWrongDef(null), 350);
+    }
+  };
+
+  return (
+    <div className="mx-4 mt-3 rounded-xl border border-sky-200 bg-sky-50/50 overflow-hidden">
+      <div className="px-3 py-2 border-b border-sky-200/60 flex items-center gap-2">
+        <PearlGlyph className="w-5 h-5" />
+        <span className="text-[10px] font-semibold tracking-[0.12em] uppercase text-sky-700">Daily Vocabulary Audit</span>
+        <span className="ml-auto text-[9px] text-sky-700/60 tabular-nums">{matched.size}/{pairs.length}</span>
+      </div>
+      <div className="px-3 py-2.5 grid grid-cols-2 gap-2">
+        <div className="space-y-1.5">
+          {pairs.map((p) => {
+            const isMatched = matched.has(p.word);
+            const isSel = selectedWord === p.word;
+            return (
+              <button
+                key={p.word}
+                disabled={isMatched}
+                onClick={() => setSelectedWord(isSel ? null : p.word)}
+                className={`w-full text-left text-[12px] px-2.5 py-1.5 rounded-lg border transition-colors ${
+                  isMatched
+                    ? 'border-emerald-300 bg-emerald-50 text-emerald-700 line-through'
+                    : isSel
+                      ? 'border-sky-400 bg-sky-100 text-sky-800 font-medium'
+                      : 'border-[#E8E4DC] bg-white text-[#2C3340] hover:border-sky-300 active:scale-[0.98]'
+                }`}
+              >
+                {p.word}
+              </button>
+            );
+          })}
+        </div>
+        <div className="space-y-1.5">
+          {shuffledDefs.map((d) => {
+            const isMatched = matched.has(d.word);
+            const isWrong = wrongDef === d.definition;
+            return (
+              <button
+                key={d.definition}
+                disabled={isMatched}
+                onClick={() => tapDef(d)}
+                className={`w-full text-left text-[10px] leading-snug px-2.5 py-1.5 rounded-lg border transition-colors ${
+                  isMatched
+                    ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                    : isWrong
+                      ? 'border-rose-300 bg-rose-50 text-rose-700'
+                      : 'border-[#E8E4DC] bg-white text-[#4B5563] hover:border-sky-300 active:scale-[0.98]'
+                }`}
+              >
+                {d.definition}
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
@@ -376,9 +487,14 @@ function ComposeBox({
 const VERDICT_RULE_LABEL: Record<string, string> = {
   reg_14c: 'Regulation 14-C — Approved Vocabulary',
   conduct_s1: 'Conduct Code §1 — Collective Voice',
+  conduct_sentiment: 'Conduct Code §5 — Approved Sentiment',
 };
 function activeRulesForWeek(week: number): string[] {
-  return week >= 2 ? ['reg_14c', 'conduct_s1'] : ['reg_14c'];
+  // Sentiment is active from W1 (praise/fault/condemn spectrum); collective
+  // voice (§1) unlocks at W2.
+  return week >= 2
+    ? ['reg_14c', 'conduct_s1', 'conduct_sentiment']
+    : ['reg_14c', 'conduct_sentiment'];
 }
 
 /** Reconstruct a forced-happy reaction for a reloaded (already-answered) post. */
@@ -1546,7 +1662,7 @@ export default function HarmonyApp() {
     setShowOnboarding(false);
   }, []);
 
-  const { loadCensureQueue, censureStats, harmonyCredits, loadCredits, dismissPearlAnnotations, classOnline } = useHarmonyStore();
+  const { loadCensureQueue, censureStats, harmonyCredits, loadCredits, dismissPearlAnnotations, classOnline, auditPairs } = useHarmonyStore();
   const pairId = useStudentStore((s) => s.user?.pairId ?? s.user?.id ?? null);
 
   useEffect(() => {
@@ -1615,6 +1731,7 @@ export default function HarmonyApp() {
             total={censureStats.total}
             credits={harmonyCredits}
           />
+          <DailyVocabAudit pairs={auditPairs} week={currentWeekNumber} pairId={pairId} />
           <FeedTab
             posts={posts.filter(p => p.postType === 'feed' || p.postType === 'feed_review' || !p.postType)}
           focusWords={focusWords}
@@ -1747,39 +1864,47 @@ function FeedTab({
   const [showVocab, setShowVocab] = useState(false);
 
   // ── Live feed drip (M2) ──────────────────────────────────────────
-  // Hold back the newest 1-2 posts and let them "arrive" over the session so
-  // the feed feels alive; a "↑ N NEW POST" pill nudges the student to scroll up.
-  // Content is never lost — held posts auto-reveal within the drip window.
+  // Hold back the newest few posts and let them "arrive" slowly so the feed
+  // feels alive; a "↑ N NEW POST" pill nudges the student to scroll up.
+  //
+  // INDEX-based (not object-based): `displayed` is derived from the CURRENT
+  // posts each render, so filing a verdict (which mutates a post in place) only
+  // updates that card — it never reshuffles the list. The drip resets ONLY when
+  // the set of post IDs actually changes (a real feed reload / shift change),
+  // not when a post object mutates. Content is never lost (held posts auto-reveal).
   const feedScrollRef = useRef<HTMLDivElement>(null);
-  const holdCount = posts.length >= 5 ? 2 : posts.length >= 3 ? 1 : 0;
-  const baseVisible = useMemo(() => posts.slice(holdCount), [posts, holdCount]);
-  const [revealedNewest, setRevealedNewest] = useState<HarmonyPost[]>([]);
+  const holdCount = posts.length >= 6 ? 3 : posts.length >= 4 ? 2 : posts.length >= 3 ? 1 : 0;
+  const [revealedCount, setRevealedCount] = useState(0);
   const [newCount, setNewCount] = useState(0);
+  const postIdsKey = useMemo(() => posts.map((p) => p.id).join('|'), [posts]);
 
   useEffect(() => {
-    // Reset on every feed reload / shift change (posts identity changes).
-    setRevealedNewest([]);
+    setRevealedCount(0);
     setNewCount(0);
     if (holdCount === 0) return;
-    const queue = posts.slice(0, holdCount).reverse(); // reveal so final order == posts
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout>;
-    const revealNext = () => {
+    let revealed = 0;
+    const tick = () => {
       if (cancelled) return;
-      const next = queue.shift();
-      if (!next) return;
-      setRevealedNewest((prev) => [next, ...prev]);
+      revealed += 1;
+      setRevealedCount(revealed);
       setNewCount((c) => c + 1);
-      if (queue.length > 0) timer = setTimeout(revealNext, 9000 + Math.random() * 8000);
+      if (revealed < holdCount) {
+        timer = setTimeout(tick, 30000 + Math.random() * 45000); // subsequent: 30–75s, randomized
+      }
     };
-    timer = setTimeout(revealNext, 7000 + Math.random() * 5000);
+    timer = setTimeout(tick, 15000 + Math.random() * 25000); // first arrival: 15–40s
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [posts, holdCount]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [postIdsKey, holdCount]);
 
-  const displayed = useMemo(() => [...revealedNewest, ...baseVisible], [revealedNewest, baseVisible]);
+  // Newest `holdCount - revealedCount` posts stay hidden; the rest show in their
+  // natural (server-sorted) order. A revealed post simply un-hides in place.
+  const displayed = posts.slice(Math.max(0, holdCount - revealedCount));
 
   const handleSeeNew = () => {
     setNewCount(0);

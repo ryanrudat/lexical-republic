@@ -55,7 +55,7 @@ const DEFAULT_CONTENT_COUNTS: Record<string, number> = {
   censure_replace: 1,
   censure_redact: 2,   // tap-in-text variant — static-only for now
   censure_triage: 2,   // bin classification — static-only for now
-  feed_review: 4,      // inline Approve/Flag verdict posts — static-only (hand-authored)
+  feed_review: 6,      // inline Approve/Flag verdict posts — static-only (hand-authored)
 };
 
 interface GeneratedPost {

@@ -484,9 +484,21 @@ router.get('/posts', async (req, res) => {
       });
     }
 
-    // Ensure AI-generated posts exist for visible weeks
+    // Generate posts for visible weeks. Only BLOCK the response on a true first
+    // load (class has no posts yet — unavoidable). Otherwise generate in the
+    // BACKGROUND so the feed returns instantly; the harmony:new-content socket
+    // already triggers a refetch if anything new lands. This removes the
+    // multi-second OpenAI-generation wait from every steady-state Harmony open.
     if (viewer.classId) {
-      await ensureHarmonyPostsExist(viewer.currentWeekNumber, viewer.classId, viewer.narrativeRoute);
+      const cid = viewer.classId;
+      const havePosts = await prisma.harmonyPost.count({ where: { classId: cid } });
+      if (havePosts === 0) {
+        await ensureHarmonyPostsExist(viewer.currentWeekNumber, cid, viewer.narrativeRoute);
+      } else {
+        void ensureHarmonyPostsExist(viewer.currentWeekNumber, cid, viewer.narrativeRoute).catch((e) =>
+          console.error('Background harmony generation failed:', e),
+        );
+      }
     }
 
     // Capture prior lastHarmonyVisit BEFORE updating — NEW badges need the previous request's timestamp
@@ -545,6 +557,24 @@ router.get('/posts', async (req, res) => {
       return b.createdAt.getTime() - a.createdAt.getTime();
     });
 
+    // Daily Vocabulary Audit — 3 word↔definition pairs from PRIOR shifts
+    // (spaced retrieval; current-shift words are drilled via the verdict loop).
+    // Falls back to focus (current-shift) words on W1 where there's no prior pool.
+    const auditSource = [...reviewContext.recentWords, ...reviewContext.deepReviewWords];
+    const auditWords = (auditSource.length > 0 ? auditSource : reviewContext.focusWords).map((w) => w.toLowerCase());
+    let auditPairs: { word: string; definition: string }[] = [];
+    if (auditWords.length > 0) {
+      const defs = await prisma.dictionaryWord.findMany({
+        where: { word: { in: auditWords } },
+        select: { word: true, definition: true },
+      });
+      auditPairs = defs
+        .filter((d) => !!d.definition && d.definition.trim().length > 0)
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 3)
+        .map((d) => ({ word: d.word, definition: d.definition }));
+    }
+
     res.json({
       locked: false,
       posts: sorted.map((post) => ({
@@ -573,6 +603,7 @@ router.get('/posts', async (req, res) => {
             )
           : {}),
       })),
+      auditPairs,
       ...reviewContext,
     });
   } catch (err) {
@@ -669,8 +700,17 @@ router.get('/censure-queue', async (req, res) => {
       return;
     }
 
-    // Ensure posts exist
-    await ensureHarmonyPostsExist(viewer.currentWeekNumber, viewer.classId, viewer.narrativeRoute);
+    // Ensure posts exist — block only on a true first load (see /posts rationale).
+    {
+      const haveCensure = await prisma.harmonyPost.count({ where: { classId: viewer.classId } });
+      if (haveCensure === 0) {
+        await ensureHarmonyPostsExist(viewer.currentWeekNumber, viewer.classId, viewer.narrativeRoute);
+      } else {
+        void ensureHarmonyPostsExist(viewer.currentWeekNumber, viewer.classId, viewer.narrativeRoute).catch((e) =>
+          console.error('Background harmony generation failed:', e),
+        );
+      }
+    }
 
     // Get censure posts scoped to route weeks
     const routeWeeks = getRouteWeeks(viewer.narrativeRoute);

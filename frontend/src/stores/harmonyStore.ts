@@ -7,6 +7,7 @@ import type {
   CensureResponseResult,
   ArchivesResponse,
   VerdictResult,
+  AuditPair,
 } from '../api/harmony';
 import {
   fetchHarmonyPosts,
@@ -46,6 +47,7 @@ interface HarmonyState {
   focusWords: string[];
   recentWords: string[];
   deepReviewWords: string[];
+  auditPairs: AuditPair[];
   loading: boolean;
   error: string | null;
   locked: boolean;
@@ -121,6 +123,7 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
   focusWords: [],
   recentWords: [],
   deepReviewWords: [],
+  auditPairs: [],
   loading: false,
   error: null,
   locked: false,
@@ -161,6 +164,7 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
         focusWords: feed.focusWords,
         recentWords: feed.recentWords,
         deepReviewWords: feed.deepReviewWords,
+        auditPairs: feed.auditPairs ?? [],
         locked: feed.locked,
         lockMessage: feed.lockMessage ?? null,
         loading: false,

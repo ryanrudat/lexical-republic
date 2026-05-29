@@ -1,20 +1,27 @@
 // ─── Harmony Verdict Posts (Phase D — Junior Compliance Reviewer) ──────────
 //
 // Hand-authored "pending review" feed posts the student verdicts inline:
-// Approve (clean) or Flag (cite a Party regulation + tap the unapproved word +
-// pick the Party-approved replacement). The censor mechanic is the surface;
-// cumulative TOEIC vocab + register review is the engine.
+// Approve (compliant) or Flag (cite a Party regulation + tap the unapproved
+// word + pick the Party-approved replacement). The censor mechanic is the
+// surface; cumulative TOEIC vocab + register review is the engine.
 //
-// These are inserted as `postType: 'feed_review'` posts (a feed type, NOT a
-// censure-queue type) with the verdict packet stored in the post's `censureData`
-// JSON column — so NO schema migration is required. `postType` is a plain String
-// in Prisma. See Dplan/Harmony_Updated.md §1-4, §13.
+// Posts span the political spectrum so the board feels alive:
+//   • PRAISE  → Approve. Compliant, target-word-rich, collective "we" voice.
+//   • FAULT   → Flag. A mild grumble / unapproved word.
+//   • CONDEMN → Flag. Open dissent against the Ministry (generic citizen anger).
 //
-// Rule scope (v1): reg_14c (W1+) and conduct_s1 we/us (W2+). Both fit the
-// tap-a-word + replace-with-a-chip flow. Conduct Code §2 (declarative form) is a
-// sentence-rewrite interaction and is deferred.
+// Three flag rules, each a tap-a-word + replace-with-a-chip move:
+//   reg_14c          (W1+) casual word → approved TOEIC target word
+//   conduct_s1       (W2+) "I/me/my" → collective "we/us/our"
+//   conduct_sentiment(W1+) negative word → Party-approved euphemism. The
+//                          euphemism INVERTS reality on purpose ("erased" →
+//                          "reassigned") — that satire is the dystopia, and it
+//                          teaches Party register vocab.
+//
+// Inserted as `postType: 'feed_review'` (a feed type, NOT a censure-queue type)
+// with the verdict packet in the post's `censureData` JSON — NO schema change.
 
-export type VerdictRule = 'reg_14c' | 'conduct_s1';
+export type VerdictRule = 'reg_14c' | 'conduct_s1' | 'conduct_sentiment';
 
 export interface VerdictViolation {
   rule: VerdictRule;
@@ -38,11 +45,18 @@ export interface VerdictPost {
 }
 
 export const VERDICT_FEED_POSTS: Record<number, VerdictPost[]> = {
-  // ── Week 1 — Regulation 14-C only ──────────────────────────────────────
+  // ── Week 1 — Regulation 14-C + Approved Sentiment ───────────────────────
   1: [
     {
       authorLabel: 'Citizen-2207',
-      content: 'We arrive at Filing Hall on time and submit every report by the standard deadline. The Ministry confirms our service.',
+      content: 'We arrive on time and submit every report by the standard deadline. The Ministry confirms our service with care.',
+      weekNumber: 1,
+      correctVerdict: 'approve',
+      violations: [],
+    },
+    {
+      authorLabel: 'Citizen-2290',
+      content: 'We follow the approved routine and check every document twice. Clarity protects us all.',
       weekNumber: 1,
       correctVerdict: 'approve',
       violations: [],
@@ -65,6 +79,24 @@ export const VERDICT_FEED_POSTS: Record<number, VerdictPost[]> = {
         { rule: 'reg_14c', forbiddenWord: 'tell', approvedWord: 'report', options: ['report', 'submit', 'approve'], weekApproved: 1 },
       ],
     },
+    {
+      authorLabel: 'Citizen-2566',
+      content: 'Filing Desk 2 was a mess and the wait was terrible this morning.',
+      weekNumber: 1,
+      correctVerdict: 'flag',
+      violations: [
+        { rule: 'conduct_sentiment', forbiddenWord: 'terrible', approvedWord: 'standard', options: ['standard', 'approved', 'confirmed'], weekApproved: 1 },
+      ],
+    },
+    {
+      authorLabel: 'Citizen-2684',
+      content: 'The Ministry hides the truth from every citizen.',
+      weekNumber: 1,
+      correctVerdict: 'flag',
+      violations: [
+        { rule: 'conduct_sentiment', forbiddenWord: 'hides', approvedWord: 'describes', options: ['describes', 'reports', 'confirms'], weekApproved: 1 },
+      ],
+    },
   ],
 
   // ── Week 2 — + Conduct Code §1 (collective voice: I → we) ───────────────
@@ -77,13 +109,11 @@ export const VERDICT_FEED_POSTS: Record<number, VerdictPost[]> = {
       violations: [],
     },
     {
-      authorLabel: 'Citizen-3260',
-      content: 'I requested the new forms and updated the records before the morning briefing.',
+      authorLabel: 'Citizen-3221',
+      content: 'We compared the two records and removed the duplicate. Everything is in order.',
       weekNumber: 2,
-      correctVerdict: 'flag',
-      violations: [
-        { rule: 'conduct_s1', forbiddenWord: 'I', approvedWord: 'We', options: ['We', 'They', 'You'], weekApproved: 2 },
-      ],
+      correctVerdict: 'approve',
+      violations: [],
     },
     {
       authorLabel: 'Citizen-3377',
@@ -95,17 +125,35 @@ export const VERDICT_FEED_POSTS: Record<number, VerdictPost[]> = {
       ],
     },
     {
-      authorLabel: 'Citizen-3489',
-      content: 'I will compare the two records and remove the duplicate before noon.',
+      authorLabel: 'Citizen-3260',
+      content: 'I requested the new forms and updated the records before the morning briefing.',
       weekNumber: 2,
       correctVerdict: 'flag',
       violations: [
         { rule: 'conduct_s1', forbiddenWord: 'I', approvedWord: 'We', options: ['We', 'They', 'You'], weekApproved: 2 },
       ],
     },
+    {
+      authorLabel: 'Citizen-3495',
+      content: 'The constant rule changes are frustrating and make no sense.',
+      weekNumber: 2,
+      correctVerdict: 'flag',
+      violations: [
+        { rule: 'conduct_sentiment', forbiddenWord: 'frustrating', approvedWord: 'necessary', options: ['necessary', 'approved', 'standard'], weekApproved: 2 },
+      ],
+    },
+    {
+      authorLabel: 'Citizen-3612',
+      content: 'The Ministry controls everyone and punishes anyone who complains.',
+      weekNumber: 2,
+      correctVerdict: 'flag',
+      violations: [
+        { rule: 'conduct_sentiment', forbiddenWord: 'punishes', approvedWord: 'guides', options: ['guides', 'informs', 'supports'], weekApproved: 2 },
+      ],
+    },
   ],
 
-  // ── Week 3 — Reg 14-C + Conduct Code §1, cumulative vocab ───────────────
+  // ── Week 3 — Reg 14-C + Conduct §1 + Approved Sentiment, cumulative vocab ─
   3: [
     {
       authorLabel: 'Citizen-4102',
@@ -124,6 +172,15 @@ export const VERDICT_FEED_POSTS: Record<number, VerdictPost[]> = {
       ],
     },
     {
+      authorLabel: 'Citizen-4490',
+      content: 'We should send the file to the Records Wing for processing.',
+      weekNumber: 3,
+      correctVerdict: 'flag',
+      violations: [
+        { rule: 'reg_14c', forbiddenWord: 'send', approvedWord: 'forward', options: ['forward', 'process', 'separate'], weekApproved: 3 },
+      ],
+    },
+    {
       authorLabel: 'Citizen-4358',
       content: 'I reviewed the schedule and identified two errors before the briefing.',
       weekNumber: 3,
@@ -133,12 +190,21 @@ export const VERDICT_FEED_POSTS: Record<number, VerdictPost[]> = {
       ],
     },
     {
-      authorLabel: 'Citizen-4490',
-      content: 'We should send the file to the Records Wing for processing.',
+      authorLabel: 'Citizen-4477',
+      content: 'The endless delays are exhausting and nobody fixes anything.',
       weekNumber: 3,
       correctVerdict: 'flag',
       violations: [
-        { rule: 'reg_14c', forbiddenWord: 'send', approvedWord: 'forward', options: ['forward', 'process', 'separate'], weekApproved: 3 },
+        { rule: 'conduct_sentiment', forbiddenWord: 'exhausting', approvedWord: 'necessary', options: ['necessary', 'scheduled', 'approved'], weekApproved: 3 },
+      ],
+    },
+    {
+      authorLabel: 'Citizen-4593',
+      content: 'The Ministry erased a citizen from the directory and calls it normal.',
+      weekNumber: 3,
+      correctVerdict: 'flag',
+      violations: [
+        { rule: 'conduct_sentiment', forbiddenWord: 'erased', approvedWord: 'reassigned', options: ['reassigned', 'scheduled', 'processed'], weekApproved: 3 },
       ],
     },
   ],
@@ -148,4 +214,5 @@ export const VERDICT_FEED_POSTS: Record<number, VerdictPost[]> = {
 export const VERDICT_RULE_LABEL: Record<VerdictRule, string> = {
   reg_14c: 'Regulation 14-C — Approved Vocabulary',
   conduct_s1: 'Conduct Code §1 — Collective Voice',
+  conduct_sentiment: 'Conduct Code §5 — Approved Sentiment',
 };
