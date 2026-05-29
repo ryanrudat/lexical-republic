@@ -126,6 +126,15 @@ Frontend-specific gotchas and conventions. For project-wide rules, vision, and l
 - **Tailwind z-index syntax**: use `z-[25]` bracket syntax, not `z-25`.
 - **Inline `style` overrides Tailwind classes** — never mix inline `position` with Tailwind positioning.
 
+## [ ].edited Spy App — draggable window + launcher (added 2026-05-27)
+- **`EditedWindow.tsx` is the live `[ ].edited` surface** (rendered by `FunnelDrawer` when `drawerOpen`). The full-screen `EditedApp` terminal app is unreachable (no desktop tile) — don't waste time styling it. Both render the shared `FreyChannel`.
+- **Drag uses Pointer Events, not mouse events** — `onPointerDown/Move/Up` + `setPointerCapture` on the drag handle, so mouse and touchscreen Chromebooks behave identically. The handle needs `touch-action: none` (Tailwind `touch-none`) or touch-drag scrolls the page instead of moving the window.
+- **Window/launcher position persists in module-level vars (`savedPos` / `savedPillPos`), NOT component state alone** — `FunnelDrawer` returns null off-terminal (unmounts), so component state would reset to default. The module var survives the unmount; resets on full reload (acceptable).
+- **The window floats with NO backdrop** — the `fixed inset-0` wrapper is `pointer-events-none`; only the window box is `pointer-events-auto`. Intentional: the Party work behind stays live (the "insider toggle" feel). Closes via the title-bar `[✕]` or auto-closes when leaving the terminal. Don't add a tap-to-close backdrop.
+- **The corner `[ ]` launcher (`FunnelPill`) is draggable AND a button.** Tap-vs-drag is a < 4px movement threshold; a real drag sets a `suppressClick` ref so the trailing `click` doesn't open the channel. Keep `onClick` for keyboard (Enter/Space) — don't drive "open" purely from `pointerup`.
+- **Glitch is CSS-only (`.edited-window`, `.edited-pill` in `index.css`)** — rare/brief artifacts over long calm cycles, `paused` via `.is-dragging`, and already neutralised by the global `prefers-reduced-motion` rule at the END of `index.css` (so no per-keyframe guard is needed).
+- **The upload bar is diegetic flavour, not real I/O** — a throttled `setInterval` (~320ms, per the no-RAF-for-ambient-tickers rule) that climbs, stalls, resets, and never completes. The "N packets queued" count reads `spyStore.resolved` (funnelled intel).
+
 ## R3F / Three.js Gotchas
 - **`@react-three/postprocessing` v3.0.4 BROKEN** with R3F v9 + three.js 0.182 + React 19 StrictMode — use raw `postprocessing` + `n8ao` libs directly.
 - **drei `<Environment preset="...">` requires `<Suspense>` boundary**.

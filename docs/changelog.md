@@ -4,6 +4,30 @@ Day-by-day work history. Moved here from `CLAUDE.md` on 2026-04-30 to keep the a
 
 ---
 
+## 2026-05-27 (`[ ].edited` reborn as a draggable, glitchy contraband window)
+
+Full daily summary in `Dplan/Daily_2026_05_27.md`. Highlights below.
+
+### Draggable glitchy `[ ].edited` window + upload bar (`967c03d`)
+
+Rebuilt the `[ ].edited` channel (the `FunnelDrawer` panel) from a fixed right-anchored side drawer into a **draggable, deliberately rough/suspicious floating window** — `frontend/src/components/terminal/apps/EditedApp/EditedWindow.tsx`.
+
+- **Drag** by the title bar via Pointer Events (mouse + touch, `setPointerCapture`, `touch-action: none`), viewport-clamped, position persisted in a module-level `savedPos` (the drawer unmounts off-terminal). **No backdrop** — the wrapper is `pointer-events-none`, only the window box is `pointer-events-auto`, so it floats over the live Party work (peek behind it = the insider feel).
+- **Rough chrome:** square corners, dashed hairline border, `⠿` grip, `unsigned build · source unknown` subtitle, fake-broken `[–]`/`[▢]` controls (only `[✕]` works).
+- **Upload bar** at the bottom climbs → stalls → resets → retries but never completes (a covert transmission that can't be trusted to hold; throttled `setInterval` ~320ms, "N packets queued" reads `spyStore.resolved`).
+- **Glitch** (`.edited-window` in `index.css`): rare window stutter, rose tear line, title chromatic-split, baked scanlines, upload-fill flicker, glitchy pill — all paused while dragging + killed by the global `prefers-reduced-motion` rule.
+- `FunnelDrawer.tsx` renders `EditedWindow` instead of the side drawer. Honors the dead-internet aesthetic. The commit also bundled in-flight spy WIP (rename `DoublespeakDecoder → WordgineeringDecoder` + `ExtractionOverlay`/`spyFiles`/`spyStore` edits).
+
+### Corner `[ ]` launcher itself draggable (`e536c78`)
+
+The window was draggable but the corner `[ ]` pill that opens it was still a fixed button — so dragging the *visible* launcher did nothing (the reported bug). Made the pill (`FunnelPill`) **drag-to-move**: Pointer Events, viewport-clamped, position persists; a clean tap (movement < 4px) still opens the channel, a drag swallows the trailing click so it won't open. `onClick` kept for keyboard (Enter/Space). Mouse + touch.
+
+### Git
+
+Both commits landed on `docs/remediation-module` and were fast-forwarded onto `master` (tip `e536c78`, server-verified with `git ls-remote`, never force-pushed). Frontend `npm run build` (`tsc -b` + Vite) clean throughout.
+
+---
+
 ## 2026-05-26 (Live Open Pool matchmaking + Word Pool names/polish + terminal cleanup)
 
 Full daily summary in `Dplan/Daily_2026_05_26.md`. Highlights below.
