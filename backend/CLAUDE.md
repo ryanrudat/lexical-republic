@@ -196,3 +196,15 @@ Backend-specific gotchas and conventions. For project-wide rules, vision, and lo
 
 ## Gradebook Remediation Events Payload (added 2026-05-08)
 - **`GET /api/teacher/remediation-events` now returns `questions` and `results` JSON** alongside the existing trigger/score fields. Data was already stored on `RemediationModuleResult`; the endpoint was stripping it. Powers the expandable "Remediation Events" rows in the Gradebook.
+
+## Harmony Verdict Loop — `feed_review` posts (added 2026-05-29)
+- **`feed_review` is a new feed `postType` carrying a verdict packet in `censureData` — NO schema migration.** `postType` is a plain Prisma `String`, so the new value needs no migration. The packet is `{ correctVerdict: 'approve'|'flag', violations: VerdictViolation[] }`. Content (W1–3) lives in `backend/src/data/harmonyVerdictPosts.ts`; inserted via `buildStaticPosts` with `DEFAULT_CONTENT_COUNTS.feed_review` (6) and the static-only guard (`remaining['feed_review']=0` after static fill, alongside redact/triage) so the AI never tries to generate them.
+- **`feed_review` is in `FEED_POST_TYPES` (shows in the feed), NOT `CENSURE_POST_TYPES`** — so it does NOT pollute the censure-queue stats. `typeOrder` gives it `4` (interleaves with `feed`).
+- **`POST /api/harmony/posts/:id/verdict`** grades against the hidden packet: approve correct iff `correctVerdict==='approve'`; flag correct iff a violation matches `rule` + tapped `word` + `replacement` (all normalized). Stores in `HarmonyCensureResponse` (reuses the table; `@@unique([pairId,postId])` = refresh-safe, no farming). Returns a forced-happy `pearlNote`. The answer key is withheld from `/posts` until answered — `buildVerdictFields` only sends `flagOptions` (MCQ chips) pre-answer.
+- **`/posts` adds `auditPairs`** — 3 prior-shift word↔definition pairs from `DictionaryWord` (recent+deep review words; falls back to focus words on W1) for the frontend Daily Vocabulary Audit card.
+- **`/posts` + `/censure-queue` only AWAIT `ensureHarmonyPostsExist` on a class's first load** (zero posts). Otherwise generation is fire-and-forget (`harmony:new-content` refetches), so steady-state Harmony opens don't block on OpenAI. New content backfills on the next open per class (`ensureHarmonyPostsExist` loops all visible weeks).
+
+## Teacher Real-Time Socket (added 2026-05-29)
+- **`emitToStudentClass` now `console.warn`s instead of silently no-oping** when a student's `classId` is missing from `onlineStudents` — surfaces the otherwise-invisible lost-relay (enrollment lookup failed at connect / unenrolled).
+- **`class:presence` event** (`emitClassPresence`) broadcasts the live class online count to `class:${classId}` on student connect/disconnect; a `student:presence-request` handler replies to the requesting socket for an immediate count on Harmony open. Class-scoped only.
+- **All three remediation events are now consumed by the teacher** (the comment at `api/teacher.ts` is finally true) — `-fired`/`-completed`/`-clawback` are per-class (`classRoomForPair`) and bound in `useTeacherSocket`. `-completed`/`-clawback` payloads carry `newConcernScore` (drives the live "Concern" chip).

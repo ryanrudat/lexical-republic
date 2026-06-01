@@ -1,7 +1,7 @@
 # Harmony Phase D — Censor Mechanic & Live Feed
 
 **Date drafted:** 2026-05-08
-**Status:** PLANNED — not yet implemented
+**Status:** LARGELY IMPLEMENTED 2026-05-29 as Harmony M0–M3 (commits `6d7f4c0` + `d18975a`). Shipped: the verdict loop (§1–4) as `feed_review` posts + 3-step flag modal, the live drip + NEW pill (§5), PEARL goal banner + shift-end summary (§8), Daily Vocabulary Audit (§10), per-class scoping (§11), Citizen-4488 typing indicator + ticker + 4488 glitch (§11/visual ideas), Harmony Credits, and a new **Conduct Code §5 — Approved Sentiment** rule (praise→fault→condemn spectrum). DEFERRED: Conduct Code §2 question→statement (needs a sentence-rewrite modal, not the tap-word flow), §3 passive / §4 Black Words (W4+), AI ambient replies (§7), adaptive Audit Cases (§9), reply-chain nesting (§6), Morning Voice banner. See `Dplan/Daily_2026_05_29.md`.
 **Prereqs:** Phase 0 / A / B / B+ / B++ / C all DONE (see root `CLAUDE.md` § Harmony Expansion Status)
 **Replaces:** the open-ended ideas in `Harmony_Visual_Enhancement_Ideas.md` are superseded where they overlap; the ones that don't (propaganda ticker, 4488 glitch, typewriter bulletins) can layer on top.
 

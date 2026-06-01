@@ -4,6 +4,50 @@ Day-by-day work history. Moved here from `CLAUDE.md` on 2026-04-30 to keep the a
 
 ---
 
+## 2026-05-29 (audit + Harmony overhaul M0–M3 + Shift 3 cleanup + teacher real-time)
+
+Full daily summary in `Dplan/Daily_2026_05_29.md`. Highlights below. Five commits, all fast-forwarded to `master`.
+
+### Fine-comb audit (40-agent workflow)
+
+22 confirmed findings / 7 refuted. `[ ].edited` verified working end-to-end. Narrative arc coherent (Shift 4 strongest-built). Records Room → two redesign directions; user chose **Direction B (case-file dossier)** — not yet built. Harmony diagnosed loop-poor → drove M0–M3.
+
+### Bug-fix batch (`6d7f4c0`)
+
+- HIGH: `InscriptionDrill` added to the Pair cascade-delete (students who used Word Pool were undeletable — P2003).
+- HIGH: Citizen-4488 arc stalled at W4 — `harmonyGenerator` now reads `WeekConfig.citizen4488Post` for W4+, `ShiftClosing` falls back to it.
+- MED: routed `remediation.ts` (×3) + `socketServer.ts:382` emits off the dead global `'teacher'` room to per-class rooms.
+- MED: `spyStore.reset()` now fires on logout (shared-Chromebook leak).
+- MED: guarded the unfillable W4 `censure_redact`/`censure_triage` quota (was a wasted OpenAI call every open) + authored 13 W4 static censure items.
+- SEC: `GET /pearl/messages` auth; `censure-respond` non-censure/cross-class guards.
+
+### Harmony engagement overhaul M0–M3 (`6d7f4c0`)
+
+- **M0:** censure double-count fix; transient/dismissible PEARL annotations; W4 Review queue.
+- **M1:** PEARL goal banner + shift-end Compliance Report; Harmony Credits (HC); propaganda ticker + 4488 glitch + PEARL-eye glyph.
+- **M2:** client-side feed drip + "↑ N NEW" pill + per-tab NEW dots; live class-presence chip (new `class:presence` socket, class-scoped); 4488 "typing…" indicator.
+- **M3 — verdict loop:** new `feed_review` post type (verdict packet in `censureData`, no migration); inline Approve/Flag; 3-step flag modal (rule → tap word → replacement chip); verdicts in `HarmonyCensureResponse` (refresh-safe). New `backend/src/data/harmonyVerdictPosts.ts`.
+
+### Live-feedback round (`d18975a`)
+
+- Feed drip rewritten **index-based** (filing a verdict no longer reshuffles the board); slower/randomized cadence; background generation for instant steady-state load.
+- **Approved-Sentiment** rule (`conduct_sentiment`, "Conduct Code §5") — fault/condemn flagged via tap-word → Party euphemism (dystopian inversion). 6 posts/week spanning praise→fault→condemn with woven target words.
+- **Daily Vocabulary Audit** match-card (`auditPairs` from `DictionaryWord`; once/shift; awards HC).
+
+### Shift 3 cleanup (`d8dd96c`)
+
+No bugs found — coherence + data hygiene. Recast Case 5 complainant 7291→7720; paid off the **Wellness Division** thread in W4 via Ivan's beat; re-threaded the 4488 cat line; `delay` noun→verb + de-duped dictionary rows (`seed.ts`, fresh-seeds only); refreshed the stale W3 `storyPlan`.
+
+### Teacher real-time (`f201729`)
+
+Core pipeline verified live. Fixed: cold-socket initial task list (`once('connect')`); ClassMonitor `now`-tick 30s→5s; bound `student:remediation-completed/-clawback` (live "↩ clawed back" badge + "Concern: X.X" chip); WritingEvaluator unconditional progress-clear; `emitToStudentClass` warns on null `classId`.
+
+### ClassMonitor grid (uncommitted)
+
+`items-start` on the student-card grid so only the clicked card expands (default `align-items: stretch` was stretching row-mates).
+
+---
+
 ## 2026-05-27 (`[ ].edited` reborn as a draggable, glitchy contraband window)
 
 Full daily summary in `Dplan/Daily_2026_05_27.md`. Highlights below.
