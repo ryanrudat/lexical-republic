@@ -652,7 +652,9 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      {/* items-start: each card sizes to its own content so expanding one card
+          doesn't stretch its row-mates (default align-items:stretch did). */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
         {merged.map((student) => {
           const flag = student.online
             ? getFlag(student.online.taskStartedAt, student.online.failCount, student.online.taskKind, now)
