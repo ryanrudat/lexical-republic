@@ -30,6 +30,7 @@ export default function FreyChannel() {
   const loaded = useSpyStore((s) => s.loaded);
   const loadChoices = useSpyStore((s) => s.loadChoices);
   const resolved = useSpyStore((s) => s.resolved);
+  const restoredCiphers = useSpyStore((s) => s.restoredCiphers);
   const dropBoxText = useSpyStore((s) => s.dropBoxText);
 
   useEffect(() => {
@@ -38,6 +39,7 @@ export default function FreyChannel() {
 
   const files = getSnoopFiles(4);
   const anyFunnelled = files.some((f) => resolved[f.id] === 'funneled');
+  const restoredList = Object.values(restoredCiphers).filter((r) => r.intel);
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-8">
@@ -68,6 +70,23 @@ export default function FreyChannel() {
           <ContrabandEntry key={w.word} word={w} />
         ))}
       </div>
+
+      {/* Restored records — uploaded from the Cipher Decryption task */}
+      {restoredList.length > 0 && (
+        <>
+          <SectionLabel>the files you restored</SectionLabel>
+          <div className="space-y-4 mb-9">
+            {restoredList.map((r, i) => (
+              <div key={i}>
+                <p className="text-rose-400 text-[11px] tracking-wider uppercase mb-1">
+                  ▸ restored
+                </p>
+                <p className="text-slate-200 leading-relaxed">{r.intel}</p>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       {/* Leads — state-aware per Records Wing file */}
       <SectionLabel>leads</SectionLabel>

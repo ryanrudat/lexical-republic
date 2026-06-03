@@ -31,12 +31,24 @@ import {
 
 export type SnoopOutcome = 'funneled' | 'dark';
 
+/** A document restored + uploaded by the REQUIRED Cipher Decryption task. */
+export interface RestoredCipher {
+  /** The one-line intel headline that surfaces in Frey's channel. */
+  intel: string;
+}
+
 interface SpyState {
   loaded: boolean;
   /** The student's drop-box dead-drop text, echoed back in Frey's channel. */
   dropBoxText: string | null;
   /** Persisted final outcomes by file id. */
   resolved: Record<string, SnoopOutcome>;
+  /**
+   * Documents restored by the Cipher Decryption task and uploaded to
+   * [ ].edited, keyed by cipher doc id. Persisted as NarrativeChoice
+   * `w4_cipher_<id>` = 'restored' (context.intel). Rendered in FreyChannel.
+   */
+  restoredCiphers: Record<string, RestoredCipher>;
   /** The file whose extraction ACTIVITY is currently running (decoder, etc.). */
   activeActivity: SnoopFile | null;
   /** The file currently transferring into [ ].edited (drives the progress bar). */
@@ -51,6 +63,8 @@ interface SpyState {
   resolveInterrogation: (correct: boolean) => void;
   completeActivity: (file: SnoopFile) => void;
   completeDownload: (file: SnoopFile) => Promise<void>;
+  /** Record a Cipher-task document as restored + uploaded to [ ].edited. */
+  uploadCipherDoc: (doc: { id: string; intel: string }) => Promise<void>;
   openDrawer: () => void;
   closeDrawer: () => void;
   reset: () => void;
@@ -69,6 +83,7 @@ export const useSpyStore = create<SpyState>((set, get) => ({
   loaded: false,
   dropBoxText: null,
   resolved: {},
+  restoredCiphers: {},
   activeActivity: null,
   downloadingFile: null,
   activeInterrogation: null,
@@ -78,6 +93,7 @@ export const useSpyStore = create<SpyState>((set, get) => ({
     try {
       const choices = await fetchNarrativeChoices(4);
       const resolved: Record<string, SnoopOutcome> = {};
+      const restoredCiphers: Record<string, RestoredCipher> = {};
       let dropBoxText: string | null = null;
       // Ordered createdAt asc — later writes win (last-write-wins per key).
       for (const c of choices) {
@@ -86,12 +102,18 @@ export const useSpyStore = create<SpyState>((set, get) => ({
           if (c.value === 'funneled' || c.value === 'dark') {
             resolved[id] = c.value;
           }
+        } else if (c.choiceKey.startsWith('w4_cipher_')) {
+          if (c.value === 'restored') {
+            const id = c.choiceKey.replace('w4_cipher_', '');
+            const intel = typeof c.context?.intel === 'string' ? c.context.intel : '';
+            restoredCiphers[id] = { intel };
+          }
         } else if (c.choiceKey === 'w4_drop_box_first_submission') {
           const text = typeof c.context?.text === 'string' ? c.context.text.trim() : '';
           if (text.length > 0) dropBoxText = text;
         }
       }
-      set({ resolved, dropBoxText, loaded: true });
+      set({ resolved, restoredCiphers, dropBoxText, loaded: true });
     } catch {
       // Fail-open — an unreachable choices endpoint shouldn't block the app.
       set({ loaded: true });
@@ -137,6 +159,33 @@ export const useSpyStore = create<SpyState>((set, get) => ({
     set({ drawerOpen: true });
   },
 
+  uploadCipherDoc: async (doc) => {
+    // Already persisted this doc (server load or an earlier upload this session)?
+    // Reflect it locally but skip the POST so refresh/replay can't pile up
+    // duplicate `w4_cipher_<id>` rows (the route inserts, it doesn't upsert).
+    const already = Boolean(get().restoredCiphers[doc.id]);
+    // Optimistic local update so Frey's channel reflects it immediately.
+    set({
+      restoredCiphers: {
+        ...get().restoredCiphers,
+        [doc.id]: { intel: doc.intel },
+      },
+    });
+    if (already) return;
+    try {
+      await postNarrativeChoice({
+        choiceKey: `w4_cipher_${doc.id}`,
+        value: 'restored',
+        weekNumber: 4,
+        context: { intel: doc.intel },
+      });
+    } catch (err) {
+      // Keep the optimistic state; the doc is restored for this session even
+      // if the write failed (matches writeOutcome's fail-open behaviour).
+      console.error('Failed to record cipher restoration:', err);
+    }
+  },
+
   openDrawer: () => set({ drawerOpen: true }),
   closeDrawer: () => set({ drawerOpen: false }),
 
@@ -145,6 +194,7 @@ export const useSpyStore = create<SpyState>((set, get) => ({
       loaded: false,
       dropBoxText: null,
       resolved: {},
+      restoredCiphers: {},
       activeActivity: null,
       downloadingFile: null,
       activeInterrogation: null,

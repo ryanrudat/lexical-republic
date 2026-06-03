@@ -193,7 +193,11 @@ export default function EditedWindow({ onClose }: { onClose: () => void }) {
 // the project rule against RAF for ambient tickers.
 function UploadBar() {
   const resolved = useSpyStore((s) => s.resolved);
-  const queued = Object.values(resolved).filter((v) => v === 'funneled').length;
+  const restoredCiphers = useSpyStore((s) => s.restoredCiphers);
+  // Count both smuggle streams: Records Wing funnels + restored cipher docs.
+  const queued =
+    Object.values(resolved).filter((v) => v === 'funneled').length +
+    Object.keys(restoredCiphers).length;
 
   const [pct, setPct] = useState(9);
   const [status, setStatus] = useState<'uploading' | 'stalled'>('uploading');

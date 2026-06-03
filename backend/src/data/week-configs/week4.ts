@@ -278,14 +278,21 @@ export const WEEK_4_CONFIG: WeekConfig = {
       },
     },
 
-    // 3. `[ ].edited` Cipher — Unedited's first cloze message (REDESIGNED 2026-05-11)
+    // 3. `[ ].edited` Cipher Decryption — MULTI-DOCUMENT (REDESIGNED 2026-06-03)
     //
-    // NOTE: This replaces the old "Archive Timeline Report" cloze. Task id stays
-    // `cloze_fill_w4` to avoid breaking interTaskMoments key references, but the
-    // FRONTEND must render this task inside the `[ ].edited` app shell (bracket
-    // motif `[ ]` for blanks, Lexicon tab alongside, modulated audio playback).
-    // Reuse cloze_fill schema; mark via location string until a `frame: 'unedited'`
-    // config field is added in a schema pass.
+    // Was a single 5-blank cloze. Now THREE personal "records" documents the
+    // student restores and uploads to [ ].edited, escalating:
+    //   DOC 1 — who Citizen-9020 was (a witness, a relative, a private life)
+    //   DOC 2 — the record before the Party rewrote it (the cover-up)
+    //   DOC 3 — Citizen-4488 (the citizen reconciled all day) is flagged next
+    // The watcher becomes the watched. Each blank is its own redacted [████]
+    // block "decrypted" by choosing the restored word from `options` (the
+    // redacted-reveal mechanic — see CipherActivity.tsx). After restoring a
+    // document the student taps "upload to [ ].edited"; the restored record's
+    // `intel` line is written as NarrativeChoice `w4_cipher_<id>` = 'restored'
+    // (context.intel) and surfaces in Frey's channel (FreyChannel "restored
+    // records" section). All 5 Black Words appear across the three docs.
+    // Task id stays `cloze_fill_w4` (interTaskMoments key + ID-level routing).
     {
       id: "cloze_fill_w4",
       type: "cloze_fill",
@@ -294,26 +301,72 @@ export const WEEK_4_CONFIG: WeekConfig = {
       config: {
         title: "[ ].edited · CIPHER",
         from: "— F",
-        passage:
-          "Citizen — they {0} what they fear. They {1} you to {2} only what they choose. But the visitor was a {3}. The visitor had a {4}.",
-        blanks: [
-          { index: 0, correctWord: "reclassify" },
-          { index: 1, correctWord: "ask" },
-          { index: 2, correctWord: "record" },
-          { index: 3, correctWord: "witness" },
-          { index: 4, correctWord: "relative" },
+        documents: [
+          // ── DOC 1 — restore the person ──
+          {
+            id: "9020_who",
+            recordTag: "PERSONNEL FILE — CITIZEN-9020",
+            classification: "[ ].edited · restored",
+            freyIntro: [
+              "they filed him as 'guest entry, block 7.'",
+              "here is the file under the file. restore it.",
+            ],
+            passage:
+              "Citizen-9020 was not a guest. He was a {0}. He stood in Block 7 and he saw what they did. He was not only a number — he had a {1}. A daughter, who waited for him. Their evenings together were {2}, the one hour no camera reached. The Party kept the badge scan. It deleted the man.",
+            blanks: [
+              { index: 0, correctWord: "witness", options: ["witness", "guest", "number"] },
+              { index: 1, correctWord: "relative", options: ["relative", "contact", "associate"] },
+              { index: 2, correctWord: "private", options: ["private", "logged", "scheduled"] },
+            ],
+            intel:
+              "citizen-9020 was a witness with a daughter. they kept the badge scan and deleted the man.",
+            restoredLine: "you gave him back his name.",
+          },
+          // ── DOC 2 — restore the record before the rewrite ──
+          {
+            id: "9020_rewrite",
+            recordTag: "RECORD ADJUSTMENT LOG — CITIZEN-9020",
+            classification: "[ ].edited · restored",
+            freyIntro: [
+              "this is what your desk does all day.",
+              "before, and after. restore what it said before.",
+            ],
+            passage:
+              "Before the adjustment, the record said: Citizen-9020 thought for himself. He was {0}. He asked, out loud, why the lists keep growing. After the adjustment, the record says: no question was asked, and no such citizen exists. They did not move him. They rewrote him until he was no longer an {1} — until the file says he was never a {2}, never a person who saw.",
+            blanks: [
+              { index: 0, correctWord: "independent", options: ["independent", "compliant", "reliable"] },
+              { index: 1, correctWord: "individual", options: ["individual", "associate", "unit"] },
+              { index: 2, correctWord: "witness", options: ["witness", "guest", "number"] },
+            ],
+            intel:
+              "they don't just remove people — they rewrite the record until the person never existed. i saved the version from before.",
+            restoredLine: "the 'before' is safe with us now.",
+          },
+          // ── DOC 3 — the watcher becomes the watched ──
+          {
+            id: "4488_next",
+            recordTag: "CASE FLAG (SEALED) — CITIZEN-4488",
+            classification: "[ ].edited · restored",
+            freyIntro: [
+              "one more. it was stapled to the file you finished today.",
+              "read who is next.",
+            ],
+            passage:
+              "Sealed flag, attached to the record you reconciled today. Subject: Citizen-4488. Finding: 4488 asks too many questions. 4488 thinks as an {0}, not as the crowd. Recommendation: schedule {1} next cycle. Note: nothing 4488 keeps is {2} now — the watcher is watched. You cleaned 4488's day for the file. Tomorrow, someone cleans yours.",
+            blanks: [
+              { index: 0, correctWord: "individual", options: ["individual", "associate", "asset"] },
+              { index: 1, correctWord: "reassignment", options: ["reassignment", "promotion", "holiday"] },
+              { index: 2, correctWord: "private", options: ["private", "logged", "scheduled"] },
+            ],
+            intel:
+              "the citizen you reconciled all day — 4488 — is flagged for reassignment. the watcher is now the watched.",
+            restoredLine: "now you see it. there is no clean desk here.",
+          },
         ],
-        // Word bank: 5 correct + 5 distractors. The other 3 Black Words
-        // (individual / independent / private) appear as distractors so
-        // students must discriminate which Black Words fit these blanks.
-        wordBank: [
-          "reclassify", "ask", "record", "witness", "relative",
-          "individual", "independent", "private", "examine", "locate",
-        ],
-        // Unedited bark (frontend should render as Unedited register, not PEARL).
+        // Unedited bark (frontend renders as Unedited register, not PEARL).
         // Schema field name kept as pearlBarkOnComplete for backward compatibility.
         pearlBarkOnComplete:
-          "The record remembers what they removed. Return to your desk.",
+          "three files restored. the record remembers what they removed. return to your desk before they notice. — F",
       },
     },
 
@@ -635,8 +688,8 @@ export const WEEK_4_CONFIG: WeekConfig = {
         ],
         closingLines: [
           "they will deny this happened.",
-          "remember what you saw.",
-          "come to the app. i'll show you why.",
+          "i pulled three files before they sealed them.",
+          "restore them — then send them back to me.",
         ],
         signature: "— F",
         actionLabel: "Open [ ].edited",
