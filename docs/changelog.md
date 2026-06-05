@@ -4,6 +4,24 @@ Day-by-day work history. Moved here from `CLAUDE.md` on 2026-04-30 to keep the a
 
 ---
 
+## 2026-06-03 (CLAUDE.md slim-down + W4 multi-document Cipher Decryption)
+
+Full daily summary in `Dplan/Daily_2026_06_03.md`. Two commits, fast-forwarded to `master`.
+
+### CLAUDE.md slim-down (`94067a8`)
+
+Root `CLAUDE.md` 166→49 lines (−87%). Moved the full ~64-entry Locked Decisions log, status/backlog, and code-map into themed `docs/` files — **`docs/locked-decisions.md`**, **`docs/code-map.md`**, **`docs/next-work.md`** — keeping only always-on canon + an index in the root. A 7-agent audit verified zero content loss; promoted **"never score grammar on open writing"** back into the root as a one-liner.
+
+### W4 multi-document Cipher Decryption (`57465e9`)
+
+`cloze_fill_w4` rebuilt from a single cloze into a **3-document redacted-reveal**: restore Citizen-9020 (the person — witness/relative/private) → the rewritten record (cover-up — independent/individual) → Citizen-4488 flagged next (the watcher becomes watched — reassignment/private). Each restored record **uploads to `[ ].edited`** via a transfer animation + `w4_cipher_<id>` NarrativeChoice, surfacing in Frey's channel under "the files you restored." `CipherActivity.tsx` full rewrite (redacted `████` tap-to-decrypt, lane-aware, forced-exposure, multi-doc state machine, scores once); `spyStore` gains `restoredCiphers` + idempotent `uploadCipherDoc`; `FreyChannel` + `EditedWindow` updated. All 5 Black Words covered. 4-agent review → fixed 2 answer-key ambiguities + timer/upload hardening. Both builds pass. Optional Records Room snoop layer untouched.
+
+### Local-dev login
+
+Diagnosed the local teacher/CA-1 login failure: backend crash-loops because `backend/.env` lacks `JWT_SECRET` (mandatory at module load). Local-only — deployed site unaffected.
+
+---
+
 ## 2026-05-29 (audit + Harmony overhaul M0–M3 + Shift 3 cleanup + teacher real-time)
 
 Full daily summary in `Dplan/Daily_2026_05_29.md`. Highlights below. Five commits, all fast-forwarded to `master`.
