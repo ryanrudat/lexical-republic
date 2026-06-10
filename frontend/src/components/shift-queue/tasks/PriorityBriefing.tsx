@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { TaskProps } from '../../../types/shiftQueue';
 import { useStudentStore } from '../../../stores/studentStore';
 import TargetWordHighlighter from './shared/TargetWordHighlighter';
@@ -117,6 +117,11 @@ export default function PriorityBriefing({ config, weekConfig, onComplete }: Tas
 
   // ── Navigation ─────────────────────────────────────────────────
 
+  // Full eval per card index — the teacher's Writing Review reads
+  // onTopic/vocabScore/grammarAdvisory/submittedAnyway from details; the old
+  // handler kept only the text and discarded every rubric field.
+  const writingEvalsRef = useRef<Record<number, EvalResult>>({});
+
   const advanceCard = useCallback(() => {
     const updated = [...cardCompleted];
     updated[currentCard] = true;
@@ -127,14 +132,44 @@ export default function PriorityBriefing({ config, weekConfig, onComplete }: Tas
       setWritingText('');
       setWritingPassed(false);
     } else {
+      const evals = Object.values(writingEvalsRef.current);
       const hasWriting = Object.keys(writingSubmissions).length > 0;
-      onComplete(1, {
-        taskType: 'priority_briefing',
-        itemsCorrect: 1,
-        itemsTotal: 1,
-        category: hasWriting ? 'writing' : 'mixed',
-        writingSubmissions,
-      });
+      if (hasWriting && evals.length > 0) {
+        // Real writing score — mean vocabScore across writing cards, clamped
+        // like ShiftReport. The old constant 1.0 under category 'writing'
+        // inflated the Writing aggregate and hid forced submits entirely.
+        const meanVocab =
+          evals.reduce((sum, e) => sum + (e.vocabScore ?? 0), 0) / evals.length;
+        const worst = evals.reduce((acc, e) => ({
+          onTopic: acc.onTopic && e.onTopic !== false,
+          submittedAnyway: acc.submittedAnyway || e.submittedAnyway === true,
+        }), { onTopic: true, submittedAnyway: false });
+        const first = evals[0];
+        onComplete(Math.min(1, Math.max(0.1, meanVocab)), {
+          taskType: 'priority_briefing',
+          itemsCorrect: 1,
+          itemsTotal: 1,
+          category: 'writing',
+          writingSubmissions,
+          onTopic: worst.onTopic,
+          onTopicReason: first.onTopicReason,
+          vocabScore: meanVocab,
+          vocabUsed: first.vocabUsed,
+          vocabMissed: first.vocabMissed,
+          grammarAdvisory: first.grammarAdvisory,
+          submittedAnyway: worst.submittedAnyway,
+        });
+      } else {
+        // Pure acknowledgment flow (no writing card) — neutral 1/1 into the
+        // mixed bucket, matching the IntakeForm pattern.
+        onComplete(1, {
+          taskType: 'priority_briefing',
+          itemsCorrect: 1,
+          itemsTotal: 1,
+          category: 'mixed',
+          writingSubmissions,
+        });
+      }
     }
   }, [currentCard, total, cardCompleted, writingSubmissions, onComplete]);
 
@@ -142,6 +177,7 @@ export default function PriorityBriefing({ config, weekConfig, onComplete }: Tas
 
   const handleWritingResult = useCallback((result: EvalResult) => {
     if (result.passed) {
+      writingEvalsRef.current[currentCard] = result;
       setWritingSubmissions(prev => ({ ...prev, [currentCard]: writingText }));
       setWritingPassed(true);
     }
@@ -244,6 +280,14 @@ export default function PriorityBriefing({ config, weekConfig, onComplete }: Tas
           grammarTarget={weekConfig.grammarTarget}
           targetVocab={weekConfig.targetWords}
           lane={lane}
+          // Same lane-resolved floor the counter above shows — keeps the
+          // Submit Anyway gate and the backend floor aligned with the UI.
+          minWords={(c.lane as Record<string, Record<string, unknown>> | undefined)?.[String(lane)]?.minWords as number ?? c.minWords ?? 30}
+          // On-topic veto needs the prompt/context or the AI rubric defaults
+          // onTopic=true — and this card's answer gets quoted back at shift
+          // close as the PEARL Observation, so it must be vetted.
+          writingPrompt={c.prompt}
+          taskContext={`Week ${weekConfig.weekNumber} priority briefing. The student read the queue directive and is writing their own working rules for how to process cases.`}
           onResult={handleWritingResult}
           disabled={!writingText.trim()}
         />

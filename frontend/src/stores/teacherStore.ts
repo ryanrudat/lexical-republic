@@ -4,6 +4,30 @@ import type { CharacterMessage, ThreadEntry } from '../types/shiftQueue';
 
 export type TeacherTab = 'class' | 'grades' | 'writing' | 'shifts' | 'dictionary';
 
+/** A status is "hollow" when the server rebuilt it after a reconnect / restart
+ *  (in-memory map entry was gone, so taskId/tasks are empty). Merge the rich
+ *  display fields from the prior record; keep fresh connection fields. */
+function mergeHollowStatus(
+  incoming: OnlineStudent,
+  prior: OnlineStudent | undefined,
+): OnlineStudent {
+  const incomingHollow = incoming.taskId === null && incoming.tasks.length === 0;
+  const priorRich = prior && !(prior.taskId === null && prior.tasks.length === 0);
+  if (!incomingHollow || !priorRich) return incoming;
+  return {
+    ...incoming,
+    weekNumber: incoming.weekNumber ?? prior.weekNumber,
+    stepId: incoming.stepId ?? prior.stepId,
+    taskId: prior.taskId,
+    taskLabel: prior.taskLabel,
+    taskStartedAt: prior.taskStartedAt,
+    failCount: prior.failCount,
+    taskKind: prior.taskKind,
+    progressLabel: prior.progressLabel,
+    tasks: prior.tasks,
+  };
+}
+
 export interface OnlineStudent {
   userId: string;
   socketId: string;
@@ -94,19 +118,27 @@ export const useTeacherStore = create<TeacherState>((set) => ({
   lastKnownStatus: new Map(),
   setClassSnapshot: (students) =>
     set((state) => {
-      const onlineStudents = new Map(students.map((s) => [s.userId, s]));
-      // Clear lastKnownStatus for students that are now in the snapshot (back online)
       const lk = new Map(state.lastKnownStatus);
-      for (const s of students) {
-        lk.delete(s.userId);
-      }
+      const onlineStudents = new Map(
+        students.map((s) => {
+          const prior = state.onlineStudents.get(s.userId) ?? lk.get(s.userId);
+          lk.delete(s.userId);
+          return [s.userId, mergeHollowStatus(s, prior)];
+        }),
+      );
       return { onlineStudents, lastKnownStatus: lk };
     }),
   upsertStudent: (student) =>
     set((state) => {
       const next = new Map(state.onlineStudents);
-      next.set(student.userId, student);
-      // Clear from lastKnown since they're back online
+      // After a >5s disconnect the server rebuilds the status HOLLOW (no
+      // taskId, no tasks[]) — merging from the prior record keeps the
+      // teacher's task label / elapsed timer / attempts alive instead of
+      // blanking the card for the rest of the task.
+      const prior = state.onlineStudents.get(student.userId) ?? state.lastKnownStatus.get(student.userId);
+      next.set(student.userId, mergeHollowStatus(student, prior));
+      // Clear from lastKnown since they're back online (any preserved fields
+      // were just merged into the online entry above)
       const lk = new Map(state.lastKnownStatus);
       lk.delete(student.userId);
       return { onlineStudents: next, lastKnownStatus: lk };

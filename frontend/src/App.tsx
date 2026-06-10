@@ -10,6 +10,7 @@ import { connectSocket } from './utils/socket';
 import { useSessionPauseStore } from './stores/sessionPauseStore';
 import { useShiftQueueStore } from './stores/shiftQueueStore';
 import { useShiftStore } from './stores/shiftStore';
+import { useSessionStore } from './stores/sessionStore';
 import { usePearlStore } from './stores/pearlStore';
 import { useMessagingStore } from './stores/messagingStore';
 import type { CharacterMessage, ThreadEntry } from './types/shiftQueue';
@@ -143,6 +144,16 @@ export default function App() {
       const onShiftChanged = async (data: { weekNumber: number }) => {
         const pearl = usePearlStore.getState();
         useShiftQueueStore.getState().reset();
+        // Also reset shiftStore: a same-week class move deleted the server's
+        // MissionScores, so the retained currentWeek/missions are stale AND
+        // their presence made ClarityQueueApp skip loadWeek — combined with
+        // the queue store's null weekConfig the student fell through to the
+        // dead legacy runner until a hard refresh.
+        useShiftStore.getState().reset();
+        // Clear the remediation rate machine (stage/buffer/timers) WITHOUT
+        // zeroing the DB-backed concern score — a leftover cooldown from the
+        // old shift could fire a clawback against the new one.
+        useSessionStore.getState().resetRateMachine();
         await useSeasonStore.getState().loadSeason();
         navigate(`/shift/${data.weekNumber}`, { replace: true });
         pearl.triggerBark('notice', `SUPERVISOR OVERRIDE: Transfer directive received. Report to Shift ${data.weekNumber}.`);

@@ -559,8 +559,10 @@ router.post('/weeks/:weekId/shift-result', async (req: Request, res: Response) =
         // Re-entering an already-completed shift remounts ShiftClosing, which
         // re-posts with a freshly-zeroed concernScoreDelta — don't let that
         // stomp the recorded delta (Prisma skips undefined). A genuine redo
-        // goes through the CREATE branch because teacher reset-shift deletes
-        // the ShiftResult row first.
+        // hits this UPDATE branch against the completedAt:null MARKER that
+        // teacher reset-shift / send-to-task now leave behind — the marker's
+        // delta is 0 (reset) or the prior value (partial redo), so keeping it
+        // on a zero-delta repost is correct in both cases.
         ...(!data.concernScoreDelta ? { concernScoreDelta: undefined } : {}),
         completedAt: new Date(),
       },

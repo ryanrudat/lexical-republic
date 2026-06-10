@@ -314,6 +314,23 @@ export default function ShiftQueue() {
     if (!weekConfig) return;
     messagesReadyRef.current = false;
     lastTriggeredTaskRef.current = null;
+    // Persistent reconnect re-emit: after any >5s disconnect the server's
+    // rebuilt status is hollow (no tasks, no task label) and the teacher card
+    // goes blank for the rest of the task. Re-announce the task list + the
+    // CURRENT task (read live from the store — not the mount-time snapshot)
+    // on every (re)connect. Registered before the async load so a cleanup
+    // always exists even if the component unmounts mid-load.
+    const sock = getSocket();
+    const emitCurrent = () => {
+      const wc = useShiftQueueStore.getState().weekConfig;
+      const idx = useShiftQueueStore.getState().currentTaskIndex;
+      if (!wc) return;
+      sock?.emit('student:shift-tasks', wc.tasks.map(t => ({ id: t.id, label: t.label })));
+      const liveTask = wc.tasks[idx];
+      if (liveTask) sock?.emit('student:task-update', { taskId: liveTask.id, taskLabel: liveTask.label });
+    };
+    sock?.on('connect', emitCurrent);
+
     loadMessages(weekNumber).then(() => {
       messagesReadyRef.current = true;
       triggerMessage('shift_start', { weekNumber }, weekConfig);
@@ -323,18 +340,14 @@ export default function ShiftQueue() {
         lastTriggeredTaskRef.current = task.id;
         triggerMessage('task_start', { taskId: task.id, weekNumber }, weekConfig);
       }
-      // Emit the full task list + initial task to the teacher's monitor. If the
-      // socket is still mid-handshake on a cold open, queue via once('connect')
-      // so the teacher card doesn't get stuck on "Loading task info..." and
-      // Send-to-Task has buttons (mirrors ClarityQueueApp's enter-shift pattern).
-      const sock = getSocket();
-      const emitInitial = () => {
-        sock?.emit('student:shift-tasks', weekConfig.tasks.map(t => ({ id: t.id, label: t.label })));
-        if (task) sock?.emit('student:task-update', { taskId: task.id, taskLabel: task.label });
-      };
-      if (sock?.connected) emitInitial();
-      else sock?.once('connect', emitInitial);
+      // Emit the full task list + initial task to the teacher's monitor right
+      // away when already connected (cold-open handshake is covered by the
+      // persistent connect handler above).
+      if (sock?.connected) emitCurrent();
     });
+    return () => {
+      sock?.off('connect', emitCurrent);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekConfig?.weekNumber]);
 

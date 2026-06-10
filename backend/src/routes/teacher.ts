@@ -1188,7 +1188,34 @@ router.delete('/scores/:scoreId', async (req: Request, res: Response) => {
       return;
     }
 
+    // Capture identity BEFORE deleting — if this is the shift-closing score
+    // (shift_report / clock_out), the week's ShiftResult must revert to a
+    // marker too, or the season endpoint still reports the week clockedOut
+    // and the student is locked out of re-entering it.
+    const scoreRow = await prisma.missionScore.findUnique({
+      where: { id: scoreId },
+      select: {
+        pairId: true,
+        mission: { select: { missionType: true, week: { select: { weekNumber: true } } } },
+      },
+    });
+
     await prisma.missionScore.delete({ where: { id: scoreId } });
+
+    if (
+      scoreRow?.pairId &&
+      (scoreRow.mission.missionType === 'shift_report' || scoreRow.mission.missionType === 'clock_out')
+    ) {
+      await prisma.shiftResult.updateMany({
+        where: {
+          pairId: scoreRow.pairId,
+          weekNumber: scoreRow.mission.week.weekNumber,
+          completedAt: { not: null },
+        },
+        data: { completedAt: null },
+      });
+    }
+
     res.json({ success: true });
   } catch (err) {
     console.error('Teacher score delete error:', err);
@@ -1220,6 +1247,10 @@ router.delete('/students/:pairId/weeks/:weekId/progress', async (req: Request, r
       return;
     }
 
+    // Capture the pair's current week BEFORE the deletes — needed to decide
+    // whether the marker must be re-created afterwards.
+    const currentWeekBefore = await getCurrentWeekNumberForPair(pairId);
+
     // Delete all mission scores for this pair in this week
     const missions = await prisma.mission.findMany({
       where: { weekId },
@@ -1240,6 +1271,18 @@ router.delete('/students/:pairId/weeks/:weekId/progress', async (req: Request, r
     await prisma.characterMessage.deleteMany({
       where: { pairId, weekNumber: week.weekNumber },
     });
+
+    // If we just reset the pair's CURRENT week, re-create the completedAt:null
+    // marker (mirroring task-command reset-shift) — otherwise every week-N
+    // anchor is gone and getCurrentWeekNumberForPair regresses to the prior
+    // week, pointing shift-status and task commands at completed grades.
+    // Conditional on purpose: resetting a NOT-yet-reached week must not jump
+    // the anchor forward.
+    if (week.weekNumber === currentWeekBefore) {
+      await prisma.shiftResult.create({
+        data: { pairId, weekNumber: week.weekNumber, completedAt: null },
+      });
+    }
 
     res.json({ success: true, weekNumber: week.weekNumber });
   } catch (err) {
@@ -2053,6 +2096,16 @@ router.post('/students/:studentId/task-command', async (req: Request, res: Respo
         await prisma.shiftResult.deleteMany({
           where: { pairId, weekNumber },
         });
+        // Re-create the completedAt:null marker (mirroring moveOnePairToShift's
+        // same-week branch). The deletes above remove EVERY week-N anchor, so
+        // getCurrentWeekNumberForPair would regress to week N-1 — making
+        // shift-status, ClassMonitor, and every subsequent task-command operate
+        // on the COMPLETED PRIOR week (a second reset click would then destroy
+        // its grades). concernScoreDelta starts at 0 on the fresh marker, so a
+        // genuine redo's zero-delta guard in /shift-result behaves correctly.
+        await prisma.shiftResult.create({
+          data: { pairId, weekNumber, completedAt: null },
+        });
         break;
       }
 
@@ -2080,6 +2133,17 @@ router.post('/students/:studentId/task-command', async (req: Request, res: Respo
         const toReset = missions.slice(targetIdx).map(m => m.id);
         await prisma.missionScore.deleteMany({
           where: { pairId, missionId: { in: toReset } },
+        });
+        // Convert a completed ShiftResult back to a marker (completedAt:null).
+        // Without this, the season endpoint still reported the week clockedOut
+        // (its OR-check reads ShiftResult.completedAt), so a student sent back
+        // to re-draft was locked out of the shift on their next login/refresh
+        // — the command was a silent no-op for offline students. Keep the row
+        // (not delete) so the current-week anchor and the recorded
+        // concernScoreDelta survive the partial redo.
+        await prisma.shiftResult.updateMany({
+          where: { pairId, weekNumber, completedAt: { not: null } },
+          data: { completedAt: null },
         });
         break;
       }

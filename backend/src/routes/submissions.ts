@@ -20,6 +20,11 @@ interface EvaluationRequest {
     lane?: number;
     writingPrompt?: string;
     taskContext?: string;
+    /** Per-task word floor (already lane-resolved by the client). When present
+     *  it REPLACES the legacy lane formula below — tasks like W3 Priority Sort
+     *  ask for "1-2 sentences" (10 words) and must not be held to the generic
+     *  30/40-word writing floor. Clamped server-side. */
+    minWordCount?: number;
   };
 }
 
@@ -113,13 +118,25 @@ router.post('/evaluate', requirePair, async (req: Request, res: Response) => {
     const words = content.split(/\s+/).filter(Boolean);
     const wordCount = words.length;
 
-    // Minimum word count check — respect lane-specific minimums
+    // Minimum word count check — prefer the task's own (lane-resolved) floor
+    // when the client sends one; the legacy lane formula is the fallback for
+    // older callers. Without this, tasks authored at 10-25 words (W3 Priority
+    // Sort "1-2 sentences", W1 lane-2 shift report) were held to a hidden
+    // 30/40-word backend floor their own UI never mentioned.
     const lane = metadata?.lane ?? 2;
     const baseMin = activityType === 'd5_audio_log' ? 15 : 30;
-    const minWordCount = lane === 1 ? Math.min(baseMin, 20) : lane === 3 ? baseMin + 10 : baseMin;
+    const minWordCount =
+      typeof metadata?.minWordCount === 'number' && Number.isFinite(metadata.minWordCount)
+        ? clamp(Math.round(metadata.minWordCount), 5, 100)
+        : lane === 1 ? Math.min(baseMin, 20) : lane === 3 ? baseMin + 10 : baseMin;
     if (wordCount < minWordCount) {
+      // Layer-1 fails MUST carry onTopic: true — a length verdict is not a
+      // topic verdict. Omitting the field made the frontend coerce it to
+      // false, falsely accusing short submissions of being off-topic and
+      // hiding Submit Anyway (and poisoning the attempt-3 auto-pass).
       res.json({
         passed: false,
+        onTopic: true,
         reason: `Minimum ${minWordCount} words required. Current: ${wordCount}.`,
         pearlFeedback: `Your submission requires more detail, Citizen. The Ministry expects at least ${minWordCount} words.`,
       } as Partial<EvaluationResult> & { reason: string });
@@ -134,6 +151,7 @@ router.post('/evaluate', requirePair, async (req: Request, res: Response) => {
     if (targetVocab.length > 0 && vocabUsed.length < minVocabRequired) {
       res.json({
         passed: false,
+        onTopic: true, // vocab-floor verdict, not a topic verdict — see above
         reason: `Use at least ${minVocabRequired} target vocabulary words. Found: ${vocabUsed.length}.`,
         pearlFeedback: `Vocabulary growth takes practice, Citizen. ${vocabUsed.length} of ${targetVocab.length} target terms noted. Review your assigned words and try again.`,
         vocabUsed,

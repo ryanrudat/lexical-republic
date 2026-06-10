@@ -131,6 +131,20 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
       await shiftState.submitMissionScore(mission.id, score, { status: 'complete', ...details });
     }
 
+    // Post-await freshness guard: a teacher command (goToTask / resetShift /
+    // skip / session:shift-changed reset) may have rewritten progress while
+    // the score POST was in flight — writing the pre-await snapshot back
+    // would silently undo the teacher's intervention (or, worst case, leave
+    // the old shift's progress under a new weekConfig). Every progress writer
+    // replaces the taskProgress array, so reference identity IS the epoch.
+    const fresh = get();
+    if (
+      fresh.weekConfig?.weekNumber !== weekConfig.weekNumber ||
+      fresh.taskProgress !== taskProgress
+    ) {
+      return;
+    }
+
     // Update local progress
     const updated = taskProgress.map(p =>
       p.taskId === taskId ? { ...p, status: 'complete' as TaskStatus, score, details } : p

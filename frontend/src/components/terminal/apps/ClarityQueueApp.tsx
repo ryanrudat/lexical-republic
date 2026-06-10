@@ -121,8 +121,15 @@ export default function ClarityQueueApp() {
     const weekReady = weekSummary && (!currentWeek || currentWeek.weekNumber !== weekNum)
       ? loadWeek(weekSummary.id)
       : Promise.resolve();
-    // Try to load SessionConfig + WeekConfig (queue progress depends on missions being loaded)
-    if (weekSummary && sessionLoadedForWeekRef.current !== weekSummary.id) {
+    // Try to load SessionConfig + WeekConfig (queue progress depends on missions
+    // being loaded). Also reload when the queue store is empty-and-quiescent:
+    // a same-week teacher move (session:shift-changed) resets shiftQueueStore
+    // (weekConfig → null) without remounting this component, and the ref guard
+    // alone would skip the reload forever — stranding the student on the dead
+    // legacy runner branch below.
+    const queueState = useShiftQueueStore.getState();
+    const queueEmpty = !queueState.weekConfig && !queueState.loading && !queueState.error;
+    if (weekSummary && (sessionLoadedForWeekRef.current !== weekSummary.id || queueEmpty)) {
       sessionLoadedForWeekRef.current = weekSummary.id;
       loadSession(weekSummary.id);
       void weekReady.then(() => loadWeekConfig(weekSummary.id));
@@ -141,13 +148,16 @@ export default function ClarityQueueApp() {
       joinWeekRoom(weekSummary.id);
       currentWeekIdRef.current = weekSummary.id;
 
-      // Notify teacher dashboard of shift entry (wait for connection if needed)
+      // Notify teacher dashboard of shift entry — emit now AND on every
+      // reconnect. A one-shot once('connect') left the server's rebuilt
+      // (hollow) status empty after any >5s Wi-Fi blip, wiping the teacher's
+      // live card for the rest of the task.
       const emitEnter = () => sock.emit('student:enter-shift', { weekNumber: weekNum });
-      if (sock.connected) {
-        emitEnter();
-      } else {
-        sock.once('connect', emitEnter);
-      }
+      if (sock.connected) emitEnter();
+      sock.on('connect', emitEnter);
+      return () => {
+        sock.off('connect', emitEnter);
+      };
     }
   }, [weekNumber, weeks, currentWeek, loadWeek, setEyeStateFromWeek, navigate, user]);
 
@@ -173,15 +183,16 @@ export default function ClarityQueueApp() {
         navigate(expectedPath, { replace: true });
       }
 
-      // Notify teacher dashboard of step change
+      // Notify teacher dashboard of step change — persistent reconnect
+      // re-emit, same rationale as the enter-shift emit above.
       const sock = getSocket();
       if (sock) {
         const emitStep = () => sock.emit('student:change-step', { stepId: currentStepId });
-        if (sock.connected) {
-          emitStep();
-        } else {
-          sock.once('connect', emitStep);
-        }
+        if (sock.connected) emitStep();
+        sock.on('connect', emitStep);
+        return () => {
+          sock.off('connect', emitStep);
+        };
       }
     }
   }, [weekNumber, currentStepId, navigate]);

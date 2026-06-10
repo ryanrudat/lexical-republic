@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import type { TaskProps } from '../../../types/shiftQueue';
 import type { TaskAnswerLogEntry } from '../../../types/taskResult';
 import { useShiftQueueStore } from '../../../stores/shiftQueueStore';
@@ -253,13 +253,31 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
   const justifyCases = cases.filter(c => !disappearedCases.has(c.caseId));
   const currentJustifyCase = justifyCases[currentJustifyIdx];
 
+  // Keep the eval verdict per case so the teacher's Writing Review can see
+  // forced submits / off-topic verdicts — previously only the justification
+  // TEXT survived and a Submit-Anyway justification was invisible.
+  const justifyEvalsRef = useRef<Record<string, {
+    passed: boolean;
+    onTopic: boolean;
+    vocabScore: number;
+    submittedAnyway: boolean;
+  }>>({});
+
   const handleWritingResult = useCallback((result: EvalResult) => {
+    if (currentJustifyCase) {
+      justifyEvalsRef.current[currentJustifyCase.caseId] = {
+        passed: result.passed,
+        onTopic: result.onTopic,
+        vocabScore: result.vocabScore,
+        submittedAnyway: result.submittedAnyway === true,
+      };
+    }
     if (result.passed) {
       setWritingPassed(true);
     } else if (!result.isDegraded) {
       addConcern(0.05);
     }
-  }, [addConcern]);
+  }, [addConcern, currentJustifyCase]);
 
   const advanceJustify = useCallback(() => {
     if (!currentJustifyCase) return;
@@ -290,6 +308,7 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
         };
       });
 
+      const justificationEvals = justifyEvalsRef.current;
       onComplete(score, {
         taskType: 'priority_sort',
         itemsCorrect: correctCount,
@@ -298,6 +317,10 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
         answerLog,
         disappeared: [...disappearedCases],
         justifications: allJustifications,
+        // Teacher-visibility: per-case verdicts + a top-level forced-submit
+        // flag so Writing Review's "needs attention" sort can catch these.
+        justificationEvals,
+        submittedAnyway: Object.values(justificationEvals).some(e => e.submittedAnyway),
         casesCorrect: correctCount,
         totalCases: cases.length,
       });
@@ -365,11 +388,22 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
         />
 
         <WritingEvaluator
+          // key: one evaluator lifecycle per case — without it the attempt
+          // counter carried across all 5-6 justify cases.
+          key={currentJustifyCase.caseId}
           text={justifyText}
           weekNumber={weekConfig.weekNumber}
           grammarTarget={weekConfig.grammarTarget}
           targetVocab={weekConfig.targetWords}
           lane={lane}
+          // 10 words matches the on-screen counter and the authored
+          // "write 1-2 sentences" prompt — without this the backend held
+          // justifications to its generic 30/40-word lane floor.
+          minWords={10}
+          // The on-topic veto needs the prompt + context or the AI rubric
+          // defaults onTopic=true and the veto is structurally off.
+          writingPrompt={modalPrompt}
+          taskContext={`Week ${weekConfig.weekNumber} priority classification. The student sorted case "${currentJustifyCase.title}" (${currentJustifyCase.description}) and is justifying that priority decision.`}
           onResult={handleWritingResult}
           disabled={!justifyText.trim()}
         />

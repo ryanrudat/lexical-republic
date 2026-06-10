@@ -106,30 +106,25 @@ export default function WritingEvaluator({
     try {
       let result: EvalResult;
 
-      if (attempt >= 3) {
+      const lastWasOnTopic = lastResult ? lastResult.onTopic : true;
+      if (attempt >= 3 && lastWasOnTopic) {
         // Attempt-3 auto-pass — but ONLY if the last result was on-topic.
         // Off-topic submissions never auto-pass; the student must rewrite to
         // the prompt. Otherwise an off-topic essay passes on attempt 3.
-        const lastWasOnTopic = lastResult ? lastResult.onTopic : true;
-        if (lastWasOnTopic) {
-          result = {
-            passed: true,
-            onTopic: true,
-            vocabScore: 0.3,
-            pearlFeedback: 'Submission recorded. Continue to next task.',
-          };
-        } else {
-          // Force the student to make at least one on-topic attempt.
-          result = {
-            passed: false,
-            onTopic: false,
-            onTopicReason: lastResult?.onTopicReason ?? 'Submission does not address the assigned topic.',
-            vocabScore: 0,
-            pearlFeedback: 'Citizen, this submission still does not address the day\'s directive. Review the prompt and write a response that answers it.',
-            isDegraded: false,
-          };
-        }
+        result = {
+          passed: true,
+          onTopic: true,
+          vocabScore: 0.3,
+          pearlFeedback: 'Submission recorded. Continue to next task.',
+        };
       } else {
+        // Attempts 1-2, AND attempt 3+ when the last verdict was off-topic.
+        // The off-topic case MUST re-evaluate the student's current text —
+        // the old code replayed the stale verdict forever, so a student who
+        // rewrote a perfectly on-topic response could never pass, never
+        // Submit Anyway, and never auto-pass (a permanent lock that violated
+        // pedagogy doctrine §5.5/§1.5). Doctrine says the rewrite itself is
+        // judged: a fresh on-topic verdict at attempt 3+ auto-passes below.
         const response = await client.post('/submissions/evaluate', {
           content: text,
           weekNumber,
@@ -142,15 +137,23 @@ export default function WritingEvaluator({
             lane,
             writingPrompt,
             taskContext,
+            // The task's own (lane-resolved) word floor — without it the
+            // backend applies a generic 30/40-word lane formula that
+            // contradicts what the task UI tells the student.
+            minWordCount: minWords,
           },
         });
 
         const data = response.data;
 
+        // onTopic !== false: a response that omits the field (older backend,
+        // unexpected shape) must FAIL OPEN — `=== true` coerced any omission
+        // into an off-topic accusation, hiding Submit Anyway for submissions
+        // that were merely short. Mirrors the network-error catch below.
         if (attempt === 1) {
           result = {
             passed: data.passed === true,
-            onTopic: data.onTopic === true,
+            onTopic: data.onTopic !== false,
             onTopicReason: data.onTopicReason,
             vocabScore: data.vocabScore ?? 0,
             vocabUsed: data.vocabUsed,
@@ -160,14 +163,18 @@ export default function WritingEvaluator({
             isDegraded: data.isDegraded,
           };
         } else {
-          // Attempt 2 retry: only pass if on-topic AND meets a relaxed vocab floor.
-          const onTopic = data.onTopic === true;
+          // Attempt 2: pass if on-topic AND meets a relaxed vocab floor.
+          // Attempt 3+ (re-judging an off-topic history): a fresh ON-TOPIC
+          // verdict auto-passes — per §5.5 the rewrite itself is what gets
+          // judged; topic compliance stays non-negotiable but escapable.
+          const onTopic = data.onTopic !== false;
           const vs = data.vocabScore ?? 0;
+          const autoPassRewrite = attempt >= 3 && onTopic;
           result = {
-            passed: onTopic && vs >= 0.3,
+            passed: autoPassRewrite || (onTopic && vs >= 0.3),
             onTopic,
             onTopicReason: data.onTopicReason,
-            vocabScore: vs,
+            vocabScore: autoPassRewrite ? Math.max(0.3, vs) : vs,
             vocabUsed: data.vocabUsed,
             vocabMissed: data.vocabMissed,
             grammarAdvisory: data.grammarAdvisory,
