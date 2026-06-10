@@ -18,7 +18,7 @@ interface ShiftQueueState {
   gated: boolean;
 
   loadWeekConfig: (weekId: string) => Promise<void>;
-  completeTask: (taskId: string, score?: number, details?: Record<string, unknown>) => Promise<void>;
+  completeTask: (taskId: string, score?: number, details?: Record<string, unknown>) => Promise<'persisted' | 'stale-dropped'>;
   addConcern: (delta: number) => void;
   nextTask: () => void;
   reset: () => void;
@@ -29,6 +29,13 @@ interface ShiftQueueState {
   reloadFromServer: () => Promise<void>;
   setTaskGates: (gates: number[]) => void;
 }
+
+// Load epoch — invalidates in-flight loadWeekConfig fetches. Incremented on
+// every loadWeekConfig entry AND on reset(): without it, a slow fetch for the
+// PREVIOUS shift could resolve after a teacher transfer and overwrite the new
+// shift's config (the documented 54ca0b0 cancellation-token bug class — the
+// store's own loader was the one consumer never given a token).
+let loadEpoch = 0;
 
 export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
   weekConfig: null,
@@ -44,9 +51,11 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
   gated: false,
 
   loadWeekConfig: async (weekId: string) => {
+    const epoch = ++loadEpoch;
     set({ loading: true, error: null });
     try {
       const config = await fetchWeekConfig(weekId);
+      if (epoch !== loadEpoch) return; // superseded by a newer load or reset()
       if (!config) {
         set({ weekConfig: null, loading: false });
         return;
@@ -112,6 +121,8 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
         gated: isGated,
       });
     } catch (err: unknown) {
+      // A stale rejection must not stamp an error over a fresher load's state.
+      if (epoch !== loadEpoch) return;
       const message = err instanceof Error ? err.message : 'Failed to load week config';
       set({ error: message, loading: false });
     }
@@ -119,12 +130,12 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
 
   completeTask: async (taskId: string, score = 1, details?: Record<string, unknown>) => {
     const { weekConfig, taskProgress } = get();
-    if (!weekConfig) return;
+    if (!weekConfig) return 'stale-dropped';
 
     // Find the mission for this task
     const shiftState = useShiftStore.getState();
     const taskConfig = weekConfig.tasks.find(t => t.id === taskId);
-    if (!taskConfig) return;
+    if (!taskConfig) return 'stale-dropped';
 
     const mission = shiftState.missions.find(m => m.missionType === taskConfig.type);
     if (mission) {
@@ -142,7 +153,9 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
       fresh.weekConfig?.weekNumber !== weekConfig.weekNumber ||
       fresh.taskProgress !== taskProgress
     ) {
-      return;
+      // Stale: intentionally dropped — distinct from a network throw, which
+      // propagates to the caller's retry affordance.
+      return 'stale-dropped';
     }
 
     // Update local progress
@@ -187,6 +200,7 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
         );
       });
     }
+    return 'persisted';
   },
 
   addConcern: (delta: number) => {
@@ -211,19 +225,24 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
     }
   },
 
-  reset: () => set({
-    weekConfig: null,
-    taskProgress: [],
-    currentTaskIndex: 0,
-    concernScoreDelta: 0,
-    concernScorePersisted: 0,
-    shiftComplete: false,
-    loading: false,
-    error: null,
-    taskResetKey: 0,
-    taskGates: [],
-    gated: false,
-  }),
+  reset: () => {
+    // Invalidate any in-flight loadWeekConfig so its late resolution can't
+    // re-populate the store after a logout / teacher transfer teardown.
+    loadEpoch++;
+    set({
+      weekConfig: null,
+      taskProgress: [],
+      currentTaskIndex: 0,
+      concernScoreDelta: 0,
+      concernScorePersisted: 0,
+      shiftComplete: false,
+      loading: false,
+      error: null,
+      taskResetKey: 0,
+      taskGates: [],
+      gated: false,
+    });
+  },
 
   goToTask: async (taskId: string) => {
     const { weekConfig, taskProgress, taskGates } = get();

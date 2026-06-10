@@ -124,6 +124,8 @@ interface PearlState {
   dismissAnnouncement: () => void;
   sendChat: (message: string) => Promise<void>;
   clearChat: () => void;
+  /** Full session teardown — chat, bark log, announcement, eye arc. */
+  reset: () => void;
 }
 
 /** Gather current task context for PEARL chat guardrails (no answers leak). */
@@ -292,4 +294,19 @@ export const usePearlStore = create<PearlState>((set, get) => ({
   },
 
   clearChat: () => set({ chatMessages: [], chatError: null, chatRateLimited: false }),
+
+  // Session teardown for shared Chromebooks. clearChat alone left barkHistory
+  // (rendered as "Recent Messages" in PearlPanel + MessagesApp — student B saw
+  // A's supervisor-override/remediation bark log) and any undismissed
+  // announcement. messages/currentIndex/lastChatTime stay — device-scoped.
+  reset: () =>
+    set({
+      chatMessages: [],
+      chatError: null,
+      chatRateLimited: false,
+      activeBark: null,
+      barkHistory: [],
+      activeAnnouncement: null,
+      eyeState: 'welcoming',
+    }),
 }));

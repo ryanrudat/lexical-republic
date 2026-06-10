@@ -54,9 +54,18 @@ export default function InscriptionDrill() {
     if (!drill?.drillId) return;
     const sock = connectSocket();
     if (!sock) return;
-    sock.emit('inscription:enter-drill', { drillId: drill.drillId });
+    const drillId = drill.drillId;
+    // Re-enter on every (re)connect — server rooms are per-socket, so a
+    // mid-race Wi-Fi blip otherwise left this student out of both the drill
+    // and lobby rooms: opponent desks froze and pause/resume events were
+    // missed for the rest of the race. The enter handler also replays
+    // paused/resumed state.
+    const enter = () => sock.emit('inscription:enter-drill', { drillId });
+    if (sock.connected) enter();
+    sock.on('connect', enter);
     return () => {
-      sock.emit('inscription:leave-drill', { drillId: drill.drillId });
+      sock.off('connect', enter);
+      sock.emit('inscription:leave-drill', { drillId });
     };
   }, [drill?.drillId]);
 
@@ -106,15 +115,6 @@ export default function InscriptionDrill() {
       return () => clearTimeout(t);
     }
   }, [drill, completedAllWords, remainingSec, completeDrill]);
-
-  const handleKeystrokeTick = useCallback(
-    (typing: boolean) => {
-      const sock = connectSocket();
-      if (!sock || !drill) return;
-      sock.emit('inscription:keystroke-tick', { drillId: drill.drillId, typing });
-    },
-    [drill],
-  );
 
   // Thin wrapper around the store action. The per-character tracker
   // already handles local accuracy; this just forwards the submission
@@ -186,7 +186,6 @@ export default function InscriptionDrill() {
             wordIdx={currentIdx}
             lane={lane}
             onSubmit={wrappedSubmit}
-            onKeystrokeTick={handleKeystrokeTick}
             disabled={screen !== 'drill' || notStarted}
             drillStartedAt_ms={drill.startedAt_ms}
             wordsCompleted={wordsCompleted}

@@ -111,10 +111,14 @@ export default function WritingEvaluator({
         // Attempt-3 auto-pass — but ONLY if the last result was on-topic.
         // Off-topic submissions never auto-pass; the student must rewrite to
         // the prompt. Otherwise an off-topic essay passes on attempt 3.
+        // Carries isDegraded forward: if the prior attempts were network
+        // failures, this auto-pass means "AI never saw this" — the teacher
+        // must be able to distinguish it from a genuine 0.3 evaluation.
         result = {
           passed: true,
           onTopic: true,
           vocabScore: 0.3,
+          isDegraded: lastResult?.isDegraded,
           pearlFeedback: 'Submission recorded. Continue to next task.',
         };
       } else {
@@ -203,6 +207,9 @@ export default function WritingEvaluator({
         taskContext: taskContext ?? writingPrompt ?? '',
         studentText: text,
         weekNumber,
+        // Lets the backend persist the line to MissionScore.pearlFeedback —
+        // without it the §5.6 persistence path never fired for any task.
+        missionId,
       })
         .then(({ pearlFeedback }) => setPearlReasoning(pearlFeedback))
         .finally(() => setPearlReasoningLoading(false));
@@ -229,14 +236,18 @@ export default function WritingEvaluator({
     // veto is the entire point of the rubric. Student must rewrite first.
     if (lastResult && !lastResult.onTopic) return;
 
-    // Fall back to a 0.3 vocab floor so this path and the attempt-3 auto-pass land at the same score.
+    // Fall back to a 0.3 vocab floor so this path and the attempt-3 auto-pass
+    // land at the same score. Math.max (not ??): the network-failure catch
+    // sets vocabScore 0, and `0 ?? 0.3` is 0 — students were being persisted
+    // at 0.1 (post-clamp) for a Wi-Fi blip, below the documented §5.5 floor.
     const result: EvalResult = {
       passed: true,
       onTopic: true,
-      vocabScore: lastResult?.vocabScore ?? 0.3,
+      vocabScore: Math.max(0.3, lastResult?.vocabScore ?? 0),
       vocabUsed: lastResult?.vocabUsed,
       vocabMissed: lastResult?.vocabMissed,
       grammarAdvisory: lastResult?.grammarAdvisory,
+      isDegraded: lastResult?.isDegraded,
       submittedAnyway: true,
     };
     setLastResult(result);

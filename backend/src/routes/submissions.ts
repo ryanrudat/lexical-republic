@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { authenticate, requirePair, getPairId } from '../middleware/auth';
 import prisma from '../utils/prisma';
+import { getMoveEpoch } from '../utils/moveEpochs';
 import { getOpenAI, OPENAI_MODEL } from '../utils/openai';
 import { matchesTargetWord } from '../utils/stemmer';
 
@@ -73,6 +74,11 @@ function mergeDetails(
 router.post('/evaluate', requirePair, async (req: Request, res: Response) => {
   try {
     const pairId = getPairId(req)!;
+    // Snapshot the pair's move-epoch BEFORE the multi-second AI round-trip.
+    // If a teacher command (move-to-shift / reset / send-to-task) rewrites the
+    // pair's progress while we're waiting on OpenAI, the persistence below is
+    // skipped — otherwise this request re-creates rows the command deleted.
+    const moveEpochAtEntry = getMoveEpoch(pairId);
     const body = req.body as EvaluationRequest;
     const { weekNumber, phaseId, activityType, content, metadata } = body;
 
@@ -225,7 +231,7 @@ router.post('/evaluate', requirePair, async (req: Request, res: Response) => {
 
     // ─── Store results ───
     // Save score if we have a missionId
-    if (metadata?.missionId) {
+    if (metadata?.missionId && getMoveEpoch(pairId) === moveEpochAtEntry) {
       // Pin to a local const so TS narrowing survives the async transaction callback.
       const missionId: string = metadata.missionId;
       const detailsPayload = {
@@ -243,8 +249,12 @@ router.post('/evaluate', requirePair, async (req: Request, res: Response) => {
         pearlFeedback: aiResult.pearlFeedback,
       };
       // Off-topic submissions score 0.0 regardless of vocab use. On-topic
-      // submissions score = vocabScore (the only remaining numeric axis).
-      const computedScore = aiResult.onTopic ? aiResult.vocabScore : 0;
+      // submissions score = vocabScore clamped to the §5.1 [0.1, 1.0] band —
+      // matching the client-side clamp in ShiftReport so the two writers of
+      // this row can never disagree on the floor.
+      const computedScore = aiResult.onTopic
+        ? Math.min(1, Math.max(0.1, aiResult.vocabScore))
+        : 0;
 
       // Merge new AI eval fields on top of whatever's stored, so we don't wipe
       // out fields that the /shifts/.../score call (or a previous attempt) put
@@ -262,17 +272,22 @@ router.post('/evaluate', requirePair, async (req: Request, res: Response) => {
             ? (existing.details as Record<string, unknown>)
             : {};
         const mergedDetails = mergeDetails(existingDetails, detailsPayload) as any;
+        // details + pearlFeedback persist on EVERY eval (crash-safety: the
+        // teacher sees drafts from students who never pass), but `score` only
+        // moves on a passing eval — a failed attempt must not stamp a
+        // near-zero score over a prior passing one (the client's completeTask
+        // writes the authoritative clamped score at task end regardless).
         await tx.missionScore.upsert({
           where: { pairId_missionId: { pairId, missionId } },
           update: {
-            score: computedScore,
+            ...(aiResult.passed ? { score: computedScore } : {}),
             details: mergedDetails,
             pearlFeedback: aiResult.pearlFeedback,
           },
           create: {
             pairId,
             missionId,
-            score: computedScore,
+            score: aiResult.passed ? computedScore : 0,
             details: mergedDetails,
             pearlFeedback: aiResult.pearlFeedback,
           },
@@ -280,8 +295,15 @@ router.post('/evaluate', requirePair, async (req: Request, res: Response) => {
       });
     }
 
-    // Track vocabulary encounters for used words
-    if (vocabUsed.length > 0) {
+    // Track vocabulary encounters for used words — GATED by the on-topic veto
+    // per pedagogy.md §6.1 ("+0.10 production bump, gated by the on-topic
+    // veto"). Ungated, an off-topic submission stuffed with target words
+    // bumped mastery like a passing one, falsely marking weak words mastered
+    // and excluding them from the Remediation pool. onTopic (not passed) is
+    // the right gate: a failed-but-on-topic attempt is still genuine
+    // production, and the degraded fallback is onTopic-fail-open so mastery
+    // keeps accruing during OpenAI outages.
+    if (aiResult.onTopic && vocabUsed.length > 0 && getMoveEpoch(pairId) === moveEpochAtEntry) {
       const allRows = await prisma.dictionaryWord.findMany({
         where: { word: { in: vocabUsed.map((v) => v.toLowerCase()) } },
         select: { id: true, word: true, weekIntroduced: true },

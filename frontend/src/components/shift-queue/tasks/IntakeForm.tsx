@@ -67,7 +67,7 @@ function resolveFieldValue(value: string | undefined, designation: string): stri
 
 // ─── Component ───────────────────────────────────────────────────
 
-export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps) {
+export default function IntakeForm({ config, weekConfig, missionId, onComplete }: TaskProps) {
   const cards = (config.cards ?? []) as CardConfig[];
   const user = useStudentStore(s => s.user);
   const addConcern = useShiftQueueStore(s => s.addConcern);
@@ -500,6 +500,7 @@ export default function IntakeForm({ config, weekConfig, onComplete }: TaskProps
         />
 
         <WritingEvaluator
+          missionId={missionId}
           text={writingText}
           weekNumber={weekConfig.weekNumber}
           grammarTarget={weekConfig.grammarTarget}

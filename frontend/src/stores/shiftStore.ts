@@ -22,6 +22,12 @@ interface ShiftState {
   reset: () => void;
 }
 
+// Load epoch — invalidates in-flight loadWeek fetches (mirrors the
+// shiftQueueStore loader). A stale resolution after a teacher transfer would
+// otherwise leave the OLD week's missions live, and completeTask matches
+// missions by type — so a submission could land on the wrong week.
+let loadEpoch = 0;
+
 export const useShiftStore = create<ShiftState>((set, get) => ({
   currentWeek: null,
   currentStepId: 'recap',
@@ -32,9 +38,11 @@ export const useShiftStore = create<ShiftState>((set, get) => ({
   error: null,
 
   loadWeek: async (weekId: string) => {
+    const epoch = ++loadEpoch;
     set({ loading: true, error: null });
     try {
       const week = await fetchWeek(weekId);
+      if (epoch !== loadEpoch) return; // superseded by a newer load or reset()
 
       // Build progress from existing scores
       const progress: StepProgress[] = STEP_ORDER.map(step => {
@@ -52,6 +60,7 @@ export const useShiftStore = create<ShiftState>((set, get) => ({
 
       set({ currentWeek: week, missions: week.missions, weekProgress: progress, currentStepId, loading: false });
     } catch (err: unknown) {
+      if (epoch !== loadEpoch) return; // stale rejection — don't stamp error
       const message = err instanceof Error ? err.message : 'Failed to load week';
       const axiosError = err as { response?: { data?: { error?: string } } };
       set({ error: axiosError.response?.data?.error || message, loading: false });
@@ -117,13 +126,16 @@ export const useShiftStore = create<ShiftState>((set, get) => ({
     }
   },
 
-  reset: () => set({
-    currentWeek: null,
-    currentStepId: 'recap',
-    missions: [],
-    weekProgress: STEP_ORDER.map(s => ({ stepId: s.id, status: 'pending' as const })),
-    grammarMastery: {},
-    loading: false,
-    error: null,
-  }),
+  reset: () => {
+    loadEpoch++; // invalidate any in-flight loadWeek
+    set({
+      currentWeek: null,
+      currentStepId: 'recap',
+      missions: [],
+      weekProgress: STEP_ORDER.map(s => ({ stepId: s.id, status: 'pending' as const })),
+      grammarMastery: {},
+      loading: false,
+      error: null,
+    });
+  },
 }));

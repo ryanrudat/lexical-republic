@@ -79,6 +79,11 @@ function proceedAfterClearance(file: SnoopFile, set: (p: Partial<SpyState>) => v
   }
 }
 
+// Load epoch — a loadChoices that outlives logout must not restore student
+// A's W4 spy state (funneled leads, restored ciphers, drop-box echo) into B's
+// cleared store.
+let loadEpoch = 0;
+
 export const useSpyStore = create<SpyState>((set, get) => ({
   loaded: false,
   dropBoxText: null,
@@ -90,8 +95,10 @@ export const useSpyStore = create<SpyState>((set, get) => ({
   drawerOpen: false,
 
   loadChoices: async () => {
+    const epoch = ++loadEpoch;
     try {
       const choices = await fetchNarrativeChoices(4);
+      if (epoch !== loadEpoch) return; // superseded by reset()/newer load
       const resolved: Record<string, SnoopOutcome> = {};
       const restoredCiphers: Record<string, RestoredCipher> = {};
       let dropBoxText: string | null = null;
@@ -118,6 +125,7 @@ export const useSpyStore = create<SpyState>((set, get) => ({
       }
       set({ resolved, restoredCiphers, dropBoxText, loaded: true });
     } catch {
+      if (epoch !== loadEpoch) return; // stale rejection — don't mark loaded
       // Fail-open — an unreachable choices endpoint shouldn't block the app.
       set({ loaded: true });
     }
@@ -192,7 +200,8 @@ export const useSpyStore = create<SpyState>((set, get) => ({
   openDrawer: () => set({ drawerOpen: true }),
   closeDrawer: () => set({ drawerOpen: false }),
 
-  reset: () =>
+  reset: () => {
+    loadEpoch++; // invalidate in-flight loadChoices
     set({
       loaded: false,
       dropBoxText: null,
@@ -202,7 +211,8 @@ export const useSpyStore = create<SpyState>((set, get) => ({
       downloadingFile: null,
       activeInterrogation: null,
       drawerOpen: false,
-    }),
+    });
+  },
 }));
 
 // Write a snoop outcome to the server (fail-open) and update local state.

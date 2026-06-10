@@ -71,6 +71,16 @@ router.post('/', async (req: Request, res: Response) => {
       },
     });
 
+    // Join the teacher's LIVE sockets to the new class's staff room. Room
+    // membership is otherwise snapshotted at connect time, so a class created
+    // mid-session received no live events — worst case the teacher could
+    // pause-all the new class (locking every student) while the
+    // teacher:pause-state confirmation never reached them, leaving no Resume
+    // button until a page refresh.
+    if (io) {
+      io.in(`teacher:${teacherId}`).socketsJoin(`class:${cls.id}:staff`);
+    }
+
     // Auto-unlock week 1
     const week1 = await prisma.week.findFirst({
       where: { weekNumber: 1 },

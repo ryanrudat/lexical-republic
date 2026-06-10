@@ -5,6 +5,9 @@ export interface PearlFeedbackPayload {
   taskContext: string;
   studentText: string;
   weekNumber: number;
+  /** When present, the backend persists the feedback to
+   *  MissionScore.pearlFeedback (the §5.6 persistence promise). */
+  missionId?: string;
 }
 
 export interface PearlFeedbackResponse {

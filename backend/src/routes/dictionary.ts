@@ -350,13 +350,17 @@ router.post('/:wordId/encounter', requirePair, async (req: Request, res: Respons
     });
 
     if (existing) {
-      const newEncounters = existing.encounters + 1;
-      const newMastery = Math.min(1.0, existing.mastery + 0.1);
+      // Encounters + recency ONLY — no mastery bump. A passive, unverified
+      // word view was paying +0.1/call (the verified-production rate, 3x the
+      // strongest receptive rate in pedagogy.md §6.2) with no dedup or rate
+      // limit: 10 empty POSTs maxed any word, hiding it from the Remediation
+      // pool and the Word Pool fatigue filter. Mastery moves only on verified
+      // surfaces (writing/Clarity/Compliance/Censure/Remediation). The
+      // one-time 0.1 first-encounter seed below is doctrine-sanctioned.
       const updated = await prisma.pairDictionaryProgress.update({
         where: { id: existing.id },
         data: {
-          encounters: newEncounters,
-          mastery: newMastery,
+          encounters: existing.encounters + 1,
           lastSeenAt: new Date(),
         },
       });

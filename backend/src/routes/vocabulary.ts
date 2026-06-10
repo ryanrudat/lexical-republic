@@ -45,14 +45,13 @@ router.post('/:vocabId/encounter', async (req: Request, res: Response) => {
     });
 
     if (existing) {
-      const newEncounters = existing.encounters + 1;
-      // Simple mastery: increases with encounters, caps at 1.0
-      const newMastery = Math.min(1.0, existing.mastery + 0.1);
+      // Encounters + recency only — mirrors the dictionary route's 2026-06-11
+      // de-fang: an ungated +0.1/call mastery bump was trivially farmable.
+      // (Legacy userId-keyed table; no live UI calls this.)
       const updated = await prisma.studentVocabulary.update({
         where: { id: existing.id },
         data: {
-          encounters: newEncounters,
-          mastery: newMastery,
+          encounters: existing.encounters + 1,
           lastSeenAt: new Date(),
         },
       });

@@ -37,6 +37,12 @@ interface DictionaryState {
   reset: () => void;
 }
 
+// Load epoch — invalidates in-flight loads. Bumped on reset() so a fetch that
+// outlives logout can't write student A's words (private notes, starred,
+// revealed-Chinese) back into the cleared store, where the words.length===0
+// mount gates would then never refetch for student B.
+let loadEpoch = 0;
+
 export const useDictionaryStore = create<DictionaryState>((set, get) => ({
   words: [],
   families: [],
@@ -50,18 +56,26 @@ export const useDictionaryStore = create<DictionaryState>((set, get) => ({
 
   loadDictionary: async () => {
     if (get().loading) return;
+    const epoch = ++loadEpoch;
     set({ loading: true, error: null });
     try {
       const { words, currentWeek } = await fetchDictionary();
+      if (epoch !== loadEpoch) return; // superseded by reset()/newer load
       set({ words, currentWeek, loading: false });
     } catch {
+      if (epoch !== loadEpoch) return; // stale rejection — don't stamp error
       set({ error: 'Failed to load dictionary', loading: false });
     }
   },
 
   loadFamilies: async () => {
+    // Snapshot WITHOUT bumping — DictionarySidebar fires loadDictionary +
+    // loadFamilies back-to-back; a bump here would invalidate the in-flight
+    // dictionary fetch.
+    const epoch = loadEpoch;
     try {
       const { families } = await fetchWordFamilies();
+      if (epoch !== loadEpoch) return;
       set({ families });
     } catch {
       // Non-critical — don't set error state
@@ -103,7 +117,7 @@ export const useDictionaryStore = create<DictionaryState>((set, get) => ({
       set({
         words: get().words.map((w) =>
           w.id === wordId
-            ? { ...w, encounters: w.encounters + 1, mastery: Math.min(1.0, w.mastery + 0.1) }
+            ? { ...w, encounters: w.encounters + 1 } // mastery moves only on verified surfaces
             : w
         ),
       });
@@ -163,7 +177,8 @@ export const useDictionaryStore = create<DictionaryState>((set, get) => ({
   // Clear on logout — private notes, starred words, and revealed Chinese must
   // NOT carry to the next student on a shared device. (loadDictionary self-gates
   // on words.length === 0, so without this it would never re-fetch B's words.)
-  reset: () =>
+  reset: () => {
+    loadEpoch++; // invalidate in-flight loads — see note at top
     set({
       words: [],
       families: [],
@@ -174,5 +189,6 @@ export const useDictionaryStore = create<DictionaryState>((set, get) => ({
       searchQuery: '',
       filter: 'all',
       selectedWordId: null,
-    }),
+    });
+  },
 }));

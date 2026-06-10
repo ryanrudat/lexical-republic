@@ -311,7 +311,7 @@ router.post('/register', async (req: Request, res: Response) => {
 
     // Notify teacher dashboard that a new student registered
     if (io) {
-      io.to(`class:${cls.id}`).emit('student:registered', {
+      io.to(`class:${cls.id}:staff`).emit('student:registered', {
         id: pair.id,
         designation: pair.designation,
         displayName: `${pair.studentAName}${pair.studentBName ? ` & ${pair.studentBName}` : ''}`,

@@ -295,7 +295,10 @@ export const useSessionStore = create<SessionState>((set, get) => {
 
     resetConcern: () => {
       get().resetRateMachine();
-      set({ concernScore: 0, isAuditActive: false });
+      // attemptCounts/lastGrammarError are latent (legacy phase-system
+      // consumers only) but session-scoped — clear them so they can never
+      // bleed across students on a shared device.
+      set({ concernScore: 0, isAuditActive: false, attemptCounts: {}, lastGrammarError: null });
     },
 
     incrementAttempt: (missionId) => {

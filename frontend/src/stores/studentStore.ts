@@ -35,8 +35,7 @@ function resetSessionStores(): void {
   useInscriptionStore.getState().reset();
   useSessionPauseStore.getState().setPaused(false);
   useAudioStore.getState().reset();
-  usePearlStore.getState().clearChat();
-  usePearlStore.getState().dismissBark();
+  usePearlStore.getState().reset();
 }
 
 interface ApiErrorShape {

@@ -42,7 +42,7 @@ type Phase = 'read' | 'swapping' | 'recall' | 'classify' | 'write' | 'submitting
 
 // ─── Component ───────────────────────────────────────────────────
 
-export default function ContradictionReport({ config, weekConfig, onComplete }: TaskProps) {
+export default function ContradictionReport({ config, weekConfig, missionId, onComplete }: TaskProps) {
   const memo = config.memo as MemoConfig;
   const memoRevised = config.memoRevised as MemoConfig;
   const differences = (config.differences ?? []) as DiffZone[];
@@ -526,6 +526,7 @@ export default function ContradictionReport({ config, weekConfig, onComplete }: 
         />
 
         <WritingEvaluator
+          missionId={missionId}
           text={writingText}
           weekNumber={weekConfig.weekNumber}
           grammarTarget={weekConfig.grammarTarget}

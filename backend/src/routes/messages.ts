@@ -306,7 +306,7 @@ router.post('/:id/thread', async (req: Request, res: Response) => {
         select: { classId: true },
       });
       if (enr?.classId) {
-        io.to(`class:${enr.classId}`).emit('teacher:clarity-reply', {
+        io.to(`class:${enr.classId}:staff`).emit('teacher:clarity-reply', {
           messageId: id,
           pairId: message.pairId,
           entry,

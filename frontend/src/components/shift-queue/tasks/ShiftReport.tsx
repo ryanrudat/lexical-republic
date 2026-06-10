@@ -6,7 +6,7 @@ import WritingEvaluator from './shared/WritingEvaluator';
 import type { EvalResult } from './shared/WritingEvaluator';
 import LaneScaffolding from './shared/LaneScaffolding';
 
-export default function ShiftReport({ config, weekConfig, onComplete }: TaskProps) {
+export default function ShiftReport({ config, weekConfig, missionId, onComplete }: TaskProps) {
   const pair = useStudentStore((s) => s.user);
   const lane = pair?.lane ?? 2;
   const [writingText, setWritingText] = useState('');
@@ -64,6 +64,10 @@ export default function ShiftReport({ config, weekConfig, onComplete }: TaskProp
           vocabMissed: result.vocabMissed,
           grammarAdvisory: result.grammarAdvisory,
           submittedAnyway: result.submittedAnyway ?? false,
+          // True when the AI never evaluated this text (network failure /
+          // backend timeout fail-open) — the teacher must be able to tell a
+          // degraded 0.3 from a genuine one.
+          isDegraded: result.isDegraded ?? false,
           // Gradebook WritingDisplay reads `text` for the "Shift Report" label.
           text: fullText,
         });
@@ -126,6 +130,7 @@ export default function ShiftReport({ config, weekConfig, onComplete }: TaskProp
       {/* Submit / Evaluate */}
       {!passed && (
         <WritingEvaluator
+          missionId={missionId}
           text={fullText}
           weekNumber={weekConfig.weekNumber}
           grammarTarget={weekConfig.grammarTarget}

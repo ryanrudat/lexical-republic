@@ -110,23 +110,9 @@ export async function uploadWeekBriefingVideo(
   };
 }
 
-// ── Live Monitoring ──────────────────────────────────────────────
-
-export interface OnlineStudentData {
-  userId: string;
-  socketId: string;
-  designation: string | null;
-  displayName: string;
-  weekNumber: number | null;
-  stepId: string | null;
-  connectedAt: string;
-  lastActivityAt: string;
-}
-
-export async function fetchOnlineStudents(): Promise<OnlineStudentData[]> {
-  const { data } = await client.get('/teacher/online-students');
-  return data.students as OnlineStudentData[];
-}
+// (The never-used /teacher/online-students REST wrapper was removed
+// 2026-06-10 along with its unscoped backend endpoint — live tracking
+// flows through the teacher:class-snapshot socket event.)
 
 // ── Gradebook ───────────────────────────────────────────────────
 

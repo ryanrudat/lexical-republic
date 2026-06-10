@@ -18,7 +18,10 @@ async function classRoomForPair(pairId: string): Promise<string | null> {
     where: { pairId },
     select: { classId: true },
   });
-  return enr?.classId ? `class:${enr.classId}` : null;
+  // Staff room — remediation events carry designation/triggerReason/concern
+  // values (minors' behavior data) and must reach teachers only, never the
+  // shared class room that classmates' browsers also sit in.
+  return enr?.classId ? `class:${enr.classId}:staff` : null;
 }
 
 const TRIGGER_REASONS = new Set(['rate_warned', 'rate_double', 'absolute_3']);

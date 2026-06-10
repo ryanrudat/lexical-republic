@@ -74,7 +74,9 @@ export function purgeOnlineStudent(entityId: string): void {
 function emitToStudentClass(studentId: string, event: string, payload: unknown): void {
   const classId = onlineStudents.get(studentId)?.classId;
   if (classId) {
-    io.to(`class:${classId}`).emit(event, payload);
+    // Teacher-bound relay — staff room only. Students share class:${classId}
+    // and must not receive classmates' live status (fail counts, word counts).
+    io.to(`class:${classId}:staff`).emit(event, payload);
   } else {
     // No classId in the in-memory map → the relay silently no-ops and the
     // teacher never sees this student's live update. Surface it so the gap is
@@ -154,49 +156,140 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
     }
   });
 
-  io.on('connection', async (socket) => {
+  io.on('connection', (socket) => {
     const entityId = (socket as any).entityId as string;
     const role = (socket as any).role as string;
 
-    // ── Teacher: join per-class rooms + personal room ──
-    if (role === 'teacher') {
-      const teacherId = entityId;
-      let teacherClassIds: string[] = [];
-      try {
-        const classes = await prisma.class.findMany({
-          where: { teacherId },
-          select: { id: true },
-        });
-        teacherClassIds = classes.map((c) => c.id);
-      } catch {
-        // Non-fatal: proceed with empty class list (teacher will just see no students)
+    // ── Synchronous bookkeeping — before ANY await, so a fast disconnect
+    //    can never observe half-initialized maps ──
+    if (role === 'student') {
+      // Cancel any pending disconnect grace timer
+      const pendingTimer = disconnectTimers.get(entityId);
+      if (pendingTimer) {
+        clearTimeout(pendingTimer);
+        disconnectTimers.delete(entityId);
       }
-
-      // Personal room for teacher-targeted events with no per-student context
-      socket.join(`teacher:${teacherId}`);
-      // Per-class rooms — receives student events scoped to this teacher's classes
-      for (const classId of teacherClassIds) {
-        socket.join(`class:${classId}`);
+      // Register this socket for the entity
+      if (!entitySockets.has(entityId)) {
+        entitySockets.set(entityId, new Set());
       }
+      entitySockets.get(entityId)!.add(socket.id);
+      socket.join(`student:${entityId}`);
+    }
 
-      // Send filtered class snapshot — only this teacher's students
-      const ownedClassIds = new Set(teacherClassIds);
-      const filteredSnapshot = Array.from(onlineStudents.values()).filter(
-        (s) => s.classId !== null && ownedClassIds.has(s.classId),
-      );
-      socket.emit('teacher:class-snapshot', filteredSnapshot);
+    // ── Async setup (DB lookups, room joins, snapshot/replay) ──
+    // Every socket.on below is registered SYNCHRONOUSLY and its body gates on
+    // this promise. Socket.IO writes the client's CONNECT ack BEFORE this
+    // async work runs and silently DROPS incoming events that have no
+    // registered listener — so the old shape (handlers registered after the
+    // awaits) lost the client's connect-time emits (enter-shift/shift-tasks)
+    // whenever the enrollment query outlasted the RTT, e.g. in a post-deploy
+    // reconnect storm. Symptom: teacher cards stuck on "Loading task info…".
+    const ready: Promise<void> = (async () => {
+      if (role === 'teacher') {
+        const teacherId = entityId;
+        let teacherClassIds: string[] = [];
+        try {
+          const classes = await prisma.class.findMany({
+            where: { teacherId },
+            select: { id: true },
+          });
+          teacherClassIds = classes.map((c) => c.id);
+        } catch {
+          // Non-fatal: proceed with empty class list (teacher will just see no students)
+        }
 
-      // Replay current pause state for each owned class — students already get
-      // this replay on connect; without it a teacher who refreshes mid-pause
-      // loses the paused indicator while the class stays locked server-side.
-      for (const classId of teacherClassIds) {
-        if (classPauseState.get(classId)?.paused) {
-          socket.emit('teacher:pause-state', { classId, paused: true });
+        // Personal room for teacher-targeted events with no per-student context
+        socket.join(`teacher:${teacherId}`);
+        // STAFF rooms only — students share `class:${classId}`, and teacher-
+        // bound payloads (peer reply text, remediation triggers, live status
+        // with fail counts, real display names) are minors' data that must
+        // not be broadcast to classmates' browsers. Class-wide events students
+        // actually consume (session:paused, gate-updated, presence, shift-
+        // changed, harmony:new-content) keep using the plain class room.
+        for (const classId of teacherClassIds) {
+          socket.join(`class:${classId}:staff`);
+        }
+
+        // Send filtered class snapshot — only this teacher's students
+        const ownedClassIds = new Set(teacherClassIds);
+        const filteredSnapshot = Array.from(onlineStudents.values()).filter(
+          (s) => s.classId !== null && ownedClassIds.has(s.classId),
+        );
+        socket.emit('teacher:class-snapshot', filteredSnapshot);
+
+        // Replay current pause state for each owned class — students already get
+        // this replay on connect; without it a teacher who refreshes mid-pause
+        // loses the paused indicator while the class stays locked server-side.
+        for (const classId of teacherClassIds) {
+          if (classPauseState.get(classId)?.paused) {
+            socket.emit('teacher:pause-state', { classId, paused: true });
+          }
+        }
+      } else if (role === 'student') {
+        // Look up class enrollment — try pairId first, then userId
+        let classId: string | null = null;
+        let className: string | null = null;
+        try {
+          const enrollment = await prisma.classEnrollment.findFirst({
+            where: {
+              OR: [
+                { pairId: entityId },
+                { userId: entityId },
+              ],
+            },
+            include: { class: { select: { id: true, name: true } } },
+          });
+          if (enrollment) {
+            classId = enrollment.class.id;
+            className = enrollment.class.name;
+          }
+        } catch {
+          // Non-fatal: proceed without class info
+        }
+
+        const existing = onlineStudents.get(entityId);
+        const status: StudentStatus = {
+          userId: entityId,
+          socketId: socket.id,
+          designation: (socket as any).designation,
+          displayName: (socket as any).displayName,
+          classId,
+          className,
+          weekNumber: existing?.weekNumber ?? null,
+          stepId: existing?.stepId ?? null,
+          connectedAt: existing?.connectedAt ?? new Date().toISOString(),
+          lastActivityAt: new Date().toISOString(),
+          taskId: existing?.taskId ?? null,
+          taskLabel: existing?.taskLabel ?? null,
+          taskStartedAt: existing?.taskStartedAt ?? null,
+          failCount: existing?.failCount ?? 0,
+          taskKind: existing?.taskKind ?? null,
+          progressLabel: existing?.progressLabel ?? null,
+          tasks: existing?.tasks ?? [],
+        };
+        onlineStudents.set(entityId, status);
+
+        if (classId) {
+          socket.join(`class:${classId}`);
+          // Replay pause state — late joiner / refresher must not bypass the overlay
+          const pause = classPauseState.get(classId);
+          if (pause?.paused) {
+            socket.emit('session:paused', { message: pause.message, ts: pause.ts });
+          }
+          io.to(`class:${classId}:staff`).emit('student:connected', status);
+          emitClassPresence(classId);
         }
       }
+    })();
+    ready.catch((err) => console.error('[socket] connection setup failed:', err));
 
-      // ── Teacher pause/resume — class-scoped, ownership-checked ──
+    // ── Teacher pause/resume — class-scoped, ownership-checked ──
+    if (role === 'teacher') {
+      const teacherId = entityId;
+
       socket.on('teacher:pause-all', async (data?: { classId?: string; message?: string }) => {
+        await ready;
         const classId = data?.classId;
         if (!classId) return; // refuse to fall back to a global broadcast
         const owned = await prisma.class.findFirst({
@@ -209,13 +302,14 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
         const ts = Date.now();
         classPauseState.set(classId, { paused: true, message, ts });
         io.to(`class:${classId}`).emit('session:paused', { message, ts });
-        // Notify all teacher sockets joined to this class room (including this one)
-        io.to(`class:${classId}`).emit('teacher:pause-state', { classId, paused: true });
+        // Notify all teacher sockets joined to this class's staff room (incl. this one)
+        io.to(`class:${classId}:staff`).emit('teacher:pause-state', { classId, paused: true });
         // Freeze any active inscription drills in this class
         void freezeActiveInscriptionDrillsForClass(io, classId);
       });
 
       socket.on('teacher:resume-all', async (data?: { classId?: string }) => {
+        await ready;
         const classId = data?.classId;
         if (!classId) return;
         const owned = await prisma.class.findFirst({
@@ -226,7 +320,7 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
 
         classPauseState.delete(classId);
         io.to(`class:${classId}`).emit('session:resumed');
-        io.to(`class:${classId}`).emit('teacher:pause-state', { classId, paused: false });
+        io.to(`class:${classId}:staff`).emit('teacher:pause-state', { classId, paused: false });
         // Thaw any paused inscription drills in this class
         void thawPausedInscriptionDrillsForClass(io, classId);
       });
@@ -245,21 +339,25 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
       };
 
       socket.on('teacher:skip-task', async (data: { studentId: string }) => {
+        await ready;
         if (!(await verifyOwnsStudent(data.studentId))) return;
         io.to(`student:${data.studentId}`).emit('session:task-command', { action: 'skip-task' });
       });
 
       socket.on('teacher:reset-task', async (data: { studentId: string }) => {
+        await ready;
         if (!(await verifyOwnsStudent(data.studentId))) return;
         io.to(`student:${data.studentId}`).emit('session:task-command', { action: 'reset-task' });
       });
 
       socket.on('teacher:reset-shift', async (data: { studentId: string }) => {
+        await ready;
         if (!(await verifyOwnsStudent(data.studentId))) return;
         io.to(`student:${data.studentId}`).emit('session:task-command', { action: 'reset-shift' });
       });
 
       socket.on('teacher:send-to-task', async (data: { studentId: string; taskId: string }) => {
+        await ready;
         if (!(await verifyOwnsStudent(data.studentId))) return;
         io.to(`student:${data.studentId}`).emit('session:task-command', {
           action: 'send-to-task',
@@ -268,81 +366,10 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
       });
     }
 
-    // ── Student tracking ──
-    if (role === 'student') {
-      // Cancel any pending disconnect grace timer
-      const pendingTimer = disconnectTimers.get(entityId);
-      if (pendingTimer) {
-        clearTimeout(pendingTimer);
-        disconnectTimers.delete(entityId);
-      }
-
-      // Register this socket for the entity
-      if (!entitySockets.has(entityId)) {
-        entitySockets.set(entityId, new Set());
-      }
-      entitySockets.get(entityId)!.add(socket.id);
-
-      // Look up class enrollment — try pairId first, then userId
-      let classId: string | null = null;
-      let className: string | null = null;
-      try {
-        const enrollment = await prisma.classEnrollment.findFirst({
-          where: {
-            OR: [
-              { pairId: entityId },
-              { userId: entityId },
-            ],
-          },
-          include: { class: { select: { id: true, name: true } } },
-        });
-        if (enrollment) {
-          classId = enrollment.class.id;
-          className = enrollment.class.name;
-        }
-      } catch {
-        // Non-fatal: proceed without class info
-      }
-
-      const existing = onlineStudents.get(entityId);
-      const status: StudentStatus = {
-        userId: entityId,
-        socketId: socket.id,
-        designation: (socket as any).designation,
-        displayName: (socket as any).displayName,
-        classId,
-        className,
-        weekNumber: existing?.weekNumber ?? null,
-        stepId: existing?.stepId ?? null,
-        connectedAt: existing?.connectedAt ?? new Date().toISOString(),
-        lastActivityAt: new Date().toISOString(),
-        taskId: existing?.taskId ?? null,
-        taskLabel: existing?.taskLabel ?? null,
-        taskStartedAt: existing?.taskStartedAt ?? null,
-        failCount: existing?.failCount ?? 0,
-        taskKind: existing?.taskKind ?? null,
-        progressLabel: existing?.progressLabel ?? null,
-        tasks: existing?.tasks ?? [],
-      };
-      onlineStudents.set(entityId, status);
-
-      // Join class-specific room + personal room for teacher commands
-      socket.join(`student:${entityId}`);
-      if (classId) {
-        socket.join(`class:${classId}`);
-        // Replay pause state — late joiner / refresher must not bypass the overlay
-        const pause = classPauseState.get(classId);
-        if (pause?.paused) {
-          socket.emit('session:paused', { message: pause.message, ts: pause.ts });
-        }
-        io.to(`class:${classId}`).emit('student:connected', status);
-        emitClassPresence(classId);
-      }
-    }
-
     // Reply with the current class online count — lets a student opening Harmony
     // get an immediate presence value without waiting for the next connect/disconnect.
-    socket.on('student:presence-request', () => {
+    socket.on('student:presence-request', async () => {
+      await ready;
       const cid = onlineStudents.get(entityId)?.classId;
       if (cid) {
         socket.emit('class:presence', { classId: cid, online: getOnlineStudents(cid).length });
@@ -350,7 +377,8 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
     });
 
     // ── Student shift/step events ──
-    socket.on('student:enter-shift', (data: { weekNumber: number; stepId?: string }) => {
+    socket.on('student:enter-shift', async (data: { weekNumber: number; stepId?: string }) => {
+      await ready;
       const existing = onlineStudents.get(entityId);
       if (existing) {
         existing.weekNumber = data.weekNumber;
@@ -360,7 +388,8 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
       }
     });
 
-    socket.on('student:change-step', (data: { stepId: string }) => {
+    socket.on('student:change-step', async (data: { stepId: string }) => {
+      await ready;
       const existing = onlineStudents.get(entityId);
       if (existing) {
         existing.stepId = data.stepId;
@@ -369,7 +398,8 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
       }
     });
 
-    socket.on('student:shift-tasks', (data: { id: string; label: string }[]) => {
+    socket.on('student:shift-tasks', async (data: { id: string; label: string }[]) => {
+      await ready;
       const existing = onlineStudents.get(entityId);
       if (existing) {
         existing.tasks = Array.isArray(data) ? data : [];
@@ -377,11 +407,12 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
       }
     });
 
-    socket.on('student:task-update', (data: {
+    socket.on('student:task-update', async (data: {
       taskId: string;
       taskLabel: string;
       failCount?: number;
     }) => {
+      await ready;
       const existing = onlineStudents.get(entityId);
       if (existing) {
         if (existing.taskId !== data.taskId) {
@@ -400,11 +431,12 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
 
     // Partial update — does NOT change taskId/taskLabel or reset taskStartedAt.
     // Used by sub-component progress (e.g. WritingEvaluator word count + attempt counter).
-    socket.on('student:task-progress', (data: {
+    socket.on('student:task-progress', async (data: {
       taskKind?: string | null;
       progressLabel?: string | null;
       failCount?: number;
     }) => {
+      await ready;
       const existing = onlineStudents.get(entityId);
       if (!existing) return;
       if (data.taskKind !== undefined) existing.taskKind = data.taskKind;
@@ -428,7 +460,12 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
     registerInscriptionSocketHandlers(io, socket);
 
     // ── Disconnect cleanup ──
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
+      // Wait for setup: a socket that flaps inside the enrollment-query window
+      // must still run cleanup AFTER its own bookkeeping exists, or the dead
+      // socket id stays in entitySockets forever and the student shows
+      // perpetually online until a backend restart.
+      await ready;
       if (role === 'student') {
         // Remove this socket from the entity's set
         const sockets = entitySockets.get(entityId);
@@ -463,7 +500,7 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
             designation: status?.designation ?? null,
           };
           if (classIdAtDisconnect) {
-            io.to(`class:${classIdAtDisconnect}`).emit('student:disconnected', payload);
+            io.to(`class:${classIdAtDisconnect}:staff`).emit('student:disconnected', payload);
             emitClassPresence(classIdAtDisconnect);
           }
         }, DISCONNECT_GRACE_MS);

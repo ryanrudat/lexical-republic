@@ -195,5 +195,10 @@ export interface CharacterMessage {
 export interface TaskProps {
   config: Record<string, unknown>;
   weekConfig: WeekConfig;
+  /** The DB Mission row backing this task (resolved by ShiftQueue via
+   *  missionType — the same lookup completeTask uses). Writing tasks forward
+   *  it to WritingEvaluator so server-side eval persistence (writingText /
+   *  rubric fields / pearlFeedback on MissionScore) targets the right row. */
+  missionId?: string;
   onComplete: (score: number, details?: Record<string, unknown>) => void;
 }

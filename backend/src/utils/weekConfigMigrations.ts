@@ -34,9 +34,22 @@ export async function ensureQueueMissionsForAllWeeks(): Promise<void> {
       const task = config.tasks[i];
       const existing = await prisma.mission.findFirst({
         where: { weekId: week.id, missionType: task.type },
-        select: { id: true },
+        select: { id: true, orderIndex: true },
       });
-      if (existing) continue;
+      if (existing) {
+        // Resync a drifted orderIndex. Configs expanded after rows shipped
+        // (W1/W3 task insertions) left prod rows with stale/colliding indices
+        // — the seed's resync never runs on Railway. Consumers should sort by
+        // config order anyway, but healed indices kill the tie-order hazard
+        // for anything still doing orderBy { orderIndex }.
+        if (existing.orderIndex !== i) {
+          await prisma.mission.update({
+            where: { id: existing.id },
+            data: { orderIndex: i },
+          });
+        }
+        continue;
+      }
 
       await prisma.mission.create({
         data: {

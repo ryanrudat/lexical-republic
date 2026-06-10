@@ -40,7 +40,7 @@ type BriefingCard = QueueStatusCard | WritingCard;
 
 // ─── Component ───────────────────────────────────────────────────
 
-export default function PriorityBriefing({ config, weekConfig, onComplete }: TaskProps) {
+export default function PriorityBriefing({ config, weekConfig, missionId, onComplete }: TaskProps) {
   const cards = (config.cards ?? []) as BriefingCard[];
   const user = useStudentStore(s => s.user);
   const lane = user?.lane ?? 2;
@@ -158,6 +158,7 @@ export default function PriorityBriefing({ config, weekConfig, onComplete }: Tas
           vocabMissed: first.vocabMissed,
           grammarAdvisory: first.grammarAdvisory,
           submittedAnyway: worst.submittedAnyway,
+          isDegraded: evals.some(e => e.isDegraded === true),
         });
       } else {
         // Pure acknowledgment flow (no writing card) — neutral 1/1 into the
@@ -275,6 +276,7 @@ export default function PriorityBriefing({ config, weekConfig, onComplete }: Tas
         />
 
         <WritingEvaluator
+          missionId={missionId}
           text={writingText}
           weekNumber={weekConfig.weekNumber}
           grammarTarget={weekConfig.grammarTarget}

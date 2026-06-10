@@ -68,6 +68,10 @@ interface InscriptionStoreState {
 
   // Live Open Pool matchmaking
   queueInfo: { count: number; max: number; designations: string[]; formsAt_ms?: number | null } | null;
+  /** Week the student queued with — kept so a reconnect can re-emit
+   *  inscription:join-queue (queue entries are socketId-keyed server-side
+   *  and evicted on disconnect; see the App.tsx connect handler). */
+  queueWeekNumber: number | null;
 
   // Active drill state
   drill: ActiveDrill | null;
@@ -144,6 +148,7 @@ export const useInscriptionStore = create<InscriptionStoreState>((set, get) => (
   error: null,
 
   queueInfo: null,
+  queueWeekNumber: null,
 
   drill: initialDrill,
   result: null,
@@ -329,6 +334,7 @@ export const useInscriptionStore = create<InscriptionStoreState>((set, get) => (
       },
       screen: 'drill',
       queueInfo: null,
+      queueWeekNumber: null,
       loading: false,
       error: null,
     });
@@ -347,7 +353,7 @@ export const useInscriptionStore = create<InscriptionStoreState>((set, get) => (
 
   applyQueueError: (data) => {
     // e.g. active_drill: surface the message and return to the lobby.
-    set({ screen: 'lobby', queueInfo: null, error: data.message });
+    set({ screen: 'lobby', queueInfo: null, queueWeekNumber: null, error: data.message });
   },
 
   loadRoll: async (classId) => {
@@ -426,6 +432,7 @@ export const useInscriptionStore = create<InscriptionStoreState>((set, get) => (
       loading: false,
       error: null,
       queueInfo: null,
+      queueWeekNumber: null,
       drill: null,
       result: null,
       roll: [],

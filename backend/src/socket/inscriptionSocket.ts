@@ -12,14 +12,8 @@
 
 import type { Server, Socket } from 'socket.io';
 import prisma from '../utils/prisma';
-import {
-  KEYSTROKE_PULSE_WINDOW_MS,
-  MAX_INPUT_CHARS_PER_SEC,
-} from '../utils/inscriptionConstants';
+import { MAX_INPUT_CHARS_PER_SEC } from '../utils/inscriptionConstants';
 import { joinPoolQueue, leavePoolQueue } from './inscriptionMatchmaking';
-
-// Track last keystroke timestamps per (drillId, pairId) for rate-limit / anti-cheat
-const lastKeystrokeTs = new Map<string, number>();
 
 /** Called once per socket connection, after the socket has joined its student/teacher rooms. */
 export function registerInscriptionSocketHandlers(io: Server, socket: Socket): void {
@@ -33,15 +27,30 @@ export function registerInscriptionSocketHandlers(io: Server, socket: Socket): v
     try {
       const drill = await prisma.inscriptionDrill.findUnique({
         where: { id: data.drillId },
-        select: { id: true, pairId: true, classId: true, status: true, pausedAt: true },
+        select: { id: true, pairId: true, classId: true, status: true, pausedAt: true, totalPausedMs: true, lobbyId: true },
       });
       if (!drill || drill.pairId !== entityId) return;
       socket.join(`inscription:drill:${drill.id}`);
+      // Live Open Pool: also (re)join the lobby room, or after a mid-race
+      // reconnect this socket never receives participant-progress again and
+      // every real opponent's desk freezes for the rest of the race.
+      if (drill.lobbyId) {
+        socket.join(`inscription:lobby:${drill.lobbyId}`);
+      }
       // Replay paused state on reconnect — analog of class-pause replay
       if (drill.pausedAt) {
         socket.emit('inscription:paused', {
           drillId: drill.id,
           pausedAt_ms: drill.pausedAt.getTime(),
+        });
+      } else if (drill.totalPausedMs > 0) {
+        // Reconnected AFTER a pause→resume window: replay the resume or the
+        // client that missed inscription:resumed stays stuck on its paused
+        // overlay with a frozen clock.
+        socket.emit('inscription:resumed', {
+          drillId: drill.id,
+          resumedAt_ms: Date.now(),
+          totalPausedMs: drill.totalPausedMs,
         });
       }
     } catch {
@@ -54,20 +63,12 @@ export function registerInscriptionSocketHandlers(io: Server, socket: Socket): v
     socket.leave(`inscription:drill:${data.drillId}`);
   });
 
-  // ── Live keystroke pulse (edge-triggered: typing / not-typing) ──
-  socket.on('inscription:keystroke-tick', (data: { drillId: string; typing: boolean }) => {
-    if (role !== 'student' || !data?.drillId) return;
-    const key = `${data.drillId}:${entityId}`;
-    const now = Date.now();
-    const prev = lastKeystrokeTs.get(key) ?? 0;
-    if (data.typing && now - prev < KEYSTROKE_PULSE_WINDOW_MS / 4) return; // throttle
-    lastKeystrokeTs.set(key, now);
-
-    io.to(`inscription:drill:${data.drillId}`).emit('inscription:keystroke', {
-      pairId: entityId,
-      typing: !!data.typing,
-    });
-  });
+  // NOTE: the keystroke-tick → inscription:keystroke rebroadcast was removed
+  // 2026-06-11. No frontend ever rendered it, and the drill room only ever
+  // contains the drill's OWNER (enter-drill rejects non-owners), so even a
+  // listener would just hear its own typing echoed back. Removing it also
+  // kills the never-evicting per-(drill,pair) throttle map and the
+  // per-keystroke socket traffic from every typing student.
 
   // ── Live word-complete echo (for spectators / future co-drill mode) ──
   // The REST endpoint /drills/:id/word is the source of truth; this is

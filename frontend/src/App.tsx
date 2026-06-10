@@ -102,6 +102,9 @@ export default function App() {
             break;
           case 'reset-shift':
             await store.resetShift();
+            // The backend cleared this week's delivered story beats — re-sync
+            // the in-memory inbox or its dedup keeps suppressing the re-fires.
+            void useMessagingStore.getState().loadMessages();
             pearl.triggerBark('notice', 'SUPERVISOR OVERRIDE: Full shift reassessment ordered. Return to Intake.');
             break;
         }
@@ -155,6 +158,9 @@ export default function App() {
         // old shift could fire a clawback against the new one.
         useSessionStore.getState().resetRateMachine();
         await useSeasonStore.getState().loadSeason();
+        // Re-sync messages — move-to-shift clears the target week's delivered
+        // story beats server-side so they replay on the fresh start.
+        void useMessagingStore.getState().loadMessages();
         navigate(`/shift/${data.weekNumber}`, { replace: true });
         pearl.triggerBark('notice', `SUPERVISOR OVERRIDE: Transfer directive received. Report to Shift ${data.weekNumber}.`);
       };
@@ -212,6 +218,25 @@ export default function App() {
           void store.completeDrill({ abandoned: true });
         }
       };
+      // Live Roll of Distinction refresh — the backend has emitted this on
+      // every drill finalization since Word Pool shipped; it was never bound,
+      // so the Roll went stale until remount.
+      const onRollUpdated = (data: { classId: string }) => {
+        const store = useInscriptionStore.getState();
+        if (store.classId && store.classId === data.classId) {
+          void store.loadRoll(data.classId);
+        }
+      };
+      // Re-join the Open Pool queue after a reconnect — queue entries are
+      // socketId-keyed and evicted on disconnect with no grace, so without
+      // this a Wi-Fi blip left the waiting room counting down forever. The
+      // server's join path dedups by pairId and refreshes the socketId.
+      const onConnectRejoinQueue = () => {
+        const store = useInscriptionStore.getState();
+        if (store.screen === 'queue' && store.queueWeekNumber != null) {
+          sock.emit('inscription:join-queue', { weekNumber: store.queueWeekNumber });
+        }
+      };
       // ── Live Open Pool matchmaking ──
       const onInscriptionPoolFormed = (data: PoolFormedPayload) => {
         useInscriptionStore.getState().applyPoolFormed(data);
@@ -250,6 +275,8 @@ export default function App() {
       sock.on('inscription:queue-update', onInscriptionQueueUpdate);
       sock.on('inscription:participant-progress', onInscriptionParticipantProgress);
       sock.on('inscription:queue-error', onInscriptionQueueError);
+      sock.on('inscription:roll-updated', onRollUpdated);
+      sock.on('connect', onConnectRejoinQueue);
 
       return () => {
         sock.off('connect_error', onError);
@@ -271,6 +298,8 @@ export default function App() {
         sock.off('inscription:queue-update', onInscriptionQueueUpdate);
         sock.off('inscription:participant-progress', onInscriptionParticipantProgress);
         sock.off('inscription:queue-error', onInscriptionQueueError);
+        sock.off('inscription:roll-updated', onRollUpdated);
+        sock.off('connect', onConnectRejoinQueue);
       };
     }
   }, [user?.id, user?.role, user?.designation, user?.displayName, navigate]);

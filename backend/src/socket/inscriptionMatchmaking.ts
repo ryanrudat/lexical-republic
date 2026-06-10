@@ -136,8 +136,20 @@ export async function joinPoolQueue(
 export function leavePoolQueue(io: Server, socketId: string): void {
   for (const [key, q] of queues.entries()) {
     const before = q.entries.length;
+    const evicted = q.entries.find((e) => e.socketId === socketId);
     q.entries = q.entries.filter((e) => e.socketId !== socketId);
     if (q.entries.length === before) continue;
+    // Tell the evicted pair via their per-entity room (the NEW socket after a
+    // reconnect re-joins student:${pairId} immediately) — otherwise a blipped
+    // student's waiting room counted down to 0 and hung forever. The client
+    // also re-emits join-queue on reconnect; this covers the overlap case
+    // where the new socket connected before the old one's disconnect fired.
+    if (evicted) {
+      io.to(`student:${evicted.pairId}`).emit('inscription:queue-error', {
+        error: 'queue_dropped',
+        message: 'CONNECTION INTERRUPTED — REJOIN THE POOL TO RE-ENTER THE QUEUE.',
+      });
+    }
     if (q.entries.length === 0) {
       if (q.timer) {
         clearTimeout(q.timer);

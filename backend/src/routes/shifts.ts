@@ -272,6 +272,13 @@ router.post(
       const weekId = req.params.weekId as string;
       const missionId = req.params.missionId as string;
       const { score, details } = req.body;
+      // Reject non-finite / out-of-range scores — both legit clients send
+      // [0,1], so anything else is a bug or tampering (a string used to 500
+      // in Prisma; out-of-range floats persisted and skewed per-task views).
+      if (typeof score !== 'number' || !Number.isFinite(score) || score < 0 || score > 1) {
+        res.status(400).json({ error: 'score must be a finite number between 0 and 1' });
+        return;
+      }
       const mission = await prisma.mission.findUnique({
         where: { id: missionId },
       });

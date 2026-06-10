@@ -41,6 +41,10 @@ interface MessagingState {
 // Track in-flight message creation keys to prevent race-condition duplicates
 const inFlightKeys = new Set<string>();
 
+// Load epoch — a loadMessages that outlives logout must not restore student
+// A's inbox/toast into B's cleared store.
+let loadEpoch = 0;
+
 export const useMessagingStore = create<MessagingState>((set, get) => ({
   messages: [],
   unreadCount: 0,
@@ -51,12 +55,15 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
   loading: false,
 
   loadMessages: async (weekNumber?: number) => {
+    const epoch = ++loadEpoch;
     set({ loading: true });
     try {
       const { messages } = await fetchMessages(weekNumber);
+      if (epoch !== loadEpoch) return; // superseded by reset()/newer load
       set({ messages, loading: false });
       // Also refresh unread count
       const { count } = await getUnreadCount();
+      if (epoch !== loadEpoch) return;
       set({ unreadCount: count });
       // Show notification for most recent unread thread message (teacher direct message)
       // so students see a toast even if the message arrived while offline
@@ -69,6 +76,7 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
         }
       }
     } catch {
+      if (epoch !== loadEpoch) return;
       set({ loading: false });
     }
   },
@@ -242,6 +250,7 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
     if (activeNotification?.dismissTimer) {
       clearTimeout(activeNotification.dismissTimer);
     }
+    loadEpoch++; // invalidate in-flight loads
     inFlightKeys.clear();
     set({
       messages: [],

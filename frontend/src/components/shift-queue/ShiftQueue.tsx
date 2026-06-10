@@ -97,6 +97,7 @@ export default function ShiftQueue() {
   const { completeTask } = useShiftQueueStore();
   const { triggerMessage, loadMessages } = useMessagingStore();
   const currentWeek = useShiftStore(s => s.currentWeek);
+  const missions = useShiftStore(s => s.missions);
 
   const weekNumber = currentWeek?.weekNumber ?? 0;
   const currentTask = weekConfig?.tasks[currentTaskIndex] ?? null;
@@ -125,6 +126,15 @@ export default function ShiftQueue() {
   // Vocabulary interstitial — shown after vocab_clearance / cloze_fill tasks complete
   const [showVocabInterstitial, setShowVocabInterstitial] = useState(false);
   const pendingInterstitialRef = useRef(false);
+
+  // A completed task whose score POST failed (network). The task component
+  // sits in its terminal UI with no buttons, so without a retry surface the
+  // student is silently stuck and a refresh redoes the whole task.
+  const [failedCompletion, setFailedCompletion] = useState<{
+    taskId: string;
+    score: number;
+    details?: Record<string, unknown>;
+  } | null>(null);
 
   // Inter-task moment (B-layer) — non-skippable character choice or ambient beat
   // keyed by the task ID it fires AFTER.
@@ -167,8 +177,17 @@ export default function ShiftQueue() {
 
   // Clear interstitial + inter-task moment + clarity check + compliance check on week change / teacher task reset / skip
   useEffect(() => {
+    setFailedCompletion(null);
     setShowVocabInterstitial(false);
     pendingInterstitialRef.current = false;
+    // Dismissal video + its deferred task_complete trigger must also clear —
+    // a teacher reset/send-to-task arriving mid-broadcast otherwise left the
+    // video playing over the redirected shift and fired a task_complete
+    // trigger for a task that was just reset.
+    setDismissalState('idle');
+    setShowDismissalSkip(false);
+    dismissalUrlRef.current = '';
+    pendingTriggerRef.current = null;
     setActiveInterTaskMoment(null);
     pendingInterTaskMomentRef.current = null;
     setActiveClarityCheck(null);
@@ -291,6 +310,21 @@ export default function ShiftQueue() {
     if (activeClarityCheck || activeComplianceCheck) return;
     if (shiftEndComplianceFetched) return;
     if (!weekConfig) return;
+    // Cascade quiescence gate: completeTask flips shiftComplete in the SAME
+    // update that starts the final task's after-task cascade, so without
+    // these guards this effect ran while the dismissal video / interstitial /
+    // inter-task moment was still on screen — and its setActive* could be
+    // clobbered by (or clobber) the cascade's pending-ref promotion, silently
+    // losing a teacher-scheduled shift_end check. Each cascade step ends in a
+    // reactive state change, so the effect re-evaluates as the cascade drains
+    // and fires exactly once it's empty.
+    if (dismissalState !== 'idle' || showVocabInterstitial || activeInterTaskMoment) return;
+    if (
+      pendingInterstitialRef.current ||
+      pendingInterTaskMomentRef.current ||
+      pendingClarityCheckRef.current ||
+      pendingComplianceCheckRef.current
+    ) return;
 
     let cancelled = false;
     const expectedWeek = weekConfig.weekNumber;
@@ -307,7 +341,7 @@ export default function ShiftQueue() {
       setShiftEndComplianceFetched(true);
     });
     return () => { cancelled = true; };
-  }, [shiftComplete, activeClarityCheck, activeComplianceCheck, shiftEndComplianceFetched, weekConfig?.weekNumber, findClarityCheckForPlacement, fetchComplianceCheckFor]);
+  }, [shiftComplete, activeClarityCheck, activeComplianceCheck, shiftEndComplianceFetched, weekConfig?.weekNumber, findClarityCheckForPlacement, fetchComplianceCheckFor, dismissalState, showVocabInterstitial, activeInterTaskMoment]);
 
   // Load messages on mount, then fire shift_start + initial task_start
   useEffect(() => {
@@ -332,10 +366,19 @@ export default function ShiftQueue() {
     sock?.on('connect', emitCurrent);
 
     loadMessages(weekNumber).then(() => {
+      // Bail if the shift changed while messages were loading (move-to-shift
+      // mid-load) — firing old-week triggers against the new store is the
+      // documented cascade-cancellation hazard.
+      const liveWc = useShiftQueueStore.getState().weekConfig;
+      if (liveWc?.weekNumber !== weekConfig.weekNumber) return;
       messagesReadyRef.current = true;
       triggerMessage('shift_start', { weekNumber }, weekConfig);
-      // Fire initial task_start
-      const task = weekConfig.tasks[currentTaskIndex];
+      // Fire initial task_start — read the LIVE index, not the mount-time
+      // closure: a fast first task completed during the load otherwise got
+      // its task_start recorded for the WRONG task and the real current
+      // task's character message was dropped for the segment.
+      const liveIdx = useShiftQueueStore.getState().currentTaskIndex;
+      const task = weekConfig.tasks[liveIdx];
       if (task) {
         lastTriggeredTaskRef.current = task.id;
         triggerMessage('task_start', { taskId: task.id, weekNumber }, weekConfig);
@@ -369,6 +412,27 @@ export default function ShiftQueue() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTask?.id]);
 
+  // Teacher-monitor status for the two "parked" states (gated / shift
+  // complete). One emit per state TRANSITION — the old render-branch emits
+  // re-fired on every re-render (any store update) and double-fired under
+  // StrictMode, spamming a status broadcast to the staff room each time. The
+  // persistent connect handler re-asserts the parked state after a reconnect
+  // (the server's rebuilt status is hollow after a >5s drop).
+  useEffect(() => {
+    if (!gated && !shiftComplete) return;
+    const payload = shiftComplete
+      ? { taskId: 'shift_complete', taskLabel: 'Shift Complete', failCount: 0 }
+      : { taskId: 'gated', taskLabel: 'Awaiting Clearance', failCount: 0 };
+    const sock = getSocket();
+    if (!sock) return;
+    const emitParked = () => sock.emit('student:task-update', payload);
+    if (sock.connected) emitParked();
+    sock.on('connect', emitParked);
+    return () => {
+      sock.off('connect', emitParked);
+    };
+  }, [gated, shiftComplete]);
+
   const handleComplete = async (score: number, details?: Record<string, unknown>) => {
     if (!currentTask || !weekConfig) return;
 
@@ -392,7 +456,23 @@ export default function ShiftQueue() {
     // Persist the task completion FIRST. The compliance fetch used to run
     // before this await, so a slow/hung compliance request delayed the
     // MissionScore write — a refresh in that window lost the completed task.
-    await completeTask(currentTask.id, score, details);
+    //
+    // Two failure exits, deliberately distinct:
+    //  - THROW (network) → retry banner. The student finished the task; a
+    //    Wi-Fi blip must not strand them on a dead terminal screen with the
+    //    work unsaved (refresh would force redoing e.g. all 3 cipher docs).
+    //  - 'stale-dropped' (teacher command rewrote state mid-POST) → silent
+    //    full stop; running the cascade would replay overlays against state
+    //    the teacher just replaced.
+    let completionOutcome: 'persisted' | 'stale-dropped';
+    try {
+      completionOutcome = await completeTask(currentTask.id, score, details);
+    } catch {
+      setFailedCompletion({ taskId: completedTaskId, score, details });
+      return;
+    }
+    if (completionOutcome === 'stale-dropped') return;
+    setFailedCompletion(null);
 
     const fetchedComplianceCheck = await fetchComplianceCheckFor('after_task', completedTaskId);
     // Bail if student moved to a different shift while the fetch was in flight.
@@ -591,18 +671,19 @@ export default function ShiftQueue() {
   if (activeComplianceCheck && weekConfig && activeComplianceCheck.weekIssued === weekConfig.weekNumber) {
     return (
       <ComplianceCheckShell
+        // key: if a different check swaps in mid-render (after_task promoted
+        // over shift_end), the MCQ must remount — its per-question answer
+        // state initializes once, so stale answers would pair with new words.
+        key={activeComplianceCheck.checkId}
         questions={activeComplianceCheck.questions}
         onComplete={handleComplianceCheckComplete}
       />
     );
   }
 
-  // Gated — waiting for teacher to advance
+  // Gated — waiting for teacher to advance (teacher-monitor emit lives in the
+  // parked-state effect above — emitting here re-fired on every re-render)
   if (gated && !shiftComplete) {
-    const sock = getSocket();
-    if (sock?.connected) {
-      sock.emit('student:task-update', { taskId: 'gated', taskLabel: 'Awaiting Clearance', failCount: 0 });
-    }
     return (
       <div className="flex flex-col gap-4">
         {/* Progress bar */}
@@ -665,10 +746,6 @@ export default function ShiftQueue() {
       }
     }
 
-    const sock = getSocket();
-    if (sock?.connected) {
-      sock.emit('student:task-update', { taskId: 'shift_complete', taskLabel: 'Shift Complete', failCount: 0 });
-    }
     return <ShiftClosing />;
   }
 
@@ -742,6 +819,31 @@ export default function ShiftQueue() {
           ))}
         </div>
 
+        {/* ─── Failed-completion retry banner ─── */}
+        {failedCompletion && (
+          <div className="bg-[#FAFAF7] border border-[#D4CFC6] border-l-4 border-l-rose-400 rounded-xl px-4 py-3">
+            <p className="font-ibm-mono text-[10px] tracking-widest uppercase text-rose-600 mb-1">
+              Transmission Interrupted
+            </p>
+            <p className="text-sm text-[#4B5563] mb-3">
+              Your work is safe at this desk, Citizen — the Bureau simply has not received it yet.
+            </p>
+            <button
+              onClick={() => {
+                const failed = failedCompletion;
+                setFailedCompletion(null);
+                // Teacher intervention supersedes the retry — if the current
+                // task changed underneath us, stand down silently.
+                if (!failed || currentTask?.id !== failed.taskId || !weekConfig) return;
+                void handleComplete(failed.score, failed.details);
+              }}
+              className="px-5 py-2 rounded-xl bg-sky-600 text-white text-xs font-medium tracking-wider hover:bg-sky-700 active:bg-sky-800 active:scale-95 transition-colors"
+            >
+              ↻ Resubmit to Bureau
+            </button>
+          </div>
+        )}
+
         {/* ─── Current Task ─── */}
         {currentTask && TaskComponent && weekConfig && (
           <TaskCard
@@ -753,6 +855,7 @@ export default function ShiftQueue() {
               key={`${currentTask.id}-${taskResetKey}`}
               config={currentTask.config}
               weekConfig={weekConfig}
+              missionId={missions.find(m => m.missionType === currentTask.type)?.id}
               onComplete={handleComplete}
             />
           </TaskCard>

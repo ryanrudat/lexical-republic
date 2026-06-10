@@ -5,11 +5,12 @@ import path from 'path';
 import fs from 'fs';
 import { uploadVideo, withMulterError } from '../middleware/upload';
 import prisma from '../utils/prisma';
-import { io, getOnlineStudents, purgeOnlineStudent } from '../socketServer';
+import { io, purgeOnlineStudent } from '../socketServer';
 import { findAlternative } from '../data/activityPool';
 import { getWeekConfig, getComplianceWordsByWeek } from '../data/week-configs';
 import { getNarrativeRoute } from '../data/narrative-routes';
 import { getCurrentWeekNumberForPair } from '../utils/progression';
+import { bumpMoveEpoch } from '../utils/moveEpochs';
 
 // ── Shared shape ───────────────────────────────────────────────────
 
@@ -687,12 +688,11 @@ router.get('/students/:id', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/teacher/online-students — REST fallback for live student tracking
-router.get('/online-students', (req: Request, res: Response) => {
-  const classId = typeof req.query.classId === 'string' ? req.query.classId : undefined;
-  const students = getOnlineStudents(classId);
-  res.json({ students });
-});
+// NOTE: GET /online-students was removed 2026-06-10 — it had no ownership
+// scoping (any teacher could enumerate every class's live students) and was
+// dead on arrival: its frontend wrapper was never imported in any revision.
+// Live tracking flows through the per-class teacher:class-snapshot socket
+// event + GET /students' currentShiftProgress.
 
 // GET /api/teacher/gradebook — Students in teacher's classes + mission scores
 router.get('/gradebook', async (req: Request, res: Response) => {
@@ -1079,6 +1079,10 @@ router.patch('/scores/:scoreId', async (req: Request, res: Response) => {
 
     const { score, details } = req.body;
     const hasScore = typeof score === 'number';
+    if (hasScore && (!Number.isFinite(score) || score < 0 || score > 1)) {
+      res.status(400).json({ error: 'score must be a finite number between 0 and 1' });
+      return;
+    }
     const hasDetails = details !== undefined;
 
     // Merge incoming details on top of existing rather than replace, so a
@@ -1145,30 +1149,9 @@ router.patch('/scores/:scoreId/comment', async (req: Request, res: Response) => 
       data: { teacherComment: comment ?? null },
     });
 
-    // Notify any live teacher clients in the relevant class room.
-    // Resolve classId from the score's pair/user enrollment, best-effort.
-    try {
-      const classIds = await getTeacherClassIds(teacherId);
-      const whereClause = result.pairId
-        ? { pairId: result.pairId, classId: { in: classIds } }
-        : result.userId
-          ? { userId: result.userId, classId: { in: classIds } }
-          : null;
-      if (whereClause) {
-        const enr = await prisma.classEnrollment.findFirst({
-          where: whereClause,
-          select: { classId: true },
-        });
-        if (enr?.classId) {
-          io.to(`class:${enr.classId}`).emit('teacher:comment-updated', {
-            scoreId: result.id,
-            teacherComment: result.teacherComment,
-          });
-        }
-      }
-    } catch (socketErr) {
-      console.warn('[TeacherComment] socket emit failed (non-fatal):', socketErr);
-    }
+    // NOTE: the old teacher:comment-updated socket emit was removed 2026-06-11
+    // — it never had a frontend listener (Gradebook saves optimistically via
+    // REST) and cost two extra DB lookups per comment save.
 
     res.json(result);
   } catch (err) {
@@ -1267,9 +1250,11 @@ router.delete('/students/:pairId/weeks/:weekId/progress', async (req: Request, r
       where: { pairId, weekNumber: week.weekNumber },
     });
 
-    // Delete character messages for this week
+    // Delete character messages for this week — EXCEPT teacher direct
+    // messages (Clarity Minder threads share this table; wiping human
+    // teacher-student communication on a progress reset is data loss).
     await prisma.characterMessage.deleteMany({
-      where: { pairId, weekNumber: week.weekNumber },
+      where: { pairId, weekNumber: week.weekNumber, triggerType: { not: 'direct_message' } },
     });
 
     // If we just reset the pair's CURRENT week, re-create the completedAt:null
@@ -1381,7 +1366,7 @@ router.delete('/students/:studentId', async (req: Request, res: Response) => {
       ]);
       // Clean up in-memory tracking and notify teachers
       purgeOnlineStudent(studentId);
-      if (classId) io.to(`class:${classId}`).emit('student:deleted', { userId: studentId });
+      if (classId) io.to(`class:${classId}:staff`).emit('student:deleted', { userId: studentId });
       res.json({ deleted: true, type: 'pair' });
       return;
     }
@@ -1413,7 +1398,7 @@ router.delete('/students/:studentId', async (req: Request, res: Response) => {
       ]);
       // Clean up in-memory tracking and notify teachers
       purgeOnlineStudent(studentId);
-      if (classId) io.to(`class:${classId}`).emit('student:deleted', { userId: studentId });
+      if (classId) io.to(`class:${classId}:staff`).emit('student:deleted', { userId: studentId });
       res.json({ deleted: true, type: 'user' });
       return;
     }
@@ -1493,7 +1478,7 @@ router.delete('/students', async (req: Request, res: Response) => {
         prisma.pair.delete({ where: { id: pair.id } }),
       ]);
       purgeOnlineStudent(pair.id);
-      if (classId) io.to(`class:${classId}`).emit('student:deleted', { userId: pair.id });
+      if (classId) io.to(`class:${classId}:staff`).emit('student:deleted', { userId: pair.id });
     }
 
     // Delete all legacy students with cascade
@@ -1515,7 +1500,7 @@ router.delete('/students', async (req: Request, res: Response) => {
         prisma.user.delete({ where: { id: stu.id } }),
       ]);
       purgeOnlineStudent(stu.id);
-      if (classId) io.to(`class:${classId}`).emit('student:deleted', { userId: stu.id });
+      if (classId) io.to(`class:${classId}:staff`).emit('student:deleted', { userId: stu.id });
     }
 
     res.json({ deleted: true, pairsDeleted: allPairs.length, usersDeleted: allLegacyStudents.length });
@@ -2033,10 +2018,19 @@ router.post('/students/:studentId/task-command', async (req: Request, res: Respo
 
     const allMissions = await prisma.mission.findMany({
       where: { weekId: week.id },
-      orderBy: { orderIndex: 'asc' },
       select: { id: true, missionType: true, orderIndex: true },
     });
-    const missions = allMissions.filter(m => configTypes.has(m.missionType));
+    // Order by the WeekConfig task array — NOT Mission.orderIndex. orderIndex
+    // is frozen at row creation and never resynced on Railway, so configs that
+    // were expanded mid-stream (W1/W3 task insertions) left prod rows with
+    // colliding/stale indices: DB order deterministically transposed
+    // cloze_fill ↔ vocab_clearance on W1-3, making skip/send-to/reset target
+    // a different mission than the one teacher and student both see (both of
+    // those surfaces already iterate config order).
+    const byType = new Map(allMissions.map(m => [m.missionType, m]));
+    const missions = configTasks
+      .map(t => byType.get(t.type as string))
+      .filter((m): m is NonNullable<typeof m> => !!m);
 
     // Get existing scores for this student's missions
     const existingScores = await prisma.missionScore.findMany({
@@ -2106,6 +2100,17 @@ router.post('/students/:studentId/task-command', async (req: Request, res: Respo
         await prisma.shiftResult.create({
           data: { pairId, weekNumber, completedAt: null },
         });
+        // Replay policy: tasks and DELIVERED STORY BEATS replay; choices and
+        // their consequences don't. Clear the week's character messages so
+        // Betty/Ivan beats re-fire on the redo (the 3-layer dedup otherwise
+        // suppresses them forever) — but never teacher direct messages
+        // (Clarity Minder threads live in the same table). NarrativeChoice and
+        // Citizen4488Interaction rows are kept BY DESIGN: votes must not be
+        // re-cast, spy dice-rolls must not be re-rolled, and Harmony state is
+        // never reset by shift commands.
+        await prisma.characterMessage.deleteMany({
+          where: { pairId, weekNumber, triggerType: { not: 'direct_message' } },
+        });
         break;
       }
 
@@ -2152,6 +2157,11 @@ router.post('/students/:studentId/task-command', async (req: Request, res: Respo
         res.status(400).json({ error: `Unknown action: ${action}` });
         return;
     }
+
+    // Invalidate any in-flight long-running writers (writing eval holds an
+    // OpenAI round-trip) so a submission that started BEFORE this command
+    // can't re-create the rows the command just rewrote.
+    bumpMoveEpoch(pairId);
 
     // Also relay via socket if student is online (for immediate UI update)
     io.to(`student:${pairId}`).emit('session:task-command', { action, taskId });
@@ -2206,6 +2216,10 @@ async function moveOnePairToShift(pairId: string, targetWeekNumber: number) {
       create: { pairId, weekNumber: targetWeekNumber, completedAt: null },
       update: { completedAt: null },
     });
+    // Fresh start = story beats replay (see reset-shift). Direct messages kept.
+    await prisma.characterMessage.deleteMany({
+      where: { pairId, weekNumber: targetWeekNumber, triggerType: { not: 'direct_message' } },
+    });
   } else if (targetWeekNumber < currentWeek) {
     // Moving BACKWARD — delete data from target onward
     const weeksToReset = await prisma.week.findMany({
@@ -2233,6 +2247,10 @@ async function moveOnePairToShift(pairId: string, targetWeekNumber: number) {
     await prisma.shiftResult.create({
       data: { pairId, weekNumber: targetWeekNumber, completedAt: null },
     });
+    // Fresh start = story beats replay (see reset-shift). Direct messages kept.
+    await prisma.characterMessage.deleteMany({
+      where: { pairId, weekNumber: { in: weekNumbers }, triggerType: { not: 'direct_message' } },
+    });
   } else {
     // Same week — reset shift + create marker
     const missions = await prisma.mission.findMany({
@@ -2250,7 +2268,18 @@ async function moveOnePairToShift(pairId: string, targetWeekNumber: number) {
     await prisma.shiftResult.create({
       data: { pairId, weekNumber: targetWeekNumber, completedAt: null },
     });
+    // Fresh start = story beats replay (see reset-shift). Direct messages kept.
+    await prisma.characterMessage.deleteMany({
+      where: { pairId, weekNumber: targetWeekNumber, triggerType: { not: 'direct_message' } },
+    });
   }
+
+  // Invalidate in-flight long-running writers (see bumpMoveEpoch docs) —
+  // without this, a writing eval that started before the move re-creates a
+  // MissionScore after the deleteMany above, leaving phantom progress on the
+  // fresh-start week (and on backward moves, a stale later-week row that
+  // out-ranks the marker in getCurrentWeekNumberForPair).
+  bumpMoveEpoch(pairId);
 }
 
 // POST /api/teacher/students/:studentId/move-to-shift
@@ -2377,12 +2406,17 @@ router.post('/classes/:classId/move-to-shift', async (req: Request, res: Respons
     });
     const pairIds = enrollments.map(e => e.pairId).filter((id): id is string => id !== null);
 
-    // Move each student
+    // Move each student — notify each pair IMMEDIATELY after their own move
+    // completes. The class-wide emit below only fires after the whole
+    // sequential loop (~seconds for a full class), and early-loop students
+    // kept a live queue in that window: any task they finished posted
+    // status:'complete' rows into the freshly-reset week.
     for (const pid of pairIds) {
       await moveOnePairToShift(pid, weekNumber);
+      io.to(`student:${pid}`).emit('session:shift-changed', { weekNumber });
     }
 
-    // Notify all online students in the class
+    // Class-wide emit kept as a catch-all for legacy-User students (no pair room)
     io.to(`class:${classId}`).emit('session:shift-changed', { weekNumber });
 
     res.json({ success: true, weekNumber, studentsAffected: pairIds.length });
