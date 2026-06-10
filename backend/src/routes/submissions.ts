@@ -76,6 +76,38 @@ router.post('/evaluate', requirePair, async (req: Request, res: Response) => {
       return;
     }
 
+    // Validate the client-supplied missionId BEFORE doing any work. Previously
+    // it flowed unchecked into the MissionScore upsert: a nonexistent id threw
+    // a Prisma FK error (500 mid-submit), and a valid other-week mission id
+    // let a crafted request pre-credit a locked week — the same hole the
+    // /shifts/.../score endpoint closes with its ClassWeekUnlock gate.
+    if (metadata?.missionId) {
+      const mission = await prisma.mission.findUnique({
+        where: { id: metadata.missionId },
+        select: { weekId: true },
+      });
+      if (!mission) {
+        res.status(400).json({ error: 'Unknown missionId' });
+        return;
+      }
+      const enrollment = await prisma.classEnrollment.findFirst({
+        where: { pairId },
+        select: { classId: true },
+      });
+      if (!enrollment) {
+        res.status(403).json({ error: 'Not enrolled in any class' });
+        return;
+      }
+      const unlock = await prisma.classWeekUnlock.findFirst({
+        where: { classId: enrollment.classId, weekId: mission.weekId },
+        select: { id: true },
+      });
+      if (!unlock) {
+        res.status(403).json({ error: 'Week is not unlocked for this class' });
+        return;
+      }
+    }
+
     // ─── Layer 1: Auto-checks ───
     const targetVocab = metadata?.targetVocab || [];
     const words = content.split(/\s+/).filter(Boolean);
@@ -122,18 +154,26 @@ router.post('/evaluate', requirePair, async (req: Request, res: Response) => {
           : '';
         const userMessage = `Student submission (${activityType}, Week ${weekNumber}):\n${writingPromptLine}\nSTUDENT'S WRITING:\n${content}\n\nTarget vocabulary: ${targetVocab.join(', ')}\nVocabulary used: ${vocabUsed.join(', ')}\nVocabulary missed: ${vocabMissed.join(', ')}`;
 
-        const completion = await openai.chat.completions.create(
-          {
-            model: OPENAI_MODEL,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userMessage },
-            ],
-            response_format: { type: 'json_object' },
-            temperature: 0.7,
-            max_tokens: 500,
-          },
-        );
+        // 20s ceiling — a hung OpenAI request must not hang the student's
+        // submit indefinitely (pearl-feedback races at 8s, Whisper at 15s).
+        // Timeout throws into the catch below → buildFallbackResult fail-open.
+        const completion = await Promise.race([
+          openai.chat.completions.create(
+            {
+              model: OPENAI_MODEL,
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userMessage },
+              ],
+              response_format: { type: 'json_object' },
+              temperature: 0.7,
+              max_tokens: 500,
+            },
+          ),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('AI evaluation timed out after 20s')), 20000),
+          ),
+        ]);
 
         const raw = completion.choices[0]?.message?.content;
         if (raw) {
@@ -224,10 +264,22 @@ router.post('/evaluate', requirePair, async (req: Request, res: Response) => {
 
     // Track vocabulary encounters for used words
     if (vocabUsed.length > 0) {
-      const dictWords = await prisma.dictionaryWord.findMany({
+      const allRows = await prisma.dictionaryWord.findMany({
         where: { word: { in: vocabUsed.map((v) => v.toLowerCase()) } },
-        select: { id: true },
+        select: { id: true, word: true, weekIntroduced: true },
       });
+      // DictionaryWord is unique on (word, weekIntroduced) so the same word
+      // string can legitimately exist in two weeks (e.g. seed's 'dispatch'
+      // W2 noun + W3 verb). Bump exactly ONE progress row per word — the most
+      // recent introduction — or a single use would double-credit mastery.
+      const byWord = new Map<string, { id: string; weekIntroduced: number }>();
+      for (const row of allRows) {
+        const prev = byWord.get(row.word);
+        if (!prev || row.weekIntroduced > prev.weekIntroduced) {
+          byWord.set(row.word, { id: row.id, weekIntroduced: row.weekIntroduced });
+        }
+      }
+      const dictWords = Array.from(byWord.values());
       for (const dw of dictWords) {
         await prisma.$transaction(async (tx) => {
           const progress = await tx.pairDictionaryProgress.upsert({

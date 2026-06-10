@@ -126,7 +126,9 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
   const lastKnownStatus = useTeacherStore((s) => s.lastKnownStatus);
   const socketStatus = useTeacherStore((s) => s.socketStatus);
   const registrationTick = useTeacherStore((s) => s.registrationTick);
-  const classPaused = useTeacherStore((s) => s.classPaused);
+  // Per-class pause flag — read THIS monitor's class from the map so switching
+  // the class selector shows the right pause state for each class.
+  const classPaused = useTeacherStore((s) => (classId ? s.pausedClasses[classId] ?? false : false));
   const selectedClassId = useTeacherStore((s) => s.selectedClassId);
   const remediationCounts = useTeacherStore((s) => s.remediationCounts);
   const remediationLastTriggers = useTeacherStore((s) => s.remediationLastTriggers);
@@ -283,9 +285,15 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
       return;
     }
     if (action === 'delete-all') {
+      // No class selected = no delete. The backend requires classId so the
+      // blast radius always matches the class-scoped confirmation dialog.
+      if (!classId) {
+        setConfirmAction(null);
+        return;
+      }
       setDeleteLoading(true);
       try {
-        await deleteAllStudents();
+        await deleteAllStudents(classId);
         loadStudents();
       } catch (err) {
         console.error('Failed to delete all students:', err);
@@ -1088,7 +1096,7 @@ export default function ClassMonitor({ classId, narrativeRoute }: { classId?: st
             <p className="text-sm text-slate-600">
               {confirmAction.action === 'delete-all' ? (
                 <>
-                  Delete <span className="font-semibold text-red-600">ALL {students.length} students</span> and their data permanently? This cannot be undone.
+                  Delete <span className="font-semibold text-red-600">ALL {students.length} students in this class</span> and their data permanently? Other classes are not affected. This cannot be undone.
                 </>
               ) : confirmAction.action === 'delete-student' ? (
                 <>

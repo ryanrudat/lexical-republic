@@ -109,8 +109,11 @@ export const useSpyStore = create<SpyState>((set, get) => ({
             restoredCiphers[id] = { intel };
           }
         } else if (c.choiceKey === 'w4_drop_box_first_submission') {
+          // Only echo text the student actually POSTED. Older 'skipped' rows
+          // could still carry typed-but-unsent drafts in context.text — those
+          // must not appear in Frey's "you told me" section.
           const text = typeof c.context?.text === 'string' ? c.context.text.trim() : '';
-          if (text.length > 0) dropBoxText = text;
+          if (c.value === 'submitted' && text.length > 0) dropBoxText = text;
         }
       }
       set({ resolved, restoredCiphers, dropBoxText, loaded: true });

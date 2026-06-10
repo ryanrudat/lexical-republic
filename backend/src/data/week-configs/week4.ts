@@ -55,9 +55,9 @@ export const WEEK_4_CONFIG: WeekConfig = {
           { word: "examine", definition: "to look at something carefully" },
           { word: "indicate", definition: "to show or point out" },
           { word: "locate", definition: "to find the position of something" },
-          { word: "organize", definition: "to arrange in a structured way" },
+          { word: "organize", definition: "to put things into a clear, tidy system" },
           { word: "present", definition: "to show or give formally" },
-          { word: "record", definition: "a written account; to write down" },
+          { word: "record", definition: "to write down information so it is kept" },
           { word: "select", definition: "to choose carefully" },
           { word: "verify", definition: "to check that something is correct" },
         ],
@@ -198,8 +198,12 @@ export const WEEK_4_CONFIG: WeekConfig = {
             from: "Activity Reconciliation Office",
             to: "Department of Clarity — Reconciliation Associates",
             re: "Citizen-4488 Daily Record — Adjustment Notice",
+            // Two target-verb errors (collect / organize) added 2026-06-10 so the
+            // week's TOEIC vocabulary gets a PRODUCTION surface inside the grammar
+            // task — the cloze slot belongs to the Black Words, so without these
+            // 7/10 targets were recognition-only across the whole shift.
             body:
-              "First, Citizen-4488 arrive at Sector 4 at 07:23. Next, Associate-15 verify the morning observations. Final, the report was reconciled. The team indicate one observation for review. After the review, Observation E was reclassify as RESTRICTED. The Archive select which observations enter the permanent record each week.",
+              "First, Citizen-4488 arrive at Sector 4 at 07:23. Next, Associate-15 verify the morning observations. After that, the team collect the badge logs from the entrance. Then the associates organize the records by time. Final, the report was reconciled. The team indicate one observation for review. After the review, Observation E was reclassify as RESTRICTED. The Archive select which observations enter the permanent record each week.",
             errors: [
               {
                 sentenceIndex: 0,
@@ -223,6 +227,26 @@ export const WEEK_4_CONFIG: WeekConfig = {
               },
               {
                 sentenceIndex: 2,
+                errorWord: "collect",
+                options: [
+                  { text: "collect" },
+                  { text: "collected" },
+                  { text: "collecting" },
+                ],
+                correctIndex: 1,
+              },
+              {
+                sentenceIndex: 3,
+                errorWord: "organize",
+                options: [
+                  { text: "organize" },
+                  { text: "organized" },
+                  { text: "organizing" },
+                ],
+                correctIndex: 1,
+              },
+              {
+                sentenceIndex: 4,
                 errorWord: "Final",
                 options: [
                   { text: "Final" },
@@ -232,7 +256,7 @@ export const WEEK_4_CONFIG: WeekConfig = {
                 correctIndex: 1,
               },
               {
-                sentenceIndex: 3,
+                sentenceIndex: 5,
                 errorWord: "indicate",
                 options: [
                   { text: "indicate" },
@@ -243,7 +267,7 @@ export const WEEK_4_CONFIG: WeekConfig = {
               },
               // Passive past — "was reclassify" → "was reclassified"
               {
-                sentenceIndex: 4,
+                sentenceIndex: 6,
                 errorWord: "reclassify",
                 options: [
                   { text: "reclassify" },
@@ -255,7 +279,7 @@ export const WEEK_4_CONFIG: WeekConfig = {
               // SVA error — Mandarin L1 interference target. "The Archive" is a
               // singular institutional subject and requires -s in present simple.
               {
-                sentenceIndex: 5,
+                sentenceIndex: 7,
                 errorWord: "select",
                 options: [
                   { text: "select" },
@@ -265,12 +289,20 @@ export const WEEK_4_CONFIG: WeekConfig = {
                 correctIndex: 1,
               },
             ],
+            // One hint per error, aligned to errorIndex order (0..7). The renderer
+            // (ErrorCorrectionDoc) indexes laneHints["1"][errorIndex], so the array
+            // MUST be the same length and order as `errors` above — otherwise hints
+            // attach to the wrong word and the last errors get none.
             laneHints: {
               "1": [
-                "Look for past-tense verbs — does the sentence describe a completed action?",
-                "Check the sequencing word at the start of each sentence.",
-                "For 'was reclassify': passive past tense needs the -ed ending too.",
-                "For the final sentence: does 'The Archive' need an -s on the verb?",
+                "Past tense: this already happened. 'arrive' → 'arriv__'.",
+                "Past tense: the checking is finished. 'verify' → 'verif__'.",
+                "Past tense: the team already did this. 'collect' → 'collect__'.",
+                "Past tense: this step is also finished. 'organize' → 'organiz__'.",
+                "This sequencing word needs its -ly ending: 'Final' → 'Final__'.",
+                "Past tense: the team already did this. 'indicate' → 'indicat__'.",
+                "Passive past: 'was ___' still needs the -ed ending.",
+                "Subject–verb: 'The Archive' is singular — add -s.",
               ],
             },
           },
@@ -378,27 +410,33 @@ export const WEEK_4_CONFIG: WeekConfig = {
       label: "Vocabulary Clearance",
       config: {
         items: [
+          // Each toeic_p5 stem must anchor exactly ONE defensible answer —
+          // "into one folder" / "closely for errors" below exist to kill the
+          // near-synonym distractors (examined/located/presented all fit the
+          // old unanchored stems).
           {
             type: "toeic_p5",
             word: "collect",
             question:
-              "The associate _____ all the relevant files before the deadline.",
+              "The associate _____ all the relevant files into one folder before the deadline.",
             options: ["collected", "examined", "located", "presented"],
             correctIndex: 0,
           },
+          // Cumulative review — W2 target word (previousWords retrieval).
           {
-            type: "definition",
-            word: "examine",
-            question: "Which word means 'to look at something carefully'?",
-            options: ["arrange", "examine", "indicate", "verify"],
-            correctIndex: 1,
+            type: "toeic_p5",
+            word: "compare",
+            question:
+              "Before approving the adjustment, _____ the new record with the original.",
+            options: ["compare", "collect", "record", "select"],
+            correctIndex: 0,
           },
           {
             type: "toeic_p5",
             word: "examine",
             question:
-              "First, we _____ the documents. Then, we organized them by date.",
-            options: ["examined", "verified", "selected", "recorded"],
+              "First, we _____ the documents closely for errors. Then, we organized them by date.",
+            options: ["examined", "collected", "selected", "recorded"],
             correctIndex: 0,
           },
           {
@@ -469,6 +507,41 @@ export const WEEK_4_CONFIG: WeekConfig = {
             options: ["separate", "process", "delay", "maintain"],
             correctIndex: 1,
           },
+          // Production items for the four under-covered targets (record /
+          // arrange / locate / present) — these words previously appeared in
+          // recognition surfaces only, below the 4-encounter doctrine floor.
+          {
+            type: "toeic_p5",
+            word: "record",
+            question:
+              "The security system _____ every badge scan in a permanent log.",
+            options: ["records", "examines", "arranges", "presents"],
+            correctIndex: 0,
+          },
+          {
+            type: "toeic_p5",
+            word: "arrange",
+            question:
+              "The files were out of order. Please _____ them from earliest to latest.",
+            options: ["arrange", "verify", "examine", "collect"],
+            correctIndex: 0,
+          },
+          {
+            type: "toeic_p5",
+            word: "locate",
+            question:
+              "We searched every shelf but could not _____ the missing file.",
+            options: ["locate", "organize", "present", "record"],
+            correctIndex: 0,
+          },
+          {
+            type: "toeic_p5",
+            word: "present",
+            question:
+              "Associate-15 must _____ the amended record to the supervisor at 09:00.",
+            options: ["present", "locate", "arrange", "indicate"],
+            correctIndex: 0,
+          },
         ],
       },
     },
@@ -519,7 +592,7 @@ export const WEEK_4_CONFIG: WeekConfig = {
       triggerType: "shift_start",
       triggerConfig: {},
       messageText:
-        "Good morning, sugar! Big day today — the Reconciliation Office gave you a priority case. Citizen-4488. Just remember: a clean record is a clean conscience. Examine every observation, and you'll do just fine!",
+        "Good morning, sugar! Big day today — the Reconciliation Office gave you a priority case. Citizen-4488. The night team already collected the observations for you, so examine every one, verify the times, and record what you find. A clean record is a clean conscience. You'll do just fine!",
       replyType: "canned",
       replyOptions: [
         {

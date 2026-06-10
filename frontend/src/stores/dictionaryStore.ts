@@ -34,6 +34,7 @@ interface DictionaryState {
   recoverWord: (wordId: string) => Promise<void>;
   toggleStarred: (wordId: string) => Promise<void>;
   revealChinese: (wordId: string) => Promise<void>;
+  reset: () => void;
 }
 
 export const useDictionaryStore = create<DictionaryState>((set, get) => ({
@@ -158,4 +159,20 @@ export const useDictionaryStore = create<DictionaryState>((set, get) => ({
       // DB persist failed, but keep local state revealed for UX
     }
   },
+
+  // Clear on logout — private notes, starred words, and revealed Chinese must
+  // NOT carry to the next student on a shared device. (loadDictionary self-gates
+  // on words.length === 0, so without this it would never re-fetch B's words.)
+  reset: () =>
+    set({
+      words: [],
+      families: [],
+      currentWeek: 1,
+      loading: false,
+      error: null,
+      isOpen: false,
+      searchQuery: '',
+      filter: 'all',
+      selectedWordId: null,
+    }),
 }));

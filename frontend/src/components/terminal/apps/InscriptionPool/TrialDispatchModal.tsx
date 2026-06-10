@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useInscriptionStore } from '../../../../stores/inscriptionStore';
 import { useViewStore } from '../../../../stores/viewStore';
 import { useShiftQueueStore } from '../../../../stores/shiftQueueStore';
+import { useSeasonStore } from '../../../../stores/seasonStore';
+import { getHighestUnlockedWeek } from '../../../../utils/weekUnlock';
 
 // ─── TrialDispatchModal ─────────────────────────────────────────
 //
@@ -15,6 +17,7 @@ export default function TrialDispatchModal() {
   const startDrill = useInscriptionStore((s) => s.startDrill);
   const openApp = useViewStore((s) => s.openApp);
   const weekConfig = useShiftQueueStore((s) => s.weekConfig);
+  const weeks = useSeasonStore((s) => s.weeks);
   const navigate = useNavigate();
 
   const [secondsLeft, setSecondsLeft] = useState(60);
@@ -36,7 +39,10 @@ export default function TrialDispatchModal() {
   const handleReport = () => {
     openApp('inscription-pool');
     navigate('/terminal', { replace: true });
-    const wk = weekConfig?.weekNumber ?? 1;
+    // A student on the terminal desktop has no weekConfig — fall back to the
+    // class's highest unlocked week, NOT week 1, or their trial drill would
+    // pull W1 words while classmates race the current shift's set.
+    const wk = weekConfig?.weekNumber ?? getHighestUnlockedWeek(weeks);
     void startDrill({
       mode: 'trial',
       weekNumber: wk,

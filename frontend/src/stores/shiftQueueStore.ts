@@ -52,6 +52,15 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
         return;
       }
 
+      // Entering a DIFFERENT shift than the one currently in memory: drop any
+      // carried-over concern delta so it isn't re-counted into the new shift's
+      // ShiftClosing / server total. reset() covers the End-Shift + teacher-
+      // transfer paths, but a student exiting a completed shift via the terminal
+      // X/Home affordance and re-entering the next one bypasses reset().
+      if (get().weekConfig?.weekNumber !== config.weekNumber) {
+        set({ concernScoreDelta: 0, concernScorePersisted: 0 });
+      }
+
       // Build task progress from existing mission scores
       const shiftState = useShiftStore.getState();
       const missions = shiftState.missions;
@@ -144,12 +153,25 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
       gated: isGated,
     });
 
-    // Persist only the unpersisted concern delta
-    const { concernScoreDelta, concernScorePersisted } = get();
+    // Persist only the unpersisted concern delta. Mark persisted optimistically
+    // (so ShiftClosing's final flush can't double-send the same delta) but ROLL
+    // BACK on failure — the old fire-and-forget marked persisted regardless of
+    // outcome, silently losing the delta on any failed request, so
+    // Pair.concernScore permanently undercounted vs ShiftResult deltas.
+    // The rollback is epoch-guarded: a late rejection from a PRIOR shift must
+    // not subtract from the new shift's freshly-zeroed counters.
+    const { concernScoreDelta, concernScorePersisted, weekConfig: wc } = get();
     const unpersisted = concernScoreDelta - concernScorePersisted;
     if (unpersisted > 0) {
-      patchConcern(unpersisted).catch(() => {});
+      const flushEpoch = wc?.weekNumber;
       set({ concernScorePersisted: concernScoreDelta });
+      patchConcern(unpersisted).catch(() => {
+        set(s =>
+          s.weekConfig?.weekNumber === flushEpoch
+            ? { concernScorePersisted: Math.max(0, s.concernScorePersisted - unpersisted) }
+            : s,
+        );
+      });
     }
   },
 
@@ -237,12 +259,20 @@ export const useShiftQueueStore = create<ShiftQueueState>((set, get) => ({
     const { currentTaskIndex, taskProgress, weekConfig, taskGates } = get();
     if (!weekConfig || currentTaskIndex >= taskProgress.length) return;
 
-    // Flush any unpersisted concern score before skipping
+    // Flush any unpersisted concern score before skipping. Optimistic mark +
+    // epoch-guarded rollback — see the completeTask flush for rationale.
     const { concernScoreDelta, concernScorePersisted } = get();
     const unpersisted = concernScoreDelta - concernScorePersisted;
     if (unpersisted > 0) {
-      patchConcern(unpersisted).catch(() => {});
+      const flushEpoch = weekConfig.weekNumber;
       set({ concernScorePersisted: concernScoreDelta });
+      patchConcern(unpersisted).catch(() => {
+        set(s =>
+          s.weekConfig?.weekNumber === flushEpoch
+            ? { concernScorePersisted: Math.max(0, s.concernScorePersisted - unpersisted) }
+            : s,
+        );
+      });
     }
 
     // Persist: mark current task as complete (skipped) on server

@@ -186,6 +186,15 @@ export function initSocketServer(app: Express, allowedOrigins: string[]) {
       );
       socket.emit('teacher:class-snapshot', filteredSnapshot);
 
+      // Replay current pause state for each owned class — students already get
+      // this replay on connect; without it a teacher who refreshes mid-pause
+      // loses the paused indicator while the class stays locked server-side.
+      for (const classId of teacherClassIds) {
+        if (classPauseState.get(classId)?.paused) {
+          socket.emit('teacher:pause-state', { classId, paused: true });
+        }
+      }
+
       // ── Teacher pause/resume — class-scoped, ownership-checked ──
       socket.on('teacher:pause-all', async (data?: { classId?: string; message?: string }) => {
         const classId = data?.classId;

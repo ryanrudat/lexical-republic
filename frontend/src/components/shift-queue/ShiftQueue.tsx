@@ -11,6 +11,7 @@ import DismissalBroadcast from './DismissalBroadcast';
 import VocabularyInterstitial from './VocabularyInterstitial';
 import InterTaskMoment from './InterTaskMoment';
 import ClarityCheck from './ClarityCheck';
+import { fetchCompletedClarityChecks } from '../../api/clarity-check';
 import ComplianceCheckShell from '../compliance-check/ComplianceCheckShell';
 import {
   fetchPendingComplianceCheck,
@@ -196,8 +197,12 @@ export default function ShiftQueue() {
         else setW4Stage('dropbox');
       })
       .catch(() => {
-        // On fetch failure, fall through to ShiftClosing rather than blocking.
-        if (!cancelled) setW4Stage('done');
+        // On fetch failure, run the epilogue from the start rather than
+        // skipping it. 'done' here silently dropped the recruitment vote
+        // (the W5-gating NarrativeChoice) on a single failed GET — end-of-
+        // class Wi-Fi blips were eating votes with no retry surface. Worst
+        // case now: a student who already voted is politely re-asked.
+        if (!cancelled) setW4Stage('dropbox');
       });
     return () => { cancelled = true; };
   }, [shiftComplete, weekNumber, w4Stage]);
@@ -251,8 +256,21 @@ export default function ShiftQueue() {
     if (!weekConfig) return;
     let cancelled = false;
     const expectedWeek = weekConfig.weekNumber;
-    const startCheck = findClarityCheckForPlacement((p) => p === 'shift_start');
-    void fetchComplianceCheckFor('shift_start').then((cc) => {
+    void (async () => {
+      // Hydrate the one-shot gate from the server FIRST. The ref is client
+      // memory only and resets on every refresh/remount, which replayed the
+      // shift_start check as a screen-locking quiz (mastery was already
+      // server-deduped; the lockout wasn't). Fail-open: worst case is the
+      // old replay behavior.
+      try {
+        const checkIds = await fetchCompletedClarityChecks(expectedWeek);
+        if (cancelled) return;
+        for (const id of checkIds) completedClarityCheckIdsRef.current.add(id);
+      } catch {
+        /* hydration is best-effort */
+      }
+      const startCheck = findClarityCheckForPlacement((p) => p === 'shift_start');
+      const cc = await fetchComplianceCheckFor('shift_start');
       // Bail if the student moved to a different shift while we were fetching.
       if (cancelled) return;
       if (cc && cc.weekIssued !== expectedWeek) return;
@@ -262,7 +280,7 @@ export default function ShiftQueue() {
       } else if (cc) {
         setActiveComplianceCheck(cc);
       }
-    });
+    })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekConfig?.weekNumber]);
@@ -357,14 +375,18 @@ export default function ShiftQueue() {
       (p) => typeof p === 'object' && p.afterTaskId === completedTaskId,
     );
     const expectedWeek = weekConfig.weekNumber;
+
+    // Persist the task completion FIRST. The compliance fetch used to run
+    // before this await, so a slow/hung compliance request delayed the
+    // MissionScore write — a refresh in that window lost the completed task.
+    await completeTask(currentTask.id, score, details);
+
     const fetchedComplianceCheck = await fetchComplianceCheckFor('after_task', completedTaskId);
     // Bail if student moved to a different shift while the fetch was in flight.
     const complianceCheckConfig =
       fetchedComplianceCheck && fetchedComplianceCheck.weekIssued === expectedWeek
         ? fetchedComplianceCheck
         : null;
-
-    await completeTask(currentTask.id, score, details);
 
     if (afterUrl) {
       // DELAY character message triggers until dismissal completes

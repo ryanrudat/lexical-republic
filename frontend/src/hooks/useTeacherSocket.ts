@@ -28,7 +28,7 @@ export function useTeacherSocket() {
   const purgeStudent = useTeacherStore((s) => s.purgeStudent);
   const setSocketStatus = useTeacherStore((s) => s.setSocketStatus);
   const bumpRegistrationTick = useTeacherStore((s) => s.bumpRegistrationTick);
-  const setClassPaused = useTeacherStore((s) => s.setClassPaused);
+  const setClassPauseState = useTeacherStore((s) => s.setClassPauseState);
   const appendClarityEntry = useTeacherStore((s) => s.appendClarityEntry);
   const bumpClarityReplyTick = useTeacherStore((s) => s.bumpClarityReplyTick);
   const incrementRemediation = useTeacherStore((s) => s.incrementRemediation);
@@ -53,8 +53,10 @@ export function useTeacherSocket() {
     const onRegistered = () => {
       bumpRegistrationTick();
     };
-    const onPauseState = (data: { paused: boolean }) => {
-      setClassPaused(data.paused);
+    const onPauseState = (data: { classId?: string; paused: boolean }) => {
+      // The server has emitted { classId, paused } since the per-class scoping
+      // work — discard events without one rather than guessing a class.
+      if (data.classId) setClassPauseState(data.classId, data.paused);
     };
     const onClarityReply = (data: { messageId: string; pairId: string; entry: ThreadEntry }) => {
       appendClarityEntry(data.pairId, data.messageId, data.entry);
@@ -113,5 +115,5 @@ export function useTeacherSocket() {
       }
       unsubStatus();
     };
-  }, [setClassSnapshot, upsertStudent, removeStudent, purgeStudent, setSocketStatus, bumpRegistrationTick, setClassPaused, appendClarityEntry, bumpClarityReplyTick, incrementRemediation, flagRemediationClawback, setLiveConcern]);
+  }, [setClassSnapshot, upsertStudent, removeStudent, purgeStudent, setSocketStatus, bumpRegistrationTick, setClassPauseState, appendClarityEntry, bumpClarityReplyTick, incrementRemediation, flagRemediationClawback, setLiveConcern]);
 }

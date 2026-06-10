@@ -40,8 +40,6 @@ export default function ShiftClosing() {
   const resetQueue = useShiftQueueStore(s => s.reset);
 
   const currentWeek = useShiftStore(s => s.currentWeek);
-  const missions = useShiftStore(s => s.missions);
-  const submitMissionScore = useShiftStore(s => s.submitMissionScore);
 
   const loadSeason = useSeasonStore(s => s.loadSeason);
   const openApp = useViewStore(s => s.openApp);
@@ -181,14 +179,11 @@ export default function ShiftClosing() {
           await patchConcern(remainingDelta);
         }
 
-        // Mark the last mission (clock_out equivalent) as complete
-        const lastTask = weekConfig.tasks[weekConfig.tasks.length - 1];
-        if (lastTask) {
-          const lastMission = missions.find(m => m.missionType === lastTask.type);
-          if (lastMission) {
-            await submitMissionScore(lastMission.id, 1, { status: 'complete' });
-          }
-        }
+        // NOTE: do NOT re-submit the last task's mission here. completeTask()
+        // already persisted its real score + {status:'complete'} before the
+        // closing screen mounted; a vestigial clock_out-style re-submit here
+        // was overwriting the final task's grade (e.g. the Shift Report's
+        // vocab score) with a flat 1.0 on every close and remount.
 
         // Refresh season data so Duty Roster shows updated unlock state
         await loadSeason();

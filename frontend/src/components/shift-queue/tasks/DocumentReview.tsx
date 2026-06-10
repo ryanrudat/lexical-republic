@@ -8,6 +8,7 @@ import ComprehensionDoc from './ComprehensionDoc';
 import type { ComprehensionResult } from './ComprehensionDoc';
 import ObservationMutationView from './ObservationMutationView';
 import { postNarrativeChoice } from '../../../api/narrative-choices';
+import { useStudentStore } from '../../../stores/studentStore';
 
 
 interface MidTaskChoiceOption {
@@ -78,12 +79,14 @@ export default function DocumentReview({
   onComplete,
 }: TaskProps) {
   const documents = (config.documents as DocumentConfig[]) ?? [];
-  const lane = (config.lane as number) ?? 2;
+  // Read the student's real difficulty lane (mirrors ShiftReport / CipherActivity).
+  // Was hardcoded to `config.lane ?? 2`, but document_review configs never set a
+  // top-level `lane`, so Lane-1 students never received their ErrorCorrectionDoc hints.
+  const lane = useStudentStore((s) => s.user?.lane ?? 2);
   const weekNumber = weekConfig.weekNumber;
 
   const [currentDocIndex, setCurrentDocIndex] = useState(0);
   const [completedDocs] = useState<Set<string>>(() => new Set());
-  const [docScores, setDocScores] = useState<Record<string, number>>({});
   const [docResults, setDocResults] = useState<Record<string, DocResultDetail>>({});
   const [stampStatus, setStampStatus] = useState<'idle' | 'stamping' | 'stamped'>('idle');
   const stampTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -124,22 +127,24 @@ export default function DocumentReview({
       setCurrentDocIndex(nextIndex);
       setStampStatus('idle');
     } else {
-      // All documents processed
-      const scores = Object.values(docScores);
-      const avgScore =
-        scores.length > 0
-          ? scores.reduce((sum, s) => sum + s, 0) / scores.length
-          : 1;
-
-      // Aggregate corrected-item counts across every document in this task
+      // All documents processed.
+      // Aggregate corrected-item counts across every document in this task,
+      // tracking error-correction docs separately so errorsFound/errorsTotal
+      // reflect actual ERRORS (not comprehension questions).
       let correctSum = 0;
       let totalSum = 0;
+      let errorCorrectSum = 0;
+      let errorTotalSum = 0;
       const mergedAnswerLog: TaskAnswerLogEntry[] = [];
       for (const d of documents) {
         const r = docResults[d.id];
         if (r) {
           correctSum += r.correctCount;
           totalSum += r.itemTotal;
+          if (d.type === 'error_correction') {
+            errorCorrectSum += r.correctCount;
+            errorTotalSum += r.itemTotal;
+          }
           if (r.answerLog) {
             // Namespace questionIds by doc so later UIs can tell them apart.
             for (const entry of r.answerLog) {
@@ -164,22 +169,30 @@ export default function DocumentReview({
         }
       }
 
+      // Score = item-weighted accuracy, the same math the details report. The
+      // old unweighted mean of per-doc proportions could show 75% beside an
+      // 8/11 (73%) item count — Gradebook and ShiftClosing disagreed.
+      const score = totalSum > 0 ? correctSum / totalSum : 1;
+
       const totalErrors = documents.reduce((sum, d) => sum + (d.errors?.length ?? 0), 0);
-      onComplete(avgScore, {
+      onComplete(score, {
         taskType: 'document_review',
         itemsCorrect: correctSum,
         itemsTotal: totalSum,
         // Document Review is primarily grammar error correction + comprehension
         category: 'grammar',
-        errorsFound: correctSum,
-        errorsTotal: totalSum,
+        // errorsFound/Total are restricted to the error-correction doc(s) —
+        // counting comprehension questions here let ShiftClosing show
+        // "Errors 11/11" on a shift with only 6 actual errors.
+        errorsFound: errorCorrectSum,
+        errorsTotal: errorTotalSum,
         answerLog: mergedAnswerLog,
         // Gradebook teacher view reads these legacy keys — keep them.
         documentsProcessed: documents.length,
         errors: totalErrors,
       });
     }
-  }, [currentDocIndex, completedDocs, docScores, docResults, documents, onComplete]);
+  }, [currentDocIndex, completedDocs, docResults, documents, onComplete]);
 
   /**
    * Check whether the just-completed doc has a mid-task C choice. If so,
@@ -231,9 +244,10 @@ export default function DocumentReview({
   }, [activeMidTaskChoice, advanceToNext]);
 
   const markDocComplete = useCallback(
-    (docId: string, score: number, result?: DocResultDetail) => {
+    (docId: string, _score: number, result?: DocResultDetail) => {
       completedDocs.add(docId);
-      setDocScores(prev => ({ ...prev, [docId]: score }));
+      // Per-doc proportional scores are no longer tracked — the final task
+      // score is computed item-weighted from docResults (correctSum/totalSum).
       if (result) {
         setDocResults(prev => ({ ...prev, [docId]: result }));
       }

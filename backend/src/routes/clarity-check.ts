@@ -104,4 +104,39 @@ router.post('/complete', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/clarity-check/completed?weekNumber=N
+ *
+ * Returns the pair's completed Clarity Check ids (optionally filtered to one
+ * week). The frontend one-shot gate used to be client-memory only
+ * (completedClarityCheckIdsRef), so every refresh replayed the shift_start
+ * check as a screen-locking quiz — this endpoint lets ShiftQueue hydrate the
+ * gate from the server, mirroring the Compliance Check pattern.
+ */
+router.get('/completed', async (req, res) => {
+  try {
+    const pairId = getPairId(req);
+    if (!pairId) {
+      res.status(403).json({ error: 'Pair auth required' });
+      return;
+    }
+    const weekRaw = req.query.weekNumber;
+    const weekNumber =
+      typeof weekRaw === 'string' && weekRaw.length > 0 ? Number(weekRaw) : null;
+
+    const rows = await prisma.clarityCheckResult.findMany({
+      where: {
+        pairId,
+        completedAt: { not: null },
+        ...(weekNumber !== null && Number.isFinite(weekNumber) ? { weekNumber } : {}),
+      },
+      select: { checkId: true },
+    });
+    res.json({ checkIds: rows.map((r) => r.checkId) });
+  } catch (err) {
+    console.error('Clarity check completed fetch error:', err);
+    res.status(500).json({ error: 'Failed to fetch completed clarity checks' });
+  }
+});
+
 export default router;

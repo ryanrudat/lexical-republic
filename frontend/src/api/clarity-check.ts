@@ -14,3 +14,12 @@ export async function submitClarityCheck(params: {
   const { data } = await client.post('/clarity-check/complete', params);
   return data as ClarityCheckCompletionResult;
 }
+
+/** Completed check ids for this pair (optionally one week) — used to hydrate
+ *  the one-shot gate so a refresh doesn't replay the screen-locking check. */
+export async function fetchCompletedClarityChecks(weekNumber?: number): Promise<string[]> {
+  const { data } = await client.get('/clarity-check/completed', {
+    params: weekNumber != null ? { weekNumber } : {},
+  });
+  return (data as { checkIds: string[] }).checkIds ?? [];
+}

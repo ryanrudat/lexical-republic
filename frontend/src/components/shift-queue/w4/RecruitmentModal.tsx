@@ -31,6 +31,7 @@ const OPTIONS: VoteOption[] = [
 
 export default function RecruitmentModal({ weekNumber, onComplete }: RecruitmentModalProps) {
   const [submitting, setSubmitting] = useState<VoteOption['value'] | null>(null);
+  const [retryLine, setRetryLine] = useState(false);
 
   const vote = async (option: VoteOption) => {
     if (submitting) return;
@@ -42,12 +43,15 @@ export default function RecruitmentModal({ weekNumber, onComplete }: Recruitment
         weekNumber,
         context: { buttonText: option.label },
       });
-    } catch (err) {
-      // Fail-open — must not block shift closing.
-      console.error('Failed to save recruitment vote:', err);
-    } finally {
-      setSubmitting(null);
       onComplete();
+    } catch (err) {
+      // This vote gates W5 content — advancing on a failed POST silently
+      // dropped it forever (no retry surface once the stage moves on). Stay
+      // on the modal with an in-register retry line instead; the student can
+      // tap their choice again. Shift closing is one tap away, not blocked.
+      console.error('Failed to save recruitment vote:', err);
+      setRetryLine(true);
+      setSubmitting(null);
     }
   };
 
@@ -86,6 +90,12 @@ export default function RecruitmentModal({ weekNumber, onComplete }: Recruitment
           );
         })}
       </div>
+
+      {retryLine && (
+        <p className="text-amber-300/80 text-xs mt-6 lowercase">
+          &gt; the line dropped. say it again.
+        </p>
+      )}
 
       <hr className="mt-12 border-slate-800" />
       <p className="text-rose-400/70 text-xs mt-4">— F</p>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import DocumentCard from './DocumentCard';
 
 export interface ObservationEntry {
@@ -37,8 +37,15 @@ export default function ObservationMutationView({
 }: ObservationMutationViewProps) {
   const [secondsLeft, setSecondsLeft] = useState(5);
 
+  // Hold onAdvance in a ref so the 5s beat runs exactly once per mount. With
+  // [onAdvance] deps, every parent re-render that recreated the callback
+  // (ShiftQueue's handleComplete is not memoized) silently restarted the
+  // timers — the secondsLeft clamp at 1 masked the restarts.
+  const onAdvanceRef = useRef(onAdvance);
+  onAdvanceRef.current = onAdvance;
+
   useEffect(() => {
-    const advanceTimer = setTimeout(onAdvance, HOLD_MS);
+    const advanceTimer = setTimeout(() => onAdvanceRef.current(), HOLD_MS);
     const tickInterval = setInterval(() => {
       setSecondsLeft(s => (s > 1 ? s - 1 : s));
     }, 1000);
@@ -46,7 +53,7 @@ export default function ObservationMutationView({
       clearTimeout(advanceTimer);
       clearInterval(tickInterval);
     };
-  }, [onAdvance]);
+  }, []);
 
   const restrictedLabel = observations.find(o => o.restrict)?.label ?? 'E';
 

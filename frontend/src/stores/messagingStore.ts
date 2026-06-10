@@ -35,6 +35,7 @@ interface MessagingState {
   backToInbox: () => void;
   dismissNotification: () => void;
   refreshUnreadCount: () => Promise<void>;
+  reset: () => void;
 }
 
 // Track in-flight message creation keys to prevent race-condition duplicates
@@ -229,5 +230,27 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
     } catch {
       // Silently fail
     }
+  },
+
+  // Clear on logout — messages, unread badge, and the open toast must not
+  // carry to the next student on a shared device. Also clears the module-level
+  // inFlightKeys dedup Set: its keys carry no pairId, so a stale key from
+  // student A would `continue` student B's identical trigger and their
+  // character message would never be created.
+  reset: () => {
+    const { activeNotification } = get();
+    if (activeNotification?.dismissTimer) {
+      clearTimeout(activeNotification.dismissTimer);
+    }
+    inFlightKeys.clear();
+    set({
+      messages: [],
+      unreadCount: 0,
+      isPanelOpen: false,
+      selectedMessageId: null,
+      selectedConversation: null,
+      activeNotification: null,
+      loading: false,
+    });
   },
 }));

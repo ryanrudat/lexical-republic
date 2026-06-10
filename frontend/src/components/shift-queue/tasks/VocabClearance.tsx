@@ -128,8 +128,14 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
           attempts: attempt,
         });
         setShowResult(true);
-        const newCount = correctCount + 1;
-        setCorrectCount(newCount);
+        // Score counts FIRST-TRY corrects only, matching WordMatch / ClozeFill /
+        // Cipher — recovery after a retry is a learning affordance, recorded in
+        // the answerLog (wasCorrect:false + attempts), never in the score.
+        // Previously any-attempt corrects counted here, so the Gradebook %
+        // contradicted its own answer-log checkmarks and Lane-1 (3 attempts)
+        // scores weren't comparable with Lane-3 (1 attempt).
+        const newCount = wasFirstTry ? correctCount + 1 : correctCount;
+        if (wasFirstTry) setCorrectCount(newCount);
         advanceTimerRef.current = setTimeout(() => advanceToNext(newCount), 1200);
       } else if (attempt < maxAttempts) {
         // Still has attempts left — eliminate wrong option, let them retry.
@@ -183,7 +189,7 @@ export default function VocabClearance({ config, onComplete }: TaskProps) {
         </div>
         <div className="flex justify-between text-[10px] font-ibm-mono text-[#9CA3AF]">
           <span>{currentItem + 1} / {total}</span>
-          <span>{correctCount} correct</span>
+          <span>{correctCount} first-try correct</span>
         </div>
       </div>
 

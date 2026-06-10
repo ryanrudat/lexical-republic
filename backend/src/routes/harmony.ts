@@ -878,6 +878,20 @@ router.post('/censure-queue/:id/respond', async (req, res) => {
       isCorrect = correctIndex !== undefined && correctIndex >= 0 && selectedIndex === correctIndex;
     }
 
+    // Mastery is only awarded on the FIRST answer or on a genuine spaced
+    // re-encounter (>= the 7-day re-eligibility window). Without this gate the
+    // upsert below re-ran the +0.05/+0.03 bump on EVERY re-answer — the same
+    // replay-farming hole Clarity Check closed in PR #37, except here the
+    // answer key ships in censureData so farming required no skill at all.
+    const priorResponse = await prisma.harmonyCensureResponse.findUnique({
+      where: { pairId_postId: { pairId, postId } },
+      select: { createdAt: true },
+    });
+    const SPACED_REANSWER_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+    const masteryEligible =
+      !priorResponse ||
+      Date.now() - priorResponse.createdAt.getTime() >= SPACED_REANSWER_WINDOW_MS;
+
     // Refresh createdAt on re-answer so the spaced-repetition clock restarts.
     // createdAt doubles as "last answered at" for the review-candidate filter.
     const response = await prisma.harmonyCensureResponse.upsert({
@@ -887,7 +901,7 @@ router.post('/censure-queue/:id/respond', async (req, res) => {
     });
 
     // Track vocab encounters if the word was correctly identified
-    if (isCorrect && censureData) {
+    if (isCorrect && censureData && masteryEligible) {
       const word = (censureData.errorWord as string) || (censureData.correction as string);
       if (word) {
         const dictWord = await prisma.dictionaryWord.findFirst({
@@ -1207,7 +1221,7 @@ router.delete('/posts/:id', async (req, res) => {
     const postId = req.params.id as string;
     const post = await prisma.harmonyPost.findUnique({
       where: { id: postId },
-      select: { id: true, pairId: true, userId: true },
+      select: { id: true, pairId: true, userId: true, classId: true },
     });
 
     if (!post) {
@@ -1215,10 +1229,25 @@ router.delete('/posts/:id', async (req, res) => {
       return;
     }
 
-    // Students can only delete their own posts; teachers can delete any
+    // Students can only delete their own posts
     if (pairId && post.pairId !== pairId) {
       res.status(403).json({ error: 'You can only delete your own posts' });
       return;
+    }
+
+    // Teachers can only delete posts in classes they own (was unscoped — any
+    // teacher account could delete any class's posts by id).
+    if (!pairId && teacherId) {
+      const ownsClass = post.classId
+        ? await prisma.class.findFirst({
+            where: { id: post.classId, teacherId },
+            select: { id: true },
+          })
+        : null;
+      if (!ownsClass) {
+        res.status(403).json({ error: 'Not your class' });
+        return;
+      }
     }
 
     // Cascade: delete censure responses on replies, replies, censure responses on post, then post
@@ -1285,7 +1314,13 @@ router.post('/posts/:id/censure', async (req, res) => {
       });
     }
 
-    if (action === 'flag') {
+    // Only flag-hide AUTHORED posts (a student flagging another student's
+    // post). NPC/generated posts have no author and the feed shows flagged
+    // posts only to their author — so flagging one would hide it from the
+    // ENTIRE class permanently (one curious student could erase the shared
+    // Citizen-4488 arc). For NPC posts the Citizen4488Interaction upsert above
+    // is the record of the choice; the post itself stays visible.
+    if (action === 'flag' && (post.userId || post.pairId)) {
       await prisma.harmonyPost.update({
         where: { id: postId },
         data: { status: 'flagged', pearlNote: 'Flag received. Forwarded for Wellness Review.' },

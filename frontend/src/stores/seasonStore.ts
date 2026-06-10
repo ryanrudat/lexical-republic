@@ -9,6 +9,7 @@ interface SeasonState {
   narrativeRoute: string;
   loading: boolean;
   loadSeason: () => Promise<void>;
+  reset: () => void;
 }
 
 export const useSeasonStore = create<SeasonState>((set) => ({
@@ -33,4 +34,9 @@ export const useSeasonStore = create<SeasonState>((set) => ({
       set({ loading: false });
     }
   },
+
+  // Clear on logout so a second student on the same device doesn't inherit the
+  // first student's week list / narrative route (loaders self-gate on weeks.length).
+  reset: () =>
+    set({ title: '', subtitle: '', weeks: [], narrativeRoute: 'full', loading: false }),
 }));

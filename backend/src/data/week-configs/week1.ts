@@ -309,14 +309,19 @@ export const WEEK_1_CONFIG: WeekConfig = {
                 correctIndex: 1,
               },
             ],
+            // One hint per error, aligned to errorIndex order (0..6). The renderer
+            // (ErrorCorrectionDoc) indexes laneHints["1"][errorIndex], so the array
+            // MUST be the same length and order as `errors` above. (Was 6 hints for
+            // 7 errors, off-by-one from error 1 onward \u2014 same bug class as W4.)
             laneHints: {
               "1": [
-                "Look at the subject. Is it singular or plural?",
-                "The subject is 'Associates' \u2014 that is plural.",
-                "Check: does the verb match a singular or plural subject?",
-                "The subject is 'supervisor' \u2014 that is singular.",
-                "Look for the passive voice pattern: is/are + past participle.",
-                "The subject is 'New associates' \u2014 that is plural.",
+                "The subject is 'Each associate' \u2014 that is singular. Singular subjects need -s.",
+                "The subject is 'Morning briefing' \u2014 one single event. Singular subjects need -s.",
+                "The subject is 'Associates' \u2014 that is plural. Plural subjects take NO -s.",
+                "'All' means more than one \u2014 the noun must be plural.",
+                "The subject is 'The supervisor' \u2014 that is singular. Add -s.",
+                "Passive voice: 'is' + past participle. 'approve' \u2192 'approv__'.",
+                "The subject is 'New associates' \u2014 that is plural. Pick the plural verb.",
               ],
             },
           },

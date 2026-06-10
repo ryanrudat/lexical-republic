@@ -297,13 +297,22 @@ router.get('/pending', async (req, res) => {
       },
     });
 
+    // Serve the ARCHIVED question set, not the freshly-built one. The upsert's
+    // update:{} keeps the first-generated questions JSON, but builds are
+    // shuffled — so on a refresh the student would otherwise answer a
+    // DIFFERENT set than the one recorded on the row, and the teacher results
+    // drill-down (questions vs results) would mismatch what was answered.
+    const servedQuestions = Array.isArray(record.questions)
+      ? (record.questions as unknown as typeof questions)
+      : questions;
+
     res.json({
       pending: {
         checkId: record.id,
         templateId: template.id,
         weekIssued: template.weekNumber,
         title: template.title,
-        questions,
+        questions: servedQuestions,
       },
     });
   } catch (err) {

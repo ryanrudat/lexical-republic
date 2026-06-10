@@ -19,7 +19,7 @@ import aiRoutes from './routes/ai';
 import classRoutes from './routes/classes';
 import dictionaryRoutes from './routes/dictionary';
 import { migrateHarmonyAuthorLabels } from './utils/harmonyMigrations';
-import { ensureQueueMissionsForAllWeeks } from './utils/weekConfigMigrations';
+import { ensureQueueMissionsForAllWeeks, ensureDictionaryWordsForAllWeeks } from './utils/weekConfigMigrations';
 import sessionRoutes from './routes/sessions';
 import submissionRoutes from './routes/submissions';
 import messageRoutes from './routes/messages';
@@ -122,6 +122,9 @@ httpServer.listen(PORT, async () => {
   );
   ensureQueueMissionsForAllWeeks().catch(err =>
     console.error('[Lexical Republic] Queue mission migration failed:', err),
+  );
+  ensureDictionaryWordsForAllWeeks().catch(err =>
+    console.error('[Lexical Republic] Dictionary word migration failed:', err),
   );
   recoverAbandonedInscriptionDrills().catch(err =>
     console.error('[Lexical Republic] Inscription drill recovery failed:', err),

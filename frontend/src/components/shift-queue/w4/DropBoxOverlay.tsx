@@ -23,6 +23,7 @@ interface DropBoxOverlayProps {
 export default function DropBoxOverlay({ weekNumber, onComplete }: DropBoxOverlayProps) {
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [retryLine, setRetryLine] = useState(false);
 
   const submit = async (value: 'submitted' | 'skipped') => {
     if (submitting) return;
@@ -32,14 +33,20 @@ export default function DropBoxOverlay({ weekNumber, onComplete }: DropBoxOverla
         choiceKey: 'w4_drop_box_first_submission',
         value,
         weekNumber,
-        context: { text: text.trim() },
+        // A skip must not persist the typed-but-unsent text — Frey's channel
+        // echoes context.text, so skipped drafts were leaking into the
+        // "you told me" section as if the student had posted them.
+        context: { text: value === 'submitted' ? text.trim() : '' },
       });
-    } catch (err) {
-      // Fail-open — the recruitment vote still needs to fire.
-      console.error('Failed to save drop box submission:', err);
-    } finally {
       setSubmitting(false);
       onComplete();
+    } catch (err) {
+      // Stay on the overlay with a retry line — advancing on a failed POST
+      // dropped the choice forever (the stage machine never re-offers it),
+      // which also skewed the recruitment-stage resolution on refresh.
+      console.error('Failed to save drop box submission:', err);
+      setRetryLine(true);
+      setSubmitting(false);
     }
   };
 
@@ -94,6 +101,12 @@ export default function DropBoxOverlay({ weekNumber, onComplete }: DropBoxOverla
           [ skip ]
         </button>
       </div>
+
+      {retryLine && (
+        <p className="text-amber-300/80 text-xs mt-6 lowercase">
+          &gt; the line dropped. say it again.
+        </p>
+      )}
 
       <hr className="mt-12 border-slate-800" />
       <p className="text-rose-400/70 text-xs mt-4">— F</p>

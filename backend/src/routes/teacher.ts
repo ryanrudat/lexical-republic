@@ -1382,15 +1382,30 @@ router.delete('/students/:studentId', async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/teacher/students — Bulk delete ALL students in teacher's classes (or orphans)
+// DELETE /api/teacher/students — Bulk delete students in ONE class.
+// `classId` query param is REQUIRED: the ClassMonitor confirm dialog counts the
+// selected class's roster, so an unscoped delete would silently wipe the
+// teacher's OTHER classes too (blast radius must match the confirmation copy).
 router.delete('/students', async (req: Request, res: Response) => {
   try {
     const teacherId = getTeacherId(req)!;
-    const teacherClassIds = await getTeacherClassIds(teacherId);
+    const classId = typeof req.query.classId === 'string' ? req.query.classId : null;
+    if (!classId) {
+      res.status(400).json({ error: 'classId query parameter is required' });
+      return;
+    }
 
-    // Scope to teacher's classes only — previously this fetched ALL pairs/users
-    // in the database with no where clause, so any logged-in teacher could wipe
-    // every student record across every other teacher's classes.
+    // Ownership check — only the teacher's own class can be bulk-deleted.
+    const ownedClass = await prisma.class.findFirst({
+      where: { id: classId, teacherId },
+      select: { id: true },
+    });
+    if (!ownedClass) {
+      res.status(403).json({ error: 'Not your class' });
+      return;
+    }
+    const teacherClassIds = [classId];
+
     if (teacherClassIds.length === 0) {
       res.json({ deleted: true, pairsDeleted: 0, usersDeleted: 0 });
       return;

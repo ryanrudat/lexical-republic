@@ -3,6 +3,7 @@ import { useInscriptionStore } from '../../../../stores/inscriptionStore';
 import { useShiftQueueStore } from '../../../../stores/shiftQueueStore';
 import { useShiftStore } from '../../../../stores/shiftStore';
 import { useSeasonStore } from '../../../../stores/seasonStore';
+import { getHighestUnlockedWeek } from '../../../../utils/weekUnlock';
 import RollOfDistinction from './RollOfDistinction';
 import ShiftGateModal from './ShiftGateModal';
 
@@ -35,16 +36,7 @@ export default function InscriptionLobby({ classId }: Props) {
   const inferredWeek =
     weekConfig?.weekNumber ??
     legacyWeek?.weekNumber ??
-    (() => {
-      if (weeks.length === 0) return 1;
-      const unlocked = [...weeks].sort((a, b) => a.weekNumber - b.weekNumber);
-      let highest = unlocked[0].weekNumber;
-      for (let i = 1; i < unlocked.length; i++) {
-        if (unlocked[i - 1].clockedOut) highest = unlocked[i].weekNumber;
-        else break;
-      }
-      return highest;
-    })();
+    getHighestUnlockedWeek(weeks);
 
   const [showShiftGate, setShowShiftGate] = useState(false);
   const [pendingMode, setPendingMode] = useState<'solo' | 'open' | null>(null);

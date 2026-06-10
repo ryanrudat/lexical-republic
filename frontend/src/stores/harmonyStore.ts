@@ -107,6 +107,7 @@ interface HarmonyState {
   loadCredits: (pairId: string | null | undefined) => void;
   awardCredits: (n: number) => void;
   dismissPearlAnnotations: () => void;
+  reset: () => void;
 }
 
 /** Harmony Credits — in-world reward points awarded for correct review work. */
@@ -424,6 +425,41 @@ export const useHarmonyStore = create<HarmonyState>((set, get) => ({
   },
 
   dismissPearlAnnotations: () => set({ pearlAnnotations: [] }),
+
+  // Clear on logout — bulletin answers, censure streak, 4488 actions, and the
+  // credits display are all session-scoped per student; without this they bleed
+  // to the next student on a shared device (credits would also write to the
+  // PREVIOUS pair's localStorage key via the stale creditsPairId).
+  reset: () =>
+    set({
+      posts: [],
+      currentWeekNumber: 1,
+      focusWords: [],
+      recentWords: [],
+      deepReviewWords: [],
+      auditPairs: [],
+      loading: false,
+      error: null,
+      locked: false,
+      lockMessage: null,
+      selectedPostId: null,
+      replies: [],
+      repliesLoading: false,
+      activeTab: 'feed',
+      bulletinAnswers: {},
+      censureItems: [],
+      censureStats: { total: 0, completed: 0 },
+      censureLoading: false,
+      archives: null,
+      archivesLoading: false,
+      hasNewContent: false,
+      classOnline: 0,
+      harmonyCredits: 0,
+      creditsPairId: null,
+      recentCensureResults: [],
+      pearlAnnotations: [],
+      citizen4488Actions: [],
+    }),
 }));
 
 /** Compute PEARL ambient annotations from session state. */

@@ -53,8 +53,12 @@ interface TeacherState {
   registrationTick: number;
   bumpRegistrationTick: () => void;
 
-  classPaused: boolean;
-  setClassPaused: (paused: boolean) => void;
+  /** Pause state PER CLASS — keyed by classId. A single global boolean here
+   *  desynced multi-class teachers: pausing class A then viewing class B
+   *  showed B as paused, and "resuming" B cleared the flag while A stayed
+   *  locked server-side with no indicator. */
+  pausedClasses: Record<string, boolean>;
+  setClassPauseState: (classId: string, paused: boolean) => void;
 
   /** Clarity Minder: cached threads by pairId */
   clarityThreads: Map<string, CharacterMessage[]>;
@@ -138,8 +142,9 @@ export const useTeacherStore = create<TeacherState>((set) => ({
   registrationTick: 0,
   bumpRegistrationTick: () => set((s) => ({ registrationTick: s.registrationTick + 1 })),
 
-  classPaused: false,
-  setClassPaused: (paused) => set({ classPaused: paused }),
+  pausedClasses: {},
+  setClassPauseState: (classId, paused) =>
+    set((s) => ({ pausedClasses: { ...s.pausedClasses, [classId]: paused } })),
 
   clarityThreads: new Map(),
   setClarityThreads: (pairId, messages) =>

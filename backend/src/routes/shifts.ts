@@ -87,11 +87,17 @@ router.get('/season', async (req: Request, res: Response) => {
     const routeWeekSet = new Set(narrativeRoute.weeks);
 
     // Fetch ShiftResult records to supplement clockedOut check
-    // (teacher-initiated moves create ShiftResult with completedAt but no MissionScores)
-    const shiftResults = await prisma.shiftResult.findMany({
-      where: ctx.scoreFilter,
-      select: { weekNumber: true, completedAt: true },
-    });
+    // (teacher-initiated moves create ShiftResult with completedAt but no MissionScores).
+    // Pair-gated: ShiftResult has NO userId column, so passing the legacy-branch
+    // scoreFilter {userId} here threw a Prisma validation error — any teacher
+    // token hitting /season got a 500. Teachers have no shift completions anyway.
+    const seasonPairId = getPairId(req);
+    const shiftResults = seasonPairId
+      ? await prisma.shiftResult.findMany({
+          where: { pairId: seasonPairId },
+          select: { weekNumber: true, completedAt: true },
+        })
+      : [];
     const completedWeeks = new Set(
       shiftResults
         .filter(sr => sr.completedAt !== null)
@@ -380,6 +386,26 @@ router.post(
         return;
       }
 
+      // Same ClassWeekUnlock gate as the /score sibling — this endpoint writes
+      // the same MissionScore rows (incl. status:'complete' at score 1), so
+      // without the gate it was a crafted-request path to pre-credit locked weeks.
+      const enrollment = await prisma.classEnrollment.findFirst({
+        where: ctx.enrollmentWhere,
+        select: { classId: true },
+      });
+      if (!enrollment) {
+        res.status(403).json({ error: 'Not enrolled in any class' });
+        return;
+      }
+      const unlock = await prisma.classWeekUnlock.findFirst({
+        where: { classId: enrollment.classId, weekId },
+        select: { id: true },
+      });
+      if (!unlock) {
+        res.status(403).json({ error: 'Week is not unlocked for this class' });
+        return;
+      }
+
       // Merge incoming details on top of existing — without this, a status-only
       // update from this path would clobber writingText/pearlFeedback/answerLog
       // already stored by /submissions/evaluate or the /score handler above
@@ -528,7 +554,16 @@ router.post('/weeks/:weekId/shift-result', async (req: Request, res: Response) =
     };
     const result = await prisma.shiftResult.upsert({
       where: { pairId_weekNumber: { pairId, weekNumber: week.weekNumber } },
-      update: { ...data, completedAt: new Date() },
+      update: {
+        ...data,
+        // Re-entering an already-completed shift remounts ShiftClosing, which
+        // re-posts with a freshly-zeroed concernScoreDelta — don't let that
+        // stomp the recorded delta (Prisma skips undefined). A genuine redo
+        // goes through the CREATE branch because teacher reset-shift deletes
+        // the ShiftResult row first.
+        ...(!data.concernScoreDelta ? { concernScoreDelta: undefined } : {}),
+        completedAt: new Date(),
+      },
       create: { pairId, weekNumber: week.weekNumber, ...data, completedAt: new Date() },
     });
 
@@ -600,9 +635,21 @@ router.patch('/concern', async (req: Request, res: Response) => {
       return;
     }
     const delta = Math.max(-1, Math.min(1, rawDelta));
-    const pair = await prisma.pair.update({
-      where: { id: pairId },
-      data: { concernScore: { increment: delta } },
+    // Read-modify-write with a [0, 100] clamp on the RESULT — a raw increment
+    // had no floor, so scripted delta:-1 spam could bank an arbitrarily
+    // negative score (suppressing the 3.0 remediation backstop and the
+    // teacher's Concern chip for the rest of the semester). Transactional so
+    // concurrent patches can't race past the clamp.
+    const pair = await prisma.$transaction(async (tx) => {
+      const current = await tx.pair.findUnique({
+        where: { id: pairId },
+        select: { concernScore: true },
+      });
+      const next = Math.max(0, Math.min(100, (current?.concernScore ?? 0) + delta));
+      return tx.pair.update({
+        where: { id: pairId },
+        data: { concernScore: next },
+      });
     });
     res.json({ concernScore: pair.concernScore });
   } catch (err) {

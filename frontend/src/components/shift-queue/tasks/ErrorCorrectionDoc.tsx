@@ -82,6 +82,10 @@ export default function ErrorCorrectionDoc({
   const [allDone, setAllDone] = useState(false);
 
   const timerRefs = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+  // Synchronous mirror of `corrections` — the completion math reads this ref
+  // instead of the closured state, so two near-simultaneous picks (touch) can
+  // never compute the final score against a stale corrections snapshot.
+  const correctionsRef = useRef<Record<number, number>>({});
 
   useEffect(() => {
     return () => {
@@ -94,10 +98,16 @@ export default function ErrorCorrectionDoc({
   const handleSelectOption = useCallback(
     (errorIndex: number, optionIndex: number) => {
       if (lockedErrors.has(errorIndex)) return;
+      // One pick is FINAL. The visual lock used to land only after the 1s
+      // feedback timer, leaving a window where a student who saw the rose
+      // underline could re-open the dropdown and switch their answer after
+      // seeing the feedback — on the shift's only deterministic grammar test.
+      if (correctionsRef.current[errorIndex] !== undefined) return;
 
       const error = normalizedDoc.errors[errorIndex];
       const isCorrect = optionIndex === error.correctIndex;
 
+      correctionsRef.current[errorIndex] = optionIndex;
       setCorrections(prev => ({ ...prev, [errorIndex]: optionIndex }));
       setShowResults(prev => ({ ...prev, [errorIndex]: true }));
       setActiveError(null);
@@ -112,15 +122,15 @@ export default function ErrorCorrectionDoc({
           next.add(errorIndex);
 
           if (next.size === normalizedDoc.errors.length) {
-            const correctCount = normalizedDoc.errors.filter((err, idx) => {
-              const selected = idx === errorIndex ? optionIndex : corrections[idx];
-              return selected === err.correctIndex;
-            }).length;
+            const picks = correctionsRef.current;
+            const correctCount = normalizedDoc.errors.filter(
+              (err, idx) => picks[idx] === err.correctIndex,
+            ).length;
             const total = normalizedDoc.errors.length;
             const score = correctCount / total;
 
             const answerLog: TaskAnswerLogEntry[] = normalizedDoc.errors.map((err, idx) => {
-              const selectedOpt = idx === errorIndex ? optionIndex : corrections[idx];
+              const selectedOpt = picks[idx];
               const chosenText =
                 typeof selectedOpt === 'number'
                   ? err.options[selectedOpt]?.text ?? '(none)'
@@ -136,10 +146,12 @@ export default function ErrorCorrectionDoc({
             });
 
             setAllDone(true);
-            setTimeout(
+            // Track the completion timer too so unmount can't fire onComplete late.
+            const completeTimer = setTimeout(
               () => onComplete(score, { correctCount, totalErrors: total, answerLog }),
               800,
             );
+            timerRefs.current.set(-1, completeTimer);
           }
 
           return next;
@@ -151,12 +163,14 @@ export default function ErrorCorrectionDoc({
 
       timerRefs.current.set(errorIndex, timer);
     },
-    [corrections, normalizedDoc.errors, lockedErrors, addConcern, onComplete],
+    [normalizedDoc.errors, normalizedDoc.title, lockedErrors, addConcern, onComplete],
   );
 
   const handleClickError = useCallback(
     (errorIndex: number) => {
       if (lockedErrors.has(errorIndex)) return;
+      // Already answered (pre-lock feedback window) — picks are final.
+      if (correctionsRef.current[errorIndex] !== undefined) return;
       setActiveError(prev => (prev === errorIndex ? null : errorIndex));
     },
     [lockedErrors],

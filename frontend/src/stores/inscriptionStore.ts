@@ -128,6 +128,7 @@ interface InscriptionStoreState {
 
   // Direct setters (for App.tsx socket listener housekeeping)
   setScreen: (screen: InscriptionScreen) => void;
+  reset: () => void;
 }
 
 const initialDrill = null;
@@ -411,6 +412,27 @@ export const useInscriptionStore = create<InscriptionStoreState>((set, get) => (
   clearPendingTrial: () => set({ pendingTrial: null }),
 
   setScreen: (screen) => set({ screen }),
+
+  // Clear on logout — an in-flight drill, queue slot, results screen, or a
+  // pending teacher trial must not carry to the next student on a shared
+  // device. Server-side drill rows are reconciled by the boot recovery sweep.
+  reset: () =>
+    set({
+      screen: 'lobby',
+      citizenNumber: '',
+      classId: null,
+      cooldownRemainingSec: 0,
+      soloUsedToday: 0,
+      loading: false,
+      error: null,
+      queueInfo: null,
+      drill: null,
+      result: null,
+      roll: [],
+      rollLoading: false,
+      pendingTeacherAction: null,
+      pendingTrial: null,
+    }),
 }));
 
 // Convenience selectors

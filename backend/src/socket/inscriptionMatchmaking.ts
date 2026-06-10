@@ -215,6 +215,10 @@ async function createPooledDrills(
     weekNumber,
     count: wordCount,
     pairId: group[0].pairId,
+    // Shared-queue fairness: the anti-fatigue filter considers ALL members —
+    // a word is excluded only when every racer has mastered it (group[0]'s
+    // mastery alone used to govern the whole pool).
+    pairIds: group.map((g) => g.pairId),
     poolStrategy: DEFAULT_POOL_STRATEGY as PoolStrategy,
     sentenceCount,
   });

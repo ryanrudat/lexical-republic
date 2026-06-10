@@ -457,8 +457,10 @@ export async function deleteStudent(studentId: string): Promise<void> {
   await client.delete(`/teacher/students/${studentId}`);
 }
 
-export async function deleteAllStudents(): Promise<{ pairsDeleted: number; usersDeleted: number }> {
-  const { data } = await client.delete('/teacher/students');
+export async function deleteAllStudents(classId: string): Promise<{ pairsDeleted: number; usersDeleted: number }> {
+  // classId is mandatory — the backend scopes the bulk delete to ONE class so
+  // the blast radius matches the class-scoped confirmation dialog.
+  const { data } = await client.delete('/teacher/students', { params: { classId } });
   return data as { pairsDeleted: number; usersDeleted: number };
 }
 

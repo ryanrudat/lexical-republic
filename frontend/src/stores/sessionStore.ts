@@ -87,6 +87,10 @@ interface SessionState {
   hydrateConcern: (score: number) => void;
   addConcern: (amount: number) => void;
   resetConcern: () => void;
+  /** Clears the remediation rate machine (stage, buffer, timers, drill shield,
+   *  active modal) WITHOUT zeroing the DB-backed concernScore. Used on teacher
+   *  shift transfer, where the score must persist across the move. */
+  resetRateMachine: () => void;
   incrementAttempt: (missionId: string) => number;
   getAttemptCount: (missionId: string) => number;
   setLastGrammarError: (error: GrammarError | null) => void;
@@ -275,19 +279,23 @@ export const useSessionStore = create<SessionState>((set, get) => {
       }
     },
 
-    resetConcern: () => {
+    resetRateMachine: () => {
       clearCooldownTimer();
       clawbackInFlight = false;
       set({
-        concernScore: 0,
-        isAuditActive: false,
         concernRateBuffer: [],
         warningIssuedAt: null,
         modalClosedAt: null,
         lastCompletedModuleId: null,
         remediationStage: 'idle',
         activeRemediation: null,
+        inscriptionDrillActive: false,
       });
+    },
+
+    resetConcern: () => {
+      get().resetRateMachine();
+      set({ concernScore: 0, isAuditActive: false });
     },
 
     incrementAttempt: (missionId) => {

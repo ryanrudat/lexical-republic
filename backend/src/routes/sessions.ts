@@ -137,6 +137,26 @@ router.post(
         return;
       }
 
+      // Same ClassWeekUnlock gate as POST /shifts/.../score — this legacy
+      // phase path writes the same MissionScore rows, so without the gate it
+      // was a crafted-request route to pre-credit locked weeks.
+      const enrollment = await prisma.classEnrollment.findFirst({
+        where: { pairId },
+        select: { classId: true },
+      });
+      if (!enrollment) {
+        res.status(403).json({ error: 'Not enrolled in any class' });
+        return;
+      }
+      const unlock = await prisma.classWeekUnlock.findFirst({
+        where: { classId: enrollment.classId, weekId },
+        select: { id: true },
+      });
+      if (!unlock) {
+        res.status(403).json({ error: 'Week is not unlocked for this class' });
+        return;
+      }
+
       const phases = config.phases as Array<{ id: string; missionId?: string }>;
       const phase = phases.find((p) => p.id === phaseId);
 

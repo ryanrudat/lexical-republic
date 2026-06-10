@@ -30,6 +30,10 @@ interface PickWordsOpts {
   weekNumber: number;
   count: number;
   pairId: string;
+  /** Pooled drills: ALL members racing this shared queue. When set, the
+   *  anti-fatigue filter excludes a word only if EVERY member has mastered it
+   *  — previously group[0]'s mastery silently governed the whole pool. */
+  pairIds?: string[];
   poolStrategy: PoolStrategy;
 }
 
@@ -89,14 +93,27 @@ export async function pickInscriptionWords(opts: PickWordsOpts): Promise<Inscrip
   const recentTargets = recentPrior.flatMap(wordsForWeek);
   const deeperTargets = deeperPrior.flatMap(wordsForWeek);
 
-  // 4. Anti-fatigue: words the pair has 100% mastery in their last 3 drills.
-  // Simpler proxy: skip words whose `mastery >= 0.95` in PairDictionaryProgress.
+  // 4. Anti-fatigue: skip words whose `mastery >= 0.95` in
+  // PairDictionaryProgress. For pooled drills (pairIds set) a word is skipped
+  // only when ALL members mastered it — the shared queue must stay useful to
+  // everyone, not just the first joiner.
+  const memberIds =
+    opts.pairIds && opts.pairIds.length > 0 ? opts.pairIds : [pairId];
   const mastered = await prisma.pairDictionaryProgress.findMany({
-    where: { pairId, mastery: { gte: 0.95 } },
-    select: { word: { select: { word: true } } },
+    where: { pairId: { in: memberIds }, mastery: { gte: 0.95 } },
+    select: { pairId: true, word: { select: { word: true } } },
   });
+  const masteredBy = new Map<string, Set<string>>();
+  for (const m of mastered) {
+    const w = m.word.word.toLowerCase();
+    if (!w) continue;
+    if (!masteredBy.has(w)) masteredBy.set(w, new Set());
+    masteredBy.get(w)!.add(m.pairId);
+  }
   const masteredSet = new Set(
-    mastered.map((m) => m.word.word.toLowerCase()).filter(Boolean),
+    Array.from(masteredBy.entries())
+      .filter(([, who]) => who.size >= memberIds.length)
+      .map(([w]) => w),
   );
 
   const filterUnmastered = (words: string[]): string[] =>

@@ -4,6 +4,40 @@ import { loginStudent, loginTeacher as apiLoginTeacher, registerStudent as apiRe
 import { disconnectSocket } from '../utils/socket';
 import { useSessionStore } from './sessionStore';
 import { useSpyStore } from './spyStore';
+import { useShiftQueueStore } from './shiftQueueStore';
+import { useShiftStore } from './shiftStore';
+import { useSeasonStore } from './seasonStore';
+import { useDictionaryStore } from './dictionaryStore';
+import { useSessionPauseStore } from './sessionPauseStore';
+import { useAudioStore } from './audioStore';
+import { usePearlStore } from './pearlStore';
+import { useMessagingStore } from './messagingStore';
+import { useHarmonyStore } from './harmonyStore';
+import { useInscriptionStore } from './inscriptionStore';
+
+// Full session-store hygiene. Pairs share a Chromebook and student B logs in
+// after A with NO page reload, so EVERY session-scoped store must be cleared
+// or A's state bleeds into B (open remediation modal, private dictionary
+// notes, wrong narrative route, a stuck pause overlay, unread message toast,
+// Harmony credits under A's key, an in-flight Word Pool drill, PEARL's
+// "allocation exhausted" lock, …). login() re-hydrates B's own data.
+// Called from logout() AND from refresh()'s genuine-401 path — any session
+// teardown must run the SAME cascade.
+function resetSessionStores(): void {
+  useSpyStore.getState().reset();
+  useSessionStore.getState().resetConcern(); // score + rate machine + timers + drill shield
+  useShiftQueueStore.getState().reset();
+  useShiftStore.getState().reset();
+  useSeasonStore.getState().reset();
+  useDictionaryStore.getState().reset();
+  useMessagingStore.getState().reset();
+  useHarmonyStore.getState().reset();
+  useInscriptionStore.getState().reset();
+  useSessionPauseStore.getState().setPaused(false);
+  useAudioStore.getState().reset();
+  usePearlStore.getState().clearChat();
+  usePearlStore.getState().dismissBark();
+}
 
 interface ApiErrorShape {
   response?: {
@@ -101,11 +135,7 @@ export const useStudentStore = create<StudentState>((set) => ({
       disconnectSocket();
       await apiLogout();
     } finally {
-      // Reset the [ ].edited / Records spy singleton so a second student
-      // logging in on the same Chromebook (no page reload) doesn't inherit
-      // the first student's funneled leads / drop-box echo. reset() also
-      // clears `loaded`, so the next mount re-fetches their own choices.
-      useSpyStore.getState().reset();
+      resetSessionStores();
       set({ user: null, loading: false, error: null });
     }
   },
@@ -130,8 +160,22 @@ export const useStudentStore = create<StudentState>((set) => ({
         useSessionStore.getState().hydrateConcern(user.concernScore);
       }
       set({ user, loading: false });
-    } catch {
-      set({ user: null, loading: false });
+    } catch (err: unknown) {
+      // Only clear the session on a GENUINE auth failure (401/403). A transient
+      // network error (offline, timeout, 5xx) must NOT log the student out — the
+      // visibility/focus handler that calls refresh() fires exactly when a
+      // Chromebook wakes from sleep, which is when Wi-Fi is most likely momentarily
+      // down. Nuking the user here would redirect mid-shift and drop unsaved input.
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401 || status === 403) {
+        disconnectSocket();
+        // Same hygiene cascade as logout() — a 401 here means the session is
+        // dead, and the next login may be a DIFFERENT student on this device.
+        resetSessionStores();
+        set({ user: null, loading: false });
+      } else {
+        set({ loading: false });
+      }
     }
   },
 }));

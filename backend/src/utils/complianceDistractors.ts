@@ -43,7 +43,11 @@ export async function buildComplianceQuestions(
   );
   if (cleaned.length === 0) return [];
 
-  const targetCount = Math.max(1, Math.min(questionCount, cleaned.length, 5));
+  // Cap must match the teacher-facing question-count cap (6 — raised from 5 in
+  // the 2026-05-03 wizard work; this literal was missed, so 6-question
+  // templates silently served only 5 questions).
+  const MAX_COMPLIANCE_QUESTIONS = 6;
+  const targetCount = Math.max(1, Math.min(questionCount, cleaned.length, MAX_COMPLIANCE_QUESTIONS));
   const targetWords = shuffle(cleaned).slice(0, targetCount);
 
   const targetRows = await prisma.dictionaryWord.findMany({

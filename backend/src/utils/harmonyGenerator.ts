@@ -403,14 +403,23 @@ export async function generateHarmonyPosts(
     }
   }
 
-  // censure_redact / censure_triage are STATIC-ONLY — neither the AI prompt nor
-  // buildFallbackPosts can produce them. Whatever the static pool just supplied is
-  // all there is, so zero their remaining need. Otherwise an unfillable quota keeps
-  // `needsAI` true and fires a wasted OpenAI completion on EVERY Harmony open for any
-  // week with no static redact/triage items (this was happening for W4+).
-  remaining['censure_redact'] = 0;
-  remaining['censure_triage'] = 0;
-  remaining['feed_review'] = 0; // hand-authored only — AI never generates verdict posts
+  // STATIC-ONLY types — neither the AI prompt (it only knows feed + the three
+  // MCQ censure shapes) nor buildFallbackPosts can produce these. Whatever the
+  // static pool just supplied is all there is, so zero their remaining need.
+  // Otherwise an unfillable quota keeps `needsAI` true and fires a wasted
+  // OpenAI completion on EVERY Harmony open for any week missing static items
+  // (W4+ has no static bulletins/tips/notices/sector-reports/verdict posts,
+  // so this was burning a pointless completion per open).
+  const STATIC_ONLY_TYPES = [
+    'censure_redact',
+    'censure_triage',
+    'feed_review', // hand-authored only — AI never generates verdict posts
+    'bulletin',
+    'pearl_tip',
+    'community_notice',
+    'sector_report',
+  ];
+  for (const t of STATIC_ONLY_TYPES) remaining[t] = 0;
 
   // 2. AI-generate anything still needed (feed posts + censure items primarily)
   const needsAI = Object.values(remaining).some(n => n > 0);

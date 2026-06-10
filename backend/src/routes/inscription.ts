@@ -515,6 +515,34 @@ router.get('/roll/:classId', async (req, res) => {
       return;
     }
 
+    // Authorization: pairs may only view their OWN class's roll; teachers only
+    // a class they own. (Was unscoped — any authenticated user could read any
+    // class's standings by id.)
+    const pairId = getPairId(req);
+    const teacherId = getTeacherId(req);
+    if (pairId) {
+      const enrollment = await prisma.classEnrollment.findFirst({
+        where: { pairId, classId },
+        select: { id: true },
+      });
+      if (!enrollment) {
+        res.status(403).json({ error: 'Not your class' });
+        return;
+      }
+    } else if (teacherId) {
+      const owned = await prisma.class.findFirst({
+        where: { id: classId, teacherId },
+        select: { id: true },
+      });
+      if (!owned) {
+        res.status(403).json({ error: 'Not your class' });
+        return;
+      }
+    } else {
+      res.status(403).json({ error: 'Auth required' });
+      return;
+    }
+
     const drills = await prisma.inscriptionDrill.findMany({
       where: {
         classId,

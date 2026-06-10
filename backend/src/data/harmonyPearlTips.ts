@@ -1,5 +1,5 @@
 /**
- * Static PEARL Wellness Tips — 1 per week for weeks 1-3.
+ * Static PEARL Wellness Tips — 1 per week.
  * Grammar rules disguised as Ministry communication policy.
  * Each tip matches the week's grammarTarget.
  */
@@ -50,6 +50,19 @@ export const STATIC_PEARL_TIPS: Record<number, StaticPearlTip[]> = {
       tipNumber: 3,
       grammarTarget: 'modals',
       content: 'P.E.A.R.L. COMMUNICATION TIP #3\n\nApproved modal usage: After approved modal words (should, must, can, may), the base verb form is required. "Associates should complete their queue" — not "should completes." "Citizens must maintain their schedule" — not "must maintains." Modal compliance reflects institutional awareness.',
+      pearlNote: null,
+    },
+  ],
+
+  // ── Week 4: grammarTarget = 'past-simple-sequencing' ──
+  4: [
+    {
+      id: 'pearl-tip-w4',
+      weekNumber: 4,
+      authorLabel: 'P.E.A.R.L.',
+      tipNumber: 4,
+      grammarTarget: 'past-simple-sequencing',
+      content: 'P.E.A.R.L. COMMUNICATION TIP #4\n\nApproved reporting structure: Completed actions are recorded in the past tense, in the order they occurred. Sequencing words mark each step. "First, the associate examined the record. Next, the team verified the entries. Finally, the report was filed." Note the "-ed" ending on completed actions. A record in the correct order is a record the Ministry can trust.',
       pearlNote: null,
     },
   ],
