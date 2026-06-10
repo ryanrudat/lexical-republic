@@ -4,6 +4,14 @@ Where things stand and what's queued. For day-by-day shipped history see
 [`changelog.md`](changelog.md); for specific past work prefer `git log` and the topic files in
 `memory/`.
 
+## ▶ Active: Audit Remediation (June 2026)
+Two June audits (Shift-4 deep review + 60-finding frontend bug sweep) produced a prioritized fix
+list tracked in **[`audit-remediation-2026-06.md`](audit-remediation-2026-06.md)**. First batch
+landed (Lane-1 grammar scaffold, shared-device logout hygiene, `refresh()` 401-guard, concern-delta
+reset, W4 `DictionaryWord` startup migration). Remaining: PEARL interrogation voice, W4 vocab
+coverage, teacher class-switch staleness, Harmony own-post visibility, and a P1/P2 tail. **All 35
+Shift-4 answer keys verified correct.** See the tracker for the full checklist + status.
+
 ## Harmony Expansion Status
 Harmony expansion is in progress. See `Dplan/Harmony_Expansion_Review.md` for the full design review.
 - **Phase 0 (bug fixes)**: DONE — generation race condition, dead gate code, censure action fix, orphaned post sweep
@@ -24,7 +32,7 @@ Harmony expansion is in progress. See `Dplan/Harmony_Expansion_Review.md` for th
 - **W4 Activity Reconciliation — DONE 2026-05-25 (commits `91ec935` + `ea59d24` and others).** All 6 frontend pieces from the redesign backlog shipped: (1) queue sidebar `CaseQueueSidebar.tsx` lg+ only; (2) Observation E silent mutation `ObservationMutationView.tsx`; (3) `[ ].edited` desktop app shell in `EditedApp/` with Lexicon (5 TOEIC B1 Black Words: witness/relative/individual/independent/private) + Cipher (`CipherActivity.tsx`) + Drop Box tabs; (4) `.edited-tile-materialize` glitch animation, localStorage-gated; (5) `DropBoxOverlay.tsx` post-Shift-Report; (6) `RecruitmentModal.tsx` end-of-shift vote (`w4_recruitment_vote`). **Cipher Decryption rebuilt 2026-06-03 (`57465e9`)** into a 3-document redacted-reveal that uploads each restored record to `[ ].edited` — see [[project-w4-cipher-multidoc-2026-06-03]]. **Clip A + Clip B Canva videos remain the only non-code W4 work.** See [[project-w4-complete-2026-05-25]].
 - **Condensed route 4488 catch-up posts** — 3-5 posts at route-gap transitions ("I named her Tuesday").
 - **Condensed route bridging Harmony posts** — ~20 NPC catch-up posts for gap weeks.
-- Seed dictionary entries for Weeks 4-6 (30 words defined in shift plan; W5 "respond" replaced with "recommend"). W4's 10 words are used in W4 tasks but not yet in `DictionaryWord` table.
+- Seed dictionary entries for Weeks 5-6 (W5 "respond" replaced with "recommend"). **W4's 10 words now ship via the `ensureDictionaryWordsForAllWeeks` startup migration** (enrichment in `backend/src/data/week-configs/wordEnrichment.ts`) — add W5/W6 enrichment there too so the same migration covers them (no seed run needed on Railway). See [`audit-remediation-2026-06.md`](audit-remediation-2026-06.md).
 - Define per-week vocabulary ladders (TOEIC target words vs world-building words) for Weeks 7-18.
 - Full scripted dialogue pass for all character beats (especially Weeks 7-18).
 - Custom domain setup for student-friendly URLs (optional).

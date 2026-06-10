@@ -4,6 +4,52 @@ Day-by-day work history. Moved here from `CLAUDE.md` on 2026-04-30 to keep the a
 
 ---
 
+## 2026-06-10 (whole-app re-audit + remediation batch 2)
+
+Multi-agent whole-app audit (grounding → 32 adversarially-verified bug candidates → Shift-4 wiring/pedagogy synthesis → 48-idea activity brainstorm) followed by a 23-fix batch. Full table in **[`audit-remediation-2026-06.md`](audit-remediation-2026-06.md)** "Batch 2"; session state + resume pointers in `memory/project_full_audit_2026_06_10.md`.
+
+### Headlines
+
+- **P0 grade corruption fixed**: `ShiftClosing` was re-submitting the final task's mission with `score=1` on every shift close AND remount, overwriting the Shift Report's real vocab score and reverting teacher edits (W1–W4). The vestigial clock-out block is deleted.
+- **P0 data-loss footgun fixed**: teacher "Delete All" deleted students across ALL classes while confirming with one class's count — now class-scoped end-to-end (`?classId=` required + ownership check).
+- **Grade-integrity batch**: VocabClearance → first-try scoring (matches siblings; Gradebook % now agrees with its own answer log); ErrorCorrectionDoc answer-change-after-feedback exploit closed; DocumentReview score = item-weighted sum + `errorsFound` restricted to real errors; `/submissions/evaluate` validates missionId + ClassWeekUnlock + 20s OpenAI timeout; unlock gate added to the two sibling MissionScore writers.
+- **Shift-4 pedagogy batch** (config-only): vocab_clearance items #1/#3 disambiguated; +4 production items for under-covered targets (record/arrange/locate/present) + W2 `compare` review item; doc_adjustment extended with collect/organize past-tense errors (8 aligned Lane-1 hints); `organize`/`record` definitions fixed; Betty's shift-start message now models collect/examine/verify/record (Input-phase patch until Clip A ships); W4 PEARL tip authored. W1 doc_schedule's 6-hints-for-7-errors misalignment fixed (same class as the W4 batch-1 bug).
+- **W4 epilogue hardened**: recruitment vote (W5 gate) no longer silently lost on a failed request — resolver re-runs the epilogue, modals retry in-register; Drop Box skip no longer echoes unsent drafts.
+- **Shared-device + multi-class**: `resetSessionStores()` cascade now covers messaging/harmony/inscription stores and runs on BOTH logout and `refresh()` 401; teacher pause state is per-class (map keyed by the classId the server already sent) + replayed to teachers on reconnect.
+- **Other backend**: censure-respond mastery replay-farming closed (first answer or ≥7-day re-encounter); NPC-post flag no longer hides the 4488 arc class-wide; teacher harmony delete + inscription roll now ownership-scoped; compliance 6-question cap honored + `/pending` serves the archived question set; W4 Harmony no longer burns an OpenAI call per open; dictionary migration dup-row fix (`record`/`verify` existed as W1 seed rows).
+- **Builds + 55 vitest pass.** `EditedWindow 2.tsx` duplicate deleted.
+
+### Batch 3 (same day, evening — after the resumed sweep re-confirmed the open list against the fixed tree)
+
+Seven more fixes: Clarity Check one-shot is now server-backed (`GET /clarity-check/completed` + ShiftQueue hydration — refresh no longer replays the lockout quiz); `GET /shifts/season` teacher 500 (ShiftResult has no `userId` column); `PATCH /shifts/concern` result clamped `[0,100]` in a transaction (negative-spam floor); shift-result re-post no longer stomps `concernScoreDelta`; Batch-2's patchConcern rollback gained a shift-epoch guard; Open Pool anti-fatigue now considers ALL members (`pairIds[]` intersection, was group[0] only); trial dispatch falls back to the highest unlocked week instead of week 1 (+ InscriptionLobby now uses the shared `getHighestUnlockedWeek` util). Deferred with cause: censure answer-key shipping pre-answer (farming already closed; needs respond-API reshape). The resumed sweep also independently re-verified the Batch-2 fixes against the working tree ("already fixed" verdicts). Builds + 55 tests pass.
+
+### Still open
+
+- ~33 unverified finder claims (bug-sweep VerifyFresh paused again at user request) — verify the 3 WritingEvaluator P0-candidates first (Layer-1 `onTopic` omission blocking Submit Anyway; attempt-3 permanent lock; PrioritySort word-floor contradictions).
+- Activity-brainstorm judging/synthesis paused (48 ideas generated; resume pointers in memory).
+- Deferred from the audit: Cipher `[ lexicon ]` tab functional + auto-reveal study line; mutation→Doc-B blank flash; ShiftClosing W4 PEARL Observation card wiring; W4 Harmony static content authoring; censure answer-key withholding.
+
+---
+
+## 2026-06-09 (June audit + remediation batch 1)
+
+Two verified multi-agent audits + the first batch of fixes. Full prioritized checklist + status in **[`audit-remediation-2026-06.md`](audit-remediation-2026-06.md)**.
+
+### Audits
+
+- **Shift-4 deep review** (8 dimensions, adversarially verified): wiring, narrative/dialogue, TOEIC vocab + answer-key integrity, pedagogy. **All 35 MCQ/cloze answer keys recomputed correct.** Surfaced a prod data gap (W4 dictionary rows), a PEARL voice-doctrine violation in the interrogation lines, vocab under-coverage, and the Lane-1 hint misalignment.
+- **Frontend bug sweep** (10 subsystems, 60 verified findings): dominant theme = shared-device state leakage on logout; plus `refresh()` mid-shift logout, teacher class-switch staleness, Harmony own-post hidden by the drip, and a large latent/dead-code tail. *(Three find-agents were blocked by a false-positive cyber-content filter and backfilled by hand.)*
+
+### Remediation batch 1 (applied, both builds pass)
+
+- **Lane-1 grammar scaffold** — `DocumentReview` now reads the student's real lane (was hardcoded `2`, so Lane-1 students never got `ErrorCorrectionDoc` hints); `week4.ts` `laneHints` rewritten to 6 error-aligned entries (was 4, misaligned, last two errors hint-less).
+- **Shared-device logout hygiene** — `studentStore.logout()` now resets every session-scoped store (was spyStore-only). Added `seasonStore.reset()`, `dictionaryStore.reset()`, and `sessionStore.resetRateMachine()` (machine-only, preserves DB-backed concern score; `resetConcern()` now routes through it + clears `inscriptionDrillActive`).
+- **`refresh()` 401-only guard** — transient network errors (Chromebook wake-from-sleep) no longer log the student out mid-shift; genuine 401/403 still clears + disconnects the socket.
+- **Concern-delta reset on self-driven shift change** — `shiftQueueStore.loadWeekConfig` zeroes the carried delta when entering a different shift (X/Home re-entry bypassed `reset()`).
+- **W4 `DictionaryWord` rows in prod** — new `ensureDictionaryWordsForAllWeeks()` startup migration (`weekConfigMigrations.ts`) + authored enrichment (`week-configs/wordEnrichment.ts`), wired fire-and-forget in `index.ts`. Idempotent, create-only, Black Words excluded. Restores writing-mastery, Compliance authoring, and Remediation/Clarity coverage for the 8/10 W4 words that had no row (seed stops at W3 and doesn't run on Railway).
+
+---
+
 ## 2026-06-03 (CLAUDE.md slim-down + W4 multi-document Cipher Decryption)
 
 Full daily summary in `Dplan/Daily_2026_06_03.md`. Two commits, fast-forwarded to `master`.

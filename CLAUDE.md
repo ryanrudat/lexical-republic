@@ -39,6 +39,7 @@ The always-on canon. Full detailed decision log (backend audit rules, W4 spy arc
 ## Detail Files
 - [Locked Decisions — full detail](docs/locked-decisions.md) — complete themed decision log
 - [Status & Next Work](docs/next-work.md) — Harmony expansion phases + backlog
+- [Audit Remediation 2026-06](docs/audit-remediation-2026-06.md) — **active** prioritized fix list + status from the June Shift-4 review + frontend bug sweep
 - [Code Map](docs/code-map.md) — key Harmony data files, task-result & scoring utilities
 - [Architecture & Deployment](docs/architecture.md) — stack, data model, deployment, routing, endpoints
 - [Features](docs/features.md) — current product state, all implemented systems
