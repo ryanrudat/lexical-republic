@@ -6,6 +6,7 @@ import {
 import {
   CATCH_PROBABILITY,
   FREY_INTRO_CHOICE_KEY,
+  SNOOP_RETRY_COOLDOWN_MS,
   snoopChoiceKey,
   type SnoopFile,
 } from '../data/spyFiles';
@@ -44,6 +45,8 @@ interface SpyState {
   dropBoxText: string | null;
   /** Persisted final outcomes by file id. */
   resolved: Record<string, SnoopOutcome>;
+  /** When each dark lead went dark (epoch ms) — drives the retry cooldown. */
+  darkAt: Record<string, number>;
   /**
    * Documents restored by the Cipher Decryption task and uploaded to
    * [ ].edited, keyed by cipher doc id. Persisted as NarrativeChoice
@@ -93,6 +96,7 @@ export const useSpyStore = create<SpyState>((set, get) => ({
   loaded: false,
   dropBoxText: null,
   resolved: {},
+  darkAt: {},
   restoredCiphers: {},
   activeActivity: null,
   downloadingFile: null,
@@ -106,6 +110,7 @@ export const useSpyStore = create<SpyState>((set, get) => ({
       const choices = await fetchNarrativeChoices(4);
       if (epoch !== loadEpoch) return; // superseded by reset()/newer load
       const resolved: Record<string, SnoopOutcome> = {};
+      const darkAt: Record<string, number> = {};
       const restoredCiphers: Record<string, RestoredCipher> = {};
       let dropBoxText: string | null = null;
       let introSeen = false;
@@ -115,6 +120,7 @@ export const useSpyStore = create<SpyState>((set, get) => ({
           const id = c.choiceKey.replace('w4_snoop_', '');
           if (c.value === 'funneled' || c.value === 'dark') {
             resolved[id] = c.value;
+            if (c.value === 'dark') darkAt[id] = Date.parse(c.createdAt) || 0;
           }
         } else if (c.choiceKey.startsWith('w4_cipher_')) {
           if (c.value === 'restored') {
@@ -132,7 +138,7 @@ export const useSpyStore = create<SpyState>((set, get) => ({
           if (c.value === 'seen') introSeen = true;
         }
       }
-      set({ resolved, restoredCiphers, dropBoxText, introSeen, loaded: true });
+      set({ resolved, darkAt, restoredCiphers, dropBoxText, introSeen, loaded: true });
     } catch {
       if (epoch !== loadEpoch) return; // stale rejection — don't mark loaded
       // Fail-open — an unreachable choices endpoint shouldn't block the app.
@@ -141,9 +147,16 @@ export const useSpyStore = create<SpyState>((set, get) => ({
   },
 
   startExtract: (file) => {
-    const { resolved, downloadingFile, activeInterrogation, activeActivity } = get();
-    // Already resolved, mid-flow, or another interrogation in flight — ignore.
-    if (resolved[file.id] || downloadingFile || activeInterrogation || activeActivity) return;
+    const { resolved, darkAt, downloadingFile, activeInterrogation, activeActivity } = get();
+    // Mid-flow or another interrogation in flight — ignore.
+    if (downloadingFile || activeInterrogation || activeActivity) return;
+    if (resolved[file.id] === 'funneled') return;
+    if (resolved[file.id] === 'dark') {
+      // A dead lead reopens after the cooldown — clear it and roll fresh.
+      if (Date.now() - (darkAt[file.id] ?? 0) < SNOOP_RETRY_COOLDOWN_MS) return;
+      const { [file.id]: _dropped, ...rest } = resolved;
+      set({ resolved: rest });
+    }
 
     const caught = Math.random() < CATCH_PROBABILITY[file.exposure];
     if (caught) {
@@ -231,6 +244,7 @@ export const useSpyStore = create<SpyState>((set, get) => ({
       loaded: false,
       dropBoxText: null,
       resolved: {},
+      darkAt: {},
       restoredCiphers: {},
       activeActivity: null,
       downloadingFile: null,
@@ -248,7 +262,13 @@ async function writeOutcome(
   set: (partial: Partial<SpyState>) => void,
 ) {
   // Optimistic local update so the UI reflects the outcome immediately.
-  set({ resolved: { ...useSpyStore.getState().resolved, [fileId]: outcome } });
+  const patch: Partial<SpyState> = {
+    resolved: { ...useSpyStore.getState().resolved, [fileId]: outcome },
+  };
+  if (outcome === 'dark') {
+    patch.darkAt = { ...useSpyStore.getState().darkAt, [fileId]: Date.now() };
+  }
+  set(patch);
   try {
     await postNarrativeChoice({
       choiceKey: snoopChoiceKey(fileId),

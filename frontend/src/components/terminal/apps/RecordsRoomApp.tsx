@@ -1,6 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useSpyStore } from '../../../stores/spyStore';
-import { getSnoopFiles, type Exposure, type SnoopFile } from '../../../data/spyFiles';
+import {
+  getSnoopFiles,
+  SNOOP_RETRY_COOLDOWN_MS,
+  type Exposure,
+  type SnoopFile,
+} from '../../../data/spyFiles';
 
 // ─── Records Room — the Party records terminal (snoop surface) ───
 //
@@ -76,8 +81,53 @@ export default function RecordsRoomApp() {
   );
 }
 
+// A dead lead, during and after the retry cooldown. Ticks every 30s while
+// still quiet so the retry button appears without leaving and re-opening
+// the app. The store's startExtract is the authority on whether the
+// cooldown has truly elapsed — this is display only.
+function DarkLead({
+  darkSince,
+  onRetry,
+}: {
+  darkSince: number | undefined;
+  onRetry: () => void;
+}) {
+  const [now, setNow] = useState(() => Date.now());
+  const remaining = Math.max(0, (darkSince ?? 0) + SNOOP_RETRY_COOLDOWN_MS - now);
+  const cooling = remaining > 0;
+
+  useEffect(() => {
+    if (!cooling) return;
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, [cooling]);
+
+  if (cooling) {
+    return (
+      <p className="text-[12px] text-[#8B9B9E] italic leading-relaxed">
+        &gt; Archive Control blocked the extraction. The line has gone quiet — wait ~
+        {Math.ceil(remaining / 60_000)}m.
+      </p>
+    );
+  }
+  return (
+    <>
+      <p className="text-[12px] text-[#8B9B9E] italic leading-relaxed mb-3">
+        &gt; Archive Control has moved on. The line is open again.
+      </p>
+      <button
+        onClick={onRetry}
+        className="inline-flex items-center gap-2 rounded-lg border border-rose-300 bg-rose-50 px-3.5 py-2 text-[11px] text-rose-700 tracking-wider uppercase hover:bg-rose-100 active:scale-[0.98] transition-all"
+      >
+        ⟲ try the line again
+      </button>
+    </>
+  );
+}
+
 function RecordsFile({ file }: { file: SnoopFile }) {
   const resolved = useSpyStore((s) => s.resolved[file.id]);
+  const darkSince = useSpyStore((s) => s.darkAt[file.id]);
   const interrogatingThis = useSpyStore((s) => s.activeInterrogation?.id === file.id);
   const startExtract = useSpyStore((s) => s.startExtract);
 
@@ -109,9 +159,7 @@ function RecordsFile({ file }: { file: SnoopFile }) {
       {/* Body */}
       <div className="px-4 py-3.5">
         {isDark ? (
-          <p className="text-[12px] text-[#8B9B9E] italic leading-relaxed">
-            &gt; Archive Control blocked the extraction. The lead is lost.
-          </p>
+          <DarkLead darkSince={darkSince} onRetry={() => startExtract(file)} />
         ) : isFunneled ? (
           <>
             <FileContent file={file} />

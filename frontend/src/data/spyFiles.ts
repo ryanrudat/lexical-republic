@@ -154,6 +154,11 @@ export const CATCH_PROBABILITY: Record<Exposure, number> = {
   high: 0.8,
 };
 
+// How long a failed extraction keeps a lead dark before the line "reopens"
+// and the student may roll again. Classroom-scale on purpose: a fail stings
+// for a stretch of the period but never locks the spy loop permanently.
+export const SNOOP_RETRY_COOLDOWN_MS = 10 * 60 * 1000;
+
 // The NarrativeChoice key a resolved snoop writes (value: 'funneled' | 'dark').
 // Read at W5 start to branch the resistance story.
 export function snoopChoiceKey(fileId: string): string {

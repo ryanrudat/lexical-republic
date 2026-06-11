@@ -175,7 +175,7 @@ function LeadRow({
           ✗ lost
         </p>
         <p className="text-slate-500 italic leading-relaxed">
-          lost contact on that one. it’s alright. — F
+          lost contact on that one. it’s alright. lines reopen — check the records wing again. — F
         </p>
       </div>
     );
