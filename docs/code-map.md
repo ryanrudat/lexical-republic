@@ -17,7 +17,10 @@ root [`CLAUDE.md`](../CLAUDE.md). For the full data model and endpoints see
 - `frontend/src/data/citizen4488Posts.ts` — frontend shim mirroring 4488 posts for ShiftClosing "Case File Update" card (1 post per week on master; 2 per week once PR #12 lands)
 
 ## Task Result & Scoring Utilities
-- `frontend/src/types/taskResult.ts` — canonical `TaskResultDetails` shape every task component emits: `{ taskType, itemsCorrect, itemsTotal, category, errorsFound?, errorsTotal? }`
+- `frontend/src/types/taskResult.ts` — canonical `TaskResultDetails` shape every task component emits: `{ taskType, itemsCorrect, itemsTotal, category }` + optional `errorsFound/errorsTotal`, `writingText/wordCount`, `vocabUsed`, `answerLog[]`, and the post-rubric fields `onTopic/onTopicReason/vocabScore/vocabMissed/grammarAdvisory/submittedAnyway/isDegraded`
 - `frontend/src/utils/scoreAggregator.ts` — pure `aggregateTaskResults()` reducer used by ShiftClosing. Returns per-category `null` when no tasks contributed (no more inflated fallback).
 - `frontend/src/utils/scoreAggregator.test.ts` — Vitest suite (15 tests) covering averaging, weighting, skipped-category fallback, legacy-shape graceful handling.
 - **Frontend Vitest**: `cd frontend && npm run test` runs the scoreAggregator suite.
+
+- `backend/src/utils/moveEpochs.ts` — per-pair progress-rewrite epochs; long-running writers (writing eval) snapshot + re-check before persisting (added 2026-06-11)
+- `backend/src/routes/clarity-check.ts` — `POST /complete` (idempotent mastery) + `GET /completed?weekNumber=` (server-backed one-shot hydration for the frontend gate)

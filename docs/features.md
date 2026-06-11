@@ -64,7 +64,7 @@ Config-driven task queue. Each week has 5–6 tasks driven by static `WeekConfig
 - Legacy detail-key compatibility preserved so teacher Gradebook `QueueTaskDetails` + `WritingDisplay` render unchanged.
 - Vitest coverage: `frontend/src/utils/scoreAggregator.test.ts` — 15 tests (was 11 before PR #18 added `countTargetWordsHit` coverage). `cd frontend && npm run test`.
 - **Citizen-4488 Case File card**: Bottom of ShiftClosing. Reads `frontend/src/data/citizen4488Posts.ts` (frontend shim mirroring backend seed). Shows 4488's post for the completed week + student's concern-score delta. Tone accent emerald (stable) / amber (mild concern) / rose (concern rising). PR #12 (pending) adds a second post + collapsible "grammar watch" note per week.
-- **PEARL Observation cards** (narrative-reactive, 2026-04-21): Before the ceremonial PEARL quote, week-specific "P.E.A.R.L. — Observation" cards render conditional on student's shift activity. **W3**: quotes the student's first `priority_briefing` rule verbatim, read from `taskProgress[].details.writingSubmissions` (no backend dependency). **W4**: conditional on `w4_recruitment_vote` choice value (added 2026-05-11; superseded the retired `w4_doc_review_frag3` key when the W4 mid-task popup was removed in the Activity Reconciliation redesign) — compliant / curious / guarded variants. `ShiftClosing.tsx` consumer code still needs the key swap. Reads via `fetchNarrativeChoices(weekNumber)` on mount. Cards are mutually exclusive (different `weekNumber` gates).
+- **PEARL Observation cards** (narrative-reactive, 2026-04-21): Before the ceremonial PEARL quote, week-specific "P.E.A.R.L. — Observation" cards render conditional on student's shift activity. **W3**: quotes the student's first `priority_briefing` rule verbatim, read from `taskProgress[].details.writingSubmissions` (no backend dependency). **W4**: conditional on `w4_recruitment_vote` choice value (added 2026-05-11; superseded the retired `w4_doc_review_frag3` key when the W4 mid-task popup was removed in the Activity Reconciliation redesign) — compliant / curious / guarded variants. **Status 2026-06: the W4 card is STILL NOT WIRED** — `ShiftClosing.tsx` has no `w4_recruitment_vote` consumer (tracked in `audit-remediation-2026-06.md` deferred items). Reads via `fetchNarrativeChoices(weekNumber)` on mount. Cards are mutually exclusive (different `weekNumber` gates).
 
 ## Narrative-Reactive Interaction Layers (2026-04-21)
 Non-skippable interaction points inside the terminal flow — distinct from toasts (dismissible) and Harmony posts (students open voluntarily). Committed to after external feedback flagged that students were routing around narrative; implements the "Shape 1" commitment ("story-driven game that teaches English").
@@ -112,7 +112,7 @@ Sibling to Clarity Check — same screen-locking modal, same MCQ shape — but *
 
 **Teacher experience (Teacher Dashboard → Shifts tab)**:
 - Below the Shift Storyboard, a "Compliance Checks" section appears for the currently-selected shift.
-- Slot list — placement rows derived from the shift's tasks: `Before shift starts`, `Before {Task.label}` (one per task), `At shift end`. Each slot has either an `[Edit]` (template exists) or `[+ Add]` (empty) button.
+- Placement slots render INLINE in the Shift Storyboard as `ComplianceCheckMarker` chips (2026-05-08): above the first card (`Before shift starts`), after each card (`After {Task.label}`), below the last (`At shift end`). Each marker opens the editor ([Edit] when a template exists, [+ Add] when empty). The old standalone slot-list section was deleted.
 - Editor modal: optional title, **WordPicker** (grouped by shift, expand/collapse, TOEIC-only filter, per-shift bulk `All`/`Clear`, search), question count 1–5, cumulative-review-count control (default 2 per prior shift, configurable 0–10), live preview with re-roll, save/remove.
 - WordPicker auto-seeds on first open (no template yet): all current-shift TOEIC words pre-selected + `cumulativeReviewCount` random TOEIC words from each prior shift. Teacher deselects/selects per word in shift-grouped UI.
 - Distractors are auto-generated server-side from definitions of words NOT in the selected list — pedagogically deliberate (never double-tests something this round).
@@ -128,7 +128,7 @@ Sibling to Clarity Check — same screen-locking modal, same MCQ shape — but *
 **Architecture notes**:
 - Backend: `ComplianceCheckTemplate` Prisma model holds the teacher's curated word list + question count + placement. `ComplianceCheckResult` (with `templateId` FK) stores the completed result + answers. See `docs/architecture.md` for the full route surface.
 - Frontend cascade: `ShiftQueue.tsx` fires `fetchComplianceCheckFor(placement, afterTaskId?)` at each placement point. Result mounts `<ComplianceCheckShell>`. **Cancellation token + `expectedWeek` snapshot** required to prevent prior-shift bleed-through during teacher-driven shift moves (see Architecture race-condition gotcha).
-- Reusable components live under `frontend/src/components/teacher/compliance-check/` (`WordPicker`, `ComplianceCheckEditor`, `ComplianceCheckSlotList`).
+- Reusable components live under `frontend/src/components/teacher/compliance-check/` (`WordPicker`, `ComplianceCheckEditor`, `ComplianceCheckMarker` — `ComplianceCheckSlotList` was deleted 2026-05-08).
 - Visual preview at `/preview/compliance-check` (auth-bypassed) renders the lockout shell with sample MCQ data — useful for iterating on look without touching real templates.
 
 **No on-demand fire path**: an earlier iteration shipped a "Issue Compliance Check" button in ClassMonitor with a separate IssueComplianceCheckModal + `compliance-check:issued` socket event + Zustand store. All removed in the redesign — Compliance Checks fire only from scheduled templates.
@@ -199,7 +199,10 @@ Third member of the screen-locking-MCQ family — same lockout shell as Clarity 
 
 **Dictionary word gating:** Words gated by student progress (MissionScore/ShiftResult), not ClassWeekUnlock.
 
-## Shift Runner (Weeks 4+)
+## Shift Runner (LEGACY — no live weeks)
+
+> **Stale-section notice (2026-06-11):** every built week (1-4) is a `shiftType: "queue"` week rendered by ShiftQueue; this 7-step PhaseRunner path is dead at runtime and slated for deletion (see audit tracker "Dead code"). Kept for historical reference only.
+
 Fixed 7-step sequence: `recap` → `briefing` → `grammar` → `listening` → `voice_log` → `case_file` → `clock_out`
 
 Step navigation gated by completion. All steps support optional video via `StepVideoClip` component.

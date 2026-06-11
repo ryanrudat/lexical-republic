@@ -4,13 +4,26 @@ Where things stand and what's queued. For day-by-day shipped history see
 [`changelog.md`](changelog.md); for specific past work prefer `git log` and the topic files in
 `memory/`.
 
-## ▶ Active: Audit Remediation (June 2026)
-Two June audits (Shift-4 deep review + 60-finding frontend bug sweep) produced a prioritized fix
-list tracked in **[`audit-remediation-2026-06.md`](audit-remediation-2026-06.md)**. First batch
-landed (Lane-1 grammar scaffold, shared-device logout hygiene, `refresh()` 401-guard, concern-delta
-reset, W4 `DictionaryWord` startup migration). Remaining: PEARL interrogation voice, W4 vocab
-coverage, teacher class-switch staleness, Harmony own-post visibility, and a P1/P2 tail. **All 35
-Shift-4 answer keys verified correct.** See the tracker for the full checklist + status.
+## ▶ Audit Remediation (June 2026) — verification CLOSED, backlog remains
+Six fix batches landed and pushed (2026-06-09 → 06-11): ~85 verified fixes across grade integrity,
+privacy (staff-room socket split), classroom resilience (reconnect/retry), teacher tooling, and
+Shift-4 content. **Every finder claim from the June sweep is now adversarially verified** — see
+**[`audit-remediation-2026-06.md`](audit-remediation-2026-06.md)** Batches 1-6. **All 35 Shift-4
+answer keys verified correct (twice).**
+
+Still-pending backlog (tracked, prioritized in the tracker):
+- P0: PEARL voice doctrine in the Clarity Inquiry (`spyFiles.ts` contractions/first-person);
+  teacher class-switch stale cards (ClassMonitor cancellation token); Harmony own-post hidden by
+  the drip.
+- P1 tail: task-command completion-predicate divergence (🔄 started); Gradebook edit/delete
+  swallowed errors; Word Pool cooldown timer; `useMediaRecorder` AudioContext leak; WordSort
+  attempt cap; live concern chip reconcile; `wordBankChinese` Mandarin chips.
+- P2 tail + dead-code deletions + deferred-with-cause items — see tracker.
+- Shift-4 pedagogy follow-ups: Betty double-message, Ivan triple-ask, Ivan/Frey collision,
+  Cipher `[ lexicon ]` tab + auto-reveal study line, W4 Harmony static content, ShiftClosing W4
+  PEARL Observation card wiring.
+- Activity brainstorm: 48 ideas generated; judging/synthesis pass paused (resume pointers in
+  `memory/project_full_audit_2026_06_10.md`).
 
 ## Harmony Expansion Status
 Harmony expansion is in progress. See `Dplan/Harmony_Expansion_Review.md` for the full design review.

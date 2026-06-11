@@ -2,6 +2,24 @@
 
 Last updated: 2026-03-23
 
+> **⚠️ PARTIALLY SUPERSEDED (notice added 2026-06-11).** This is the original planning
+> document — kept as a historical record. The Week 4 section diverges from shipped canon
+> in several load-bearing ways; where they conflict, `docs/locked-decisions.md` and
+> `backend/src/data/week-configs/week4.ts` win:
+> - **Black Words are `witness, relative, individual, independent, private`** (not
+>   mother/father/freedom/truth/name), with NO audio buttons on Lexicon entries.
+> - **The Cipher is a 3-document redacted-reveal** (9020 personnel file → record rewrite →
+>   4488 case flag) that uploads each restored record to `[ ].edited` — not the single
+>   5-blank cloze described here.
+> - **`[ ].edited` is a draggable floating window opened from the corner `[ ]` pill** —
+>   there is no desktop tile.
+> - The Obs-E beat is a **silent visual mutation** (no popup choice), and the recruitment
+>   vote (`w4_recruitment_vote`) happens in an end-of-shift modal.
+> - The implementation checklist below was never maintained; week4.ts shipped and has been
+>   revised repeatedly since (see `docs/changelog.md`).
+> Weeks 5-6 sections remain the current plan (not yet built). Note the W6 task-count
+> question (4 vs 5 tasks) is still unresolved — see `docs/next-work.md`.
+
 ## Overview
 
 Weeks 4-6 complete Act I: Compliance. The narrative arc moves from "obedient learning" to "first real doubt," culminating in an audit that forces students to confront everything they've processed.

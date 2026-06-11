@@ -42,7 +42,7 @@ Every `WeekConfig` carries a `previousWords: string[]` cumulative list of every 
 - **Recent tier** — previous 1-2 route-weeks (amber accent)
 - **Deep tier** — all older route-weeks (gray accent)
 
-Mastery is differentiated by recency. Censure-queue retrieval adds **+0.05** for current-week items, **+0.03** for review-tier items (`backend/src/routes/harmony.ts:639-654`). `WritingEvaluator` adds **+0.10** per used target word for contextualized production (`backend/src/routes/submissions.ts:243-247`). Clarity Check and Compliance Check both add **+0.03** per correct (`backend/src/routes/clarity-check.ts:73`, `compliance-check.ts:352`). All mastery upserts wrap in `prisma.$transaction` so encounter counts and mastery cannot diverge.
+Mastery is differentiated by recency. Censure-queue retrieval adds **+0.05** for current-week items, **+0.03** for review-tier items (`backend/src/routes/harmony.ts:639-654`). `WritingEvaluator` adds **+0.10** per used target word for contextualized production — gated on the on-topic veto since 2026-06-11 (`backend/src/routes/submissions.ts`, vocab-encounter block); passive dictionary views accrue encounters only, never mastery. Clarity Check and Compliance Check both add **+0.03** per correct (`backend/src/routes/clarity-check.ts:73`, `compliance-check.ts:352`). All mastery upserts wrap in `prisma.$transaction` so encounter counts and mastery cannot diverge.
 
 Censure items unanswered or wrong stay surfaced; correct items go dormant for 7 days then re-eligible (`harmony.ts:528-538`).
 
@@ -224,7 +224,7 @@ When any writing task in the shift was off-topic, an amber/rose banner renders a
 Narrative-reactive cards layer on top:
 
 - **W3** Party Observation — quotes the student's own first principle from `priority_briefing` writing (`ShiftClosing.tsx:120-135`)
-- **W4** PEARL Observation — branches on the stored `w4_recruitment_vote` narrative choice (added 2026-05-11; superseded the retired `w4_doc_review_frag3` key when the W4 mid-task popup was removed in the Activity Reconciliation redesign). `ShiftClosing.tsx` consumer code needs update.
+- **W4** PEARL Observation — branches on the stored `w4_recruitment_vote` narrative choice (added 2026-05-11; superseded the retired `w4_doc_review_frag3` key when the W4 mid-task popup was removed in the Activity Reconciliation redesign). `ShiftClosing.tsx` consumer code STILL needs the wiring (tracked in `audit-remediation-2026-06.md` deferred items).
 - **All weeks** Citizen-4488 Case File — tones rose / amber / emerald against `concernScoreDelta` (`ShiftClosing.tsx:265-267, 370-398`)
 
 Reflection mirrors action — the dashboard teaches that every keystroke registered.
