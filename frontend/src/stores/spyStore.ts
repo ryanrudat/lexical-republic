@@ -5,6 +5,7 @@ import {
 } from '../api/narrative-choices';
 import {
   CATCH_PROBABILITY,
+  FREY_INTRO_CHOICE_KEY,
   snoopChoiceKey,
   type SnoopFile,
 } from '../data/spyFiles';
@@ -57,6 +58,8 @@ interface SpyState {
   activeInterrogation: SnoopFile | null;
   /** Whether the [ ].edited funnel drawer overlay is open. */
   drawerOpen: boolean;
+  /** Whether Frey's one-time first-contact note has been dismissed. */
+  introSeen: boolean;
 
   loadChoices: () => Promise<void>;
   startExtract: (file: SnoopFile) => void;
@@ -67,6 +70,8 @@ interface SpyState {
   uploadCipherDoc: (doc: { id: string; intel: string }) => Promise<void>;
   openDrawer: () => void;
   closeDrawer: () => void;
+  /** Dismiss Frey's first-contact note (persists one-shot per pair). */
+  markIntroSeen: () => Promise<void>;
   reset: () => void;
 }
 
@@ -93,6 +98,7 @@ export const useSpyStore = create<SpyState>((set, get) => ({
   downloadingFile: null,
   activeInterrogation: null,
   drawerOpen: false,
+  introSeen: false,
 
   loadChoices: async () => {
     const epoch = ++loadEpoch;
@@ -102,6 +108,7 @@ export const useSpyStore = create<SpyState>((set, get) => ({
       const resolved: Record<string, SnoopOutcome> = {};
       const restoredCiphers: Record<string, RestoredCipher> = {};
       let dropBoxText: string | null = null;
+      let introSeen = false;
       // Ordered createdAt asc — later writes win (last-write-wins per key).
       for (const c of choices) {
         if (c.choiceKey.startsWith('w4_snoop_')) {
@@ -121,9 +128,11 @@ export const useSpyStore = create<SpyState>((set, get) => ({
           // must not appear in Frey's "you told me" section.
           const text = typeof c.context?.text === 'string' ? c.context.text.trim() : '';
           if (c.value === 'submitted' && text.length > 0) dropBoxText = text;
+        } else if (c.choiceKey === FREY_INTRO_CHOICE_KEY) {
+          if (c.value === 'seen') introSeen = true;
         }
       }
-      set({ resolved, restoredCiphers, dropBoxText, loaded: true });
+      set({ resolved, restoredCiphers, dropBoxText, introSeen, loaded: true });
     } catch {
       if (epoch !== loadEpoch) return; // stale rejection — don't mark loaded
       // Fail-open — an unreachable choices endpoint shouldn't block the app.
@@ -200,6 +209,22 @@ export const useSpyStore = create<SpyState>((set, get) => ({
   openDrawer: () => set({ drawerOpen: true }),
   closeDrawer: () => set({ drawerOpen: false }),
 
+  markIntroSeen: async () => {
+    if (get().introSeen) return;
+    // Optimistic — worst case a failed write replays the note next login
+    // (matches writeOutcome's fail-open behaviour).
+    set({ introSeen: true });
+    try {
+      await postNarrativeChoice({
+        choiceKey: FREY_INTRO_CHOICE_KEY,
+        value: 'seen',
+        weekNumber: 4,
+      });
+    } catch (err) {
+      console.error('Failed to record Frey intro dismissal:', err);
+    }
+  },
+
   reset: () => {
     loadEpoch++; // invalidate in-flight loadChoices
     set({
@@ -211,6 +236,7 @@ export const useSpyStore = create<SpyState>((set, get) => ({
       downloadingFile: null,
       activeInterrogation: null,
       drawerOpen: false,
+      introSeen: false,
     });
   },
 }));

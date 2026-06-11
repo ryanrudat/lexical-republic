@@ -24,6 +24,7 @@ import RemediationDevTrigger from './components/dev/RemediationDevTrigger';
 import PearlInquiryOverlay from './components/spy/PearlInquiryOverlay';
 import ExtractionOverlay from './components/spy/ExtractionOverlay';
 import FunnelDrawer from './components/spy/FunnelDrawer';
+import FreyIntroOverlay from './components/spy/FreyIntroOverlay';
 import UpdateBanner from './components/system/UpdateBanner';
 import { useUpdateChecker } from './hooks/useUpdateChecker';
 import TrialDispatchModal from './components/terminal/apps/InscriptionPool/TrialDispatchModal';
@@ -399,6 +400,8 @@ export default function App() {
       {user.role === 'student' && <ExtractionOverlay />}
       {/* [ ].edited funnel drawer — floating covert channel, reachable across the terminal. */}
       {user.role === 'student' && <FunnelDrawer />}
+      {/* Frey's first contact — one-time [ ] + Records Wing orientation on the W4 desktop. */}
+      {user.role === 'student' && <FreyIntroOverlay />}
       {/* Sector Trial invite — class-wide modal pops when teacher schedules a Trial. */}
       {user.role === 'student' && <TrialDispatchModal />}
       {/* New-version banner. Self-gates on `updateAvailable` from updateStore. */}

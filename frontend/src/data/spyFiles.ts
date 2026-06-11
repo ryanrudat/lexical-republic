@@ -160,6 +160,29 @@ export function snoopChoiceKey(fileId: string): string {
   return `w4_snoop_${fileId}`;
 }
 
+// Frey's first contact — one-time overlay the first time a student reaches
+// the terminal desktop with W4 unlocked. Points out the Records Wing tile
+// and the corner [ ] launcher. Dismissal persists as NarrativeChoice
+// `w4_funnel_intro` = 'seen' (one-shot per pair, survives device swaps).
+export const FREY_INTRO_CHOICE_KEY = 'w4_funnel_intro';
+
+export const FREY_FIRST_CONTACT: string[] = [
+  'citizen. one minute, before they put you to work.',
+  '',
+  'two things on this machine.',
+  '',
+  'first: the records wing. their filing room.',
+  'the files they keep on people live there.',
+  'reading is allowed. reading is safe. start there.',
+  '',
+  'second: the small [ ] in the corner of the screen.',
+  'that is my channel. tap it to open. drag it to move it.',
+  'they do not see it. keep it that way.',
+  '',
+  'read their files. send me what matters.',
+  '— F',
+];
+
 // Frey's opening transmission — the recruitment pitch + the standing order.
 export const FREY_INTRO: string[] = [
   'citizen. you found this.',

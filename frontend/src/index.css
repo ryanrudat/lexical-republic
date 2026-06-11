@@ -1088,6 +1088,12 @@ body.pearl-inquiry-active .pearl-island {
   display: none !important;
 }
 
+/* While Frey's one-time first-contact note is up, suppress the island —
+   the Party chirping over the covert channel breaks the register. */
+body.frey-intro-active .pearl-island {
+  display: none !important;
+}
+
 /* While an extraction activity/transfer overlay is up, suppress the island. */
 body.extraction-active .pearl-island {
   display: none !important;
