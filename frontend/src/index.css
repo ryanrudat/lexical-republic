@@ -1063,6 +1063,19 @@ body.compliance-check-active .pearl-island {
   display: none !important;
 }
 
+/* While a Compliance or Clarity Check lockout is up, hide the [ ].edited spy
+   surfaces — the corner launcher pill and the floating channel window. Both
+   mount at App root AFTER the Routes subtree, so EditedWindow's z-[90] ties
+   with ClarityCheck's z-[90] and wins on DOM order, and the rose pill can
+   silhouette through the translucent backdrop. PEARL is watching; the covert
+   channel must never be visible during her checks. */
+body.compliance-check-active .edited-pill,
+body.compliance-check-active .edited-window,
+body.clarity-check-active .edited-pill,
+body.clarity-check-active .edited-window {
+  display: none !important;
+}
+
 /* While a Remediation Module is active, suppress the ambient PEARL
    Dynamic Island so it doesn't overlap the modal. */
 body.remediation-active .pearl-island {

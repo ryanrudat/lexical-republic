@@ -57,9 +57,11 @@ export default function ClarityCheck({ config, weekNumber, onComplete }: Props) 
     window.addEventListener('keydown', blockKey, true);
     window.addEventListener('popstate', blockBack);
     blockBack();
+    document.body.classList.add('clarity-check-active');
     return () => {
       window.removeEventListener('keydown', blockKey, true);
       window.removeEventListener('popstate', blockBack);
+      document.body.classList.remove('clarity-check-active');
     };
   }, []);
 
