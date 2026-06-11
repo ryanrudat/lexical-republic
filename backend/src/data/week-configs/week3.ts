@@ -258,7 +258,7 @@ export const WEEK_3_CONFIG: WeekConfig = {
             laneHint: "non-urgent",
           },
         ],
-        modalPrompt: "For each case, write 1-2 sentences explaining your decision. Use 'should', 'must', or 'can'.",
+        modalPrompt: "Think back: which folder did you put this case in — URGENT, ROUTINE, or HOLD? Write 1-2 sentences explaining why you chose that folder. Use 'should', 'must', or 'can'.",
         modalLane: {
           "1": { template: "I should forward this to {department} because..." },
           "2": {},

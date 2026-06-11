@@ -99,7 +99,7 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
     }
     return shuffled;
   }, [config.cases]);
-  const modalPrompt = (config.modalPrompt as string) ?? 'Explain why this case received its priority level.';
+  const modalPrompt = (config.modalPrompt as string) ?? 'Think back: which folder did you put this case in — URGENT, ROUTINE, or HOLD? Write 1-2 sentences explaining why you chose that folder.';
 
   const addConcern = useShiftQueueStore(s => s.addConcern);
   const user = useStudentStore(s => s.user);
@@ -358,6 +358,10 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
   function renderJustifyPhase() {
     if (!currentJustifyCase) return null;
     const justifyText = justifications[currentJustifyCase.caseId] ?? '';
+    // The folder this student filed the case into during the cascade — the
+    // justification is about THAT choice, so surface it instead of making
+    // A2-B1 students recall it cold.
+    const assignedFolder = COLUMNS.find(col => columns[col].includes(currentJustifyCase.caseId)) ?? null;
 
     return (
       <div className="space-y-4">
@@ -374,9 +378,27 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
           <p className="font-ibm-mono text-xs text-[#6B7280] mt-1">
             {currentJustifyCase.description}
           </p>
+          {assignedFolder && (
+            <div className="flex items-center gap-3 mt-3 pt-3 border-t border-[#E8E4DC]">
+              <Folder column={assignedFolder} count={null} compact />
+              <div>
+                <p className="font-ibm-mono text-[10px] text-[#B8B3AA] tracking-widest uppercase">
+                  You put this case in
+                </p>
+                <p className={`font-ibm-mono text-sm font-medium tracking-[0.2em] ${COLOR_CONFIG[assignedFolder].text}`}>
+                  {assignedFolder}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
-        <p className="text-sm text-[#4B5563] leading-relaxed">{modalPrompt}</p>
+        <div className="bg-[#FAFAF7] border border-[#E8E4DC] rounded-xl p-3">
+          <p className="font-ibm-mono text-[10px] text-[#8B8578] tracking-wider uppercase mb-1">
+            Your Task
+          </p>
+          <p className="text-sm text-[#4B5563] leading-relaxed">{modalPrompt}</p>
+        </div>
 
         <TargetWordHighlighter
           text={justifyText}
@@ -403,7 +425,7 @@ export default function PrioritySort({ config, weekConfig, onComplete }: TaskPro
           // The on-topic veto needs the prompt + context or the AI rubric
           // defaults onTopic=true and the veto is structurally off.
           writingPrompt={modalPrompt}
-          taskContext={`Week ${weekConfig.weekNumber} priority classification. The student sorted case "${currentJustifyCase.title}" (${currentJustifyCase.description}) and is justifying that priority decision.`}
+          taskContext={`Week ${weekConfig.weekNumber} priority classification. The student sorted case "${currentJustifyCase.title}" (${currentJustifyCase.description}) into the ${assignedFolder ?? 'unknown'} folder and is justifying that priority decision.`}
           onResult={handleWritingResult}
           disabled={!justifyText.trim()}
         />
