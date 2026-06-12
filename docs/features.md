@@ -522,7 +522,7 @@ Teachers can set student difficulty tiers (1=Guided, 2=Standard, 3=Independent) 
 - **AI evaluation**: Prompt includes lane context; unified pass threshold (avg >= 0.4) across all tiers
 - **WordMatch**: Per-word attempt limits — Tier 1 gets 3 attempts before auto-resolve (shows correct match, concern only on final miss, 2s flash for learning), Tier 2 gets 2 attempts (concern every miss), Tier 3 gets 1 attempt (immediate auto-resolve, concern every miss). Tier 1 PEARL barks show remaining attempts. Render-time completion detection with functional state updaters (no stale closures).
 - **ClozeFill**: Per-blank attempt limits — Tier 1 gets 3 attempts before auto-fill (concern only on final miss, 1.5s delay), Tier 2 gets 2 attempts (concern every miss), Tier 3 gets 1 attempt (immediate auto-fill, 800ms delay, concern every miss). Auto-filled blanks don't count toward first-try score.
-- **PrioritySort**: Tiered concern penalty per wrong sort — Tier 1 = 0.05 (gentler), Tier 2 = 0.1 (default), Tier 3 = 0.15 (stricter). Justify phase already lane-aware via WritingEvaluator + modalLane config.
+- **PrioritySort**: Tiered concern penalty per wrong sort — Tier 1 = 0.05 (gentler), Tier 2 = 0.1 (default), Tier 3 = 0.15 (stricter). Justify phase is lane-aware via WritingEvaluator's `lane` prop (`modalLane` in week3.ts is config-only — NOT consumed by the component). Justify card re-displays the student's own filed folder (glyph + colored label) and a "YOUR TASK" directions panel naming all three folders (2026-06-11, `965dd18`).
 
 ## Login Form Persistence
 Login form state persisted in `loginFormStore.ts` (Zustand) so navigation away from `/login` doesn't reset partially filled fields. Form clears only on successful login/register.

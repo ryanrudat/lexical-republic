@@ -4,6 +4,14 @@ Day-by-day work history. Moved here from `CLAUDE.md` on 2026-04-30 to keep the a
 
 ---
 
+## 2026-06-11 (late PM — W3 Priority Classification justify-step clarity)
+
+One commit, pushed (`965dd18`). Teacher-observed problem: in the justification step students didn't realize "explain your decision" referred to the folder they filed the case into during the cascade, and the three folder names weren't visible anywhere on the writing screen. Fixes: (1) `week3.ts` `modalPrompt` rewritten — "Think back: which folder did you put this case in — URGENT, ROUTINE, or HOLD? Write 1-2 sentences explaining why you chose that folder…"; (2) the justify case card now re-displays the student's own filing (compact `Folder` glyph + colored folder label, derived from cascade `columns` state — their own answer, so no leak); (3) directions render in a labeled "YOUR TASK" panel instead of a bare text line; (4) `WritingEvaluator` `taskContext` now names the chosen folder so the on-topic veto judges the justification against the student's actual decision. Component fallback `modalPrompt` updated to match. Both builds pass. Doctrine recorded in `pedagogy.md` §7.7.1: a phase that asks students to write about an earlier in-task decision must re-display that decision.
+
+Ops note (same day, no code change): student "10635 Coco" couldn't log in — prod `pairs` row shows her designation is `35` (registered with seat number; Class 106 mixes full student numbers like `10636` with bare seat numbers). Login designation ≠ school number for roughly half that class; "Invalid designation or PIN" was correct behavior.
+
+---
+
 ## 2026-06-11 PM (spy visibility fix + Frey onboarding + dark-lead retry)
 
 Three commits, all pushed. `60c4eca`: `[ ].edited` spy surfaces (`.edited-pill`/`.edited-window`) hidden during Compliance AND Clarity Check lockouts — ClarityCheck now broadcasts `body.clarity-check-active`; the spy window's z-90 tied with ClarityCheck's and won by DOM order. `46f4013`: `FreyIntroOverlay` — one-time Frey-voiced note on the first terminal-desktop visit with W4 unlocked explaining the Records Wing tile and the corner `[ ]`; persists as NarrativeChoice `w4_funnel_intro`; PEARL island suppressed via `body.frey-intro-active`. `5858853`: dark Records Wing leads reopen after a 10-min cooldown (`SNOOP_RETRY_COOLDOWN_MS`) — `spyStore.darkAt` + time-aware `startExtract` + `DarkLead` retry card; one bad roll no longer locks the spy loop permanently (`funneled` stays locked). Parked, known-unfixed: compliance `/complete` trusts client `correct` flags (grade forgery); `cumulativeReviewCount` POST default is NaN (`Number(...) ?? 2`).

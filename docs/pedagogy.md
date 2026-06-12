@@ -413,7 +413,9 @@ This is **not** a crutch. The thing being learned is *discrimination under readi
 
 Long-term internalisation comes from repeated successful application across many cases, not from rule-memorisation at first encounter. If you want to assess memory of the criteria, do it as a separate retrieval check (a Clarity Check or Compliance Check pulling category criteria as MCQ items at shift close), not by withholding reference during the application phase.
 
-Future centerpiece tasks must include both a persistent terse-directions surface AND a collapsible full-reference surface with lane-aware default state. Hiding all reference after the training overlay is a doctrine deviation.
+**Justify-phase referent visibility (added 2026-06-11, `965dd18`):** when a later phase asks the student to write about an earlier in-task decision, the decision itself must be re-displayed on the writing screen. A2-B1 students cannot hold six classification choices across a phase boundary, and "explain your decision" with no visible referent reads as a comprehension puzzle, not a writing prompt — the classroom symptom was students not knowing what they were supposed to explain. The W3 justify card now shows the student's own filing (folder glyph + colored label from cascade state — their own answer, so nothing leaks) and the directions name all three folders explicitly ("Think back: which folder did you put this case in — URGENT, ROUTINE, or HOLD?").
+
+Future centerpiece tasks must include both a persistent terse-directions surface AND a collapsible full-reference surface with lane-aware default state, and any later phase that references an earlier in-task decision must re-display that decision. Hiding all reference after the training overlay is a doctrine deviation.
 
 ---
 
