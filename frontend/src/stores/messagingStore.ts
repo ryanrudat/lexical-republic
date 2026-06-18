@@ -15,6 +15,8 @@ interface MessagingState {
   /** When set, shows all messages from this character as a grouped conversation */
   selectedConversation: string | null;
   activeNotification: ActiveNotification | null;
+  /** Teacher direct message (Clarity Minder) that must BLOCK the screen. */
+  clarityAlert: CharacterMessage | null;
   loading: boolean;
 
   loadMessages: (weekNumber?: number) => Promise<void>;
@@ -34,6 +36,7 @@ interface MessagingState {
   selectConversation: (characterName: string) => void;
   backToInbox: () => void;
   dismissNotification: () => void;
+  dismissClarityAlert: () => void;
   refreshUnreadCount: () => Promise<void>;
   reset: () => void;
 }
@@ -52,6 +55,7 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
   selectedMessageId: null,
   selectedConversation: null,
   activeNotification: null,
+  clarityAlert: null,
   loading: false,
 
   loadMessages: async (weekNumber?: number) => {
@@ -65,14 +69,15 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
       const { count } = await getUnreadCount();
       if (epoch !== loadEpoch) return;
       set({ unreadCount: count });
-      // Show notification for most recent unread thread message (teacher direct message)
-      // so students see a toast even if the message arrived while offline
-      if (!get().activeNotification) {
+      // Surface the most recent unread teacher direct message (Clarity Minder)
+      // that arrived while the student was offline. These are `thread` type and
+      // must BLOCK the screen (ClarityMinderAlert), not sit in the corner toast.
+      if (!get().clarityAlert) {
         const unreadThread = [...messages]
           .filter(m => !m.isRead && m.replyType === 'thread')
           .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
         if (unreadThread) {
-          set({ activeNotification: { message: unreadThread } });
+          set({ clarityAlert: unreadThread });
         }
       }
     } catch {
@@ -181,10 +186,14 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
     set(state => {
       // Guard: don't append if already present
       if (state.messages.some(m => m.id === message.id)) return state;
+      const isClarity = message.characterName === 'Clarity Minder';
       return {
         messages: [...state.messages, message],
         unreadCount: state.unreadCount + 1,
-        activeNotification: { message },
+        // Clarity Minder (teacher direct) BLOCKS the screen via ClarityMinderAlert;
+        // NPC barks (Betty/Ivan/M.K.) keep the ambient corner toast.
+        clarityAlert: isClarity ? message : state.clarityAlert,
+        activeNotification: isClarity ? state.activeNotification : { message },
       };
     });
   },
@@ -206,9 +215,15 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
         isRead: false,
       };
 
+      const isTeacherEntry = entry.sender === 'teacher';
       return {
         messages: state.messages.map(m => (m.id === messageId ? updatedMsg : m)),
-        unreadCount: entry.sender === 'teacher' ? state.unreadCount + 1 : state.unreadCount,
+        unreadCount: isTeacherEntry ? state.unreadCount + 1 : state.unreadCount,
+        // A teacher follow-up in a Clarity Minder thread re-blocks the screen.
+        clarityAlert:
+          isTeacherEntry && updatedMsg.characterName === 'Clarity Minder'
+            ? updatedMsg
+            : state.clarityAlert,
       };
     });
   },
@@ -230,6 +245,8 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
     }
     set({ activeNotification: null });
   },
+
+  dismissClarityAlert: () => set({ clarityAlert: null }),
 
   refreshUnreadCount: async () => {
     try {
@@ -259,6 +276,7 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
       selectedMessageId: null,
       selectedConversation: null,
       activeNotification: null,
+      clarityAlert: null,
       loading: false,
     });
   },

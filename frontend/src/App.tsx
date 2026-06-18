@@ -20,6 +20,7 @@ import { useHarmonyStore } from './stores/harmonyStore';
 import { useViewStore } from './stores/viewStore';
 import ComplianceCheckPreview from './pages/ComplianceCheckPreview';
 import RemediationOverlay from './components/remediation/RemediationOverlay';
+import ClarityMinderAlert from './components/messaging/ClarityMinderAlert';
 import RemediationDevTrigger from './components/dev/RemediationDevTrigger';
 import PearlInquiryOverlay from './components/spy/PearlInquiryOverlay';
 import ExtractionOverlay from './components/spy/ExtractionOverlay';
@@ -393,6 +394,8 @@ export default function App() {
           useSessionStore.activeRemediation is set; guards on student role to avoid
           mounting in teacher dashboard. */}
       {user.role === 'student' && <RemediationOverlay />}
+      {/* Clarity Minder direct messages — BLOCKING modal that overrides everything. */}
+      {user.role === 'student' && <ClarityMinderAlert />}
       {user.role === 'student' && import.meta.env.DEV && <RemediationDevTrigger />}
       {/* PEARL Clarity Inquiry — fires when the dice roll catches a student snooping. */}
       {user.role === 'student' && <PearlInquiryOverlay />}

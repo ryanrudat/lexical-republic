@@ -1120,6 +1120,26 @@ body.frey-intro-active .pearl-island {
   display: none !important;
 }
 
+/* A Clarity Minder directive (teacher direct message) BLOCKS the screen.
+   Suppress the ambient PEARL island and the covert [ ].edited surfaces so
+   nothing competes with or silhouettes through the blocking message box. */
+body.clarity-message-active .pearl-island,
+body.clarity-message-active .edited-pill,
+body.clarity-message-active .edited-window {
+  display: none !important;
+}
+
+/* Clarity Minder message box — a small pop-in. Neutralised by the global
+   prefers-reduced-motion rule below. */
+.clarity-alert-pop {
+  animation: clarity-alert-pop-in 220ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes clarity-alert-pop-in {
+  from { opacity: 0; transform: scale(0.94) translateY(6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
 /* While an extraction activity/transfer overlay is up, suppress the island. */
 body.extraction-active .pearl-island {
   display: none !important;
