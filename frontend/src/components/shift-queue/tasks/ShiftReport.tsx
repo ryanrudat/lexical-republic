@@ -5,6 +5,8 @@ import TargetWordHighlighter from './shared/TargetWordHighlighter';
 import WritingEvaluator from './shared/WritingEvaluator';
 import type { EvalResult } from './shared/WritingEvaluator';
 import LaneScaffolding from './shared/LaneScaffolding';
+import ShiftRecall from './shared/ShiftRecall';
+import type { RecallConfig } from './shared/ShiftRecall';
 
 export default function ShiftReport({ config, weekConfig, missionId, onComplete }: TaskProps) {
   const pair = useStudentStore((s) => s.user);
@@ -14,6 +16,7 @@ export default function ShiftReport({ config, weekConfig, missionId, onComplete 
   const [passed, setPassed] = useState(false);
 
   const prompt = config.prompt as string;
+  const recall = config.recall as RecallConfig | undefined;
   const laneConfig = config.lane as Record<string, Record<string, unknown>> | undefined;
   const laneMinWords = laneConfig?.[String(lane)]?.minWords as number | undefined;
   const minWords = laneMinWords ?? ((config.minWords as number) || 40);
@@ -90,6 +93,9 @@ export default function ShiftReport({ config, weekConfig, missionId, onComplete 
         </div>
         <p className="text-sm text-[#4B5563] leading-relaxed">{prompt}</p>
       </div>
+
+      {/* Look-back recall — retrieval scaffold for the open writing */}
+      {recall && <ShiftRecall recall={recall} />}
 
       {/* Lane scaffolding */}
       <LaneScaffolding

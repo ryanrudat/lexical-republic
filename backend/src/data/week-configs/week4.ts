@@ -558,6 +558,40 @@ export const WEEK_4_CONFIG: WeekConfig = {
         prompt:
           "Write your shift report for today using 3 to 5 sentences. Describe what you examined first, what happened next, and what the final result was. Use as many target words as possible.",
         minWords: 50,
+        // Retrieval scaffold rendered above the writing area (ShiftRecall).
+        // Short, BASIC notes of what the student did this shift — NOT model
+        // sentences — so they still produce the writing. Grouped by connector
+        // to model the prompt's first / next / final spine.
+        recall: {
+          title: "Look back at your shift",
+          intro:
+            "Here is what you did today, in order. Write each one as a sentence about you — use \"I\" and the past tense.",
+          groups: [
+            {
+              connector: "First",
+              items: [
+                "You examined Citizen-4488's daily observations.",
+                "You verified the times and the order of events.",
+              ],
+            },
+            {
+              connector: "Next",
+              items: [
+                "You collected the badge logs.",
+                "You organized the records by time.",
+                "You corrected the grammar in the Daily Adjustment Notice.",
+                "You saw Observation E get reclassified as Restricted.",
+              ],
+            },
+            {
+              connector: "Finally",
+              items: [
+                "You cleared the day's vocabulary words.",
+                "You filed Citizen-4488's final record.",
+              ],
+            },
+          ],
+        },
         lane: {
           "1": {
             minWords: 35,
