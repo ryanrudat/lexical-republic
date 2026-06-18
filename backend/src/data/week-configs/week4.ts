@@ -92,13 +92,15 @@ export const WEEK_4_CONFIG: WeekConfig = {
             from: "Activity Reconciliation Office",
             to: "Department of Clarity — Reconciliation Associates",
             re: "Citizen-4488 — Daily Activity Report",
+            directions:
+              "Read Citizen-4488's surveillance log below. Each line is one observation: the time, the place, and the action — listed in order from first to last. When you have read every line, answer the five verification questions. The answers all come from the log above.",
+            // The observation lines render as a structured, scannable list from
+            // the `observations[]` array below (ComprehensionDoc handles it).
+            // `body` is now just the intro sentence — the old run-on string of
+            // `\n`-separated observations collapsed to one wall of text inside a
+            // single <p>, which is what made this screen unreadable.
             body:
-              "The following surveillance observations have been logged for Citizen-4488 today. Review them carefully and confirm the sequence of events.\n\n" +
-              "Observation A — 07:23 — Sector 4 entrance — badge scan\n" +
-              "Observation B — 08:15 — Filing Desk 14 — log-in\n" +
-              "Observation C — 12:00 — Common Mess — meal card swipe\n" +
-              "Observation D — 14:30 — Records Wing — access log\n" +
-              "Observation E — 17:30 — Block 7 Residential — badge scan, guest entry logged: Citizen-9020",
+              "The following surveillance observations have been logged for Citizen-4488 today. Read each entry in order, then confirm the sequence in the verification below.",
             // After the 5 comprehension Qs, ArchiveControl reclassifies Obs E
             // as RESTRICTED via a silent visual mutation. Handled frontend-only.
             mutationAfterComprehension: true,

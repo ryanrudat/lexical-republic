@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, type ReactNode } from 'react';
 import DocumentCard from './DocumentCard';
 import type { TaskAnswerLogEntry } from '../../../types/taskResult';
 
@@ -7,6 +7,14 @@ interface ComprehensionQuestion {
   question?: string;
   options: string[];
   correctIndex: number;
+}
+
+interface ObservationEntry {
+  label: string;
+  time: string;
+  location: string;
+  action: string;
+  restrict?: boolean;
 }
 
 interface ComprehensionDocConfig {
@@ -20,6 +28,14 @@ interface ComprehensionDocConfig {
   body: string;
   reviewedBy?: string;
   questions: ComprehensionQuestion[];
+  // Student-facing instructions, rendered as a Directions banner above the
+  // document. Lives in mission config (not hardcoded) per project doctrine.
+  directions?: string;
+  // When present, the document body renders as a scannable, aligned log list
+  // (one row per observation) instead of the run-on `body` paragraph — so the
+  // source text the questions reference is actually readable. Mirrors the
+  // markup in ObservationMutationView for centerpiece-task visual continuity.
+  observations?: ObservationEntry[];
 }
 
 export interface ComprehensionResult {
@@ -43,6 +59,44 @@ export default function ComprehensionDoc({
   const totalQuestions = doc.questions.length;
   const answeredCount = Object.keys(answers).length;
   const allAnswered = answeredCount === totalQuestions;
+
+  // When the doc carries a structured `observations` list (e.g. the W4 Daily
+  // Observation Set), render it as an aligned, scannable log — one row per
+  // entry — rather than the run-on `body` string, whose authored `\n` line
+  // breaks collapse to spaces inside a single <p>. The lead `body` sentence is
+  // kept as the intro line above the list. Falls back to the plain `body`
+  // paragraph for prose docs (e.g. the W1 department memo).
+  const observations = doc.observations;
+  const bodyNode: ReactNode = observations?.length ? (
+    <div className="space-y-3">
+      {doc.body && (
+        <p className="text-sm text-[#4B5563] leading-relaxed">{doc.body}</p>
+      )}
+      <div className="space-y-1.5 font-ibm-mono text-[12px] leading-relaxed">
+        {observations.map((obs, i) => (
+          <div
+            key={obs.label}
+            className="comp-log-line flex flex-wrap items-baseline gap-x-2 gap-y-0.5"
+            style={{ animationDelay: `${120 + i * 90}ms` }}
+          >
+            <span className="font-special-elite text-[#2C3340] w-[112px] shrink-0">
+              Observation {obs.label}
+            </span>
+            <span className="text-[#B8B3AA]">—</span>
+            <span className="text-[#2C3340] w-12 shrink-0 tabular-nums">
+              {obs.time}
+            </span>
+            <span className="text-[#B8B3AA]">—</span>
+            <span className="text-[#4B5563]">{obs.location}</span>
+            <span className="text-[#B8B3AA]">—</span>
+            <span className="text-[#4B5563]">{obs.action}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  ) : (
+    doc.body
+  );
 
   const handleSelect = useCallback(
     (questionIndex: number, optionIndex: number) => {
@@ -83,6 +137,17 @@ export default function ComprehensionDoc({
 
   return (
     <div className="flex flex-col gap-4">
+      {doc.directions && (
+        <div className="bg-sky-50/60 border border-sky-200 rounded-xl px-4 py-3">
+          <p className="font-ibm-mono text-[10px] text-sky-700 tracking-[0.2em] uppercase mb-1.5">
+            Directions
+          </p>
+          <p className="text-sm text-[#2C3340] leading-relaxed">
+            {doc.directions}
+          </p>
+        </div>
+      )}
+
       <DocumentCard
         title={doc.title}
         department={doc.department}
@@ -91,14 +156,17 @@ export default function ComprehensionDoc({
         from={doc.from}
         to={doc.to}
         re={doc.re}
-        body={doc.body}
+        body={bodyNode}
         reviewedBy={doc.reviewedBy}
       />
 
       <div className="space-y-4">
-        <div className="px-1">
+        <div className="px-1 flex items-baseline justify-between gap-3">
           <span className="font-ibm-mono text-[10px] text-[#8B8578] tracking-[0.2em] uppercase">
             Comprehension Verification
+          </span>
+          <span className="text-[10px] text-[#9CA3AF] italic">
+            Answers come from the log above.
           </span>
         </div>
 

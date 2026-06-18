@@ -776,6 +776,20 @@ body.view-terminal {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Surveillance-log rows print in line-by-line on the comprehension screen —
+   a "log loading" feel that frames the document as something to read top to
+   bottom. Each row sets its own inline animation-delay for the stagger. The
+   global prefers-reduced-motion rule below neutralises it. */
+.comp-log-line {
+  opacity: 0;
+  animation: comp-log-line-in 360ms ease-out forwards;
+}
+
+@keyframes comp-log-line-in {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* ─── Phosphor-green CRT (DOS typing-tutor aesthetic) ────────── */
 /* Used by the Inscription Pool — Mavis-Beacon-era green phosphor
    look. Black background, green text, scanline overlay. Distinct

@@ -62,7 +62,12 @@ interface DocumentConfig {
   }>;
   // Mid-task C choice — fires after this doc completes, before advance
   midTaskChoice?: MidTaskChoice;
-  // Post-comprehension mutation beat (W4 Observation E reclassification)
+  // Student-facing instructions for the doc (comprehension docs render this as
+  // a Directions banner). Lives in config, not hardcoded UI.
+  directions?: string;
+  // Post-comprehension mutation beat (W4 Observation E reclassification).
+  // Also doubles as the structured source list the comprehension questions
+  // reference (rendered on the answering screen by ComprehensionDoc).
   observations?: ObservationEntry[];
   mutationAfterComprehension?: boolean;
 }
@@ -483,6 +488,8 @@ export default function DocumentReview({
               body: currentDoc.body,
               reviewedBy: currentDoc.reviewedBy,
               questions: currentDoc.questions,
+              directions: currentDoc.directions,
+              observations: currentDoc.observations,
             }}
             onComplete={handleComprehensionComplete}
           />
