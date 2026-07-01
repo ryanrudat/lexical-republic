@@ -159,6 +159,20 @@ export function sumWordsWritten(inputs: ScoreRowInput[]): number {
   return total;
 }
 
+/**
+ * The `type` of the last task in a week's config — the shift-closing task.
+ * Weeks close on different task types (W1/W3/W4 = `shift_report`,
+ * W2 = `contradiction_report`), so completion detection must key on "the week's
+ * FINAL task", never a hardcoded type list — otherwise a week whose closing task
+ * isn't `shift_report`/`clock_out` (e.g. W2) gets no completion fallback and no
+ * convergence. Returns null for weeks with no config / no tasks.
+ */
+export function getClosingTaskType(weekNumber: number): string | null {
+  const config = getWeekConfig(weekNumber);
+  if (!config || config.tasks.length === 0) return null;
+  return config.tasks[config.tasks.length - 1]?.type ?? null;
+}
+
 export type EnsureShiftResultAction =
   | 'created'
   | 'updated-marker'

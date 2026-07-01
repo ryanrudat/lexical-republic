@@ -1,9 +1,11 @@
 // ─── Backfill: register closing grades for already-stuck students ──────
 //
-// Recovers students who finished a shift (the closing shift_report / clock_out
-// task was marked complete) but whose ShiftResult never registered on the
-// teacher view — because the old frontend ShiftClosing POST failed silently or
-// was never reached (e.g. the W4 Drop Box → Recruitment epilogue gating it).
+// Recovers students who finished a shift (the week's closing task was marked
+// complete) but whose ShiftResult never registered on the teacher view —
+// because the old frontend ShiftClosing POST failed silently or was never
+// reached (e.g. the W4 Drop Box → Recruitment epilogue gating it). The closing
+// task is the week's FINAL task, whatever its type (W1/W3/W4 = shift_report,
+// W2 = contradiction_report), so Shift 2 is covered too.
 //
 // For every (pair, week) that has a COMPLETE closing-task MissionScore but no
 // ShiftResult with completedAt, this creates the ShiftResult with an aggregate
@@ -24,9 +26,7 @@
 // (see memory: project_prod_db_access_and_designations.md)
 
 import prisma from '../utils/prisma';
-import { ensureShiftResultRegistered } from '../utils/shiftResultRegistration';
-
-const CLOSING_TYPES = ['shift_report', 'clock_out'];
+import { ensureShiftResultRegistered, getClosingTaskType } from '../utils/shiftResultRegistration';
 
 interface Candidate {
   pairId: string;
@@ -40,11 +40,26 @@ async function main() {
     `\n=== Backfill ShiftResults — ${commit ? 'COMMIT (writing)' : 'DRY RUN (no writes)'} ===\n`,
   );
 
-  // 1. Find all pair-based closing-task scores, keep the ones marked complete.
+  // 1. Map each week to its closing (final) task type. Weeks close on different
+  //    types (W1/W3/W4 = shift_report, W2 = contradiction_report).
+  const weeks = await prisma.week.findMany({ select: { weekNumber: true } });
+  const closingTypeByWeek = new Map<number, string>();
+  for (const wk of weeks) {
+    const t = getClosingTaskType(wk.weekNumber);
+    if (t) closingTypeByWeek.set(wk.weekNumber, t);
+  }
+  const allClosingTypes = [...new Set(closingTypeByWeek.values())];
+  if (allClosingTypes.length === 0) {
+    console.log('No week configs with a closing task found. Nothing to do.\n');
+    return;
+  }
+
+  // 2. Find pair-based scores on any week's closing type, keep the ones marked
+  //    complete that are the closing task FOR THEIR OWN week.
   const closingScores = await prisma.missionScore.findMany({
     where: {
       pairId: { not: null },
-      mission: { missionType: { in: CLOSING_TYPES } },
+      mission: { missionType: { in: allClosingTypes } },
     },
     select: {
       pairId: true,
@@ -54,7 +69,7 @@ async function main() {
     },
   });
 
-  // 2. Collapse to one candidate per (pair, week); keep the latest completion time.
+  // 3. Collapse to one candidate per (pair, week); keep the latest completion time.
   const candidates = new Map<string, Candidate>();
   for (const ms of closingScores) {
     const status = (ms.details as Record<string, unknown> | null)?.status;
@@ -62,6 +77,9 @@ async function main() {
     const pairId = ms.pairId;
     const weekNumber = ms.mission.week?.weekNumber;
     if (!pairId || typeof weekNumber !== 'number') continue;
+    // Guard against a type that is a closing task in one week but a mid-shift
+    // task in another — only count it when it's THIS week's closing task.
+    if (closingTypeByWeek.get(weekNumber) !== ms.mission.missionType) continue;
     const key = `${pairId}::${weekNumber}`;
     const prev = candidates.get(key);
     if (!prev || ms.createdAt > prev.completedAt) {
@@ -74,7 +92,7 @@ async function main() {
     return;
   }
 
-  // 3. Look up which candidates already have a registered (completedAt) ShiftResult.
+  // 4. Look up which candidates already have a registered (completedAt) ShiftResult.
   const pairIds = [...new Set([...candidates.values()].map((c) => c.pairId))];
   const [existingResults, pairs] = await Promise.all([
     prisma.shiftResult.findMany({
@@ -96,7 +114,7 @@ async function main() {
     pairLabel.set(p.id, `${p.designation ?? p.id}${names ? ` (${names})` : ''}`);
   }
 
-  // 4. Process. Dry-run only reports; commit calls the shared helper.
+  // 5. Process. Dry-run only reports; commit calls the shared helper.
   let toCreate = 0;
   let toUpdateMarker = 0;
   let alreadyOk = 0;
