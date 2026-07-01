@@ -103,6 +103,107 @@ const CELL_COLORS: Record<CellStatus['state'], string> = {
   amber: 'bg-amber-50 text-amber-700 border-amber-200',
 };
 
+// ─── CSV grade-breakdown export ──────────────────────────────────────
+//
+// Built entirely client-side from the gradebook payload already in memory —
+// every task's score/status/missionType, per-shift ShiftResult, and human task
+// labels (week.taskTypes[].title) are already loaded. A plain <a href> to an API
+// route can't carry the Bearer token (auth is injected by the axios interceptor,
+// not cookies), so the reliable pattern is: build the CSV string → Blob →
+// object URL → programmatic <a download>.
+
+const CSV_HEADER = ['Student', 'Designation', 'Shift', 'Shift Title', 'Task', 'Score', 'Status', 'Completed'];
+
+const CELL_STATUS_LABEL: Record<CellStatus['state'], string> = {
+  gray: 'Not started',
+  blue: 'In progress',
+  green: 'Complete',
+  amber: 'Complete',
+};
+
+function taskStatusLabel(score: GradebookMissionScore | null): string {
+  if (!score) return 'Not attempted';
+  const status = (score.details as Record<string, unknown> | null)?.status;
+  if (status === 'complete') return 'Complete';
+  if (status === 'skipped') return 'Skipped';
+  return 'In progress';
+}
+
+function formatCompletedAt(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleString();
+}
+
+// One row per task across every shift, plus a "SHIFT OVERALL" row per shift.
+// The overall % + status mirror the gradebook grid cell (computeCell) so the CSV
+// cross-references exactly against what the teacher sees on screen.
+function buildGradeRows(
+  students: GradebookStudent[],
+  weeks: GradebookWeek[],
+): string[][] {
+  const rows: string[][] = [CSV_HEADER];
+  for (const student of students) {
+    const designation = student.designation || '';
+    for (const week of weeks) {
+      const cell = computeCell(student, week);
+      const isQueue = week.shiftType === 'queue';
+      const taskList =
+        isQueue && week.taskTypes
+          ? week.taskTypes.map((t) => ({ id: t.type, label: QUEUE_TASK_LABELS[t.type] || t.title }))
+          : STEP_ORDER.map((s) => ({ id: s.id, label: stepLabel(s.id) }));
+
+      for (const task of taskList) {
+        const score = cell.scores.find((ms) => ms.mission.missionType === task.id) ?? null;
+        rows.push([
+          student.displayName,
+          designation,
+          `Shift ${week.weekNumber}`,
+          week.title,
+          task.label,
+          score ? `${Math.round(score.score * 100)}%` : '',
+          taskStatusLabel(score),
+          '',
+        ]);
+      }
+
+      rows.push([
+        student.displayName,
+        designation,
+        `Shift ${week.weekNumber}`,
+        week.title,
+        'SHIFT OVERALL',
+        cell.avgScore !== null ? `${Math.round(cell.avgScore * 100)}%` : '',
+        CELL_STATUS_LABEL[cell.state],
+        formatCompletedAt(cell.shiftResult?.completedAt),
+      ]);
+    }
+  }
+  return rows;
+}
+
+function csvCell(value: string): string {
+  return /[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+function sanitizeFilename(name: string): string {
+  return name.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'student';
+}
+
+function downloadGradeCsv(filename: string, rows: string[][]): void {
+  // Leading BOM so Excel reads it as UTF-8 (student names may be non-ASCII).
+  const csv = '﻿' + rows.map((r) => r.map(csvCell).join(',')).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export default function Gradebook({ classId }: { classId?: string | null }) {
   const [data, setData] = useState<GradebookData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -150,11 +251,27 @@ export default function Gradebook({ classId }: { classId?: string | null }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-slate-800">Gradebook</h2>
-        <div className="flex items-center gap-3 text-xs text-slate-500">
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-slate-200" /> Not started</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-200" /> In progress</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-200" /> Good</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-200" /> Needs work</span>
+        <div className="flex items-center gap-4">
+          {students.length > 0 && (
+            <button
+              onClick={() =>
+                downloadGradeCsv(
+                  `gradebook_${new Date().toISOString().slice(0, 10)}.csv`,
+                  buildGradeRows(students, weeks),
+                )
+              }
+              className="text-xs px-2.5 py-1 rounded-md bg-indigo-500 text-white hover:bg-indigo-600 transition-colors active:scale-95"
+              title="Download every student's full per-shift, per-task grade breakdown (CSV)"
+            >
+              ⤓ Download all (CSV)
+            </button>
+          )}
+          <div className="flex items-center gap-3 text-xs text-slate-500">
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-slate-200" /> Not started</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-200" /> In progress</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-200" /> Good</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-200" /> Needs work</span>
+          </div>
         </div>
       </div>
 
@@ -180,10 +297,26 @@ export default function Gradebook({ classId }: { classId?: string | null }) {
             {students.map((student) => (
               <tr key={student.id} className="border-b border-slate-100 last:border-0">
                 <td className="sticky left-0 bg-white z-[5] px-3 py-2 font-medium text-slate-700 whitespace-nowrap">
-                  <span className="text-xs text-indigo-500 mr-1.5">
-                    {student.designation || '??'}
-                  </span>
-                  {student.displayName}
+                  <div className="flex items-center gap-2">
+                    <span>
+                      <span className="text-xs text-indigo-500 mr-1.5">
+                        {student.designation || '??'}
+                      </span>
+                      {student.displayName}
+                    </span>
+                    <button
+                      onClick={() =>
+                        downloadGradeCsv(
+                          `${sanitizeFilename(student.displayName)}_grade-breakdown.csv`,
+                          buildGradeRows([student], weeks),
+                        )
+                      }
+                      className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 hover:bg-indigo-100 active:scale-95 transition-colors"
+                      title={`Download ${student.displayName}'s per-shift, per-task grade breakdown (CSV)`}
+                    >
+                      ⤓ CSV
+                    </button>
+                  </div>
                 </td>
                 {weeks.map((week) => {
                   const cell = computeCell(student, week);
