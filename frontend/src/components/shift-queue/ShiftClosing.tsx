@@ -156,22 +156,49 @@ export default function ShiftClosing() {
     hasPosted.current = true;
 
     const postResults = async () => {
-      try {
-        const resultPayload: Record<string, unknown> = {
-          documentsProcessed: completedTasks.length,
-          documentsTotal: taskProgress.length,
-          errorsFound: aggregate.errorsFound,
-          errorsTotal: aggregate.errorsTotal,
-          vocabScore: aggregate.vocabAccuracy,
-          grammarAccuracy: aggregate.grammarAccuracy,
-          writingScore: aggregate.writingScore,
-          overallScore: aggregate.overallScore,
-          wordsWritten,
-          targetWordsHit,
-          concernScoreDelta,
-        };
+      const resultPayload: Record<string, unknown> = {
+        documentsProcessed: completedTasks.length,
+        documentsTotal: taskProgress.length,
+        errorsFound: aggregate.errorsFound,
+        errorsTotal: aggregate.errorsTotal,
+        vocabScore: aggregate.vocabAccuracy,
+        grammarAccuracy: aggregate.grammarAccuracy,
+        writingScore: aggregate.writingScore,
+        overallScore: aggregate.overallScore,
+        wordsWritten,
+        targetWordsHit,
+        concernScoreDelta,
+      };
 
-        await postShiftResult(currentWeek.id, resultPayload);
+      // The ShiftResult write is the canonical closing-grade registration. It
+      // used to sit in a fail-silently try/catch with no retry, so a single
+      // dropped POST (classroom Wi-Fi, a transient 5xx) left the student on a
+      // normal "Shift Complete" screen while the teacher view never registered
+      // the grade. Retry a few times; the backend ALSO lazily ensures a
+      // ShiftResult when the final task is marked complete, so this client POST
+      // is the richer refinement, not the only path.
+      let posted = false;
+      for (let attempt = 0; attempt < 3 && !posted; attempt++) {
+        try {
+          await postShiftResult(currentWeek.id, resultPayload);
+          posted = true;
+        } catch {
+          if (attempt < 2) {
+            await new Promise(resolve => setTimeout(resolve, 600 * (attempt + 1)));
+          }
+        }
+      }
+
+      if (!posted) {
+        // Allow a fresh attempt if the student re-enters the completed shift.
+        hasPosted.current = false;
+        setTimeout(() => setShowUpgrade(true), 1000);
+        return;
+      }
+
+      // Best-effort follow-ups. patchConcern is ADDITIVE — it must run at most
+      // once, so it stays OUTSIDE the retry loop above.
+      try {
         await patchClearance(weekConfig.shiftClosing.clearanceTo);
 
         const remainingDelta = concernScoreDelta - concernScorePersisted;
@@ -188,7 +215,7 @@ export default function ShiftClosing() {
         // Refresh season data so Duty Roster shows updated unlock state
         await loadSeason();
       } catch {
-        // Fail silently -- student sees the closing screen regardless
+        // Non-fatal — clearance/concern/season refresh recover on next load.
       }
 
       // Animate clearance upgrade after a delay

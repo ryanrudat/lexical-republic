@@ -5,6 +5,7 @@ import prisma from '../utils/prisma';
 import { getWeekConfig } from '../data/week-configs';
 import { getNarrativeRoute, getRouteWeeks } from '../data/narrative-routes';
 import { ensureHarmonyPostsExist } from '../utils/harmonyGenerator';
+import { ensureShiftResultRegistered } from '../utils/shiftResultRegistration';
 
 const router = Router();
 router.use(authenticate);
@@ -281,6 +282,7 @@ router.post(
       }
       const mission = await prisma.mission.findUnique({
         where: { id: missionId },
+        include: { week: { select: { weekNumber: true } } },
       });
 
       if (!mission || mission.weekId !== weekId) {
@@ -334,6 +336,24 @@ router.post(
           create: ctx.scoreCreate(mission.id, score, mergedDetails),
         });
       });
+
+      // Server-side convergence: the moment the closing task (shift_report /
+      // clock_out) is marked complete, ensure a ShiftResult exists so the grade
+      // registers on the teacher view even if the frontend ShiftClosing POST is
+      // lost or never reached (e.g. the W4 epilogue gating ShiftClosing). The
+      // frontend POST still refines this with the richer client aggregate.
+      // Non-fatal: the score is already committed above — never 500 the save.
+      const pairId = getPairId(req);
+      const isClosingTask =
+        mission.missionType === 'shift_report' || mission.missionType === 'clock_out';
+      const markedComplete = (result.details as Record<string, unknown> | null)?.status === 'complete';
+      if (pairId && isClosingTask && markedComplete && mission.week) {
+        try {
+          await ensureShiftResultRegistered({ pairId, weekNumber: mission.week.weekNumber });
+        } catch (convErr) {
+          console.error('ShiftResult convergence failed (score still saved):', convErr);
+        }
+      }
 
       res.json(result);
     } catch (err) {
