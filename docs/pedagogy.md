@@ -22,7 +22,7 @@ These are the locked commitments. Everything else follows from them.
 6. **Differentiation is data, not branched code.** All three lanes (Guided / Standard / Independent) share one shift cascade; per-task `lane` configs scale supports without forking content.
 7. **Story and learning targets live in mission config, not hardcoded UI logic.** Adding a week is data work in `backend/src/data/week-configs/weekN.ts` — no React.
 8. **Each shift's centerpiece task must visually mirror its briefing video.** Recurring tasks (Word Match, Cloze Fill, Vocab Clearance) sustain spaced retrieval — they need to *look identical* across shifts to do their job. The single novel task per shift carries the shift's identity and must feel distinctive in UI, animation, and tone, bridging the briefing video's visual language directly into the app surface (W3 Priority Sort cascade with pink/tan/blue folders matches the briefing video frame-for-frame; commit `d2dd9ef`).
-9. **Grammar is not scored on open writing.** AI grammar scoring on short A2-B1 L2 text is unstable across attempts and double-tests what Cloze Fill, Error Correction Doc, and Word Sort already test deterministically. Open writing scores on **vocab use only**, gated by a strict **on-topic veto**. Grammar still surfaces as advisory text for teachers, never as score (commit `b3ae4a0`, 2026-04-29 redesign — see §5).
+9. **Grammar is not scored on open writing.** AI grammar scoring on short A2-B1 L2 text is unstable across attempts and double-tests what Cloze Fill, Error Correction Doc, and Word Sort already test deterministically. Open writing scores on **vocab use only**, gated by a **lenient, escapable on-topic veto** (deterministic grader; one nudge, then Submit Anyway — never a hard lock, since 2026-06-22). Grammar still surfaces as advisory text for teachers, never as score (commit `b3ae4a0`, 2026-04-29 redesign; grading stabilised 2026-06-22 — see §5).
 
 ---
 
@@ -149,27 +149,30 @@ The same `WordMatch.tsx` component renders W1 and W3 pairs (`week1.ts:101-112`, 
 
 ## 5. Writing, grammar & feedback
 
-### 5.1 The writing rubric (post-2026-04-29 redesign, commit `b3ae4a0`)
+### 5.1 The writing rubric (post-2026-04-29 redesign, commit `b3ae4a0`; grading stabilised 2026-06-22)
 
-Open writing is evaluated on **two axes**, one of which is a strict veto:
+Open writing is evaluated on **two axes**, one of which is an on-topic veto. As of **2026-06-22** the grader is **deterministic and lenient** (same draft → same verdict) and the veto **no longer hard-locks completion** (see §5.5):
 
-1. **On-topic** (boolean, **veto axis**) — does the writing address the assigned prompt? Off-topic submissions score `0.0` regardless of vocabulary use, regardless of grammar accuracy, regardless of word count. A grammatically perfect sentence about an unrelated subject is *off-topic*.
-2. **Vocabulary** (0.0–1.0) — are target vocabulary words used in **meaningful, prompt-relevant context**?
+1. **On-topic** (boolean, **veto axis — defaults to TRUE**) — does the writing make any reasonable attempt at the assigned prompt? A2-B1 learners write simply; shaky, short, or partial on-topic writing is *still* on-topic. Only writing that is clearly about an unrelated subject (song lyrics, random anecdotes about food/pets, copy-paste) or is gibberish is *off-topic*. Off-topic **caps the recorded score and flags the teacher**, but is escapable after one nudge.
+2. **Vocabulary** (0.0–1.0) — are target vocabulary words used in **meaningful, prompt-relevant context**? This is the only numeric axis.
 
-Final score:
+Recorded score (the `/evaluate` persist path):
 ```
   if onTopic == false:  score = 0.0
   else:                 score = vocabScore (clamped [0.1, 1.0])
 ```
+An off-topic draft that the student **Submit-Anyways** after the nudge instead records a low floored score (~0.2) with `submittedAnyway: true` + `onTopic: false` for teacher review (§5.5).
 
-Layered defenses run *before* AI is called (`backend/src/routes/submissions.ts:73-105`):
+Pass is now **one rule for every attempt** (no per-attempt bar changes): `passed = onTopic AND meetsWordFloor AND vocabScore >= 0.3`, plus an attempt-3 on-topic auto-pass safety net.
 
-- **Layer 1 (auto-checks, fail closed)** — lane-scaled `minWordCount` floor; 30%-of-target vocabulary floor.
-- **Layer 2 (AI rubric)** — on-topic + vocab, lane-aware so PEARL calibrates against support / standard / challenge tracks.
+Checks run *before* the AI is called (`backend/src/routes/submissions.ts`):
 
-Vocabulary detection uses Porter stemming so morphological variants count (`submissions.ts:92-93`).
+- **Layer 1 (the single hard floor)** — the task's own lane-resolved `minWordCount` (clamped 5–100). That is the *only* hard gate; a too-short draft gets a crisp "Minimum N words required. Current: M."
+- **Layer 2 (AI rubric, deterministic at `temperature: 0`)** — on-topic + vocab, lane-aware so PEARL calibrates against support / standard / challenge tracks.
 
-**Why not grammar?** AI grammar scoring on short A2-B1 L2 text is unstable across attempts (the same submission can score 0.6 then 0.9), and it double-tests what constrained tasks already test deterministically. Penalising rough grammar in writing trains students to write *less*, not better — Krashen's affective filter is real for adolescent learners. The pre-redesign rubric let a submission about "I should fart. I should poop" score 100% because grammar+vocab averaged above the 0.4 pass threshold even when topical relevance was low. The on-topic veto closes that loophole.
+Vocabulary is the **scored axis, not a gate** — the old 30%-of-target-words hard block was removed (2026-06-22); low vocab now yields a low `vocabScore` + a plain "use more target words — try: X" hint, never a wall. Detection uses Porter stemming so morphological variants count.
+
+**Why not grammar?** AI grammar scoring on short A2-B1 L2 text is unstable across attempts (the same submission can score 0.6 then 0.9), and it double-tests what constrained tasks already test deterministically. Penalising rough grammar in writing trains students to write *less*, not better — Krashen's affective filter is real for adolescent learners. The pre-redesign rubric let a submission about "I should fart. I should poop" score 100% because grammar+vocab averaged above the old 0.4 pass threshold even when topical relevance was low. The on-topic veto closes that loophole — off-topic writing is capped + flagged, even though (post-2026-06-22) the student can still move on after one nudge.
 
 ### 5.2 Grammar lives in constrained tasks, not open writing
 
@@ -203,13 +206,14 @@ Teachers use it to spot trending L1-transfer patterns in their class without the
 | W3 | `modals` (must / should / can) | Cloze Fill `cloze_fill_w3` | Advisory text only |
 | W4 | `past-simple-sequencing` | DocumentReview + ErrorCorrectionDoc | Advisory text only |
 
-### 5.5 Submit Anyway as anti-frustration valve (with off-topic exception)
+### 5.5 Submit Anyway — one nudge, then escapable (reworked 2026-06-22)
 
-After one failed AI eval, an amber **Submit Anyway** button appears (`WritingEvaluator.tsx`), gated on a per-task `minWords` floor (default 20). The forced submission falls back to a `0.3` vocab floor; `ShiftReport.tsx` clamps to `[0.1, 1.0]` so no submission registers as zero or perfect, and `submittedAnyway: true` flags it for teacher review.
+Completion is **always reachable** — a genuine attempt never traps the student. After one failed AI eval, an amber **Submit Anyway** button appears (`WritingEvaluator.tsx`), gated on the task's `minWords` floor. The forced submission floors `vocabScore` (0.3 on-topic / 0.2 off-topic); `ShiftReport.tsx` clamps to `[0.1, 1.0]` so no submission registers as zero or perfect, and `submittedAnyway: true` flags it for teacher review.
 
-**Critical exception:** Submit Anyway is *blocked* when the last attempt was off-topic. The student must rewrite to address the prompt — the on-topic veto is the entire point of the rubric and cannot be bypassed. The same is true of attempt-3 auto-pass: if the student's third attempt is still off-topic, the auto-pass refuses; only on-topic attempts auto-pass on attempt 3. UI surfaces this with an explicit message: *"Submission must address the assigned topic — Submit Anyway is unavailable."*
+- **On-topic drafts** can Submit Anyway immediately after the first failed attempt (e.g. thin vocab).
+- **Off-topic drafts** get **one nudge** — *"Try writing about your shift — what you examined, what happened, and the result. Then submit again."* — and after one revise (attempt 3) the escape hatch opens **even if still off-topic**, recording the real `onTopic: false` + `submittedAnyway` so the teacher sees the truth. An attempt-3 on-topic draft auto-passes outright.
 
-This preserves principle 1.5 (failure must never be a hard block) for *effort* failures while making *topic* compliance non-negotiable.
+This satisfies principle 1.5 (failure must never be a hard block) for *both* effort and topic failures, while still steering students toward the prompt with a single nudge. (Supersedes the pre-2026-06-22 rule where off-topic permanently blocked Submit Anyway — that hard lock, combined with the old non-deterministic grader, was the main reason students couldn't finish.)
 
 ### 5.6 PEARL as in-character feedback engine
 
@@ -454,7 +458,7 @@ MCQ tests recognition (pick the right answer from four), not recall (produce the
 | Vocabulary | TOEIC-first, 10/week, recurring across 4+ surfaces, recycled in 3 tiers |
 | Differentiation | 3 lanes, one cascade, data-driven scaffolds |
 | Sequencing | Input → Recognition → Guided → Assessment → Application → Production |
-| Writing rubric | **On-topic veto + Vocab score**; grammar removed from scoring (advisory text only); Submit Anyway blocked when off-topic |
+| Writing rubric | **Lenient/escapable on-topic veto + Vocab score**; deterministic grader (`temp 0`); grammar removed from scoring (advisory only); Submit Anyway opens after one nudge (off-topic escapable on attempt 3) |
 | Grammar | Lives in constrained tasks (Cloze, Error Correction, Word Sort); never scored on open writing |
 | Feedback | PEARL in-character (200 chars), persisted, off-topic explicitly cited; never blocks effort failures |
 | Retrieval | 4+ encounters/word/week across distinct modes; writing contributes vocab only; +0.10 production / +0.05 current / +0.03 review |
